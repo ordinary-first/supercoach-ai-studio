@@ -1,0 +1,10 @@
+
+{
+  "appId": "ai.supercoach.app",
+  "appName": "Super Coach",
+  "webDir": ".",
+  "bundledWebRuntime": false,
+  "server": {
+    "androidScheme": "https"
+  }
+}
