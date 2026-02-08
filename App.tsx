@@ -249,35 +249,52 @@ const App: React.FC = () => {
     };
   }, [todos, userProfile, isDataLoaded]);
 
-  // 5. Flush pending saves before page unload
+  // 5. Flush pending saves before page unload / tab switch / app switch
   useEffect(() => {
-    const handleBeforeUnload = () => {
+    const flushPendingSaves = () => {
       const userId = userIdRef.current;
       if (!userId || !isDataLoadedRef.current) return;
 
-      // Cancel pending debounced saves
-      if (goalSaveTimerRef.current) clearTimeout(goalSaveTimerRef.current);
-      if (todoSaveTimerRef.current) clearTimeout(todoSaveTimerRef.current);
+      // Cancel pending debounced saves (we're saving immediately now)
+      if (goalSaveTimerRef.current) {
+        clearTimeout(goalSaveTimerRef.current);
+        goalSaveTimerRef.current = null;
+      }
+      if (todoSaveTimerRef.current) {
+        clearTimeout(todoSaveTimerRef.current);
+        todoSaveTimerRef.current = null;
+      }
 
-      // Synchronously save to localStorage (Firestore is async and won't complete before unload)
-      try {
-        const currentNodes = nodesRef.current;
-        const currentLinks = linksRef.current;
-        const currentTodos = todosRef.current;
+      // Save to both localStorage (sync) and Firestore (async, best-effort)
+      saveGoalData(userId, nodesRef.current, linksRef.current);
+      saveTodos(userId, todosRef.current);
+    };
 
-        const serializedGoals = {
-          nodes: currentNodes.map(n => ({ id: n.id, text: n.text, type: n.type, status: n.status, progress: n.progress, parentId: n.parentId, imageUrl: n.imageUrl, collapsed: n.collapsed })),
-          links: currentLinks.map(l => ({ source: typeof l.source === 'object' ? (l.source as any).id : l.source, target: typeof l.target === 'object' ? (l.target as any).id : l.target })),
-        };
-        localStorage.setItem(`supercoach_goals_${userId}`, JSON.stringify(serializedGoals));
-        localStorage.setItem(`supercoach_todos_${userId}`, JSON.stringify(currentTodos));
-      } catch (e) {
-        console.warn('beforeunload save failed:', e);
+    // visibilitychange: fires reliably on mobile when switching apps/tabs
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        flushPendingSaves();
       }
     };
 
+    // pagehide: fires on navigation and tab close (more reliable than beforeunload on mobile)
+    const handlePageHide = () => {
+      flushPendingSaves();
+    };
+
+    // beforeunload: fires on desktop tab close / refresh
+    const handleBeforeUnload = () => {
+      flushPendingSaves();
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('pagehide', handlePageHide);
     window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('pagehide', handlePageHide);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
   }, []); // Empty deps - registered once, uses refs for latest values
 
   useEffect(() => {
