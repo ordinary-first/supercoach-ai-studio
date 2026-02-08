@@ -21,6 +21,13 @@ const firebaseConfig = {
   measurementId: process.env.FIREBASE_MEASUREMENT_ID
 };
 
+// Debug: Firebase config 확인
+console.log('[Firebase] Config check:', {
+  hasApiKey: !!firebaseConfig.apiKey,
+  hasProjectId: !!firebaseConfig.projectId,
+  projectId: firebaseConfig.projectId,
+});
+
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
@@ -139,130 +146,235 @@ export const getUserId = (): string | null => {
   return null;
 };
 
-export const isGuestUser = (): boolean => {
-  const userId = getUserId();
-  return !userId || userId.startsWith('guest_');
+export const isGuestUser = (uid?: string): boolean => {
+  const id = uid || getUserId();
+  return !id || id.startsWith('guest_');
+};
+
+/**
+ * Firestore 연결 테스트 — 앱 시작 시 호출하여 규칙/설정 문제 진단
+ */
+export const testFirestoreConnection = async (userId: string): Promise<boolean> => {
+  if (isGuestUser(userId)) {
+    console.log('[Firestore] Guest user — skipping connection test');
+    return false;
+  }
+  try {
+    const testRef = doc(db, 'users', userId, 'meta', 'connectionTest');
+    await setDoc(testRef, { lastTest: Date.now(), ok: true });
+    const snap = await getDoc(testRef);
+    if (snap.exists()) {
+      console.log('[Firestore] ✅ Connection OK — read/write working');
+      return true;
+    }
+    console.error('[Firestore] ❌ Write succeeded but read returned empty');
+    return false;
+  } catch (e: any) {
+    console.error('[Firestore] ❌ Connection FAILED:', e?.code || e?.message || e);
+    if (e?.code === 'permission-denied') {
+      console.error('[Firestore] 🔒 보안 규칙이 접근을 거부합니다. Firebase Console에서 Firestore 규칙을 설정하세요.');
+    }
+    return false;
+  }
 };
 
 export const saveGoalData = async (userId: string, nodes: GoalNode[], links: GoalLink[]): Promise<void> => {
-  const serialized = {
-    nodes: nodes.map(n => ({ id: n.id, text: n.text, type: n.type, status: n.status, progress: n.progress, parentId: n.parentId, imageUrl: n.imageUrl, collapsed: n.collapsed })),
-    links: links.map(l => ({ source: typeof l.source === 'object' ? (l.source as any).id : l.source, target: typeof l.target === 'object' ? (l.target as any).id : l.target })),
-  };
+  const now = Date.now();
+  const serializedNodes = nodes.map(n => ({ id: n.id, text: n.text, type: n.type, status: n.status, progress: n.progress, parentId: n.parentId || null, imageUrl: n.imageUrl || null, collapsed: n.collapsed || false }));
+  const serializedLinks = links.map(l => ({ source: typeof l.source === 'object' ? (l.source as any).id : l.source, target: typeof l.target === 'object' ? (l.target as any).id : l.target }));
+  const payload = { nodes: serializedNodes, links: serializedLinks, updatedAt: now };
 
-  // Always backup to localStorage
+  // Always save to localStorage
   try {
-    localStorage.setItem(`supercoach_goals_${userId}`, JSON.stringify(serialized));
-  } catch (e) { console.warn('localStorage save failed:', e); }
+    localStorage.setItem(`supercoach_goals_${userId}`, JSON.stringify(payload));
+  } catch (e) { console.error('[Save:Goals] localStorage failed:', e); }
 
   // Also save to Firestore for non-guest users
-  if (!isGuestUser()) {
+  if (!isGuestUser(userId)) {
     try {
-      const serializedNodes = nodes.map(n => ({ id: n.id, text: n.text, type: n.type, status: n.status, progress: n.progress, parentId: n.parentId || null, imageUrl: n.imageUrl || null, collapsed: n.collapsed || false }));
-      const serializedLinks = links.map(l => ({ source: typeof l.source === 'object' ? (l.source as any).id : l.source, target: typeof l.target === 'object' ? (l.target as any).id : l.target }));
       const docRef = doc(db, 'users', userId, 'data', 'goals');
-      await setDoc(docRef, { nodes: serializedNodes, links: serializedLinks, updatedAt: Date.now() });
-    } catch (e) { console.warn('Firestore goal save failed (using localStorage backup):', e); }
+      await setDoc(docRef, payload);
+      console.log('[Save:Goals] ✅ Firestore saved', { nodeCount: nodes.length, linkCount: links.length });
+    } catch (e: any) {
+      console.error('[Save:Goals] ❌ Firestore FAILED:', e?.code || e?.message);
+    }
   }
 };
 
 export const loadGoalData = async (userId: string): Promise<{ nodes: GoalNode[]; links: GoalLink[] } | null> => {
-  // Try Firestore first for non-guest users
-  if (!isGuestUser()) {
+  let firestoreData: any = null;
+  let localData: any = null;
+
+  // Try Firestore for non-guest users
+  if (!isGuestUser(userId)) {
     try {
       const docRef = doc(db, 'users', userId, 'data', 'goals');
       const snap = await getDoc(docRef);
       if (snap.exists()) {
-        const data = snap.data() as { nodes: GoalNode[]; links: GoalLink[] };
-        return data;
+        firestoreData = snap.data();
+        console.log('[Load:Goals] Firestore data found, updatedAt:', firestoreData.updatedAt);
+      } else {
+        console.log('[Load:Goals] Firestore: no document exists yet');
       }
-    } catch (e) { console.warn('Firestore goal load failed, falling back to localStorage:', e); }
+    } catch (e: any) {
+      console.error('[Load:Goals] ❌ Firestore read FAILED:', e?.code || e?.message);
+    }
   }
-  // Fallback to localStorage (for both guest and Firestore failures)
+
+  // Always try localStorage
   try {
-    const data = localStorage.getItem(`supercoach_goals_${userId}`);
-    if (data) return JSON.parse(data);
+    const raw = localStorage.getItem(`supercoach_goals_${userId}`);
+    if (raw) {
+      localData = JSON.parse(raw);
+      console.log('[Load:Goals] localStorage data found, updatedAt:', localData.updatedAt);
+    }
   } catch (e) {}
+
+  // Use the one with newer timestamp (prefer fresh data)
+  if (firestoreData && localData) {
+    const fsTime = firestoreData.updatedAt || 0;
+    const lsTime = localData.updatedAt || 0;
+    const winner = fsTime >= lsTime ? 'Firestore' : 'localStorage';
+    console.log(`[Load:Goals] Both sources exist → using ${winner} (fs:${fsTime} vs ls:${lsTime})`);
+    return fsTime >= lsTime ? firestoreData : localData;
+  }
+  if (firestoreData) { console.log('[Load:Goals] Using Firestore (only source)'); return firestoreData; }
+  if (localData) { console.log('[Load:Goals] Using localStorage (only source)'); return localData; }
+
+  console.log('[Load:Goals] No data found in either source');
   return null;
 };
 
 export const saveTodos = async (userId: string, todos: ToDoItem[]): Promise<void> => {
-  // Always backup to localStorage
+  const now = Date.now();
+  const payload = { items: todos, updatedAt: now };
+
+  // Always save to localStorage
   try {
-    localStorage.setItem(`supercoach_todos_${userId}`, JSON.stringify(todos));
-  } catch (e) { console.warn('localStorage save failed:', e); }
+    localStorage.setItem(`supercoach_todos_${userId}`, JSON.stringify(payload));
+  } catch (e) { console.error('[Save:Todos] localStorage failed:', e); }
 
   // Also save to Firestore for non-guest users
-  if (!isGuestUser()) {
+  if (!isGuestUser(userId)) {
     try {
       const docRef = doc(db, 'users', userId, 'data', 'todos');
-      await setDoc(docRef, { items: todos, updatedAt: Date.now() });
-    } catch (e) { console.warn('Firestore todo save failed (using localStorage backup):', e); }
+      await setDoc(docRef, payload);
+      console.log('[Save:Todos] ✅ Firestore saved', { count: todos.length });
+    } catch (e: any) {
+      console.error('[Save:Todos] ❌ Firestore FAILED:', e?.code || e?.message);
+    }
   }
 };
 
 export const loadTodos = async (userId: string): Promise<ToDoItem[] | null> => {
-  // Try Firestore first for non-guest users
-  if (!isGuestUser()) {
+  let firestoreData: any = null;
+  let localData: any = null;
+
+  // Try Firestore for non-guest users
+  if (!isGuestUser(userId)) {
     try {
       const docRef = doc(db, 'users', userId, 'data', 'todos');
       const snap = await getDoc(docRef);
       if (snap.exists()) {
-        return (snap.data() as any).items as ToDoItem[];
+        firestoreData = snap.data();
+        console.log('[Load:Todos] Firestore data found, updatedAt:', firestoreData.updatedAt);
       }
-    } catch (e) { console.warn('Firestore todo load failed, falling back to localStorage:', e); }
+    } catch (e: any) {
+      console.error('[Load:Todos] ❌ Firestore read FAILED:', e?.code || e?.message);
+    }
   }
-  // Fallback to localStorage (for both guest and Firestore failures)
+
+  // Always try localStorage (handle both old format: raw array, new format: { items, updatedAt })
   try {
-    const data = localStorage.getItem(`supercoach_todos_${userId}`);
-    if (data) return JSON.parse(data);
+    const raw = localStorage.getItem(`supercoach_todos_${userId}`);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        // Old format: raw array — migrate
+        localData = { items: parsed, updatedAt: 0 };
+        console.log('[Load:Todos] localStorage data found (old format, migrated)');
+      } else {
+        localData = parsed;
+        console.log('[Load:Todos] localStorage data found, updatedAt:', localData.updatedAt);
+      }
+    }
   } catch (e) {}
+
+  // Use the one with newer timestamp
+  if (firestoreData && localData) {
+    const fsTime = firestoreData.updatedAt || 0;
+    const lsTime = localData.updatedAt || 0;
+    const winner = fsTime >= lsTime ? 'Firestore' : 'localStorage';
+    console.log(`[Load:Todos] Both sources → using ${winner}`);
+    const items = fsTime >= lsTime ? firestoreData.items : localData.items;
+    return items || null;
+  }
+  if (firestoreData) return firestoreData.items || null;
+  if (localData) return localData.items || null;
+
   return null;
 };
 
 export const saveProfile = async (userId: string, profile: UserProfile): Promise<void> => {
-  // Always backup to localStorage
+  // Always save to localStorage
   try {
     localStorage.setItem(`supercoach_profile_${userId}`, JSON.stringify(profile));
-  } catch (e) { console.warn('localStorage save failed:', e); }
+  } catch (e) { console.error('[Save:Profile] localStorage failed:', e); }
 
   // Also save to Firestore for non-guest users
-  if (!isGuestUser()) {
+  if (!isGuestUser(userId)) {
     try {
       const profileData = { ...profile };
-      delete (profileData as any).gallery; // Gallery images are too large for Firestore, keep in localStorage
+      delete (profileData as any).gallery; // Gallery images too large for Firestore
       const docRef = doc(db, 'users', userId, 'profile', 'main');
       await setDoc(docRef, { ...profileData, updatedAt: Date.now() });
-    } catch (e) { console.warn('Firestore profile save failed (using localStorage backup):', e); }
+      console.log('[Save:Profile] ✅ Firestore saved');
+    } catch (e: any) {
+      console.error('[Save:Profile] ❌ Firestore FAILED:', e?.code || e?.message);
+    }
   }
 
-  // Save gallery separately in localStorage (base64 images are too large for Firestore)
+  // Gallery separately in localStorage
   try {
     localStorage.setItem(`supercoach_gallery_${userId}`, JSON.stringify(profile.gallery || []));
-  } catch (e) { console.warn('Gallery save failed:', e); }
+  } catch (e) {}
 };
 
 export const loadProfile = async (userId: string): Promise<UserProfile | null> => {
-  // Try Firestore first for non-guest users
-  if (!isGuestUser()) {
+  let profile: UserProfile | null = null;
+
+  // Try Firestore for non-guest users
+  if (!isGuestUser(userId)) {
     try {
       const docRef = doc(db, 'users', userId, 'profile', 'main');
       const snap = await getDoc(docRef);
       if (snap.exists()) {
-        const profile = snap.data() as UserProfile;
-        // Restore gallery from localStorage
-        try {
-          const gallery = localStorage.getItem(`supercoach_gallery_${userId}`);
-          if (gallery) profile.gallery = JSON.parse(gallery);
-        } catch (e) {}
-        return profile;
+        profile = snap.data() as UserProfile;
+        console.log('[Load:Profile] Firestore data found');
       }
-    } catch (e) { console.warn('Firestore profile load failed, falling back to localStorage:', e); }
+    } catch (e: any) {
+      console.error('[Load:Profile] ❌ Firestore read FAILED:', e?.code || e?.message);
+    }
   }
-  // Fallback to localStorage (for both guest and Firestore failures)
-  try {
-    const data = localStorage.getItem(`supercoach_profile_${userId}`);
-    if (data) return JSON.parse(data);
-  } catch (e) {}
-  return null;
+
+  // Fallback to localStorage
+  if (!profile) {
+    try {
+      const data = localStorage.getItem(`supercoach_profile_${userId}`);
+      if (data) {
+        profile = JSON.parse(data);
+        console.log('[Load:Profile] localStorage data found');
+      }
+    } catch (e) {}
+  }
+
+  // Restore gallery from localStorage (always, since Firestore doesn't store it)
+  if (profile) {
+    try {
+      const gallery = localStorage.getItem(`supercoach_gallery_${userId}`);
+      if (gallery) profile.gallery = JSON.parse(gallery);
+    } catch (e) {}
+  }
+
+  return profile;
 };

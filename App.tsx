@@ -12,7 +12,7 @@ import LandingPage from './components/LandingPage';
 import UserProfilePage from './components/UserProfilePage';
 import { GoalNode, GoalLink, NodeType, NodeStatus, UserProfile, ToDoItem, ChatMessage, RepeatFrequency } from './types';
 import { generateGoalImage } from './services/aiService';
-import { onAuthUpdate, logout, getUserId, saveGoalData, loadGoalData, saveTodos, loadTodos, saveProfile, loadProfile } from './services/firebaseService';
+import { onAuthUpdate, logout, getUserId, saveGoalData, loadGoalData, saveTodos, loadTodos, saveProfile, loadProfile, testFirestoreConnection } from './services/firebaseService';
 
 // Helper function to calculate the next occurrence date for recurring todos
 const calculateNextDate = (repeat: RepeatFrequency, fromDate: Date): number => {
@@ -181,6 +181,13 @@ const App: React.FC = () => {
 
     const loadData = async () => {
       isLoadingDataRef.current = true;
+      console.log('[App] Loading data for user:', userId);
+
+      // Test Firestore connection (non-blocking)
+      testFirestoreConnection(userId).then(ok => {
+        console.log('[App] Firestore connection test:', ok ? '✅ OK' : '❌ FAILED — using localStorage only');
+      });
+
       try {
         const [goalData, todoData, savedProfile] = await Promise.all([
           loadGoalData(userId),
@@ -264,13 +271,15 @@ const App: React.FC = () => {
         const currentNodes = nodesRef.current;
         const currentLinks = linksRef.current;
         const currentTodos = todosRef.current;
+        const now = Date.now();
 
         const serializedGoals = {
-          nodes: currentNodes.map(n => ({ id: n.id, text: n.text, type: n.type, status: n.status, progress: n.progress, parentId: n.parentId, imageUrl: n.imageUrl, collapsed: n.collapsed })),
+          nodes: currentNodes.map(n => ({ id: n.id, text: n.text, type: n.type, status: n.status, progress: n.progress, parentId: n.parentId || null, imageUrl: n.imageUrl || null, collapsed: n.collapsed || false })),
           links: currentLinks.map(l => ({ source: typeof l.source === 'object' ? (l.source as any).id : l.source, target: typeof l.target === 'object' ? (l.target as any).id : l.target })),
+          updatedAt: now,
         };
         localStorage.setItem(`supercoach_goals_${userId}`, JSON.stringify(serializedGoals));
-        localStorage.setItem(`supercoach_todos_${userId}`, JSON.stringify(currentTodos));
+        localStorage.setItem(`supercoach_todos_${userId}`, JSON.stringify({ items: currentTodos, updatedAt: now }));
       } catch (e) {
         console.warn('beforeunload save failed:', e);
       }
