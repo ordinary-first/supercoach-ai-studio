@@ -8,7 +8,7 @@ import {
   onAuthStateChanged,
   User
 } from "firebase/auth";
-import { initializeFirestore, getFirestore, persistentLocalCache, persistentMultipleTabManager, doc, setDoc, getDoc } from "firebase/firestore";
+import { initializeFirestore, getFirestore, persistentLocalCache, persistentMultipleTabManager, doc, setDoc, getDoc, getDocFromServer, waitForPendingWrites } from "firebase/firestore";
 import { GoalNode, GoalLink, UserProfile, ToDoItem } from '../types';
 
 const firebaseConfig = {
@@ -161,16 +161,20 @@ export const isGuestUser = (): boolean => {
  * 로그인 후 한 번 호출하여 Firestore가 정상 동작하는지 확인.
  */
 export const testFirestoreAccess = async (userId: string): Promise<boolean> => {
-  if (!userId || userId.startsWith('guest_')) return true; // guest는 Firestore 안 씀
+  if (!userId || userId.startsWith('guest_')) return true;
   try {
     const testRef = doc(db, 'users', userId, 'data', '_connection_test');
     await setDoc(testRef, { ok: true, ts: Date.now() });
-    const snap = await getDoc(testRef);
-    const success = snap.exists() && snap.data()?.ok === true;
-    if (!success) console.error('[Firestore] 쓰기 테스트 실패: 데이터를 읽을 수 없음');
-    return success;
+    // 서버가 실제로 쓰기를 확인할 때까지 대기 (타임아웃 10초)
+    await Promise.race([
+      waitForPendingWrites(db),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Firestore server sync timeout (10s)')), 10000))
+    ]);
+    // 캐시가 아닌 서버에서 직접 읽어서 실제로 저장됐는지 확인
+    const snap = await getDocFromServer(testRef);
+    return snap.exists() && snap.data()?.ok === true;
   } catch (e) {
-    console.error('[Firestore] 접근 테스트 실패:', e);
+    console.error('[Firestore] 서버 접근 테스트 실패:', e);
     return false;
   }
 };
@@ -196,16 +200,20 @@ export const saveGoalData = async (userId: string, nodes: GoalNode[], links: Goa
 };
 
 export const loadGoalData = async (userId: string): Promise<{ nodes: GoalNode[]; links: GoalLink[] } | null> => {
-  // Try Firestore first for non-guest users (use userId param directly to avoid auth.currentUser race condition)
   if (userId && !userId.startsWith('guest_')) {
+    const docRef = doc(db, 'users', userId, 'data', 'goals');
+    // 서버에서 직접 읽기 (다른 디바이스에서의 최신 데이터 보장)
     try {
-      const docRef = doc(db, 'users', userId, 'data', 'goals');
-      const snap = await getDoc(docRef);
-      if (snap.exists()) {
-        const data = snap.data() as { nodes: GoalNode[]; links: GoalLink[] };
-        return data;
-      }
-    } catch (e) { console.warn('Firestore goal load failed, falling back to localStorage:', e); }
+      const snap = await getDocFromServer(docRef);
+      if (snap.exists()) return snap.data() as { nodes: GoalNode[]; links: GoalLink[] };
+    } catch (e) {
+      console.warn('Firestore server read failed, trying cache:', e);
+      // 서버 실패 시 로컬 캐시에서 읽기
+      try {
+        const snap = await getDoc(docRef);
+        if (snap.exists()) return snap.data() as { nodes: GoalNode[]; links: GoalLink[] };
+      } catch (_) {}
+    }
   }
   // Fallback to localStorage (for both guest and Firestore failures)
   try {
@@ -229,15 +237,18 @@ export const saveTodos = async (userId: string, todos: ToDoItem[]): Promise<void
 };
 
 export const loadTodos = async (userId: string): Promise<ToDoItem[] | null> => {
-  // Try Firestore first for non-guest users (use userId param directly to avoid auth.currentUser race condition)
   if (userId && !userId.startsWith('guest_')) {
+    const docRef = doc(db, 'users', userId, 'data', 'todos');
     try {
-      const docRef = doc(db, 'users', userId, 'data', 'todos');
-      const snap = await getDoc(docRef);
-      if (snap.exists()) {
-        return (snap.data() as any).items as ToDoItem[];
-      }
-    } catch (e) { console.warn('Firestore todo load failed, falling back to localStorage:', e); }
+      const snap = await getDocFromServer(docRef);
+      if (snap.exists()) return (snap.data() as any).items as ToDoItem[];
+    } catch (e) {
+      console.warn('Firestore server read failed, trying cache:', e);
+      try {
+        const snap = await getDoc(docRef);
+        if (snap.exists()) return (snap.data() as any).items as ToDoItem[];
+      } catch (_) {}
+    }
   }
   // Fallback to localStorage (for both guest and Firestore failures)
   try {
@@ -268,21 +279,25 @@ export const saveProfile = async (userId: string, profile: UserProfile): Promise
 };
 
 export const loadProfile = async (userId: string): Promise<UserProfile | null> => {
-  // Try Firestore first for non-guest users (use userId param directly to avoid auth.currentUser race condition)
   if (userId && !userId.startsWith('guest_')) {
+    const docRef = doc(db, 'users', userId, 'profile', 'main');
+    const restoreGallery = (profile: UserProfile) => {
+      try {
+        const gallery = localStorage.getItem(`supercoach_gallery_${userId}`);
+        if (gallery) profile.gallery = JSON.parse(gallery);
+      } catch (_) {}
+      return profile;
+    };
     try {
-      const docRef = doc(db, 'users', userId, 'profile', 'main');
-      const snap = await getDoc(docRef);
-      if (snap.exists()) {
-        const profile = snap.data() as UserProfile;
-        // Restore gallery from localStorage
-        try {
-          const gallery = localStorage.getItem(`supercoach_gallery_${userId}`);
-          if (gallery) profile.gallery = JSON.parse(gallery);
-        } catch (e) {}
-        return profile;
-      }
-    } catch (e) { console.warn('Firestore profile load failed, falling back to localStorage:', e); }
+      const snap = await getDocFromServer(docRef);
+      if (snap.exists()) return restoreGallery(snap.data() as UserProfile);
+    } catch (e) {
+      console.warn('Firestore server read failed, trying cache:', e);
+      try {
+        const snap = await getDoc(docRef);
+        if (snap.exists()) return restoreGallery(snap.data() as UserProfile);
+      } catch (_) {}
+    }
   }
   // Fallback to localStorage (for both guest and Firestore failures)
   try {

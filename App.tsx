@@ -209,7 +209,7 @@ const App: React.FC = () => {
         if (!userId.startsWith('guest_')) {
           const firestoreOk = await testFirestoreAccess(userId);
           if (!firestoreOk) {
-            setCloudSaveError('클라우드 저장소에 접근할 수 없습니다. 데이터가 이 기기에만 저장됩니다.');
+            setCloudSaveError('클라우드 저장소 연결 실패. Firebase Console → Firestore → 규칙에서 인증된 사용자 접근을 허용하세요.');
           } else {
             setCloudSaveError(null);
           }
