@@ -12,7 +12,7 @@ import LandingPage from './components/LandingPage';
 import UserProfilePage from './components/UserProfilePage';
 import { GoalNode, GoalLink, NodeType, NodeStatus, UserProfile, ToDoItem, ChatMessage, RepeatFrequency } from './types';
 import { generateGoalImage } from './services/aiService';
-import { onAuthUpdate, logout, getUserId, saveGoalData, loadGoalData, saveTodos, loadTodos, saveProfile, loadProfile } from './services/firebaseService';
+import { onAuthUpdate, logout, getUserId, saveGoalData, loadGoalData, saveTodos, loadTodos, saveProfile, loadProfile, testFirestoreAccess } from './services/firebaseService';
 
 // Helper function to calculate the next occurrence date for recurring todos
 const calculateNextDate = (repeat: RepeatFrequency, fromDate: Date): number => {
@@ -123,6 +123,7 @@ const App: React.FC = () => {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [imageLoadingNodes, setImageLoadingNodes] = useState<Set<string>>(new Set());
+  const [cloudSaveError, setCloudSaveError] = useState<string | null>(null);
 
   // Refs for beforeunload (always have latest values)
   const nodesRef = useRef(nodes);
@@ -204,6 +205,15 @@ const App: React.FC = () => {
             return { ...prev, bio: savedProfile.bio, gallery: savedProfile.gallery, age: savedProfile.age, location: savedProfile.location, gender: savedProfile.gender };
           });
         }
+        // Firestore 연결 테스트 (로그인 사용자만)
+        if (!userId.startsWith('guest_')) {
+          const firestoreOk = await testFirestoreAccess(userId);
+          if (!firestoreOk) {
+            setCloudSaveError('클라우드 저장소에 접근할 수 없습니다. 데이터가 이 기기에만 저장됩니다.');
+          } else {
+            setCloudSaveError(null);
+          }
+        }
       } catch (e) {
         console.error('Data loading error:', e);
       } finally {
@@ -224,7 +234,12 @@ const App: React.FC = () => {
 
     if (goalSaveTimerRef.current) clearTimeout(goalSaveTimerRef.current);
     goalSaveTimerRef.current = setTimeout(() => {
-      saveGoalData(userId, nodes, links).catch(e => console.error('Goal save error:', e));
+      saveGoalData(userId, nodes, links)
+        .then(() => setCloudSaveError(null))
+        .catch(e => {
+          console.error('Goal save error:', e);
+          setCloudSaveError('클라우드 저장 실패. 데이터가 이 기기에만 저장됩니다.');
+        });
     }, 1500);
 
     return () => {
@@ -241,7 +256,12 @@ const App: React.FC = () => {
 
     if (todoSaveTimerRef.current) clearTimeout(todoSaveTimerRef.current);
     todoSaveTimerRef.current = setTimeout(() => {
-      saveTodos(userId, todos).catch(e => console.error('Todo save error:', e));
+      saveTodos(userId, todos)
+        .then(() => setCloudSaveError(null))
+        .catch(e => {
+          console.error('Todo save error:', e);
+          setCloudSaveError('클라우드 저장 실패. 데이터가 이 기기에만 저장됩니다.');
+        });
     }, 1500);
 
     return () => {
@@ -265,9 +285,9 @@ const App: React.FC = () => {
         todoSaveTimerRef.current = null;
       }
 
-      // Save to both localStorage (sync) and Firestore (async, best-effort)
-      saveGoalData(userId, nodesRef.current, linksRef.current);
-      saveTodos(userId, todosRef.current);
+      // Save to both localStorage (sync) and Firestore (async, best-effort via IndexedDB cache)
+      saveGoalData(userId, nodesRef.current, linksRef.current).catch(e => console.error('Flush goal save error:', e));
+      saveTodos(userId, todosRef.current).catch(e => console.error('Flush todo save error:', e));
     };
 
     // visibilitychange: fires reliably on mobile when switching apps/tabs
@@ -496,6 +516,12 @@ const App: React.FC = () => {
 
   return (
     <div className="relative w-screen h-screen bg-deep-space text-white font-body overflow-hidden">
+      {cloudSaveError && (
+        <div className="absolute top-0 left-0 right-0 z-[300] bg-red-500/90 backdrop-blur-sm px-4 py-2 text-center text-xs font-bold text-white">
+          {cloudSaveError}
+          <button onClick={() => setCloudSaveError(null)} className="ml-3 underline opacity-80 hover:opacity-100">닫기</button>
+        </div>
+      )}
       {activeTab === 'GOALS' && (
         <>
           <MindMap

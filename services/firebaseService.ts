@@ -8,7 +8,7 @@ import {
   onAuthStateChanged,
   User
 } from "firebase/auth";
-import { getFirestore, doc, setDoc, getDoc } from "firebase/firestore";
+import { initializeFirestore, getFirestore, persistentLocalCache, persistentMultipleTabManager, doc, setDoc, getDoc } from "firebase/firestore";
 import { GoalNode, GoalLink, UserProfile, ToDoItem } from '../types';
 
 const firebaseConfig = {
@@ -23,7 +23,19 @@ const firebaseConfig = {
 
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-export const db = getFirestore(app);
+
+// Use persistent local cache so Firestore writes are cached in IndexedDB
+// and survive page close, then auto-sync when app reopens
+let db: ReturnType<typeof initializeFirestore>;
+try {
+  db = initializeFirestore(app, {
+    localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+  });
+} catch (_) {
+  // Already initialized (e.g. HMR) — reuse existing instance
+  db = getFirestore(app);
+}
+export { db };
 
 const googleProvider = new GoogleAuthProvider();
 // 인증 시 항상 계정 선택 창이 뜨도록 설정
@@ -144,6 +156,25 @@ export const isGuestUser = (): boolean => {
   return !userId || userId.startsWith('guest_');
 };
 
+/**
+ * Firestore 읽기/쓰기 접근 테스트.
+ * 로그인 후 한 번 호출하여 Firestore가 정상 동작하는지 확인.
+ */
+export const testFirestoreAccess = async (userId: string): Promise<boolean> => {
+  if (!userId || userId.startsWith('guest_')) return true; // guest는 Firestore 안 씀
+  try {
+    const testRef = doc(db, 'users', userId, 'data', '_connection_test');
+    await setDoc(testRef, { ok: true, ts: Date.now() });
+    const snap = await getDoc(testRef);
+    const success = snap.exists() && snap.data()?.ok === true;
+    if (!success) console.error('[Firestore] 쓰기 테스트 실패: 데이터를 읽을 수 없음');
+    return success;
+  } catch (e) {
+    console.error('[Firestore] 접근 테스트 실패:', e);
+    return false;
+  }
+};
+
 export const saveGoalData = async (userId: string, nodes: GoalNode[], links: GoalLink[]): Promise<void> => {
   const serialized = {
     nodes: nodes.map(n => ({ id: n.id, text: n.text, type: n.type, status: n.status, progress: n.progress, parentId: n.parentId, imageUrl: n.imageUrl, collapsed: n.collapsed })),
@@ -155,14 +186,12 @@ export const saveGoalData = async (userId: string, nodes: GoalNode[], links: Goa
     localStorage.setItem(`supercoach_goals_${userId}`, JSON.stringify(serialized));
   } catch (e) { console.warn('localStorage save failed:', e); }
 
-  // Also save to Firestore for non-guest users (use userId param directly to avoid auth.currentUser race condition)
+  // Also save to Firestore for non-guest users
   if (userId && !userId.startsWith('guest_')) {
-    try {
-      const serializedNodes = nodes.map(n => ({ id: n.id, text: n.text, type: n.type, status: n.status, progress: n.progress, parentId: n.parentId || null, imageUrl: n.imageUrl || null, collapsed: n.collapsed || false }));
-      const serializedLinks = links.map(l => ({ source: typeof l.source === 'object' ? (l.source as any).id : l.source, target: typeof l.target === 'object' ? (l.target as any).id : l.target }));
-      const docRef = doc(db, 'users', userId, 'data', 'goals');
-      await setDoc(docRef, { nodes: serializedNodes, links: serializedLinks, updatedAt: Date.now() });
-    } catch (e) { console.error('Firestore goal save failed (using localStorage backup):', e); }
+    const serializedNodes = nodes.map(n => ({ id: n.id, text: n.text, type: n.type, status: n.status, progress: n.progress, parentId: n.parentId || null, imageUrl: n.imageUrl || null, collapsed: n.collapsed || false }));
+    const serializedLinks = links.map(l => ({ source: typeof l.source === 'object' ? (l.source as any).id : l.source, target: typeof l.target === 'object' ? (l.target as any).id : l.target }));
+    const docRef = doc(db, 'users', userId, 'data', 'goals');
+    await setDoc(docRef, { nodes: serializedNodes, links: serializedLinks, updatedAt: Date.now() });
   }
 };
 
@@ -192,12 +221,10 @@ export const saveTodos = async (userId: string, todos: ToDoItem[]): Promise<void
     localStorage.setItem(`supercoach_todos_${userId}`, JSON.stringify(todos));
   } catch (e) { console.warn('localStorage save failed:', e); }
 
-  // Also save to Firestore for non-guest users (use userId param directly to avoid auth.currentUser race condition)
+  // Also save to Firestore for non-guest users
   if (userId && !userId.startsWith('guest_')) {
-    try {
-      const docRef = doc(db, 'users', userId, 'data', 'todos');
-      await setDoc(docRef, { items: todos, updatedAt: Date.now() });
-    } catch (e) { console.error('Firestore todo save failed (using localStorage backup):', e); }
+    const docRef = doc(db, 'users', userId, 'data', 'todos');
+    await setDoc(docRef, { items: todos, updatedAt: Date.now() });
   }
 };
 
@@ -226,14 +253,12 @@ export const saveProfile = async (userId: string, profile: UserProfile): Promise
     localStorage.setItem(`supercoach_profile_${userId}`, JSON.stringify(profile));
   } catch (e) { console.warn('localStorage save failed:', e); }
 
-  // Also save to Firestore for non-guest users (use userId param directly to avoid auth.currentUser race condition)
+  // Also save to Firestore for non-guest users
   if (userId && !userId.startsWith('guest_')) {
-    try {
-      const profileData = { ...profile };
-      delete (profileData as any).gallery; // Gallery images are too large for Firestore, keep in localStorage
-      const docRef = doc(db, 'users', userId, 'profile', 'main');
-      await setDoc(docRef, { ...profileData, updatedAt: Date.now() });
-    } catch (e) { console.error('Firestore profile save failed (using localStorage backup):', e); }
+    const profileData = { ...profile };
+    delete (profileData as any).gallery; // Gallery images are too large for Firestore, keep in localStorage
+    const docRef = doc(db, 'users', userId, 'profile', 'main');
+    await setDoc(docRef, { ...profileData, updatedAt: Date.now() });
   }
 
   // Save gallery separately in localStorage (base64 images are too large for Firestore)
