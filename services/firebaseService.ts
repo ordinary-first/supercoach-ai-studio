@@ -139,9 +139,13 @@ export const getUserId = (): string | null => {
   return null;
 };
 
+export const isGuestUserId = (userId: string | null | undefined): boolean => {
+  return !userId || userId.startsWith('guest_');
+};
+
 export const isGuestUser = (): boolean => {
   const userId = getUserId();
-  return !userId || userId.startsWith('guest_');
+  return isGuestUserId(userId);
 };
 
 export const saveGoalData = async (userId: string, nodes: GoalNode[], links: GoalLink[]): Promise<void> => {
@@ -156,7 +160,7 @@ export const saveGoalData = async (userId: string, nodes: GoalNode[], links: Goa
   } catch (e) { console.warn('localStorage save failed:', e); }
 
   // Also save to Firestore for non-guest users
-  if (!isGuestUser()) {
+  if (!isGuestUserId(userId)) {
     try {
       const serializedNodes = nodes.map(n => ({ id: n.id, text: n.text, type: n.type, status: n.status, progress: n.progress, parentId: n.parentId || null, imageUrl: n.imageUrl || null, collapsed: n.collapsed || false }));
       const serializedLinks = links.map(l => ({ source: typeof l.source === 'object' ? (l.source as any).id : l.source, target: typeof l.target === 'object' ? (l.target as any).id : l.target }));
@@ -168,7 +172,7 @@ export const saveGoalData = async (userId: string, nodes: GoalNode[], links: Goa
 
 export const loadGoalData = async (userId: string): Promise<{ nodes: GoalNode[]; links: GoalLink[] } | null> => {
   // Try Firestore first for non-guest users
-  if (!isGuestUser()) {
+  if (!isGuestUserId(userId)) {
     try {
       const docRef = doc(db, 'users', userId, 'data', 'goals');
       const snap = await getDoc(docRef);
@@ -193,7 +197,7 @@ export const saveTodos = async (userId: string, todos: ToDoItem[]): Promise<void
   } catch (e) { console.warn('localStorage save failed:', e); }
 
   // Also save to Firestore for non-guest users
-  if (!isGuestUser()) {
+  if (!isGuestUserId(userId)) {
     try {
       const docRef = doc(db, 'users', userId, 'data', 'todos');
       await setDoc(docRef, { items: todos, updatedAt: Date.now() });
@@ -203,7 +207,7 @@ export const saveTodos = async (userId: string, todos: ToDoItem[]): Promise<void
 
 export const loadTodos = async (userId: string): Promise<ToDoItem[] | null> => {
   // Try Firestore first for non-guest users
-  if (!isGuestUser()) {
+  if (!isGuestUserId(userId)) {
     try {
       const docRef = doc(db, 'users', userId, 'data', 'todos');
       const snap = await getDoc(docRef);
@@ -227,7 +231,7 @@ export const saveProfile = async (userId: string, profile: UserProfile): Promise
   } catch (e) { console.warn('localStorage save failed:', e); }
 
   // Also save to Firestore for non-guest users
-  if (!isGuestUser()) {
+  if (!isGuestUserId(userId)) {
     try {
       const profileData = { ...profile };
       delete (profileData as any).gallery; // Gallery images are too large for Firestore, keep in localStorage
@@ -244,7 +248,7 @@ export const saveProfile = async (userId: string, profile: UserProfile): Promise
 
 export const loadProfile = async (userId: string): Promise<UserProfile | null> => {
   // Try Firestore first for non-guest users
-  if (!isGuestUser()) {
+  if (!isGuestUserId(userId)) {
     try {
       const docRef = doc(db, 'users', userId, 'profile', 'main');
       const snap = await getDoc(docRef);
