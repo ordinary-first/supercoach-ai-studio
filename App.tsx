@@ -12,7 +12,7 @@ import LandingPage from './components/LandingPage';
 import UserProfilePage from './components/UserProfilePage';
 import { GoalNode, GoalLink, NodeType, NodeStatus, UserProfile, ToDoItem, ChatMessage, RepeatFrequency } from './types';
 import { generateGoalImage } from './services/aiService';
-import { onAuthUpdate, logout, getUserId, saveGoalData, loadGoalData, saveTodos, loadTodos, saveProfile, loadProfile, testFirestoreConnection } from './services/firebaseService';
+import { onAuthUpdate, logout, getUserId, saveGoalData, loadGoalData, saveTodos, loadTodos, saveProfile, loadProfile, testFirestoreConnection, getSyncStatus, SyncStatus, isGuestUser } from './services/firebaseService';
 
 // Helper function to calculate the next occurrence date for recurring todos
 const calculateNextDate = (repeat: RepeatFrequency, fromDate: Date): number => {
@@ -123,6 +123,7 @@ const App: React.FC = () => {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [imageLoadingNodes, setImageLoadingNodes] = useState<Set<string>>(new Set());
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>('offline');
 
   // Refs for beforeunload (always have latest values)
   const nodesRef = useRef(nodes);
@@ -183,9 +184,11 @@ const App: React.FC = () => {
       isLoadingDataRef.current = true;
       console.log('[App] Loading data for user:', userId);
 
-      // Test Firestore connection (non-blocking)
+      // Update sync status + test Firestore connection
+      setSyncStatus(getSyncStatus());
       testFirestoreConnection(userId).then(ok => {
         console.log('[App] Firestore connection test:', ok ? '✅ OK' : '❌ FAILED — using localStorage only');
+        setSyncStatus(getSyncStatus());
       });
 
       try {
@@ -514,6 +517,24 @@ const App: React.FC = () => {
       <ShortcutsPanel isOpen={isShortcutsOpen} onClose={() => setIsShortcutsOpen(false)} />
       <BottomDock activeTab={activeTab} onTabChange={handleTabChange} />
       <CoachBubble isOpen={isChatOpen} onToggle={() => setIsChatOpen(prev => !prev)} />
+
+      {/* Sync Status Indicator */}
+      {syncStatus !== 'cloud' && (
+        <div className="fixed top-3 left-1/2 -translate-x-1/2 z-[52] flex items-center gap-2 bg-black/70 backdrop-blur-md border border-white/10 rounded-full px-3 py-1.5 animate-fade-in">
+          <div className={`w-2 h-2 rounded-full ${syncStatus === 'local-only' ? 'bg-yellow-400' : 'bg-red-400'} animate-pulse`} />
+          <span className="text-[10px] font-bold text-gray-300 tracking-wide">
+            {syncStatus === 'local-only' ? '이 기기에만 저장됨' : '동기화 불가'}
+          </span>
+          {syncStatus === 'local-only' && (
+            <button
+              onClick={() => { logout(); setUserProfile(null); setActiveTab('GOALS'); }}
+              className="text-[9px] text-neon-lime font-bold ml-1 hover:underline"
+            >
+              로그인
+            </button>
+          )}
+        </div>
+      )}
 
       <UserProfilePage
         isOpen={activeTab === 'PROFILE'} onClose={() => setActiveTab('GOALS')} profile={userProfile} onSave={(p) => {

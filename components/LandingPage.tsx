@@ -71,13 +71,16 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginSuccess }) => {
                 {isLoggingIn ? 'Redirecting...' : '구글 계정으로 로그인'}
               </button>
 
-              <button 
+              <button
                 onClick={handleGuestEntry}
                 className="w-full py-4 rounded-full font-bold text-[11px] uppercase tracking-[0.2em] flex items-center justify-center gap-3 bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10 hover:text-white transition-all active:scale-95"
               >
                 <UserX size={16} />
                 게스트 모드로 시작하기
               </button>
+              <p className="text-[9px] text-gray-600 text-center px-4">
+                게스트 모드는 이 기기에서만 데이터가 저장됩니다. 다른 기기와 동기화하려면 Google 로그인을 이용하세요.
+              </p>
             </div>
 
             {errorMessage && (

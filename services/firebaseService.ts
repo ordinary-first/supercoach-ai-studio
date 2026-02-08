@@ -49,8 +49,17 @@ export const loginWithGoogle = async (): Promise<User | null> => {
       return result.user;
     }
     return null;
-  } catch (error) {
-    console.error("Google Login Error:", error);
+  } catch (error: any) {
+    const code = error?.code || '';
+    if (code === 'auth/unauthorized-domain') {
+      console.error('[Auth] ❌ 이 도메인이 Firebase에 등록되지 않았습니다:', window.location.origin);
+      error.message = `이 도메인(${window.location.origin})이 Firebase 승인 도메인에 등록되지 않았습니다. Firebase Console → Authentication → Settings → Authorized domains에서 추가하세요.`;
+    } else if (code === 'auth/popup-blocked') {
+      error.message = '팝업이 차단되었습니다. 브라우저 팝업 설정을 확인해주세요.';
+    } else if (code === 'auth/popup-closed-by-user') {
+      error.message = '로그인 창이 닫혔습니다. 다시 시도해주세요.';
+    }
+    console.error("[Auth] Google Login Error:", code, error);
     throw error;
   }
 };
@@ -205,20 +214,25 @@ export const loadGoalData = async (userId: string): Promise<{ nodes: GoalNode[];
   let firestoreData: any = null;
   let localData: any = null;
 
+  console.log('[Load:Goals] Starting load for userId:', userId, 'isGuest:', isGuestUser(userId), 'authUser:', auth.currentUser?.uid || 'null');
+
   // Try Firestore for non-guest users
   if (!isGuestUser(userId)) {
     try {
       const docRef = doc(db, 'users', userId, 'data', 'goals');
+      console.log('[Load:Goals] Fetching from Firestore path:', `users/${userId}/data/goals`);
       const snap = await getDoc(docRef);
       if (snap.exists()) {
         firestoreData = snap.data();
-        console.log('[Load:Goals] Firestore data found, updatedAt:', firestoreData.updatedAt);
+        console.log('[Load:Goals] ✅ Firestore data found, nodes:', firestoreData.nodes?.length, 'links:', firestoreData.links?.length, 'updatedAt:', firestoreData.updatedAt);
       } else {
-        console.log('[Load:Goals] Firestore: no document exists yet');
+        console.log('[Load:Goals] ⚠️ Firestore: no document exists yet');
       }
     } catch (e: any) {
-      console.error('[Load:Goals] ❌ Firestore read FAILED:', e?.code || e?.message);
+      console.error('[Load:Goals] ❌ Firestore read FAILED:', e?.code || e?.message, e);
     }
+  } else {
+    console.log('[Load:Goals] ⏭️ Skipping Firestore (guest user)');
   }
 
   // Always try localStorage
@@ -377,4 +391,16 @@ export const loadProfile = async (userId: string): Promise<UserProfile | null> =
   }
 
   return profile;
+};
+
+export type SyncStatus = 'cloud' | 'local-only' | 'offline';
+
+export const getSyncStatus = (): SyncStatus => {
+  const user = auth.currentUser;
+  if (user) return 'cloud'; // Google 로그인 — Firestore 동기화
+  try {
+    const guest = localStorage.getItem(GUEST_KEY);
+    if (guest) return 'local-only'; // 게스트 모드 — localStorage만
+  } catch (e) {}
+  return 'offline';
 };
