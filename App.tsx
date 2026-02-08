@@ -152,6 +152,7 @@ const App: React.FC = () => {
         const uid = getUserId();
         if (uid && uid !== userIdRef.current) {
           userIdRef.current = uid;
+          setIsDataLoaded(false); // Reset to force data reload for new user
         }
       } else {
         userIdRef.current = null;

@@ -155,20 +155,20 @@ export const saveGoalData = async (userId: string, nodes: GoalNode[], links: Goa
     localStorage.setItem(`supercoach_goals_${userId}`, JSON.stringify(serialized));
   } catch (e) { console.warn('localStorage save failed:', e); }
 
-  // Also save to Firestore for non-guest users
-  if (!isGuestUser()) {
+  // Also save to Firestore for non-guest users (use userId param directly to avoid auth.currentUser race condition)
+  if (userId && !userId.startsWith('guest_')) {
     try {
       const serializedNodes = nodes.map(n => ({ id: n.id, text: n.text, type: n.type, status: n.status, progress: n.progress, parentId: n.parentId || null, imageUrl: n.imageUrl || null, collapsed: n.collapsed || false }));
       const serializedLinks = links.map(l => ({ source: typeof l.source === 'object' ? (l.source as any).id : l.source, target: typeof l.target === 'object' ? (l.target as any).id : l.target }));
       const docRef = doc(db, 'users', userId, 'data', 'goals');
       await setDoc(docRef, { nodes: serializedNodes, links: serializedLinks, updatedAt: Date.now() });
-    } catch (e) { console.warn('Firestore goal save failed (using localStorage backup):', e); }
+    } catch (e) { console.error('Firestore goal save failed (using localStorage backup):', e); }
   }
 };
 
 export const loadGoalData = async (userId: string): Promise<{ nodes: GoalNode[]; links: GoalLink[] } | null> => {
-  // Try Firestore first for non-guest users
-  if (!isGuestUser()) {
+  // Try Firestore first for non-guest users (use userId param directly to avoid auth.currentUser race condition)
+  if (userId && !userId.startsWith('guest_')) {
     try {
       const docRef = doc(db, 'users', userId, 'data', 'goals');
       const snap = await getDoc(docRef);
@@ -192,18 +192,18 @@ export const saveTodos = async (userId: string, todos: ToDoItem[]): Promise<void
     localStorage.setItem(`supercoach_todos_${userId}`, JSON.stringify(todos));
   } catch (e) { console.warn('localStorage save failed:', e); }
 
-  // Also save to Firestore for non-guest users
-  if (!isGuestUser()) {
+  // Also save to Firestore for non-guest users (use userId param directly to avoid auth.currentUser race condition)
+  if (userId && !userId.startsWith('guest_')) {
     try {
       const docRef = doc(db, 'users', userId, 'data', 'todos');
       await setDoc(docRef, { items: todos, updatedAt: Date.now() });
-    } catch (e) { console.warn('Firestore todo save failed (using localStorage backup):', e); }
+    } catch (e) { console.error('Firestore todo save failed (using localStorage backup):', e); }
   }
 };
 
 export const loadTodos = async (userId: string): Promise<ToDoItem[] | null> => {
-  // Try Firestore first for non-guest users
-  if (!isGuestUser()) {
+  // Try Firestore first for non-guest users (use userId param directly to avoid auth.currentUser race condition)
+  if (userId && !userId.startsWith('guest_')) {
     try {
       const docRef = doc(db, 'users', userId, 'data', 'todos');
       const snap = await getDoc(docRef);
@@ -226,14 +226,14 @@ export const saveProfile = async (userId: string, profile: UserProfile): Promise
     localStorage.setItem(`supercoach_profile_${userId}`, JSON.stringify(profile));
   } catch (e) { console.warn('localStorage save failed:', e); }
 
-  // Also save to Firestore for non-guest users
-  if (!isGuestUser()) {
+  // Also save to Firestore for non-guest users (use userId param directly to avoid auth.currentUser race condition)
+  if (userId && !userId.startsWith('guest_')) {
     try {
       const profileData = { ...profile };
       delete (profileData as any).gallery; // Gallery images are too large for Firestore, keep in localStorage
       const docRef = doc(db, 'users', userId, 'profile', 'main');
       await setDoc(docRef, { ...profileData, updatedAt: Date.now() });
-    } catch (e) { console.warn('Firestore profile save failed (using localStorage backup):', e); }
+    } catch (e) { console.error('Firestore profile save failed (using localStorage backup):', e); }
   }
 
   // Save gallery separately in localStorage (base64 images are too large for Firestore)
@@ -243,8 +243,8 @@ export const saveProfile = async (userId: string, profile: UserProfile): Promise
 };
 
 export const loadProfile = async (userId: string): Promise<UserProfile | null> => {
-  // Try Firestore first for non-guest users
-  if (!isGuestUser()) {
+  // Try Firestore first for non-guest users (use userId param directly to avoid auth.currentUser race condition)
+  if (userId && !userId.startsWith('guest_')) {
     try {
       const docRef = doc(db, 'users', userId, 'profile', 'main');
       const snap = await getDoc(docRef);
