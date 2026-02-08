@@ -3,7 +3,8 @@ import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 
 export default defineConfig(({ mode }) => {
-    const env = loadEnv(mode, '.', '');
+    const fileEnv = loadEnv(mode, '.', '');
+    const env = { ...process.env, ...fileEnv };
     return {
       server: {
         port: 3000,
