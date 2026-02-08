@@ -11,52 +11,17 @@ import {
 import { getFirestore, doc, setDoc, getDoc } from "firebase/firestore";
 import { GoalNode, GoalLink, UserProfile, ToDoItem } from '../types';
 
-type FirebaseConfig = {
-  apiKey?: string;
-  authDomain?: string;
-  projectId?: string;
-  storageBucket?: string;
-  messagingSenderId?: string;
-  appId?: string;
-  measurementId?: string;
+const firebaseConfig = {
+  apiKey: process.env.FIREBASE_API_KEY,
+  authDomain: process.env.FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.FIREBASE_PROJECT_ID,
+  storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.FIREBASE_APP_ID,
+  measurementId: process.env.FIREBASE_MEASUREMENT_ID
 };
 
-const readEnv = (key: string): string | undefined => {
-  const metaEnv = (import.meta as any)?.env ?? {};
-  return (
-    (process.env as any)?.[key] ??
-    metaEnv[key] ??
-    metaEnv[`VITE_${key}`] ??
-    undefined
-  );
-};
-
-const firebaseConfig: FirebaseConfig = {
-  apiKey: readEnv('FIREBASE_API_KEY'),
-  authDomain: readEnv('FIREBASE_AUTH_DOMAIN'),
-  projectId: readEnv('FIREBASE_PROJECT_ID'),
-  storageBucket: readEnv('FIREBASE_STORAGE_BUCKET'),
-  messagingSenderId: readEnv('FIREBASE_MESSAGING_SENDER_ID'),
-  appId: readEnv('FIREBASE_APP_ID'),
-  measurementId: readEnv('FIREBASE_MEASUREMENT_ID')
-};
-
-const missingFirebaseKeys = Object.entries(firebaseConfig)
-  .filter(([key, value]) => (key !== 'measurementId') && !value)
-  .map(([key]) => key);
-
-export const firebaseConfigStatus = {
-  ready: missingFirebaseKeys.length === 0,
-  missing: missingFirebaseKeys,
-  projectId: firebaseConfig.projectId,
-  authDomain: firebaseConfig.authDomain
-};
-
-if (!firebaseConfigStatus.ready) {
-  console.error('Firebase config missing:', firebaseConfigStatus.missing);
-}
-
-const app = getApps().length ? getApp() : initializeApp(firebaseConfig as any);
+const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 
@@ -65,39 +30,6 @@ const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: 'select_account' });
 
 const GUEST_KEY = 'super_coach_guest_user';
-const SYNC_ERROR_EVENT = 'supercoach-sync-error';
-
-type SyncErrorDetail = {
-  action: string;
-  code?: string;
-  message?: string;
-  time: number;
-};
-
-const recordSyncError = (action: string, error: any) => {
-  const detail: SyncErrorDetail = {
-    action,
-    code: error?.code,
-    message: error?.message ?? String(error),
-    time: Date.now()
-  };
-  try {
-    localStorage.setItem('supercoach_sync_last_error', JSON.stringify(detail));
-  } catch (e) {}
-  try {
-    window.dispatchEvent(new CustomEvent(SYNC_ERROR_EVENT, { detail }));
-  } catch (e) {}
-  console.warn(`[sync:${action}]`, detail);
-};
-
-export const onSyncError = (cb: (detail: SyncErrorDetail) => void) => {
-  const handler = (e: Event) => {
-    const detail = (e as CustomEvent).detail as SyncErrorDetail;
-    cb(detail);
-  };
-  window.addEventListener(SYNC_ERROR_EVENT, handler as EventListener);
-  return () => window.removeEventListener(SYNC_ERROR_EVENT, handler as EventListener);
-};
 
 /**
  * 팝업 방식으로 구글 로그인 진행
@@ -207,13 +139,9 @@ export const getUserId = (): string | null => {
   return null;
 };
 
-export const isGuestUserId = (userId: string | null | undefined): boolean => {
-  return !userId || userId.startsWith('guest_');
-};
-
 export const isGuestUser = (): boolean => {
   const userId = getUserId();
-  return isGuestUserId(userId);
+  return !userId || userId.startsWith('guest_');
 };
 
 export const saveGoalData = async (userId: string, nodes: GoalNode[], links: GoalLink[]): Promise<void> => {
@@ -228,19 +156,19 @@ export const saveGoalData = async (userId: string, nodes: GoalNode[], links: Goa
   } catch (e) { console.warn('localStorage save failed:', e); }
 
   // Also save to Firestore for non-guest users
-  if (!isGuestUserId(userId)) {
+  if (!isGuestUser()) {
     try {
       const serializedNodes = nodes.map(n => ({ id: n.id, text: n.text, type: n.type, status: n.status, progress: n.progress, parentId: n.parentId || null, imageUrl: n.imageUrl || null, collapsed: n.collapsed || false }));
       const serializedLinks = links.map(l => ({ source: typeof l.source === 'object' ? (l.source as any).id : l.source, target: typeof l.target === 'object' ? (l.target as any).id : l.target }));
       const docRef = doc(db, 'users', userId, 'data', 'goals');
       await setDoc(docRef, { nodes: serializedNodes, links: serializedLinks, updatedAt: Date.now() });
-    } catch (e) { recordSyncError('save-goals', e); }
+    } catch (e) { console.warn('Firestore goal save failed (using localStorage backup):', e); }
   }
 };
 
 export const loadGoalData = async (userId: string): Promise<{ nodes: GoalNode[]; links: GoalLink[] } | null> => {
   // Try Firestore first for non-guest users
-  if (!isGuestUserId(userId)) {
+  if (!isGuestUser()) {
     try {
       const docRef = doc(db, 'users', userId, 'data', 'goals');
       const snap = await getDoc(docRef);
@@ -248,7 +176,7 @@ export const loadGoalData = async (userId: string): Promise<{ nodes: GoalNode[];
         const data = snap.data() as { nodes: GoalNode[]; links: GoalLink[] };
         return data;
       }
-    } catch (e) { recordSyncError('load-goals', e); }
+    } catch (e) { console.warn('Firestore goal load failed, falling back to localStorage:', e); }
   }
   // Fallback to localStorage (for both guest and Firestore failures)
   try {
@@ -265,24 +193,24 @@ export const saveTodos = async (userId: string, todos: ToDoItem[]): Promise<void
   } catch (e) { console.warn('localStorage save failed:', e); }
 
   // Also save to Firestore for non-guest users
-  if (!isGuestUserId(userId)) {
+  if (!isGuestUser()) {
     try {
       const docRef = doc(db, 'users', userId, 'data', 'todos');
       await setDoc(docRef, { items: todos, updatedAt: Date.now() });
-    } catch (e) { recordSyncError('save-todos', e); }
+    } catch (e) { console.warn('Firestore todo save failed (using localStorage backup):', e); }
   }
 };
 
 export const loadTodos = async (userId: string): Promise<ToDoItem[] | null> => {
   // Try Firestore first for non-guest users
-  if (!isGuestUserId(userId)) {
+  if (!isGuestUser()) {
     try {
       const docRef = doc(db, 'users', userId, 'data', 'todos');
       const snap = await getDoc(docRef);
       if (snap.exists()) {
         return (snap.data() as any).items as ToDoItem[];
       }
-    } catch (e) { recordSyncError('load-todos', e); }
+    } catch (e) { console.warn('Firestore todo load failed, falling back to localStorage:', e); }
   }
   // Fallback to localStorage (for both guest and Firestore failures)
   try {
@@ -299,13 +227,13 @@ export const saveProfile = async (userId: string, profile: UserProfile): Promise
   } catch (e) { console.warn('localStorage save failed:', e); }
 
   // Also save to Firestore for non-guest users
-  if (!isGuestUserId(userId)) {
+  if (!isGuestUser()) {
     try {
       const profileData = { ...profile };
       delete (profileData as any).gallery; // Gallery images are too large for Firestore, keep in localStorage
       const docRef = doc(db, 'users', userId, 'profile', 'main');
       await setDoc(docRef, { ...profileData, updatedAt: Date.now() });
-    } catch (e) { recordSyncError('save-profile', e); }
+    } catch (e) { console.warn('Firestore profile save failed (using localStorage backup):', e); }
   }
 
   // Save gallery separately in localStorage (base64 images are too large for Firestore)
@@ -316,7 +244,7 @@ export const saveProfile = async (userId: string, profile: UserProfile): Promise
 
 export const loadProfile = async (userId: string): Promise<UserProfile | null> => {
   // Try Firestore first for non-guest users
-  if (!isGuestUserId(userId)) {
+  if (!isGuestUser()) {
     try {
       const docRef = doc(db, 'users', userId, 'profile', 'main');
       const snap = await getDoc(docRef);
@@ -329,7 +257,7 @@ export const loadProfile = async (userId: string): Promise<UserProfile | null> =
         } catch (e) {}
         return profile;
       }
-    } catch (e) { recordSyncError('load-profile', e); }
+    } catch (e) { console.warn('Firestore profile load failed, falling back to localStorage:', e); }
   }
   // Fallback to localStorage (for both guest and Firestore failures)
   try {
