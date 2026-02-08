@@ -100,6 +100,8 @@ const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('GOALS');
   const [isInitializing, setIsInitializing] = useState(true);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
+  const [debugLog, setDebugLog] = useState<string[]>([]);
+  const addDebug = (msg: string) => { console.log('[DEBUG]', msg); setDebugLog(prev => [...prev.slice(-15), msg]); };
 
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
 
@@ -148,14 +150,16 @@ const App: React.FC = () => {
   useEffect(() => {
     const unsubscribe = onAuthUpdate((profile) => {
       setUserProfile(profile);
-      setIsInitializing(false); // Firebase가 인증 상태 확인 후 초기화 완료
+      setIsInitializing(false);
       if (profile) {
         localStorage.setItem('user_profile', JSON.stringify(profile));
         const uid = getUserId();
+        addDebug(`AUTH: profile=${profile.name}, uid=${uid}, isGuest=${isGuestUser(uid || '')}, googleId=${(profile as any).googleId || 'none'}`);
         if (uid && uid !== userIdRef.current) {
           userIdRef.current = uid;
         }
       } else {
+        addDebug('AUTH: profile=null (no user)');
         userIdRef.current = null;
       }
     });
@@ -182,12 +186,12 @@ const App: React.FC = () => {
 
     const loadData = async () => {
       isLoadingDataRef.current = true;
-      console.log('[App] Loading data for user:', userId);
+      addDebug(`LOAD: starting for uid=${userId}, isGuest=${isGuestUser(userId)}`);
 
       // Update sync status + test Firestore connection
       setSyncStatus(getSyncStatus());
       testFirestoreConnection(userId).then(ok => {
-        console.log('[App] Firestore connection test:', ok ? '✅ OK' : '❌ FAILED — using localStorage only');
+        addDebug(`FIRESTORE TEST: ${ok ? 'OK' : 'FAILED'}`);
         setSyncStatus(getSyncStatus());
       });
 
@@ -197,6 +201,8 @@ const App: React.FC = () => {
           loadTodos(userId),
           loadProfile(userId),
         ]);
+
+        addDebug(`LOADED: goals=${goalData?.nodes?.length || 0}nodes, todos=${todoData?.length || 0}, profile=${savedProfile ? 'yes' : 'no'}`);
 
         if (goalData && goalData.nodes.length > 0) {
           setNodes(goalData.nodes);
@@ -533,6 +539,20 @@ const App: React.FC = () => {
               로그인
             </button>
           )}
+        </div>
+      )}
+
+      {/* TEMPORARY DEBUG OVERLAY — 디버그 로그 (문제 해결 후 제거) */}
+      {debugLog.length > 0 && (
+        <div className="fixed bottom-[80px] left-2 right-2 z-[300] bg-black/90 border border-neon-lime/30 rounded-xl p-3 max-h-[200px] overflow-y-auto">
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-[9px] text-neon-lime font-bold">SYNC DEBUG</span>
+            <button onClick={() => setDebugLog([])} className="text-[8px] text-gray-500">CLEAR</button>
+          </div>
+          {debugLog.map((msg, i) => (
+            <div key={i} className="text-[9px] text-gray-300 font-mono leading-tight py-0.5 border-b border-white/5">{msg}</div>
+          ))}
+          <div className="text-[9px] text-gray-500 mt-1">nodes:{nodes.length} todos:{todos.length} sync:{syncStatus}</div>
         </div>
       )}
 
