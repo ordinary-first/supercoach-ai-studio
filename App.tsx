@@ -12,7 +12,7 @@ import LandingPage from './components/LandingPage';
 import UserProfilePage from './components/UserProfilePage';
 import { GoalNode, GoalLink, NodeType, NodeStatus, UserProfile, ToDoItem, ChatMessage, RepeatFrequency } from './types';
 import { generateGoalImage } from './services/aiService';
-import { onAuthUpdate, logout, getUserId, saveGoalData, loadGoalData, saveTodos, loadTodos, saveProfile, loadProfile } from './services/firebaseService';
+import { onAuthUpdate, logout, getUserId, saveGoalData, loadGoalData, saveTodos, loadTodos, saveProfile, loadProfile, onSyncError, firebaseConfigStatus } from './services/firebaseService';
 
 // Helper function to calculate the next occurrence date for recurring todos
 const calculateNextDate = (repeat: RepeatFrequency, fromDate: Date): number => {
@@ -123,6 +123,8 @@ const App: React.FC = () => {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [imageLoadingNodes, setImageLoadingNodes] = useState<Set<string>>(new Set());
+  const [syncError, setSyncError] = useState<{ action: string; code?: string; message?: string; time: number } | null>(null);
+  const [showSyncError, setShowSyncError] = useState(true);
 
   // Refs for beforeunload (always have latest values)
   const nodesRef = useRef(nodes);
@@ -140,6 +142,18 @@ const App: React.FC = () => {
   const todoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isLoadingDataRef = useRef(false);
   const userIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('supercoach_sync_last_error');
+      if (raw) setSyncError(JSON.parse(raw));
+    } catch (e) {}
+    const unsub = onSyncError((detail) => {
+      setSyncError(detail);
+      setShowSyncError(true);
+    });
+    return () => unsub();
+  }, []);
 
 
   // 1. 인증 상태 감시 — onAuthStateChanged가 최초 1회 호출된 후에만 초기화 완료
@@ -478,6 +492,29 @@ const App: React.FC = () => {
 
   return (
     <div className="relative w-screen h-screen bg-deep-space text-white font-body overflow-hidden">
+      {!firebaseConfigStatus.ready && (
+        <div className="fixed top-4 left-1/2 z-[300] -translate-x-1/2 bg-red-600/20 border border-red-500/40 text-red-200 px-4 py-2 rounded-full text-[10px] font-mono tracking-wide">
+          Firebase config missing: {firebaseConfigStatus.missing.join(', ')}
+        </div>
+      )}
+      {syncError && showSyncError && (
+        <div className="fixed top-4 right-4 z-[300] max-w-sm bg-black/70 border border-red-500/30 rounded-2xl p-4 text-[10px] text-red-100 shadow-2xl">
+          <div className="flex items-center justify-between gap-3">
+            <div className="font-bold tracking-widest uppercase">Sync Error</div>
+            <button
+              onClick={() => setShowSyncError(false)}
+              className="px-2 py-1 text-[10px] text-red-200/80 hover:text-white"
+            >
+              Close
+            </button>
+          </div>
+          <div className="mt-2 space-y-1">
+            <div>Action: {syncError.action}</div>
+            {syncError.code && <div>Code: {syncError.code}</div>}
+            {syncError.message && <div className="break-words">Message: {syncError.message}</div>}
+          </div>
+        </div>
+      )}
       {activeTab === 'GOALS' && (
         <>
           <MindMap
