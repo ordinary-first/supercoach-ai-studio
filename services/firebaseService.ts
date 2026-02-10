@@ -11,6 +11,9 @@ import {
 import { getFirestore, doc, setDoc, getDoc } from "firebase/firestore";
 import { GoalNode, GoalLink, UserProfile, ToDoItem } from '../types';
 
+const isDev = typeof process !== 'undefined' && process.env.NODE_ENV === 'development';
+const log = isDev ? console.log : () => {};
+
 const firebaseConfig = {
   apiKey: process.env.FIREBASE_API_KEY,
   authDomain: process.env.FIREBASE_AUTH_DOMAIN,
@@ -21,12 +24,6 @@ const firebaseConfig = {
   measurementId: process.env.FIREBASE_MEASUREMENT_ID
 };
 
-// Debug: Firebase config 확인
-console.log('[Firebase] Config check:', {
-  hasApiKey: !!firebaseConfig.apiKey,
-  hasProjectId: !!firebaseConfig.projectId,
-  projectId: firebaseConfig.projectId,
-});
 
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 export const auth = getAuth(app);
@@ -52,8 +49,8 @@ export const loginWithGoogle = async (): Promise<User | null> => {
   } catch (error: any) {
     const code = error?.code || '';
     if (code === 'auth/unauthorized-domain') {
-      console.error('[Auth] ❌ 이 도메인이 Firebase에 등록되지 않았습니다:', window.location.origin);
-      error.message = `이 도메인(${window.location.origin})이 Firebase 승인 도메인에 등록되지 않았습니다. Firebase Console → Authentication → Settings → Authorized domains에서 추가하세요.`;
+      console.error('[Auth] Unauthorized domain');
+      error.message = '이 도메인이 Firebase 승인 도메인에 등록되지 않았습니다. Firebase Console → Authentication → Settings → Authorized domains에서 확인하세요.';
     } else if (code === 'auth/popup-blocked') {
       error.message = '팝업이 차단되었습니다. 브라우저 팝업 설정을 확인해주세요.';
     } else if (code === 'auth/popup-closed-by-user') {
@@ -78,7 +75,7 @@ export const loginAsGuest = () => {
   } catch (e) {}
 
   const guestUser = {
-    uid: 'guest_' + Math.random().toString(36).substr(2, 9),
+    uid: 'guest_' + (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substr(2, 9)),
     name: '익명 사용자',
     email: 'guest@supercoach.ai',
     isGuest: true,
@@ -101,7 +98,7 @@ export const loginAsGuest = () => {
 export const logout = async () => {
   localStorage.removeItem(GUEST_KEY);
   await signOut(auth);
-  window.location.reload(); // 상태 초기화를 위해 새로고침
+  window.dispatchEvent(new Event('guest-login-change'));
 };
 
 export const onAuthUpdate = (callback: (user: any) => void) => {
@@ -165,7 +162,7 @@ export const isGuestUser = (uid?: string): boolean => {
  */
 export const testFirestoreConnection = async (userId: string): Promise<boolean> => {
   if (isGuestUser(userId)) {
-    console.log('[Firestore] Guest user — skipping connection test');
+    log('[Firestore] Guest user — skipping connection test');
     return false;
   }
   try {
@@ -173,7 +170,7 @@ export const testFirestoreConnection = async (userId: string): Promise<boolean> 
     await setDoc(testRef, { lastTest: Date.now(), ok: true });
     const snap = await getDoc(testRef);
     if (snap.exists()) {
-      console.log('[Firestore] ✅ Connection OK — read/write working');
+      log('[Firestore] ✅ Connection OK — read/write working');
       return true;
     }
     console.error('[Firestore] ❌ Write succeeded but read returned empty');
@@ -203,7 +200,7 @@ export const saveGoalData = async (userId: string, nodes: GoalNode[], links: Goa
     try {
       const docRef = doc(db, 'users', userId, 'data', 'goals');
       await setDoc(docRef, payload);
-      console.log('[Save:Goals] ✅ Firestore saved', { nodeCount: nodes.length, linkCount: links.length });
+      log('[Save:Goals] ✅ Firestore saved', { nodeCount: nodes.length, linkCount: links.length });
     } catch (e: any) {
       console.error('[Save:Goals] ❌ Firestore FAILED:', e?.code || e?.message);
     }
@@ -214,25 +211,25 @@ export const loadGoalData = async (userId: string): Promise<{ nodes: GoalNode[];
   let firestoreData: any = null;
   let localData: any = null;
 
-  console.log('[Load:Goals] Starting load for userId:', userId, 'isGuest:', isGuestUser(userId), 'authUser:', auth.currentUser?.uid || 'null');
+  log('[Load:Goals] Starting load for userId:', userId, 'isGuest:', isGuestUser(userId), 'authUser:', auth.currentUser?.uid || 'null');
 
   // Try Firestore for non-guest users
   if (!isGuestUser(userId)) {
     try {
       const docRef = doc(db, 'users', userId, 'data', 'goals');
-      console.log('[Load:Goals] Fetching from Firestore path:', `users/${userId}/data/goals`);
+      log('[Load:Goals] Fetching from Firestore path:', `users/${userId}/data/goals`);
       const snap = await getDoc(docRef);
       if (snap.exists()) {
         firestoreData = snap.data();
-        console.log('[Load:Goals] ✅ Firestore data found, nodes:', firestoreData.nodes?.length, 'links:', firestoreData.links?.length, 'updatedAt:', firestoreData.updatedAt);
+        log('[Load:Goals] ✅ Firestore data found, nodes:', firestoreData.nodes?.length, 'links:', firestoreData.links?.length, 'updatedAt:', firestoreData.updatedAt);
       } else {
-        console.log('[Load:Goals] ⚠️ Firestore: no document exists yet');
+        log('[Load:Goals] ⚠️ Firestore: no document exists yet');
       }
     } catch (e: any) {
       console.error('[Load:Goals] ❌ Firestore read FAILED:', e?.code || e?.message, e);
     }
   } else {
-    console.log('[Load:Goals] ⏭️ Skipping Firestore (guest user)');
+    log('[Load:Goals] ⏭️ Skipping Firestore (guest user)');
   }
 
   // Always try localStorage
@@ -240,7 +237,7 @@ export const loadGoalData = async (userId: string): Promise<{ nodes: GoalNode[];
     const raw = localStorage.getItem(`supercoach_goals_${userId}`);
     if (raw) {
       localData = JSON.parse(raw);
-      console.log('[Load:Goals] localStorage data found, updatedAt:', localData.updatedAt);
+      log('[Load:Goals] localStorage data found, updatedAt:', localData.updatedAt);
     }
   } catch (e) {}
 
@@ -249,13 +246,13 @@ export const loadGoalData = async (userId: string): Promise<{ nodes: GoalNode[];
     const fsTime = firestoreData.updatedAt || 0;
     const lsTime = localData.updatedAt || 0;
     const winner = fsTime >= lsTime ? 'Firestore' : 'localStorage';
-    console.log(`[Load:Goals] Both sources exist → using ${winner} (fs:${fsTime} vs ls:${lsTime})`);
+    log(`[Load:Goals] Both sources exist → using ${winner} (fs:${fsTime} vs ls:${lsTime})`);
     return fsTime >= lsTime ? firestoreData : localData;
   }
-  if (firestoreData) { console.log('[Load:Goals] Using Firestore (only source)'); return firestoreData; }
-  if (localData) { console.log('[Load:Goals] Using localStorage (only source)'); return localData; }
+  if (firestoreData) { log('[Load:Goals] Using Firestore (only source)'); return firestoreData; }
+  if (localData) { log('[Load:Goals] Using localStorage (only source)'); return localData; }
 
-  console.log('[Load:Goals] No data found in either source');
+  log('[Load:Goals] No data found in either source');
   return null;
 };
 
@@ -273,7 +270,7 @@ export const saveTodos = async (userId: string, todos: ToDoItem[]): Promise<void
     try {
       const docRef = doc(db, 'users', userId, 'data', 'todos');
       await setDoc(docRef, payload);
-      console.log('[Save:Todos] ✅ Firestore saved', { count: todos.length });
+      log('[Save:Todos] ✅ Firestore saved', { count: todos.length });
     } catch (e: any) {
       console.error('[Save:Todos] ❌ Firestore FAILED:', e?.code || e?.message);
     }
@@ -291,7 +288,7 @@ export const loadTodos = async (userId: string): Promise<ToDoItem[] | null> => {
       const snap = await getDoc(docRef);
       if (snap.exists()) {
         firestoreData = snap.data();
-        console.log('[Load:Todos] Firestore data found, updatedAt:', firestoreData.updatedAt);
+        log('[Load:Todos] Firestore data found, updatedAt:', firestoreData.updatedAt);
       }
     } catch (e: any) {
       console.error('[Load:Todos] ❌ Firestore read FAILED:', e?.code || e?.message);
@@ -306,10 +303,10 @@ export const loadTodos = async (userId: string): Promise<ToDoItem[] | null> => {
       if (Array.isArray(parsed)) {
         // Old format: raw array — migrate
         localData = { items: parsed, updatedAt: 0 };
-        console.log('[Load:Todos] localStorage data found (old format, migrated)');
+        log('[Load:Todos] localStorage data found (old format, migrated)');
       } else {
         localData = parsed;
-        console.log('[Load:Todos] localStorage data found, updatedAt:', localData.updatedAt);
+        log('[Load:Todos] localStorage data found, updatedAt:', localData.updatedAt);
       }
     }
   } catch (e) {}
@@ -319,7 +316,7 @@ export const loadTodos = async (userId: string): Promise<ToDoItem[] | null> => {
     const fsTime = firestoreData.updatedAt || 0;
     const lsTime = localData.updatedAt || 0;
     const winner = fsTime >= lsTime ? 'Firestore' : 'localStorage';
-    console.log(`[Load:Todos] Both sources → using ${winner}`);
+    log(`[Load:Todos] Both sources → using ${winner}`);
     const items = fsTime >= lsTime ? firestoreData.items : localData.items;
     return items || null;
   }
@@ -342,7 +339,7 @@ export const saveProfile = async (userId: string, profile: UserProfile): Promise
       delete (profileData as any).gallery; // Gallery images too large for Firestore
       const docRef = doc(db, 'users', userId, 'profile', 'main');
       await setDoc(docRef, { ...profileData, updatedAt: Date.now() });
-      console.log('[Save:Profile] ✅ Firestore saved');
+      log('[Save:Profile] ✅ Firestore saved');
     } catch (e: any) {
       console.error('[Save:Profile] ❌ Firestore FAILED:', e?.code || e?.message);
     }
@@ -364,7 +361,7 @@ export const loadProfile = async (userId: string): Promise<UserProfile | null> =
       const snap = await getDoc(docRef);
       if (snap.exists()) {
         profile = snap.data() as UserProfile;
-        console.log('[Load:Profile] Firestore data found');
+        log('[Load:Profile] Firestore data found');
       }
     } catch (e: any) {
       console.error('[Load:Profile] ❌ Firestore read FAILED:', e?.code || e?.message);
@@ -377,7 +374,7 @@ export const loadProfile = async (userId: string): Promise<UserProfile | null> =
       const data = localStorage.getItem(`supercoach_profile_${userId}`);
       if (data) {
         profile = JSON.parse(data);
-        console.log('[Load:Profile] localStorage data found');
+        log('[Load:Profile] localStorage data found');
       }
     } catch (e) {}
   }

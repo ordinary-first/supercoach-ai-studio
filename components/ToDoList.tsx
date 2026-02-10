@@ -167,6 +167,13 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, onOpenCalendar, to
                                       )}
                                   </div>
                               </div>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); onDeleteToDo(todo.id); }}
+                                className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 p-2 rounded-full hover:bg-red-500/20 text-gray-500 hover:text-red-400"
+                                title="삭제"
+                              >
+                                  <Trash2 size={18} />
+                              </button>
                               <ChevronRight size={20} className={`text-gray-600 transition-transform ${selectedToDoId === todo.id ? 'translate-x-1 text-neon-lime' : ''}`} />
                           </div>
                       ))

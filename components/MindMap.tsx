@@ -91,23 +91,49 @@ const MindMap: React.FC<MindMapProps> = ({
       // Recursively assign each child within its parent's angular sector
       const assignRadial = (node: TreeNode, depth: number, angleStart: number, angleEnd: number) => {
         if (node.children.length === 0) return;
-        const radius = 220 + depth * 140;
-        const parentLeaves = countLeaves(node);
-        let angleCursor = angleStart;
 
-        node.children.forEach(child => {
-          const childLeaves = countLeaves(child);
-          const childAngleSpan = ((angleEnd - angleStart) * childLeaves) / parentLeaves;
-          const childAngle = angleCursor + childAngleSpan / 2;
+        // Use equal spacing for cleaner look when there are few siblings
+        const useEqualSpacing = node.children.length <= 8;
 
-          positions.set(child.id, {
-            x: w / 2 + radius * Math.cos(childAngle),
-            y: h / 2 + radius * Math.sin(childAngle),
+        // Responsive radius calculation to prevent overlap
+        const minSpacing = 100; // minimum px between nodes on same ring
+        const baseRadius = 220 + depth * 140;
+        const circumference = Math.max(node.children.length * minSpacing, 2 * Math.PI * baseRadius);
+        const radius = Math.max(180, circumference / (2 * Math.PI));
+
+        if (useEqualSpacing) {
+          // Equal angular spacing for clean distribution
+          const angleSpan = (angleEnd - angleStart) / node.children.length;
+          node.children.forEach((child, i) => {
+            const childAngle = angleStart + angleSpan * (i + 0.5);
+
+            positions.set(child.id, {
+              x: w / 2 + radius * Math.cos(childAngle),
+              y: h / 2 + radius * Math.sin(childAngle),
+            });
+
+            // Recursively assign children their sector
+            assignRadial(child, depth + 1, angleStart + angleSpan * i, angleStart + angleSpan * (i + 1));
           });
+        } else {
+          // Leaf-weighted proportional spacing for many siblings
+          const parentLeaves = countLeaves(node);
+          let angleCursor = angleStart;
 
-          assignRadial(child, depth + 1, angleCursor, angleCursor + childAngleSpan);
-          angleCursor += childAngleSpan;
-        });
+          node.children.forEach(child => {
+            const childLeaves = countLeaves(child);
+            const childAngleSpan = ((angleEnd - angleStart) * childLeaves) / parentLeaves;
+            const childAngle = angleCursor + childAngleSpan / 2;
+
+            positions.set(child.id, {
+              x: w / 2 + radius * Math.cos(childAngle),
+              y: h / 2 + radius * Math.sin(childAngle),
+            });
+
+            assignRadial(child, depth + 1, angleCursor, angleCursor + childAngleSpan);
+            angleCursor += childAngleSpan;
+          });
+        }
       };
 
       assignRadial(tree, 0, -Math.PI / 2, 2 * Math.PI - Math.PI / 2);
@@ -279,9 +305,10 @@ const MindMap: React.FC<MindMapProps> = ({
   useEffect(() => {
     if (!svgRef.current) return;
 
-    // Clear position cache when layout mode changes so positions are recomputed
+    // Clear position cache and reset zoom when layout mode changes
     if (layout !== prevLayoutRef.current) {
         nodeStateRef.current.clear();
+        zoomTransformRef.current = d3.zoomIdentity;
         prevLayoutRef.current = layout;
         prevStructureRef.current = ''; // Force rebuild
     }
@@ -292,8 +319,10 @@ const MindMap: React.FC<MindMapProps> = ({
     prevStructureRef.current = structureKey;
 
     // Prepare Data
+    // For non-force layouts, ignore cached positions — layout algorithm computes them deterministically
+    const useCache = layout === 'force';
     const d3Nodes = nodes.map(n => {
-        const stored = nodeStateRef.current.get(n.id);
+        const stored = useCache ? nodeStateRef.current.get(n.id) : undefined;
         const depth = getNodeDepth(n.id, nodes);
         const r = n.type === NodeType.ROOT ? 65 : (depth === 1 ? 45 : 35);
 
@@ -303,9 +332,8 @@ const MindMap: React.FC<MindMapProps> = ({
             r,
             x: stored ? stored.x : (n.parentId ? undefined : width/2),
             y: stored ? stored.y : (n.parentId ? undefined : height/2),
-            vx: stored ? stored.vx : 0,
-            vy: stored ? stored.vy : 0,
-            // Clear stale fx/fy from Firestore; only restore from session nodeStateRef
+            vx: 0,
+            vy: 0,
             fx: stored?.fx ?? undefined,
             fy: stored?.fy ?? undefined
         };
@@ -318,8 +346,9 @@ const MindMap: React.FC<MindMapProps> = ({
         if ((n.x === undefined || n.y === undefined) && n.parentId) {
             const parent = d3Nodes.find(p => p.id === n.parentId);
             if (parent && parent.x !== undefined && parent.y !== undefined) {
-                n.x = parent.x + (Math.random() - 0.5) * 300;
-                n.y = parent.y + (Math.random() - 0.5) * 300;
+                // Reduced random offset for cleaner new node appearance
+                n.x = parent.x + (Math.random() - 0.5) * 100;
+                n.y = parent.y + (Math.random() - 0.5) * 100;
             } else {
                 n.x = width / 2;
                 n.y = height / 2;
@@ -339,6 +368,14 @@ const MindMap: React.FC<MindMapProps> = ({
                 n.fy = pos.y;
             }
         });
+        // Pin root at exact center for all non-force layouts
+        const rootNode = d3Nodes.find(n => n.type === NodeType.ROOT);
+        if (rootNode) {
+            rootNode.x = width / 2;
+            rootNode.y = height / 2;
+            rootNode.fx = width / 2;
+            rootNode.fy = height / 2;
+        }
     } else {
         // Force mode: pin root at center, clear fx/fy on others
         d3Nodes.forEach(n => {
@@ -395,13 +432,18 @@ const MindMap: React.FC<MindMapProps> = ({
       simulation
         .force("link", d3.forceLink<any, GoalLink>(d3Links)
             .id(d => d.id)
-            .distance(d => d.target.depth === 1 ? 180 : 120)
+            .distance(d => d.target.depth === 1 ? 220 : 120)
             .strength(1)
         )
-        .force("charge", d3.forceManyBody().strength(d => (d as any).type === NodeType.ROOT ? -3000 : -1500))
+        .force("charge", d3.forceManyBody().strength(d => (d as any).type === NodeType.ROOT ? -2000 : -800))
         .force("collide", d3.forceCollide().radius(d => (d as any).r + 30).strength(1))
         .force("center", d3.forceCenter(width / 2, height / 2).strength(0.02))
-        .velocityDecay(0.55);
+        .force("radial", d3.forceRadial<any>(
+            d => d.type === NodeType.ROOT ? 0 : (d.depth === 1 ? 220 : 360 + d.depth * 140),
+            width / 2,
+            height / 2
+        ).strength(0.3))
+        .velocityDecay(0.65);
     } else {
       // Non-force layouts: nodes are pinned via fx/fy, only keep light link force for aesthetics
       simulation
@@ -574,12 +616,25 @@ const MindMap: React.FC<MindMapProps> = ({
         d3Nodes.forEach(n => {
             nodeStateRef.current.set(n.id, { x: n.x!, y: n.y!, vx: n.vx!, vy: n.vy!, fx: n.fx, fy: n.fy });
         });
-        link.attr("d", (d: any) => `M${d.source.x},${d.source.y} Q${(d.source.x + d.target.x) / 2},${(d.source.y + d.target.y) / 2} ${d.target.x},${d.target.y}`);
+        link.attr("d", (d: any) => {
+            // Better curved paths with control point perpendicular to the line
+            const dx = d.target.x - d.source.x;
+            const dy = d.target.y - d.source.y;
+            const cx = (d.source.x + d.target.x) / 2 - dy * 0.15;
+            const cy = (d.source.y + d.target.y) / 2 + dx * 0.15;
+            return `M${d.source.x},${d.source.y} Q${cx},${cy} ${d.target.x},${d.target.y}`;
+        });
         node.attr("transform", d => `translate(${d.x},${d.y})`);
     });
 
     // Apply warm-up positions immediately (don't wait for first tick)
-    link.attr("d", (d: any) => `M${d.source.x},${d.source.y} Q${(d.source.x + d.target.x) / 2},${(d.source.y + d.target.y) / 2} ${d.target.x},${d.target.y}`);
+    link.attr("d", (d: any) => {
+        const dx = d.target.x - d.source.x;
+        const dy = d.target.y - d.source.y;
+        const cx = (d.source.x + d.target.x) / 2 - dy * 0.15;
+        const cy = (d.source.y + d.target.y) / 2 + dx * 0.15;
+        return `M${d.source.x},${d.source.y} Q${cx},${cy} ${d.target.x},${d.target.y}`;
+    });
     node.attr("transform", d => `translate(${d.x},${d.y})`);
 
     // Drag & Collision
@@ -825,4 +880,15 @@ const MindMap: React.FC<MindMapProps> = ({
   );
 };
 
-export default MindMap;
+export default React.memo(MindMap, (prev, next) => {
+  // Only re-render if these specific props change
+  return (
+    prev.nodes === next.nodes &&
+    prev.links === next.links &&
+    prev.selectedNodeId === next.selectedNodeId &&
+    prev.width === next.width &&
+    prev.height === next.height &&
+    prev.editingNodeId === next.editingNodeId &&
+    prev.imageLoadingNodes === next.imageLoadingNodes
+  );
+});

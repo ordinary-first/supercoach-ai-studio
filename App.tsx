@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import MindMap from './components/MindMap';
 import CoachChat from './components/CoachChat';
 import CoachBubble from './components/CoachBubble';
@@ -10,9 +10,14 @@ import VisualizationModal from './components/VisualizationModal';
 import CalendarView from './components/CalendarView';
 import LandingPage from './components/LandingPage';
 import UserProfilePage from './components/UserProfilePage';
-import { GoalNode, GoalLink, NodeType, NodeStatus, UserProfile, ToDoItem, ChatMessage, RepeatFrequency } from './types';
+import { GoalNode, GoalLink, NodeType, NodeStatus, ToDoItem, ChatMessage, RepeatFrequency } from './types';
 import { generateGoalImage } from './services/aiService';
-import { onAuthUpdate, logout, getUserId, saveGoalData, loadGoalData, saveTodos, loadTodos, saveProfile, loadProfile, testFirestoreConnection, getSyncStatus, SyncStatus } from './services/firebaseService';
+import { logout, getUserId, saveProfile } from './services/firebaseService';
+import { useAuth } from './hooks/useAuth';
+import { useAutoSave, getLinkId } from './hooks/useAutoSave';
+import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
+import { useToast } from './hooks/useToast';
+import ToastContainer from './components/ToastContainer';
 
 // Helper function to calculate the next occurrence date for recurring todos
 const calculateNextDate = (repeat: RepeatFrequency, fromDate: Date): number => {
@@ -98,18 +103,15 @@ const calculateNextDate = (repeat: RepeatFrequency, fromDate: Date): number => {
 const App: React.FC = () => {
   const [dimensions, setDimensions] = useState({ width: window.innerWidth, height: window.innerHeight });
   const [activeTab, setActiveTab] = useState<TabType>('GOALS');
-  const [isInitializing, setIsInitializing] = useState(true);
-  const [isDataLoaded, setIsDataLoaded] = useState(false);
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
 
   const [nodes, setNodes] = useState<GoalNode[]>([
-    { 
-        id: 'root', 
-        text: '나의 인생 비전', 
-        type: NodeType.ROOT, 
-        status: NodeStatus.PENDING, 
+    {
+        id: 'root',
+        text: '나의 인생 비전',
+        type: NodeType.ROOT,
+        status: NodeStatus.PENDING,
         progress: 0,
-        imageUrl: 'https://picsum.photos/200/200',
+        imageUrl: 'https://picsum.photos/seed/supercoach-root/200/200',
         collapsed: false
     }
   ]);
@@ -122,179 +124,33 @@ const App: React.FC = () => {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [imageLoadingNodes, setImageLoadingNodes] = useState<Set<string>>(new Set());
-  const [syncStatus, setSyncStatus] = useState<SyncStatus>('offline');
 
-  // Refs for beforeunload (always have latest values)
-  const nodesRef = useRef(nodes);
-  const linksRef = useRef(links);
-  const todosRef = useRef(todos);
-  const isDataLoadedRef = useRef(isDataLoaded);
-
-  useEffect(() => { nodesRef.current = nodes; }, [nodes]);
-  useEffect(() => { linksRef.current = links; }, [links]);
-  useEffect(() => { todosRef.current = todos; }, [todos]);
-  useEffect(() => { isDataLoadedRef.current = isDataLoaded; }, [isDataLoaded]);
-
-  // Debounce timers for auto-save
-  const goalSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const todoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const isLoadingDataRef = useRef(false);
-  const userIdRef = useRef<string | null>(null);
-
-
-
-  // 1. 인증 상태 감시 — onAuthStateChanged가 최초 1회 호출된 후에만 초기화 완료
-  useEffect(() => {
-    const unsubscribe = onAuthUpdate((profile) => {
-      setUserProfile(profile);
-      setIsInitializing(false);
-      if (profile) {
-        localStorage.setItem('user_profile', JSON.stringify(profile));
-        const uid = getUserId();
-        if (uid && uid !== userIdRef.current) {
-          userIdRef.current = uid;
-        }
-      } else {
-        userIdRef.current = null;
-      }
-    });
-
-    return () => unsubscribe();
+  // Stable callbacks for useAuth to avoid re-triggering data load effect
+  const handleGoalDataLoaded = useCallback((loadedNodes: GoalNode[], loadedLinks: GoalLink[]) => {
+    setNodes(loadedNodes);
+    setLinks(loadedLinks);
   }, []);
 
-  // 2. Load user data from Firestore/localStorage when profile is available
-  useEffect(() => {
-    if (!userProfile) {
-      setIsDataLoaded(false);
-      return;
-    }
+  const handleTodosLoaded = useCallback((loadedTodos: ToDoItem[]) => {
+    setTodos(loadedTodos);
+  }, []);
 
-    const userId = userIdRef.current || getUserId();
-    if (!userId) {
-      setIsDataLoaded(true);
-      return;
-    }
-    userIdRef.current = userId;
+  // --- Custom Hooks ---
+  const { toasts, addToast, removeToast } = useToast();
 
-    // Skip if already loaded for this user
-    if (isDataLoaded) return;
+  const { userProfile, setUserProfile, isInitializing, isDataLoaded, syncStatus, userId } =
+    useAuth(handleGoalDataLoaded, handleTodosLoaded);
 
-    const loadData = async () => {
-      isLoadingDataRef.current = true;
+  useAutoSave(nodes, links, todos, userProfile, isDataLoaded, userId);
 
-      // Update sync status + test Firestore connection
-      setSyncStatus(getSyncStatus());
-      testFirestoreConnection(userId).then(() => {
-        setSyncStatus(getSyncStatus());
-      });
-
-      try {
-        const [goalData, todoData, savedProfile] = await Promise.all([
-          loadGoalData(userId),
-          loadTodos(userId),
-          loadProfile(userId),
-        ]);
-
-        if (goalData && goalData.nodes.length > 0) {
-          setNodes(goalData.nodes);
-          setLinks(goalData.links);
-        }
-
-        if (todoData && todoData.length > 0) {
-          setTodos(todoData);
-        }
-
-        // Merge saved profile WITHOUT triggering re-render loop
-        if (savedProfile) {
-          setUserProfile(prev => {
-            if (!prev) return savedProfile;
-            return { ...prev, bio: savedProfile.bio, gallery: savedProfile.gallery, age: savedProfile.age, location: savedProfile.location, gender: savedProfile.gender };
-          });
-        }
-      } catch (e) {
-        console.error('Data loading error:', e);
-      } finally {
-        isLoadingDataRef.current = false;
-        setIsDataLoaded(true);
-      }
-    };
-
-    loadData();
-  }, [userProfile, isDataLoaded]);
-
-  // 3. Auto-save goals (nodes + links) with debounce
-  useEffect(() => {
-    if (!userProfile || !isDataLoaded || isLoadingDataRef.current) return;
-
-    const userId = userIdRef.current;
-    if (!userId) return;
-
-    if (goalSaveTimerRef.current) clearTimeout(goalSaveTimerRef.current);
-    goalSaveTimerRef.current = setTimeout(() => {
-      saveGoalData(userId, nodes, links).catch(e => console.error('Goal save error:', e));
-    }, 1500);
-
-    return () => {
-      if (goalSaveTimerRef.current) clearTimeout(goalSaveTimerRef.current);
-    };
-  }, [nodes, links, userProfile, isDataLoaded]);
-
-  // 4. Auto-save todos with debounce
-  useEffect(() => {
-    if (!userProfile || !isDataLoaded || isLoadingDataRef.current) return;
-
-    const userId = userIdRef.current;
-    if (!userId) return;
-
-    if (todoSaveTimerRef.current) clearTimeout(todoSaveTimerRef.current);
-    todoSaveTimerRef.current = setTimeout(() => {
-      saveTodos(userId, todos).catch(e => console.error('Todo save error:', e));
-    }, 1500);
-
-    return () => {
-      if (todoSaveTimerRef.current) clearTimeout(todoSaveTimerRef.current);
-    };
-  }, [todos, userProfile, isDataLoaded]);
-
-  // 5. Flush pending saves before page unload
-  useEffect(() => {
-    const handleBeforeUnload = () => {
-      const userId = userIdRef.current;
-      if (!userId || !isDataLoadedRef.current) return;
-
-      // Cancel pending debounced saves
-      if (goalSaveTimerRef.current) clearTimeout(goalSaveTimerRef.current);
-      if (todoSaveTimerRef.current) clearTimeout(todoSaveTimerRef.current);
-
-      // Synchronously save to localStorage (Firestore is async and won't complete before unload)
-      try {
-        const currentNodes = nodesRef.current;
-        const currentLinks = linksRef.current;
-        const currentTodos = todosRef.current;
-        const now = Date.now();
-
-        const serializedGoals = {
-          nodes: currentNodes.map(n => ({ id: n.id, text: n.text, type: n.type, status: n.status, progress: n.progress, parentId: n.parentId || null, imageUrl: n.imageUrl || null, collapsed: n.collapsed || false })),
-          links: currentLinks.map(l => ({ source: typeof l.source === 'object' ? (l.source as any).id : l.source, target: typeof l.target === 'object' ? (l.target as any).id : l.target })),
-          updatedAt: now,
-        };
-        localStorage.setItem(`supercoach_goals_${userId}`, JSON.stringify(serializedGoals));
-        localStorage.setItem(`supercoach_todos_${userId}`, JSON.stringify({ items: currentTodos, updatedAt: now }));
-      } catch (e) {
-        console.warn('beforeunload save failed:', e);
-      }
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, []); // Empty deps - registered once, uses refs for latest values
-
+  // Window resize listener
   useEffect(() => {
     const handleResize = () => setDimensions({ width: window.innerWidth, height: window.innerHeight });
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // --- Goal Node Operations ---
   const handleUpdateNode = useCallback((nodeId: string, updates: Partial<GoalNode>) => {
     setNodes(prev => prev.map(n => n.id === nodeId ? { ...n, ...updates } : n));
     if (selectedNode && selectedNode.id === nodeId) {
@@ -305,10 +161,15 @@ const App: React.FC = () => {
   const handleUpdateRootNode = useCallback(async (text: string) => {
       handleUpdateNode('root', { text });
       setImageLoadingNodes(prev => new Set(prev).add('root'));
-      const imageUrl = await generateGoalImage(text, userProfile);
-      setImageLoadingNodes(prev => { const next = new Set(prev); next.delete('root'); return next; });
-      if (imageUrl) handleUpdateNode('root', { imageUrl });
-  }, [handleUpdateNode, userProfile]);
+      try {
+        const imageUrl = await generateGoalImage(text, userProfile);
+        if (imageUrl) handleUpdateNode('root', { imageUrl });
+      } catch {
+        addToast('이미지 생성에 실패했습니다', 'warning');
+      } finally {
+        setImageLoadingNodes(prev => { const next = new Set(prev); next.delete('root'); return next; });
+      }
+  }, [handleUpdateNode, userProfile, addToast]);
 
   const handleAddSubNode = useCallback(async (parentId: string, text?: string) => {
     const newNodeId = Date.now().toString();
@@ -328,13 +189,18 @@ const App: React.FC = () => {
     setSelectedNode(newNode);
     if (text) {
         setImageLoadingNodes(prev => new Set(prev).add(newNodeId));
-        const imageUrl = await generateGoalImage(text, userProfile);
-        setImageLoadingNodes(prev => { const next = new Set(prev); next.delete(newNodeId); return next; });
-        if (imageUrl) handleUpdateNode(newNodeId, { imageUrl });
+        try {
+          const imageUrl = await generateGoalImage(text, userProfile);
+          if (imageUrl) handleUpdateNode(newNodeId, { imageUrl });
+        } catch {
+          addToast('이미지 생성에 실패했습니다', 'warning');
+        } finally {
+          setImageLoadingNodes(prev => { const next = new Set(prev); next.delete(newNodeId); return next; });
+        }
     } else {
         setEditingNodeId(newNodeId);
     }
-  }, [dimensions, nodes, handleUpdateNode, userProfile]);
+  }, [dimensions, nodes, handleUpdateNode, userProfile, addToast]);
 
   const executeDeleteNode = useCallback((nodeId: string) => {
       if (nodeId === 'root') return;
@@ -349,9 +215,9 @@ const App: React.FC = () => {
       }
       setNodes(prev => prev.filter(n => !nodesToDelete.has(n.id)));
       setLinks(prev => prev.filter(l => {
-          const sourceId = typeof l.source === 'object' ? (l.source as GoalNode).id : l.source;
-          const targetId = typeof l.target === 'object' ? (l.target as GoalNode).id : l.target;
-          return !nodesToDelete.has(sourceId as string) && !nodesToDelete.has(targetId as string);
+          const sourceId = getLinkId(l.source);
+          const targetId = getLinkId(l.target);
+          return !nodesToDelete.has(sourceId) && !nodesToDelete.has(targetId);
       }));
       setSelectedNode(null);
       setDeleteConfirmNodeId(null);
@@ -365,9 +231,10 @@ const App: React.FC = () => {
   const handleReparentNode = useCallback((childId: string, newParentId: string) => {
       if (childId === newParentId || childId === 'root') return;
       handleUpdateNode(childId, { parentId: newParentId });
-      setLinks(prev => [...prev.filter(l => (typeof l.target === 'object' ? (l.target as GoalNode).id : l.target) !== childId), { source: newParentId, target: childId }]);
+      setLinks(prev => [...prev.filter(l => getLinkId(l.target) !== childId), { source: newParentId, target: childId }]);
   }, [handleUpdateNode]);
 
+  // --- Todo Operations ---
   const handleToggleToDo = useCallback((id: string) => {
     setTodos(prev => {
       const todo = prev.find(t => t.id === id);
@@ -378,7 +245,7 @@ const App: React.FC = () => {
         return prev.map(t => t.id === id ? {...t, completed: !t.completed} : t);
       }
 
-      // Recurring todo being completed (false → true)
+      // Recurring todo being completed (false -> true)
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
@@ -406,71 +273,36 @@ const App: React.FC = () => {
     });
   }, []);
 
-
   const handleTabChange = useCallback((tab: TabType) => {
       setActiveTab(tab);
   }, []);
 
-  // --- GLOBAL KEYBOARD ENGINE ---
-  useEffect(() => {
-      const handleKeyDown = (e: KeyboardEvent) => {
-          const target = e.target as HTMLElement;
-          if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) return;
+  // --- Keyboard Shortcuts ---
+  useKeyboardShortcuts(
+    selectedNode,
+    handleAddSubNode,
+    handleDeleteNode,
+    handleTabChange,
+    setSelectedNode,
+    setIsShortcutsOpen,
+    setIsChatOpen,
+    setActiveTab,
+  );
 
-          switch (e.key.toLowerCase()) {
-              case 'tab':
-                  e.preventDefault();
-                  if (selectedNode) handleAddSubNode(selectedNode.id);
-                  else handleAddSubNode('root');
-                  break;
-              case 'enter':
-                  if (selectedNode && selectedNode.parentId) {
-                      handleAddSubNode(selectedNode.parentId);
-                  } else if (selectedNode?.id === 'root') {
-                      handleAddSubNode('root');
-                  }
-                  break;
-              case 'delete':
-              case 'backspace':
-                  if (selectedNode && selectedNode.id !== 'root') handleDeleteNode(selectedNode.id);
-                  break;
-              case 'escape':
-                  setSelectedNode(null);
-                  setActiveTab('GOALS');
-                  setIsShortcutsOpen(false);
-                  setIsChatOpen(false);
-                  break;
-              case 'k': setIsShortcutsOpen(prev => !prev); break;
-              case ' ':
-                  e.preventDefault();
-                  // Dispatch custom event for MindMap to center on selected node
-                  window.dispatchEvent(new CustomEvent('mindmap-center', { detail: { nodeId: selectedNode?.id } }));
-                  break;
-              case '1': handleTabChange('GOALS'); break;
-              case '2': handleTabChange('CALENDAR'); break;
-              case '3': handleTabChange('TODO'); break;
-              case '4': handleTabChange('VISUALIZE'); break;
-              case '5': handleTabChange('PROFILE'); break;
-              case '6': setIsChatOpen(prev => !prev); break;
-          }
-      };
-
-      window.addEventListener('keydown', handleKeyDown);
-      return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedNode, handleAddSubNode, handleDeleteNode, handleTabChange, isChatOpen]);
-
+  // --- Visible Nodes/Links ---
   const { visibleNodes, visibleLinks } = useMemo(() => {
       const visibleNodeSet = new Set<string>();
-      const stack = ['root']; 
+      const stack = ['root'];
       while(stack.length > 0) {
           const currentId = stack.pop()!;
           visibleNodeSet.add(currentId);
           const node = nodes.find(n => n.id === currentId);
           if (node && !node.collapsed) nodes.filter(n => n.parentId === currentId).forEach(c => stack.push(c.id));
       }
-      return { visibleNodes: nodes.filter(n => visibleNodeSet.has(n.id)), visibleLinks: links.filter(l => visibleNodeSet.has(typeof l.source === 'object' ? (l.source as any).id : l.source) && visibleNodeSet.has(typeof l.target === 'object' ? (l.target as any).id : l.target)) };
+      return { visibleNodes: nodes.filter(n => visibleNodeSet.has(n.id)), visibleLinks: links.filter(l => visibleNodeSet.has(getLinkId(l.source)) && visibleNodeSet.has(getLinkId(l.target))) };
   }, [nodes, links]);
 
+  // --- Render ---
   if (isInitializing || (userProfile && !isDataLoaded)) {
     return (
       <div className="fixed inset-0 bg-deep-space flex flex-col items-center justify-center gap-6">
@@ -507,7 +339,11 @@ const App: React.FC = () => {
         </>
       )}
 
-      <ToDoList isOpen={activeTab === 'TODO'} onClose={() => setActiveTab('GOALS')} onOpenCalendar={() => setActiveTab('CALENDAR')} todos={todos} onAddToDo={(text) => setTodos(prev => [{id: Date.now().toString(), text, completed: false, createdAt: Date.now()}, ...prev])} onToggleToDo={handleToggleToDo} onDeleteToDo={(id) => setTodos(prev => prev.filter(t => t.id !== id))} onUpdateToDo={(id, up) => setTodos(prev => prev.map(t => t.id === id ? {...t, ...up} : t))} />
+      <ToDoList isOpen={activeTab === 'TODO'} onClose={() => setActiveTab('GOALS')} onOpenCalendar={() => setActiveTab('CALENDAR')} todos={todos} onAddToDo={(text) => {
+  const trimmed = text.trim().slice(0, 500);
+  if (!trimmed) return;
+  setTodos(prev => [{id: Date.now().toString(), text: trimmed, completed: false, createdAt: Date.now()}, ...prev]);
+}} onToggleToDo={handleToggleToDo} onDeleteToDo={(id) => setTodos(prev => prev.filter(t => t.id !== id))} onUpdateToDo={(id, up) => setTodos(prev => prev.map(t => t.id === id ? {...t, ...up} : t))} />
       <CalendarView isOpen={activeTab === 'CALENDAR'} onClose={() => setActiveTab('GOALS')} todos={todos} onToggleToDo={handleToggleToDo} />
       <CoachChat isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} selectedNode={selectedNode} nodes={nodes} userProfile={userProfile} todos={todos} onUpdateNode={handleUpdateNode} onAddSubNode={handleAddSubNode} onDeleteNode={handleDeleteNode} onUpdateRootNode={handleUpdateRootNode} onManualAddNode={() => handleAddSubNode(selectedNode?.id || 'root')} onOpenVisualization={() => setActiveTab('VISUALIZE')} messages={chatMessages} onMessagesChange={setChatMessages} activeTab={activeTab} />
       <VisualizationModal isOpen={activeTab === 'VISUALIZE'} onClose={() => setActiveTab('GOALS')} userProfile={userProfile} nodes={nodes} />
@@ -536,8 +372,8 @@ const App: React.FC = () => {
       <UserProfilePage
         isOpen={activeTab === 'PROFILE'} onClose={() => setActiveTab('GOALS')} profile={userProfile} onSave={(p) => {
           setUserProfile(p);
-          const userId = getUserId();
-          if (userId) saveProfile(userId, p).catch(e => console.error('Profile save error:', e));
+          const uid = getUserId();
+          if (uid) saveProfile(uid, p).catch(() => addToast('프로필 저장에 실패했습니다', 'error'));
         }} onLogout={() => { logout(); setUserProfile(null); setActiveTab('GOALS'); }}
       />
 
@@ -573,6 +409,8 @@ const App: React.FC = () => {
               </div>
           </div>
       )}
+
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   );
 };
