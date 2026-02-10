@@ -1,6 +1,9 @@
 import path from 'path';
+import { readFileSync } from 'fs';
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
+
+const pkg = JSON.parse(readFileSync('./package.json', 'utf-8'));
 
 export default defineConfig(({ mode }) => {
     // .env.local 파일 + Vercel 시스템 환경변수 모두 사용
@@ -19,7 +22,8 @@ export default defineConfig(({ mode }) => {
         'process.env.FIREBASE_STORAGE_BUCKET': JSON.stringify(env.FIREBASE_STORAGE_BUCKET),
         'process.env.FIREBASE_MESSAGING_SENDER_ID': JSON.stringify(env.FIREBASE_MESSAGING_SENDER_ID),
         'process.env.FIREBASE_APP_ID': JSON.stringify(env.FIREBASE_APP_ID),
-        'process.env.FIREBASE_MEASUREMENT_ID': JSON.stringify(env.FIREBASE_MEASUREMENT_ID)
+        'process.env.FIREBASE_MEASUREMENT_ID': JSON.stringify(env.FIREBASE_MEASUREMENT_ID),
+        '__APP_VERSION__': JSON.stringify(pkg.version)
       },
       resolve: {
         alias: {

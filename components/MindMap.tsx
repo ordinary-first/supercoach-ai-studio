@@ -854,7 +854,7 @@ const MindMap: React.FC<MindMapProps> = ({
   return (
     <div className="w-full h-full bg-deep-space relative overflow-hidden">
       <div className="absolute top-4 left-4 z-10 pointer-events-none select-none">
-         <h1 className="text-2xl font-display text-white tracking-widest drop-shadow-[0_0_10px_rgba(204,255,0,0.5)]">SUPER COACH <span className="text-neon-lime text-xs align-top">BETA</span></h1>
+         <h1 className="text-2xl font-display text-white tracking-widest drop-shadow-[0_0_10px_rgba(204,255,0,0.5)]">SUPER COACH <span className="text-neon-lime text-xs align-top">v{__APP_VERSION__}</span></h1>
          <p className="text-gray-400 text-xs font-body">Neural Interface Active</p>
       </div>
 
