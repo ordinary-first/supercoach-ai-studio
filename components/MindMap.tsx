@@ -44,8 +44,6 @@ interface SMMNodeData {
   text: string;
   uid?: string;
   expand?: boolean;
-  image?: string;
-  imageSize?: { width: number; height: number };
   // Custom fields we store in node data
   goalId?: string;
   goalType?: string;
@@ -108,12 +106,7 @@ function goalNodesToTree(
       borderWidth: isSelected ? 3 : (isRoot ? 3 : 2),
     };
 
-    // Node image
-    if (goalNode.imageUrl) {
-      data.image = goalNode.imageUrl;
-      data.imageSize = { width: isRoot ? 100 : 60, height: isRoot ? 100 : 60 };
-    }
-
+    // No images in mind map nodes — clean text-only design
     return { data, children };
   }
 
