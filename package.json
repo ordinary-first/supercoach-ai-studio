@@ -2,6 +2,7 @@
   "name": "super-coach",
   "private": true,
   "version": "1.1.0",
+  "displayVersion": "V02.10r1",
   "type": "module",
   "scripts": {
     "dev": "vite",

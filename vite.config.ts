@@ -23,7 +23,7 @@ export default defineConfig(({ mode }) => {
         'process.env.FIREBASE_MESSAGING_SENDER_ID': JSON.stringify(env.FIREBASE_MESSAGING_SENDER_ID),
         'process.env.FIREBASE_APP_ID': JSON.stringify(env.FIREBASE_APP_ID),
         'process.env.FIREBASE_MEASUREMENT_ID': JSON.stringify(env.FIREBASE_MEASUREMENT_ID),
-        '__APP_VERSION__': JSON.stringify(pkg.version)
+        '__APP_VERSION__': JSON.stringify(pkg.displayVersion || pkg.version)
       },
       resolve: {
         alias: {
