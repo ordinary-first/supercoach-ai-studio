@@ -50,8 +50,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-image',
+        model: 'gemini-3-pro-image-preview',
         contents: { parts },
+        config: {
+          responseModalities: ['TEXT', 'IMAGE'],
+          imageConfig: { aspectRatio: '1:1', imageSize: '2K' },
+        },
       });
 
       for (const part of response.candidates?.[0]?.content?.parts || []) {
@@ -64,12 +68,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       return res.status(200).json({ imageDataUrl: null });
     } else {
-      // Simple goal image — include child context for more relevant imagery
-      const textPrompt = `Photorealistic, cinematic, high quality image of ${personDesc} embodying the success of: "${prompt}".${childContext} Focus on the emotional peak of achievement. No text overlay, no watermarks. 8k resolution.`;
+      // Simple goal image — include child context for more relevant imagery (Nano Banana Pro)
+      const textPrompt = `Photorealistic, cinematic, high quality image of ${personDesc} embodying the success of: "${prompt}".${childContext} Focus on the emotional peak of achievement. No text overlay, no watermarks.`;
 
       const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-image',
+        model: 'gemini-3-pro-image-preview',
         contents: { parts: [{ text: textPrompt }] },
+        config: {
+          responseModalities: ['TEXT', 'IMAGE'],
+          imageConfig: { aspectRatio: '1:1', imageSize: '2K' },
+        },
       });
 
       for (const part of response.candidates?.[0]?.content?.parts || []) {
