@@ -39,12 +39,16 @@ export const sendChatMessage = async (
   }
 };
 
-export const generateGoalImage = async (goalText: string, profile: UserProfile | null = null): Promise<string | undefined> => {
+export const generateGoalImage = async (
+  goalText: string,
+  profile: UserProfile | null = null,
+  childTexts: string[] = []
+): Promise<string | undefined> => {
   try {
     const response = await fetch('/api/generate-image', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt: goalText, profile }),
+      body: JSON.stringify({ prompt: goalText, profile, childTexts }),
     });
     if (!response.ok) return undefined;
     const data = await response.json();

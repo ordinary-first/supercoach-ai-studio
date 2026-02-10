@@ -53,6 +53,10 @@ interface SMMNodeData {
   // Per-node border color baked into data (avoids setStyle infinite loops)
   borderColor?: string;
   borderWidth?: number;
+  // Image support
+  image?: string;
+  imageTitle?: string;
+  imageSize?: { width: number; height: number };
 }
 
 interface SMMNode {
@@ -106,7 +110,15 @@ function goalNodesToTree(
       borderWidth: isSelected ? 3 : (isRoot ? 3 : 2),
     };
 
-    // No images in mind map nodes — clean text-only design
+    // Add image if available
+    if (goalNode.imageUrl) {
+      data.image = goalNode.imageUrl;
+      data.imageTitle = goalNode.text;
+      data.imageSize = isRoot
+        ? { width: 150, height: 100 }
+        : { width: 100, height: 70 };
+    }
+
     return { data, children };
   }
 

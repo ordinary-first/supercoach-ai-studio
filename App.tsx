@@ -162,14 +162,18 @@ const App: React.FC = () => {
       handleUpdateNode('root', { text });
       setImageLoadingNodes(prev => new Set(prev).add('root'));
       try {
-        const imageUrl = await generateGoalImage(text, userProfile);
+        // Gather child node texts for context-aware image generation
+        const childTexts = nodes
+          .filter(n => n.parentId === 'root' && n.text)
+          .map(n => n.text);
+        const imageUrl = await generateGoalImage(text, userProfile, childTexts);
         if (imageUrl) handleUpdateNode('root', { imageUrl });
       } catch {
         addToast('이미지 생성에 실패했습니다', 'warning');
       } finally {
         setImageLoadingNodes(prev => { const next = new Set(prev); next.delete('root'); return next; });
       }
-  }, [handleUpdateNode, userProfile, addToast]);
+  }, [handleUpdateNode, userProfile, addToast, nodes]);
 
   const handleAddSubNode = useCallback(async (parentId: string, text?: string) => {
     const newNodeId = Date.now().toString();
@@ -190,7 +194,13 @@ const App: React.FC = () => {
     if (text) {
         setImageLoadingNodes(prev => new Set(prev).add(newNodeId));
         try {
-          const imageUrl = await generateGoalImage(text, userProfile);
+          // Include parent text for context-aware image generation
+          const parentText = parentNode?.text || '';
+          const siblingTexts = nodes
+            .filter(n => n.parentId === parentId && n.text)
+            .map(n => n.text);
+          const childTexts = [parentText, ...siblingTexts].filter(Boolean);
+          const imageUrl = await generateGoalImage(text, userProfile, childTexts);
           if (imageUrl) handleUpdateNode(newNodeId, { imageUrl });
         } catch {
           addToast('이미지 생성에 실패했습니다', 'warning');

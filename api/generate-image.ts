@@ -17,12 +17,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { prompt, profile, referenceImages } = req.body;
+    const { prompt, profile, referenceImages, childTexts } = req.body;
     const ai = new GoogleGenAI({ apiKey });
 
     const personDesc = profile
       ? `${profile.name}, a ${profile.age}yo person in ${profile.location}`
       : 'A determined person';
+
+    // Build context from child node texts for richer, more relevant images
+    const childContext = Array.isArray(childTexts) && childTexts.length > 0
+      ? ` This goal encompasses these sub-goals: ${childTexts.join(', ')}.`
+      : '';
 
     if (referenceImages && referenceImages.length > 0) {
       // Visualization image with reference images
@@ -59,8 +64,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       return res.status(200).json({ imageDataUrl: null });
     } else {
-      // Simple goal image
-      const textPrompt = `Photorealistic, cinematic, high quality image of ${personDesc} embodying the success of: "${prompt}". Focus on the emotional peak of achievement. No text. 8k resolution.`;
+      // Simple goal image — include child context for more relevant imagery
+      const textPrompt = `Photorealistic, cinematic, high quality image of ${personDesc} embodying the success of: "${prompt}".${childContext} Focus on the emotional peak of achievement. No text overlay, no watermarks. 8k resolution.`;
 
       const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image',
