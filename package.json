@@ -2,7 +2,7 @@
   "name": "super-coach",
   "private": true,
   "version": "1.1.0",
-  "displayVersion": "V02.10r3",
+  "displayVersion": "V02.10r4",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -11,11 +11,11 @@
   },
   "dependencies": {
     "@google/genai": "^1.32.0",
-    "d3": "^7.9.0",
     "firebase": "^12.7.0",
     "lucide-react": "^0.559.0",
     "react": "^19.2.1",
     "react-dom": "^19.2.1",
+    "simple-mind-map": "^0.14.0-fix.1",
     "zustand": "^5.0.10"
   },
   "devDependencies": {

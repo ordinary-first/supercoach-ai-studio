@@ -1,9 +1,18 @@
-import React, { useEffect, useRef, useState } from 'react';
-import * as d3 from 'd3';
+import React, { useEffect, useRef, useCallback, useState } from 'react';
+import MindMapSDK from 'simple-mind-map';
+import Drag from 'simple-mind-map/src/plugins/Drag.js';
+import RainbowLines from 'simple-mind-map/src/plugins/RainbowLines.js';
+import Select from 'simple-mind-map/src/plugins/Select.js';
 import { GoalNode, GoalLink, NodeType, NodeStatus } from '../types';
 import { getLinkId } from '../hooks/useAutoSave';
 
-type LayoutMode = 'force' | 'radial' | 'tree' | 'horizontal';
+// Register plugins once
+MindMapSDK.usePlugin(Drag);
+MindMapSDK.usePlugin(RainbowLines);
+MindMapSDK.usePlugin(Select);
+
+// --- Types ---
+type LayoutMode = 'mindMap' | 'logicalStructure' | 'logicalStructureLeft' | 'organizationStructure';
 
 interface MindMapProps {
   nodes: GoalNode[];
@@ -22,793 +31,484 @@ interface MindMapProps {
   imageLoadingNodes?: Set<string>;
 }
 
-// Helper to determine depth for sizing
-const getNodeDepth = (nodeId: string, nodes: GoalNode[]): number => {
-    let depth = 0;
-    let current = nodes.find(n => n.id === nodeId);
-    while (current && current.parentId) {
-        depth++;
-        current = nodes.find(n => n.id === current?.parentId);
-    }
-    return depth;
+// --- Status color mapping ---
+const STATUS_COLORS: Record<string, string> = {
+  [NodeStatus.PENDING]: '#3B82F6',
+  [NodeStatus.COMPLETED]: '#10B981',
+  [NodeStatus.STUCK]: '#EF4444',
 };
 
-const MindMap: React.FC<MindMapProps> = ({
-    nodes, links, selectedNodeId, onNodeClick, onUpdateNode, onDeleteNode, onReparentNode, onConvertNodeToTask, onAddSubNode, width, height, editingNodeId, onEditEnd, imageLoadingNodes
-}) => {
-  const svgRef = useRef<SVGSVGElement>(null);
+// --- Data Conversion ---
 
-  // Layout Mode State
-  const [layout, setLayout] = useState<LayoutMode>('radial');
-  const prevLayoutRef = useRef<LayoutMode>(layout);
+interface SMMNodeData {
+  text: string;
+  uid?: string;
+  expand?: boolean;
+  image?: string;
+  imageSize?: { width: number; height: number };
+  // Custom fields stored alongside
+  goalId?: string;
+  goalType?: string;
+  goalStatus?: string;
+  goalProgress?: number;
+  goalParentId?: string;
+  goalCollapsed?: boolean;
+  // Styling
+  borderColor?: string;
+  borderWidth?: number;
+  fillColor?: string;
+}
 
-  // Simulation State
-  const simulationRef = useRef<d3.Simulation<GoalNode, GoalLink> | null>(null);
-  // Position Persistence
-  const nodeStateRef = useRef<Map<string, {x: number, y: number, vx: number, vy: number, fx?: number | null, fy?: number | null}>>(new Map());
-  // Zoom Transform Persistence
-  const zoomTransformRef = useRef<d3.ZoomTransform>(d3.zoomIdentity);
-  // Structure Change Detection
-  const prevStructureRef = useRef<string>('');
+interface SMMNode {
+  data: SMMNodeData;
+  children: SMMNode[];
+}
 
-  // --- Layout Helpers ---
-  interface TreeNode {
-    id: string;
-    children: TreeNode[];
-    node: GoalNode & { depth: number; r: number };
+/** Convert flat GoalNode[] + GoalLink[] to simple-mind-map tree format */
+function goalNodesToTree(nodes: GoalNode[], links: GoalLink[]): SMMNode | null {
+  const root = nodes.find(n => n.type === NodeType.ROOT);
+  if (!root) return null;
+
+  // Build parent-children mapping from links
+  const childrenMap = new Map<string, string[]>();
+  for (const link of links) {
+    const sourceId = getLinkId(link.source);
+    const targetId = getLinkId(link.target);
+    if (!childrenMap.has(sourceId)) childrenMap.set(sourceId, []);
+    childrenMap.get(sourceId)!.push(targetId);
   }
 
-  const buildTree = (d3Nodes: (GoalNode & { depth: number; r: number })[]): TreeNode | null => {
-    const root = d3Nodes.find(n => n.type === NodeType.ROOT);
-    if (!root) return null;
-    const build = (parent: typeof root): TreeNode => ({
-      id: parent.id,
-      node: parent,
-      children: d3Nodes.filter(n => n.parentId === parent.id).map(build),
-    });
-    return build(root);
-  };
+  const nodeMap = new Map(nodes.map(n => [n.id, n]));
 
-  const computeLayoutPositions = (
-    d3Nodes: (GoalNode & { depth: number; r: number })[],
-    mode: LayoutMode,
-    w: number,
-    h: number
-  ): Map<string, { x: number; y: number }> => {
-    const positions = new Map<string, { x: number; y: number }>();
-    const tree = buildTree(d3Nodes);
-    if (!tree) return positions;
+  function buildNode(goalNode: GoalNode): SMMNode {
+    const isRoot = goalNode.type === NodeType.ROOT;
+    const childIds = childrenMap.get(goalNode.id) || [];
+    const children = childIds
+      .map(id => nodeMap.get(id))
+      .filter((n): n is GoalNode => !!n)
+      .map(buildNode);
 
-    // Use D3's built-in Reingold-Tilford tree layout algorithm
-    const root = d3.hierarchy(tree, d => d.children);
+    const data: SMMNodeData = {
+      text: goalNode.text || '',
+      uid: goalNode.id,
+      expand: !goalNode.collapsed,
+      goalId: goalNode.id,
+      goalType: goalNode.type,
+      goalStatus: goalNode.status,
+      goalProgress: goalNode.progress,
+      goalParentId: goalNode.parentId,
+      goalCollapsed: goalNode.collapsed,
+    };
 
-    if (mode === 'radial') {
-      // Radial: map tree to polar coordinates, then convert to cartesian
-      const radius = Math.min(w, h) / 2 - 100;
-      const treeLayout = d3.tree<TreeNode>()
-        .size([2 * Math.PI, Math.max(radius, 180)])
-        .separation((a, b) => (a.parent === b.parent ? 1 : 2) / a.depth);
-
-      treeLayout(root);
-
-      root.descendants().forEach(node => {
-        if (!node.parent) {
-          // Root at center
-          positions.set(node.data.id, { x: w / 2, y: h / 2 });
-        } else {
-          // Polar to cartesian: x = angle, y = radius
-          const angle = node.x - Math.PI / 2; // rotate so first child starts at top
-          positions.set(node.data.id, {
-            x: w / 2 + node.y * Math.cos(angle),
-            y: h / 2 + node.y * Math.sin(angle),
-          });
-        }
-      });
-    } else if (mode === 'tree') {
-      // Vertical tree: root at top, children below
-      const leafCount = root.leaves().length;
-      const nodeSpacing = 120;
-      const levelSpacing = 150;
-      const totalWidth = Math.max(leafCount * nodeSpacing, w * 0.6);
-      const totalHeight = Math.max((root.height || 1) * levelSpacing, 200);
-
-      const treeLayout = d3.tree<TreeNode>()
-        .size([totalWidth, totalHeight])
-        .separation((a, b) => (a.parent === b.parent ? 1 : 1.5));
-
-      treeLayout(root);
-
-      const offsetX = w / 2 - totalWidth / 2;
-      const offsetY = 100;
-
-      root.descendants().forEach(node => {
-        positions.set(node.data.id, {
-          x: node.x + offsetX,
-          y: node.y + offsetY,
-        });
-      });
-    } else if (mode === 'horizontal') {
-      // Horizontal tree: root at left, children to the right
-      const leafCount = root.leaves().length;
-      const nodeSpacing = 100;
-      const levelSpacing = 200;
-      const totalHeight = Math.max(leafCount * nodeSpacing, h * 0.6);
-      const totalWidth = Math.max((root.height || 1) * levelSpacing, 200);
-
-      const treeLayout = d3.tree<TreeNode>()
-        .size([totalHeight, totalWidth])
-        .separation((a, b) => (a.parent === b.parent ? 1 : 1.5));
-
-      treeLayout(root);
-
-      // Swap x↔y for horizontal orientation
-      const offsetX = 150;
-      const offsetY = h / 2 - totalHeight / 2;
-
-      root.descendants().forEach(node => {
-        positions.set(node.data.id, {
-          x: node.y + offsetX,   // depth → horizontal position
-          y: node.x + offsetY,   // breadth → vertical position
-        });
-      });
+    // Node image
+    if (goalNode.imageUrl) {
+      data.image = goalNode.imageUrl;
+      data.imageSize = { width: isRoot ? 100 : 60, height: isRoot ? 100 : 60 };
     }
-    // 'force' mode returns empty map (simulation handles positioning)
-    return positions;
-  };
 
-  // Edit Function (Reusable)
-  const startEditing = (d: any, group: d3.Selection<any, any, any, any>) => {
-      // Avoid opening if already editing
-      if (!group.select("foreignObject.edit-input").empty()) return;
+    return { data, children };
+  }
 
-      const textEl = group.select(".node-label");
-      textEl.style("opacity", "0"); 
-      
-      // Hide menu while editing
-      group.select(".node-menu").style("opacity", "0");
+  return buildNode(root);
+}
 
-      const foWidth = 160;
-      const foHeight = 40;
-      const dy = d.r + 15;
+/** Walk simple-mind-map tree and extract flat GoalNode[] */
+function treeToGoalNodes(tree: SMMNode): { nodes: GoalNode[]; links: GoalLink[] } {
+  const nodes: GoalNode[] = [];
+  const links: GoalLink[] = [];
 
-      const fo = group.append("foreignObject")
-          .attr("class", "edit-input")
-          .attr("width", foWidth)
-          .attr("height", foHeight) 
-          .attr("x", -foWidth / 2)
-          .attr("y", dy - 10)
-          .style("overflow", "visible");
+  function walk(smmNode: SMMNode, parentId?: string) {
+    const d = smmNode.data;
+    const id = d.goalId || d.uid || Date.now().toString();
+    const isRoot = !parentId;
 
-      const input = fo.append("xhtml:input")
-          .attr("type", "text")
-          .attr("value", d.text)
-          .attr("placeholder", "목표 입력")
-          .style("width", "100%")
-          .style("background", "#050B14")
-          .style("color", "#CCFF00")
-          .style("border", "1px solid #CCFF00")
-          .style("border-radius", "4px")
-          .style("text-align", "center")
-          .style("font-family", "Inter")
-          .style("font-size", "14px")
-          .style("outline", "none")
-          .style("box-shadow", "0 0 15px rgba(204,255,0,0.5)");
+    nodes.push({
+      id,
+      text: d.text || '',
+      type: isRoot ? NodeType.ROOT : NodeType.SUB,
+      status: (d.goalStatus as NodeStatus) || NodeStatus.PENDING,
+      progress: d.goalProgress ?? 0,
+      parentId: parentId,
+      imageUrl: d.image,
+      collapsed: d.expand === false,
+    });
 
-      const inputNode = input.node() as HTMLInputElement;
-      
-      // Delay focus slightly to ensure render is complete
-      setTimeout(() => {
-          inputNode.focus();
-          inputNode.select();
-      }, 10);
+    if (parentId) {
+      links.push({ source: parentId, target: id });
+    }
 
-      // Stop propagation to prevent drag
-      input.on("mousedown", (e: Event) => e.stopPropagation());
-      input.on("click", (e: Event) => e.stopPropagation());
-      input.on("dblclick", (e: Event) => e.stopPropagation());
+    for (const child of smmNode.children || []) {
+      walk(child, id);
+    }
+  }
 
-      const finishEditing = () => {
-          const newVal = inputNode.value.trim();
-          
-          if (newVal) {
-              if (newVal !== d.text) {
-                  onUpdateNode(d.id, { text: newVal });
-              }
-              // Restore UI elements
-              textEl.style("opacity", "1");
-              group.select(".node-menu").style("opacity", "1");
-          } else {
-              if (d.type !== NodeType.ROOT) {
-                  onDeleteNode(d.id);
-                  return; 
-              } else {
-                  textEl.style("opacity", "1");
-                  group.select(".node-menu").style("opacity", "1");
-              }
-          }
-          fo.remove();
-          if (onEditEnd) onEditEnd();
-      };
+  walk(tree);
+  return { nodes, links };
+}
 
-      input.on("blur", () => {
-        if (!document.body.contains(inputNode)) {
-            return;
-        }
-        finishEditing();
-      });
-      
-      input.on("keydown", (e: KeyboardEvent) => {
-          if (e.key === "Enter" && !e.isComposing) {
-              finishEditing();
-          }
-          if (e.key === "Escape") {
-              if (!d.text.trim() && d.type !== NodeType.ROOT) {
-                  onDeleteNode(d.id);
-              } else {
-                  textEl.style("opacity", "1");
-                  group.select(".node-menu").style("opacity", "1");
-              }
-              fo.remove();
-              if (onEditEnd) onEditEnd();
-          }
-      });
-  };
+/** Compute a structural fingerprint for change detection */
+function computeStructureKey(nodes: GoalNode[], links: GoalLink[]): string {
+  return nodes.map(n => `${n.id}:${n.text}:${n.status}:${n.collapsed}:${n.imageUrl || ''}`).join('|')
+    + '||' + links.map(l => `${getLinkId(l.source)}-${getLinkId(l.target)}`).join('|');
+}
 
-  // 1. Structural Effect: Handles Simulation, Nodes, Links creation
+// --- Dark Theme Config ---
+const DARK_THEME_CONFIG = {
+  // Background
+  backgroundColor: '#050B14',
+  // Lines
+  lineColor: '#CCFF0066',
+  lineWidth: 2,
+  lineDasharray: 'none',
+  lineStyle: 'curve' as const,
+  // Root node
+  root: {
+    fillColor: '#0a1a2f',
+    color: '#ffffff',
+    borderColor: '#CCFF00',
+    borderWidth: 3,
+    borderRadius: 24,
+    fontSize: 18,
+    fontWeight: 'bold',
+    fontFamily: 'Inter, system-ui, sans-serif',
+    shape: 'roundedRectangle',
+    paddingX: 30,
+    paddingY: 20,
+  },
+  // Second-level nodes
+  second: {
+    fillColor: '#0f2340',
+    color: '#e2e8f0',
+    borderColor: '#3B82F6',
+    borderWidth: 2,
+    borderRadius: 12,
+    fontSize: 14,
+    fontWeight: '600',
+    fontFamily: 'Inter, system-ui, sans-serif',
+    shape: 'roundedRectangle',
+    marginX: 80,
+    marginY: 30,
+    paddingX: 20,
+    paddingY: 12,
+  },
+  // Third-level+ nodes
+  node: {
+    fillColor: '#0d1b30',
+    color: '#cbd5e1',
+    borderColor: '#334155',
+    borderWidth: 1,
+    borderRadius: 8,
+    fontSize: 13,
+    fontWeight: '500',
+    fontFamily: 'Inter, system-ui, sans-serif',
+    shape: 'roundedRectangle',
+    marginX: 60,
+    marginY: 20,
+    paddingX: 16,
+    paddingY: 10,
+  },
+  // Generalization node
+  generalization: {
+    fillColor: '#1e293b',
+    color: '#94a3b8',
+    borderColor: '#475569',
+    borderWidth: 1,
+    borderRadius: 6,
+    fontSize: 12,
+    fontFamily: 'Inter, system-ui, sans-serif',
+  },
+};
+
+// --- Rainbow line colors (neon palette) ---
+const RAINBOW_COLORS = [
+  '#CCFF00',  // neon lime
+  '#00D4FF',  // cyan
+  '#FF6B6B',  // coral
+  '#A78BFA',  // violet
+  '#34D399',  // emerald
+  '#FBBF24',  // amber
+  '#F472B6',  // pink
+  '#60A5FA',  // blue
+];
+
+// --- Layout Options ---
+const layoutOptions: { mode: LayoutMode; label: string }[] = [
+  { mode: 'mindMap', label: '마인드맵' },
+  { mode: 'logicalStructure', label: '논리 구조' },
+  { mode: 'logicalStructureLeft', label: '왼쪽 구조' },
+  { mode: 'organizationStructure', label: '조직도' },
+];
+
+// --- Component ---
+const MindMap: React.FC<MindMapProps> = ({
+  nodes, links, selectedNodeId, onNodeClick, onUpdateNode, onDeleteNode,
+  onReparentNode, onAddSubNode, width, height, editingNodeId, onEditEnd, imageLoadingNodes
+}) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const mindMapRef = useRef<any>(null);
+  const [layout, setLayout] = useState<LayoutMode>('mindMap');
+
+  // Guard flag to prevent update loops
+  const isInternalUpdateRef = useRef(false);
+  // Track the last structure key we set
+  const lastStructureKeyRef = useRef('');
+  // Track the nodes/links for callbacks
+  const nodesRef = useRef(nodes);
+  const linksRef = useRef(links);
+  nodesRef.current = nodes;
+  linksRef.current = links;
+
+  // Callback refs to avoid stale closures
+  const onNodeClickRef = useRef(onNodeClick);
+  const onUpdateNodeRef = useRef(onUpdateNode);
+  const onDeleteNodeRef = useRef(onDeleteNode);
+  const onAddSubNodeRef = useRef(onAddSubNode);
+  const onReparentNodeRef = useRef(onReparentNode);
+  const onEditEndRef = useRef(onEditEnd);
+  onNodeClickRef.current = onNodeClick;
+  onUpdateNodeRef.current = onUpdateNode;
+  onDeleteNodeRef.current = onDeleteNode;
+  onAddSubNodeRef.current = onAddSubNode;
+  onReparentNodeRef.current = onReparentNode;
+  onEditEndRef.current = onEditEnd;
+
+  // --- Initialize MindMap ---
   useEffect(() => {
-    if (!svgRef.current) return;
+    if (!containerRef.current) return;
 
-    // Clear position cache and reset zoom when layout mode changes
-    if (layout !== prevLayoutRef.current) {
-        nodeStateRef.current.clear();
-        zoomTransformRef.current = d3.zoomIdentity;
-        prevLayoutRef.current = layout;
-        prevStructureRef.current = ''; // Force rebuild
-    }
+    const treeData = goalNodesToTree(nodes, links);
+    if (!treeData) return;
 
-    // Only rebuild SVG if the structure (node ids, links, editingNodeId, or layout) actually changed
-    const structureKey = nodes.map(n => `${n.id}:${n.text}:${n.status}:${n.collapsed}:${n.imageUrl || ''}`).join('|') + '||' + links.map(l => `${getLinkId(l.source)}-${getLinkId(l.target)}`).join('|') + '||' + (editingNodeId || '') + '||' + layout;
-    if (structureKey === prevStructureRef.current) return;
-    prevStructureRef.current = structureKey;
+    lastStructureKeyRef.current = computeStructureKey(nodes, links);
 
-    // Prepare Data
-    // For non-force layouts, ignore cached positions — layout algorithm computes them deterministically
-    const useCache = layout === 'force';
-    const d3Nodes = nodes.map(n => {
-        const stored = useCache ? nodeStateRef.current.get(n.id) : undefined;
-        const depth = getNodeDepth(n.id, nodes);
-        const r = n.type === NodeType.ROOT ? 65 : (depth === 1 ? 45 : 35);
-
-        return {
-            ...n,
-            depth,
-            r,
-            x: stored ? stored.x : (n.parentId ? undefined : width/2),
-            y: stored ? stored.y : (n.parentId ? undefined : height/2),
-            vx: 0,
-            vy: 0,
-            fx: stored?.fx ?? undefined,
-            fy: stored?.fy ?? undefined
-        };
-    }) as (GoalNode & { depth: number, r: number })[];
-
-    // Sort by depth to ensure parents are positioned before children
-    d3Nodes.sort((a, b) => a.depth - b.depth);
-
-    d3Nodes.forEach(n => {
-        if ((n.x === undefined || n.y === undefined) && n.parentId) {
-            const parent = d3Nodes.find(p => p.id === n.parentId);
-            if (parent && parent.x !== undefined && parent.y !== undefined) {
-                // Reduced random offset for cleaner new node appearance
-                n.x = parent.x + (Math.random() - 0.5) * 100;
-                n.y = parent.y + (Math.random() - 0.5) * 100;
-            } else {
-                n.x = width / 2;
-                n.y = height / 2;
-            }
-        }
+    const mindMap = new (MindMapSDK as any)({
+      el: containerRef.current,
+      data: treeData,
+      layout: layout,
+      theme: 'default',
+      themeConfig: DARK_THEME_CONFIG,
+      // Rainbow lines for color-coded branches
+      rainbowLinesConfig: {
+        open: true,
+        colorsList: RAINBOW_COLORS,
+      },
+      // Behavior
+      enableFreeDrag: false,
+      mousewheelAction: 'zoom',
+      scaleRatio: 0.1,
+      readonly: false,
+      enableShortcutOnlyWhenMouseInSvg: true,
+      // Node behavior
+      createNewNodeBehavior: 'default',
+      // Expand/collapse button
+      expandBtnStyle: {
+        color: '#CCFF00',
+        fill: '#0a1a2f',
+        fontSize: 12,
+        strokeColor: '#CCFF0088',
+      },
+      // Fit on init
+      fit: true,
+      // Enable node text editing
+      customInnerElsAppendTo: null,
+      // Smoother animations
+      enableNodeTransitionMove: true,
+      nodeTransitionMoveDuration: 300,
     });
 
-    // Apply layout positions
-    if (layout !== 'force') {
-        const layoutPositions = computeLayoutPositions(d3Nodes, layout, width, height);
-        d3Nodes.forEach(n => {
-            const pos = layoutPositions.get(n.id);
-            if (pos) {
-                n.x = pos.x;
-                n.y = pos.y;
-                n.fx = pos.x;
-                n.fy = pos.y;
-            }
-        });
-        // Pin root at exact center for all non-force layouts
-        const rootNode = d3Nodes.find(n => n.type === NodeType.ROOT);
-        if (rootNode) {
-            rootNode.x = width / 2;
-            rootNode.y = height / 2;
-            rootNode.fx = width / 2;
-            rootNode.fy = height / 2;
+    mindMapRef.current = mindMap;
+
+    // --- Event Handlers ---
+
+    // Node click → select node
+    mindMap.on('node_click', (node: any, _e: any) => {
+      const goalId = node?.nodeData?.data?.goalId || node?.nodeData?.data?.uid;
+      if (!goalId) return;
+      const goalNode = nodesRef.current.find(n => n.id === goalId);
+      if (goalNode) {
+        onNodeClickRef.current(goalNode);
+      }
+    });
+
+    // Node active → could also track selection
+    mindMap.on('node_active', (node: any, _activeList: any) => {
+      if (!node) return;
+      const goalId = node?.nodeData?.data?.goalId || node?.nodeData?.data?.uid;
+      if (!goalId) return;
+      const goalNode = nodesRef.current.find(n => n.id === goalId);
+      if (goalNode) {
+        onNodeClickRef.current(goalNode);
+      }
+    });
+
+    // Data changed (from internal edits: text edit, drag, add, remove)
+    mindMap.on('data_change', (data: SMMNode) => {
+      if (isInternalUpdateRef.current) return;
+
+      // Convert tree back to flat format
+      const { nodes: newNodes, links: newLinks } = treeToGoalNodes(data);
+      const newKey = computeStructureKey(newNodes, newLinks);
+
+      if (newKey === lastStructureKeyRef.current) return;
+      lastStructureKeyRef.current = newKey;
+
+      // Sync changes back to App.tsx
+      isInternalUpdateRef.current = true;
+
+      // Find differences and apply updates
+      const oldNodeMap = new Map(nodesRef.current.map(n => [n.id, n]));
+      const newNodeMap = new Map(newNodes.map(n => [n.id, n]));
+
+      // Detect deleted nodes
+      for (const oldNode of nodesRef.current) {
+        if (!newNodeMap.has(oldNode.id) && oldNode.type !== NodeType.ROOT) {
+          onDeleteNodeRef.current(oldNode.id);
         }
-    } else {
-        // Force mode: pin root at center, clear fx/fy on others
-        d3Nodes.forEach(n => {
-            if (n.type === NodeType.ROOT) {
-                n.fx = width / 2;
-                n.fy = height / 2;
-            }
-        });
-    }
+      }
 
-    const d3Links = links.map(l => ({ ...l })) as unknown as GoalLink[];
-
-    const svg = d3.select(svgRef.current);
-    svg.selectAll("*").remove(); 
-
-    const g = svg.append("g");
-
-    const zoom = d3.zoom<SVGSVGElement, unknown>()
-      .scaleExtent([0.1, 3])
-      .on("zoom", (event) => {
-        g.attr("transform", event.transform);
-        zoomTransformRef.current = event.transform;
-      });
-    svg.call(zoom);
-
-    // Restore previous zoom transform
-    if (zoomTransformRef.current !== d3.zoomIdentity) {
-        svg.call(zoom.transform, zoomTransformRef.current);
-    }
-
-    const handleCenter = (e: Event) => {
-        const detail = (e as CustomEvent).detail;
-        const targetNode = d3Nodes.find(n => n.id === detail?.nodeId);
-        if (targetNode && targetNode.x !== undefined && targetNode.y !== undefined) {
-            svg.transition().duration(500).call(
-                zoom.transform,
-                d3.zoomIdentity.translate(width / 2 - targetNode.x, height / 2 - targetNode.y)
-            );
+      // Detect added/updated nodes
+      for (const newNode of newNodes) {
+        const oldNode = oldNodeMap.get(newNode.id);
+        if (!oldNode) {
+          // New node added via simple-mind-map — add to parent
+          if (newNode.parentId) {
+            onAddSubNodeRef.current(newNode.parentId, newNode.text || undefined);
+          }
         } else {
-            // No node selected - center on root
-            svg.transition().duration(500).call(
-                zoom.transform,
-                d3.zoomIdentity.translate(0, 0)
-            );
+          // Check for text or other changes
+          const updates: Partial<GoalNode> = {};
+          if (newNode.text !== oldNode.text) updates.text = newNode.text;
+          if (newNode.collapsed !== oldNode.collapsed) updates.collapsed = newNode.collapsed;
+          if (newNode.parentId !== oldNode.parentId && newNode.parentId) {
+            onReparentNodeRef.current(newNode.id, newNode.parentId);
+          }
+          if (Object.keys(updates).length > 0) {
+            onUpdateNodeRef.current(newNode.id, updates);
+          }
         }
+      }
+
+      setTimeout(() => { isInternalUpdateRef.current = false; }, 100);
+    });
+
+    // Handle mindmap-center event
+    const handleCenter = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.nodeId) {
+        // Find node in the mind map and focus on it
+        mindMap.execCommand('GO_TARGET_NODE', detail.nodeId);
+      } else {
+        mindMap.view?.reset?.();
+      }
     };
     window.addEventListener('mindmap-center', handleCenter);
 
-    // Physics
-    const simulation = d3.forceSimulation<any>(d3Nodes);
+    return () => {
+      window.removeEventListener('mindmap-center', handleCenter);
+      mindMap.destroy?.();
+      mindMapRef.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only init once
 
-    if (layout === 'force') {
-      // Full force-directed simulation
-      simulation
-        .force("link", d3.forceLink<any, GoalLink>(d3Links)
-            .id(d => d.id)
-            .distance(d => d.target.depth === 1 ? 220 : 120)
-            .strength(1)
-        )
-        .force("charge", d3.forceManyBody().strength(d => (d as any).type === NodeType.ROOT ? -2000 : -800))
-        .force("collide", d3.forceCollide().radius(d => (d as any).r + 30).strength(1))
-        .force("center", d3.forceCenter(width / 2, height / 2).strength(0.02))
-        .force("radial", d3.forceRadial<any>(
-            d => d.type === NodeType.ROOT ? 0 : (d.depth === 1 ? 220 : 360 + d.depth * 140),
-            width / 2,
-            height / 2
-        ).strength(0.3))
-        .velocityDecay(0.65);
-    } else {
-      // Non-force layouts: nodes are pinned via fx/fy, only keep light link force for aesthetics
-      simulation
-        .force("link", d3.forceLink<any, GoalLink>(d3Links)
-            .id(d => d.id)
-            .distance(d => d.target.depth === 1 ? 180 : 120)
-            .strength(0.05)
-        )
-        .velocityDecay(0.9);
+  // --- Update data when nodes/links change from outside ---
+  useEffect(() => {
+    const mindMap = mindMapRef.current;
+    if (!mindMap || isInternalUpdateRef.current) return;
+
+    const newKey = computeStructureKey(nodes, links);
+    if (newKey === lastStructureKeyRef.current) return;
+    lastStructureKeyRef.current = newKey;
+
+    const treeData = goalNodesToTree(nodes, links);
+    if (!treeData) return;
+
+    isInternalUpdateRef.current = true;
+    mindMap.setData(treeData);
+    setTimeout(() => { isInternalUpdateRef.current = false; }, 100);
+  }, [nodes, links]);
+
+  // --- Handle layout changes ---
+  const handleLayoutChange = useCallback((newLayout: LayoutMode) => {
+    setLayout(newLayout);
+    const mindMap = mindMapRef.current;
+    if (mindMap) {
+      mindMap.setLayout(newLayout);
     }
+  }, []);
 
-    simulation.stop();
-    const hasStoredPositions = d3Nodes.some(n => nodeStateRef.current.has(n.id));
-    const warmupTicks = layout === 'force' ? (hasStoredPositions ? 10 : 80) : 1;
-    for (let i = 0; i < warmupTicks; i++) simulation.tick();
-    simulation.restart();
-    simulationRef.current = simulation as any;
-
-    // Render Links
-    const link = g.append("g")
-      .attr("class", "links")
-      .selectAll("path")
-      .data(d3Links)
-      .enter().append("path")
-      .attr("stroke", "#CCFF00")
-      .attr("stroke-opacity", 0.4)
-      .attr("stroke-width", 2)
-      .attr("fill", "none");
-
-    // Render Nodes
-    const node = g.append("g")
-      .attr("class", "nodes")
-      .selectAll("g")
-      .data(d3Nodes)
-      .enter().append("g")
-      .attr("class", "node-group")
-      .attr("cursor", "pointer")
-      .call(d3.drag<SVGGElement, any>()
-        .on("start", dragstarted)
-        .on("drag", dragged)
-        .on("end", dragended));
-
-    // Interaction
-    node.on("click", (event, d) => {
-        if (event.defaultPrevented) return;
-        onNodeClick(d);
-    });
-
-    node.on("dblclick", function(event, d) {
-        event.stopPropagation();
-        event.preventDefault();
-        startEditing(d, d3.select(this));
-    });
-
-    // Node Visuals
-    node.append("circle")
-        .attr("r", d => d.r + 8)
-        .attr("fill", "none")
-        .attr("stroke", "#CCFF00")
-        .attr("stroke-width", 2)
-        .attr("opacity", 0) 
-        .attr("class", "selection-ring")
-        .style("pointer-events", "none");
-
-    node.append("circle")
-      .attr("r", d => d.r)
-      .attr("fill", "#0a1a2f")
-      .attr("stroke", d => {
-        if (d.status === NodeStatus.COMPLETED) return "#10B981";
-        if (d.status === NodeStatus.STUCK) return "#EF4444";
-        return "#3B82F6";
-      })
-      .attr("stroke-width", 2)
-      .attr("class", "main-circle transition-colors duration-300");
-
-    // Images
-    const defs = svg.append("defs");
-    node.each(function(d) {
-        if (d.imageUrl) {
-             const patternId = `pattern-${d.id}`;
-             defs.append("pattern")
-                .attr("id", patternId)
-                .attr("height", "100%")
-                .attr("width", "100%")
-                .attr("patternContentUnits", "objectBoundingBox")
-                .append("image")
-                .attr("height", 1)
-                .attr("width", 1)
-                .attr("preserveAspectRatio", "none")
-                .attr("href", d.imageUrl);
-
-             d3.select(this).append("circle")
-                .attr("r", d.r - 4)
-                .attr("fill", `url(#${patternId})`)
-                .style("filter", "grayscale(20%) contrast(1.1)");
-        }
-    });
-
-    // Loading Indicators
-    node.each(function(d) {
-        if (imageLoadingNodes?.has(d.id)) {
-            const loadingG = d3.select(this).append("g").attr("class", "loading-indicator");
-            loadingG.append("circle")
-                .attr("r", d.r)
-                .attr("fill", "rgba(5,11,20,0.7)")
-                .style("pointer-events", "none");
-            loadingG.append("text")
-                .text("⏳")
-                .attr("text-anchor", "middle")
-                .attr("dy", 8)
-                .attr("font-size", "24px")
-                .style("pointer-events", "none");
-        }
-    });
-
-    // Collapse Button
-    node.each(function(d) {
-        const hasChildren = d.collapsed || d3Links.some(l => (l.source as any).id === d.id);
-        if (hasChildren) {
-            const btnGroup = d3.select(this).append("g")
-                .attr("class", "toggle-btn")
-                .attr("transform", `translate(${d.r}, 0)`)
-                .attr("cursor", "pointer")
-                .on("click", (e) => {
-                    e.stopPropagation();
-                    onUpdateNode(d.id, { collapsed: !d.collapsed });
-                });
-
-            btnGroup.append("circle")
-                .attr("r", 8)
-                .attr("fill", "#050B14")
-                .attr("stroke", d.collapsed ? "#FF4D00" : "#CCFF00")
-                .attr("stroke-width", 1.5);
-
-            btnGroup.append("text")
-                .text(d.collapsed ? "+" : "-")
-                .attr("dy", 3)
-                .attr("text-anchor", "middle")
-                .attr("font-size", "12px")
-                .attr("font-weight", "bold")
-                .attr("fill", "white")
-                .style("pointer-events", "none");
-        }
-    });
-
-    // Label
-    node.append("text")
-      .attr("class", "node-label")
-      .attr("dy", d => d.r + 20)
-      .attr("text-anchor", "middle")
-      .text(d => d.text)
-      .attr("fill", "white")
-      .attr("font-family", "Inter")
-      .attr("font-weight", "500")
-      .attr("font-size", d => d.type === NodeType.ROOT ? "16px" : "13px")
-      .style("text-shadow", "0 2px 4px rgba(0,0,0,1)")
-      .style("pointer-events", "none") 
-      .call(getWrap, 120);
-
-    if (editingNodeId) {
-        node.each(function(d) {
-            if (d.id === editingNodeId) {
-                startEditing(d, d3.select(this));
-            }
-        });
+  // --- Handle resize ---
+  useEffect(() => {
+    const mindMap = mindMapRef.current;
+    if (mindMap) {
+      mindMap.resize();
     }
+  }, [width, height]);
 
-    // Tick
-    simulation.on("tick", () => {
-        d3Nodes.forEach(n => {
-            nodeStateRef.current.set(n.id, { x: n.x!, y: n.y!, vx: n.vx!, vy: n.vy!, fx: n.fx, fy: n.fy });
-        });
-        link.attr("d", (d: any) => {
-            // Better curved paths with control point perpendicular to the line
-            const dx = d.target.x - d.source.x;
-            const dy = d.target.y - d.source.y;
-            const cx = (d.source.x + d.target.x) / 2 - dy * 0.15;
-            const cy = (d.source.y + d.target.y) / 2 + dx * 0.15;
-            return `M${d.source.x},${d.source.y} Q${cx},${cy} ${d.target.x},${d.target.y}`;
-        });
-        node.attr("transform", d => `translate(${d.x},${d.y})`);
-    });
-
-    // Apply warm-up positions immediately (don't wait for first tick)
-    link.attr("d", (d: any) => {
-        const dx = d.target.x - d.source.x;
-        const dy = d.target.y - d.source.y;
-        const cx = (d.source.x + d.target.x) / 2 - dy * 0.15;
-        const cy = (d.source.y + d.target.y) / 2 + dx * 0.15;
-        return `M${d.source.x},${d.source.y} Q${cx},${cy} ${d.target.x},${d.target.y}`;
-    });
-    node.attr("transform", d => `translate(${d.x},${d.y})`);
-
-    // Drag & Collision
-    let potentialParentId: string | null = null;
-
-    // Store original layout positions for snapping back in non-force modes
-    const layoutPositionsForDrag = layout !== 'force' ? computeLayoutPositions(d3Nodes, layout, width, height) : null;
-
-    function dragstarted(event: any, d: any) {
-      if (!event.active) simulation.alphaTarget(0.3).restart();
-      d.fx = d.x;
-      d.fy = d.y;
+  // --- Handle editing state ---
+  useEffect(() => {
+    if (!editingNodeId || !mindMapRef.current) return;
+    // Find the node in the mind map and trigger text edit
+    const mindMap = mindMapRef.current;
+    // Use renderer's node list to find the target
+    const allNodes = mindMap.renderer?.root
+      ? getAllRenderedNodes(mindMap.renderer.root)
+      : [];
+    const target = allNodes.find(
+      (n: any) => n.nodeData?.data?.goalId === editingNodeId || n.nodeData?.data?.uid === editingNodeId
+    );
+    if (target) {
+      mindMap.execCommand('SET_NODE_ACTIVE', target, true);
+      // Small delay to ensure node is active before triggering edit
+      setTimeout(() => {
+        mindMap.renderer?.textEdit?.show?.(target);
+      }, 50);
     }
+  }, [editingNodeId]);
 
-    function dragged(event: any, d: any) {
-      d.fx = event.x;
-      d.fy = event.y;
+  // --- Update node styles based on status ---
+  useEffect(() => {
+    const mindMap = mindMapRef.current;
+    if (!mindMap) return;
 
-      potentialParentId = null;
-      d3.selectAll('.main-circle').attr('filter', null);
+    // After tree renders, apply status-based border colors
+    const applyStatusColors = () => {
+      const allNodes = mindMap.renderer?.root
+        ? getAllRenderedNodes(mindMap.renderer.root)
+        : [];
 
-      svg.selectAll(".nodes g").each(function(n: any) {
-          if (n.id === d.id) return;
+      for (const renderedNode of allNodes) {
+        const goalId = renderedNode.nodeData?.data?.goalId;
+        if (!goalId) continue;
+        const goalNode = nodesRef.current.find(n => n.id === goalId);
+        if (!goalNode) continue;
 
-          const dx = event.x - n.x;
-          const dy = event.y - n.y;
-          const dist = Math.sqrt(dx*dx + dy*dy);
+        const color = STATUS_COLORS[goalNode.status] || '#3B82F6';
+        const isSelected = goalNode.id === selectedNodeId;
 
-          if (dist < (n.r + d.r)) {
-             potentialParentId = n.id;
-             d3.select(this).select('.main-circle')
-               .attr('filter', 'drop-shadow(0 0 8px white)');
-          }
-      });
-    }
-
-    function dragended(event: any, d: any) {
-      if (!event.active) simulation.alphaTarget(0);
-
-      d3.selectAll('.main-circle').attr('filter', null);
-
-      if (potentialParentId && potentialParentId !== d.id) {
-          // Reparenting: let node float to find new position
-          if (d.type !== NodeType.ROOT) {
-              if (layout === 'force') {
-                  d.fx = null;
-                  d.fy = null;
-              }
-              // Non-force: reparent will trigger re-render with new positions
-          }
-          onReparentNode(d.id, potentialParentId);
-      } else if (layout !== 'force' && layoutPositionsForDrag) {
-          // Non-force layouts: snap back to layout position
-          const pos = layoutPositionsForDrag.get(d.id);
-          if (pos) {
-              d.fx = pos.x;
-              d.fy = pos.y;
-              d.x = pos.x;
-              d.y = pos.y;
-          }
+        // Apply border color based on status
+        renderedNode.setStyle?.('borderColor', isSelected ? '#CCFF00' : color);
+        renderedNode.setStyle?.('borderWidth', isSelected ? 3 : 2);
       }
-      // Force mode without reparent: keep fx/fy set so node stays pinned where dropped
-      potentialParentId = null;
-    }
+    };
 
-    function getWrap(textSelection: any, width: number) {
-        textSelection.each(function(this: any) {
-            const text = d3.select(this);
-            const words = text.text().split(/\s+/).reverse();
-            let word;
-            let line: string[] = [];
-            const lineHeight = 1.2;
-            const y = text.attr("y");
-            const dy = parseFloat(text.attr("dy"));
-            text.text(null);
-            let tspan = text.append("tspan").attr("x", 0).attr("y", y).attr("dy", dy + "px");
-            while (word = words.pop()) {
-                line.push(word);
-                tspan.text(line.join(" "));
-                if (tspan.node()!.getComputedTextLength() > width) {
-                    line.pop();
-                    tspan.text(line.join(" "));
-                    line = [word];
-                    tspan = text.append("tspan").attr("x", 0).attr("y", y).attr("dy", lineHeight + "em").text(word);
-                }
-            }
-        });
-    }
+    mindMap.on('node_tree_render_end', applyStatusColors);
+    // Apply immediately too
+    applyStatusColors();
 
     return () => {
-      simulation.stop();
-      window.removeEventListener('mindmap-center', handleCenter);
-      prevStructureRef.current = ''; // Reset for StrictMode re-mount
+      mindMap.off('node_tree_render_end', applyStatusColors);
     };
-  }, [nodes, links, width, height, onNodeClick, onUpdateNode, onDeleteNode, editingNodeId, onReparentNode, imageLoadingNodes, layout]);
-
-  // 2. Selection Effect: Updates styles & Adds Horizontal Context Menu
-  useEffect(() => {
-     if (!svgRef.current) return;
-     const svg = d3.select(svgRef.current);
-     const nodeGroups = svg.selectAll(".node-group");
-
-     nodeGroups.each(function(d: any) {
-        const isSelected = d.id === selectedNodeId;
-        const g = d3.select(this);
-
-        // Update Selection Ring
-        g.select(".selection-ring")
-            .attr("opacity", isSelected ? 1 : 0)
-            .attr("class", isSelected ? "selection-ring animate-pulse-glow" : "selection-ring");
-        
-        // Update Main Circle Border
-        g.select(".main-circle")
-           .attr("stroke", isSelected ? "#CCFF00" : (d.status === NodeStatus.COMPLETED ? "#10B981" : (d.status === NodeStatus.STUCK ? "#EF4444" : "#3B82F6")))
-           .attr("stroke-width", isSelected ? 3 : 2);
-
-        // Manage Controls (Horizontal Menu)
-        const isEditingThis = editingNodeId === d.id;
-        
-        g.select(".node-menu").remove();
-        
-        if (isSelected && !isEditingThis) {
-             // Menu Items Data
-             const menuItems = [
-                 { label: "편집", action: () => startEditing(d, g) },
-                 // Show sibling only for non-root nodes (siblings = add to parent)
-                 ...(d.parentId ? [{ label: "형제 노드", action: () => onAddSubNode(d.parentId!) }] : []),
-                 { label: "자식 노드", action: () => onAddSubNode(d.id) },
-                 ...(d.type !== NodeType.ROOT ? [{ label: "삭제", action: () => onDeleteNode(d.id), danger: true }] : [])
-             ];
-
-             const foWidth = 500; // large enough to contain any menu
-             const menuHeight = 44;
-
-             // Use ForeignObject for a nice HTML menu
-             const menuFO = g.append("foreignObject")
-                .attr("class", "node-menu")
-                .attr("width", foWidth)
-                .attr("height", menuHeight + 20)
-                .attr("x", -foWidth / 2)
-                .attr("y", -d.r - 60) // Position nicely above
-                .style("overflow", "visible");
-
-             const menuDiv = menuFO.append("xhtml:div")
-                .style("display", "inline-flex")
-                .style("align-items", "center")
-                .style("margin", "0 auto")
-                .style("position", "relative")
-                .style("left", "50%")
-                .style("transform", "translateX(-50%)")
-                .attr("class", "bg-white text-black rounded-full shadow-[0_4px_20px_rgba(0,0,0,0.4)] px-2 py-0.5")
-                .style("font-family", "'Inter', sans-serif")
-                .style("font-size", "12px")
-                .style("font-weight", "600");
-
-             menuItems.forEach((item, idx) => {
-                 const btn = menuDiv.append("xhtml:button")
-                    .text(item.label)
-                    .attr("class", `px-3 py-1.5 rounded-full hover:bg-gray-100 transition-colors text-xs font-semibold ${(item as any).danger ? 'text-red-500 hover:bg-red-50' : 'text-gray-800'}`)
-                    .style("white-space", "nowrap")
-                    .style("cursor", "pointer");
-
-                 // Add Divider
-                 if (idx < menuItems.length - 1) {
-                    menuDiv.append("xhtml:div")
-                        .attr("class", "w-px h-4 bg-gray-200 mx-0.5");
-                 }
-
-                 // Event Listeners
-                 btn.on("mousedown", (e: Event) => e.stopPropagation());
-                 btn.on("click", (e: Event) => {
-                     e.stopPropagation();
-                     item.action();
-                 });
-                 btn.on("dblclick", (e: Event) => e.stopPropagation());
-             });
-
-             // Add divider before ▶
-             menuDiv.append("xhtml:div")
-                 .attr("class", "w-px h-4 bg-gray-200 mx-0.5");
-
-             const moreBtn = menuDiv.append("xhtml:button")
-                 .text("▶")
-                 .attr("class", "px-2 py-2 rounded hover:bg-gray-100 transition-colors text-gray-400")
-                 .style("white-space", "nowrap")
-                 .style("cursor", "pointer")
-                 .style("font-size", "10px");
-
-             moreBtn.on("mousedown", (e: Event) => e.stopPropagation());
-             moreBtn.on("click", (e: Event) => {
-                 e.stopPropagation();
-                 // Toggle status for now - cycle through PENDING → COMPLETED → STUCK
-                 const statusCycle: Record<string, string> = {
-                     [NodeStatus.PENDING]: NodeStatus.COMPLETED,
-                     [NodeStatus.COMPLETED]: NodeStatus.STUCK,
-                     [NodeStatus.STUCK]: NodeStatus.PENDING,
-                 };
-                 onUpdateNode(d.id, { status: statusCycle[d.status] as NodeStatus });
-             });
-             moreBtn.on("dblclick", (e: Event) => e.stopPropagation());
-
-             // Add a little arrow pointing down
-             menuDiv.append("xhtml:div")
-                .attr("class", "absolute left-1/2 bottom-[-4px] w-2 h-2 bg-white transform -translate-x-1/2 rotate-45");
-        }
-     });
-
-  }, [selectedNodeId, nodes, editingNodeId, onConvertNodeToTask, onAddSubNode, onDeleteNode]); 
-
-  const layoutOptions: { mode: LayoutMode; label: string }[] = [
-    { mode: 'radial', label: '방사형' },
-    { mode: 'tree', label: '트리' },
-    { mode: 'horizontal', label: '가로' },
-    { mode: 'force', label: '자유' },
-  ];
+  }, [nodes, selectedNodeId]);
 
   return (
     <div className="w-full h-full bg-deep-space relative overflow-hidden">
+      {/* Header */}
       <div className="absolute top-4 left-4 z-10 pointer-events-none select-none">
-         <h1 className="text-2xl font-display text-white tracking-widest drop-shadow-[0_0_10px_rgba(204,255,0,0.5)]">SUPER COACH <span className="text-neon-lime text-xs align-top">{__APP_VERSION__}</span></h1>
-         <p className="text-gray-400 text-xs font-body">Neural Interface Active</p>
+        <h1 className="text-2xl font-display text-white tracking-widest drop-shadow-[0_0_10px_rgba(204,255,0,0.5)]">
+          SUPER COACH <span className="text-neon-lime text-xs align-top">{__APP_VERSION__}</span>
+        </h1>
+        <p className="text-gray-400 text-xs font-body">Neural Interface Active</p>
       </div>
 
       {/* Layout Switcher */}
@@ -816,7 +516,7 @@ const MindMap: React.FC<MindMapProps> = ({
         {layoutOptions.map(opt => (
           <button
             key={opt.mode}
-            onClick={() => setLayout(opt.mode)}
+            onClick={() => handleLayoutChange(opt.mode)}
             className={`px-2.5 py-1 rounded-full text-[10px] font-semibold transition-all duration-200 ${
               layout === opt.mode
                 ? 'bg-neon-lime text-black shadow-[0_0_8px_rgba(204,255,0,0.5)]'
@@ -828,13 +528,28 @@ const MindMap: React.FC<MindMapProps> = ({
         ))}
       </div>
 
-      <svg ref={svgRef} width={width} height={height} className="cursor-grab active:cursor-grabbing" style={{ overflow: 'visible' }} role="img" aria-label="마인드맵" />
+      {/* Mind Map Container */}
+      <div
+        ref={containerRef}
+        className="w-full h-full cursor-grab active:cursor-grabbing"
+        style={{ width, height }}
+      />
     </div>
   );
 };
 
+/** Recursively collect all rendered node instances from the tree */
+function getAllRenderedNodes(node: any): any[] {
+  const result: any[] = [node];
+  if (node.children) {
+    for (const child of node.children) {
+      result.push(...getAllRenderedNodes(child));
+    }
+  }
+  return result;
+}
+
 export default React.memo(MindMap, (prev, next) => {
-  // Only re-render if these specific props change
   return (
     prev.nodes === next.nodes &&
     prev.links === next.links &&
