@@ -31,7 +31,7 @@ interface MindMapProps {
   imageLoadingNodes?: Set<string>;
 }
 
-// --- Status color mapping ---
+// --- Status → border color mapping ---
 const STATUS_COLORS: Record<string, string> = {
   [NodeStatus.PENDING]: '#3B82F6',
   [NodeStatus.COMPLETED]: '#10B981',
@@ -46,17 +46,15 @@ interface SMMNodeData {
   expand?: boolean;
   image?: string;
   imageSize?: { width: number; height: number };
-  // Custom fields stored alongside
+  // Custom fields we store in node data
   goalId?: string;
   goalType?: string;
   goalStatus?: string;
   goalProgress?: number;
   goalParentId?: string;
-  goalCollapsed?: boolean;
-  // Styling
+  // Per-node border color baked into data (avoids setStyle infinite loops)
   borderColor?: string;
   borderWidth?: number;
-  fillColor?: string;
 }
 
 interface SMMNode {
@@ -64,12 +62,17 @@ interface SMMNode {
   children: SMMNode[];
 }
 
-/** Convert flat GoalNode[] + GoalLink[] to simple-mind-map tree format */
-function goalNodesToTree(nodes: GoalNode[], links: GoalLink[]): SMMNode | null {
+/** Convert flat GoalNode[] + GoalLink[] to simple-mind-map tree format.
+ *  Border colors are baked into node data based on status + selection. */
+function goalNodesToTree(
+  nodes: GoalNode[],
+  links: GoalLink[],
+  selectedNodeId?: string,
+): SMMNode | null {
   const root = nodes.find(n => n.type === NodeType.ROOT);
   if (!root) return null;
 
-  // Build parent-children mapping from links
+  // Build parent→children mapping from links
   const childrenMap = new Map<string, string[]>();
   for (const link of links) {
     const sourceId = getLinkId(link.source);
@@ -82,11 +85,14 @@ function goalNodesToTree(nodes: GoalNode[], links: GoalLink[]): SMMNode | null {
 
   function buildNode(goalNode: GoalNode): SMMNode {
     const isRoot = goalNode.type === NodeType.ROOT;
+    const isSelected = goalNode.id === selectedNodeId;
     const childIds = childrenMap.get(goalNode.id) || [];
     const children = childIds
       .map(id => nodeMap.get(id))
       .filter((n): n is GoalNode => !!n)
       .map(buildNode);
+
+    const statusColor = STATUS_COLORS[goalNode.status] || '#3B82F6';
 
     const data: SMMNodeData = {
       text: goalNode.text || '',
@@ -97,7 +103,9 @@ function goalNodesToTree(nodes: GoalNode[], links: GoalLink[]): SMMNode | null {
       goalStatus: goalNode.status,
       goalProgress: goalNode.progress,
       goalParentId: goalNode.parentId,
-      goalCollapsed: goalNode.collapsed,
+      // Bake border color into node data so we never need setStyle()
+      borderColor: isRoot ? '#CCFF00' : (isSelected ? '#CCFF00' : statusColor),
+      borderWidth: isSelected ? 3 : (isRoot ? 3 : 2),
     };
 
     // Node image
@@ -112,56 +120,20 @@ function goalNodesToTree(nodes: GoalNode[], links: GoalLink[]): SMMNode | null {
   return buildNode(root);
 }
 
-/** Walk simple-mind-map tree and extract flat GoalNode[] */
-function treeToGoalNodes(tree: SMMNode): { nodes: GoalNode[]; links: GoalLink[] } {
-  const nodes: GoalNode[] = [];
-  const links: GoalLink[] = [];
-
-  function walk(smmNode: SMMNode, parentId?: string) {
-    const d = smmNode.data;
-    const id = d.goalId || d.uid || Date.now().toString();
-    const isRoot = !parentId;
-
-    nodes.push({
-      id,
-      text: d.text || '',
-      type: isRoot ? NodeType.ROOT : NodeType.SUB,
-      status: (d.goalStatus as NodeStatus) || NodeStatus.PENDING,
-      progress: d.goalProgress ?? 0,
-      parentId: parentId,
-      imageUrl: d.image,
-      collapsed: d.expand === false,
-    });
-
-    if (parentId) {
-      links.push({ source: parentId, target: id });
-    }
-
-    for (const child of smmNode.children || []) {
-      walk(child, id);
-    }
-  }
-
-  walk(tree);
-  return { nodes, links };
-}
-
 /** Compute a structural fingerprint for change detection */
-function computeStructureKey(nodes: GoalNode[], links: GoalLink[]): string {
+function computeStructureKey(nodes: GoalNode[], links: GoalLink[], selectedNodeId?: string): string {
   return nodes.map(n => `${n.id}:${n.text}:${n.status}:${n.collapsed}:${n.imageUrl || ''}`).join('|')
-    + '||' + links.map(l => `${getLinkId(l.source)}-${getLinkId(l.target)}`).join('|');
+    + '||' + links.map(l => `${getLinkId(l.source)}-${getLinkId(l.target)}`).join('|')
+    + '||' + (selectedNodeId || '');
 }
 
 // --- Dark Theme Config ---
 const DARK_THEME_CONFIG = {
-  // Background
   backgroundColor: '#050B14',
-  // Lines
   lineColor: '#CCFF0066',
   lineWidth: 2,
   lineDasharray: 'none',
   lineStyle: 'curve' as const,
-  // Root node
   root: {
     fillColor: '#0a1a2f',
     color: '#ffffff',
@@ -175,7 +147,6 @@ const DARK_THEME_CONFIG = {
     paddingX: 30,
     paddingY: 20,
   },
-  // Second-level nodes
   second: {
     fillColor: '#0f2340',
     color: '#e2e8f0',
@@ -191,7 +162,6 @@ const DARK_THEME_CONFIG = {
     paddingX: 20,
     paddingY: 12,
   },
-  // Third-level+ nodes
   node: {
     fillColor: '#0d1b30',
     color: '#cbd5e1',
@@ -207,7 +177,6 @@ const DARK_THEME_CONFIG = {
     paddingX: 16,
     paddingY: 10,
   },
-  // Generalization node
   generalization: {
     fillColor: '#1e293b',
     color: '#94a3b8',
@@ -219,19 +188,11 @@ const DARK_THEME_CONFIG = {
   },
 };
 
-// --- Rainbow line colors (neon palette) ---
 const RAINBOW_COLORS = [
-  '#CCFF00',  // neon lime
-  '#00D4FF',  // cyan
-  '#FF6B6B',  // coral
-  '#A78BFA',  // violet
-  '#34D399',  // emerald
-  '#FBBF24',  // amber
-  '#F472B6',  // pink
-  '#60A5FA',  // blue
+  '#CCFF00', '#00D4FF', '#FF6B6B', '#A78BFA',
+  '#34D399', '#FBBF24', '#F472B6', '#60A5FA',
 ];
 
-// --- Layout Options ---
 const layoutOptions: { mode: LayoutMode; label: string }[] = [
   { mode: 'mindMap', label: '마인드맵' },
   { mode: 'logicalStructure', label: '논리 구조' },
@@ -248,38 +209,31 @@ const MindMap: React.FC<MindMapProps> = ({
   const mindMapRef = useRef<any>(null);
   const [layout, setLayout] = useState<LayoutMode>('mindMap');
 
-  // Guard flag to prevent update loops
-  const isInternalUpdateRef = useRef(false);
-  // Track the last structure key we set
+  // Timestamp of last setData call — used to ignore data_change events that we caused
+  const lastSetDataTimeRef = useRef(0);
+  // Track the last structure key we pushed to simple-mind-map
   const lastStructureKeyRef = useRef('');
-  // Track the nodes/links for callbacks
+  // Refs for latest values (avoids stale closures in event handlers)
   const nodesRef = useRef(nodes);
   const linksRef = useRef(links);
+  const selectedNodeIdRef = useRef(selectedNodeId);
   nodesRef.current = nodes;
   linksRef.current = links;
+  selectedNodeIdRef.current = selectedNodeId;
 
-  // Callback refs to avoid stale closures
   const onNodeClickRef = useRef(onNodeClick);
   const onUpdateNodeRef = useRef(onUpdateNode);
-  const onDeleteNodeRef = useRef(onDeleteNode);
-  const onAddSubNodeRef = useRef(onAddSubNode);
-  const onReparentNodeRef = useRef(onReparentNode);
-  const onEditEndRef = useRef(onEditEnd);
   onNodeClickRef.current = onNodeClick;
   onUpdateNodeRef.current = onUpdateNode;
-  onDeleteNodeRef.current = onDeleteNode;
-  onAddSubNodeRef.current = onAddSubNode;
-  onReparentNodeRef.current = onReparentNode;
-  onEditEndRef.current = onEditEnd;
 
-  // --- Initialize MindMap ---
+  // --- Initialize MindMap (once) ---
   useEffect(() => {
     if (!containerRef.current) return;
 
-    const treeData = goalNodesToTree(nodes, links);
+    const treeData = goalNodesToTree(nodes, links, selectedNodeId);
     if (!treeData) return;
 
-    lastStructureKeyRef.current = computeStructureKey(nodes, links);
+    lastStructureKeyRef.current = computeStructureKey(nodes, links, selectedNodeId);
 
     const mindMap = new (MindMapSDK as any)({
       el: containerRef.current,
@@ -287,115 +241,72 @@ const MindMap: React.FC<MindMapProps> = ({
       layout: layout,
       theme: 'default',
       themeConfig: DARK_THEME_CONFIG,
-      // Rainbow lines for color-coded branches
       rainbowLinesConfig: {
         open: true,
         colorsList: RAINBOW_COLORS,
       },
-      // Behavior
       enableFreeDrag: false,
       mousewheelAction: 'zoom',
       scaleRatio: 0.1,
       readonly: false,
       enableShortcutOnlyWhenMouseInSvg: true,
-      // Node behavior
-      createNewNodeBehavior: 'default',
-      // Expand/collapse button
+      createNewNodeBehavior: 'notActive',
       expandBtnStyle: {
         color: '#CCFF00',
         fill: '#0a1a2f',
         fontSize: 12,
         strokeColor: '#CCFF0088',
       },
-      // Fit on init
       fit: true,
-      // Enable node text editing
-      customInnerElsAppendTo: null,
-      // Smoother animations
       enableNodeTransitionMove: true,
       nodeTransitionMoveDuration: 300,
     });
 
     mindMapRef.current = mindMap;
 
-    // --- Event Handlers ---
+    // Disable built-in keyboard shortcuts that conflict with our app
+    // (We handle add/delete through App.tsx UI buttons)
+    mindMap.keyCommand.removeShortcut('Tab');
+    mindMap.keyCommand.removeShortcut('Insert');
+    mindMap.keyCommand.removeShortcut('Enter');
+    mindMap.keyCommand.removeShortcut('Shift+Tab');
+    mindMap.keyCommand.removeShortcut('Delete');
+    mindMap.keyCommand.removeShortcut('Backspace');
 
-    // Node click → select node
+    // --- Event: Node click → selection ---
     mindMap.on('node_click', (node: any, _e: any) => {
       const goalId = node?.nodeData?.data?.goalId || node?.nodeData?.data?.uid;
       if (!goalId) return;
       const goalNode = nodesRef.current.find(n => n.id === goalId);
-      if (goalNode) {
-        onNodeClickRef.current(goalNode);
-      }
+      if (goalNode) onNodeClickRef.current(goalNode);
     });
 
-    // Node active → could also track selection
-    mindMap.on('node_active', (node: any, _activeList: any) => {
-      if (!node) return;
-      const goalId = node?.nodeData?.data?.goalId || node?.nodeData?.data?.uid;
-      if (!goalId) return;
-      const goalNode = nodesRef.current.find(n => n.id === goalId);
-      if (goalNode) {
-        onNodeClickRef.current(goalNode);
-      }
-    });
-
-    // Data changed (from internal edits: text edit, drag, add, remove)
+    // --- Event: data_change → sync text edits back to React ---
+    // ONLY syncs text changes from in-place editing. Ignores changes we caused.
     mindMap.on('data_change', (data: SMMNode) => {
-      if (isInternalUpdateRef.current) return;
+      // Ignore if we caused this change via setData/updateData
+      if (Date.now() - lastSetDataTimeRef.current < 500) return;
 
-      // Convert tree back to flat format
-      const { nodes: newNodes, links: newLinks } = treeToGoalNodes(data);
-      const newKey = computeStructureKey(newNodes, newLinks);
-
-      if (newKey === lastStructureKeyRef.current) return;
-      lastStructureKeyRef.current = newKey;
-
-      // Sync changes back to App.tsx
-      isInternalUpdateRef.current = true;
-
-      // Find differences and apply updates
-      const oldNodeMap = new Map(nodesRef.current.map(n => [n.id, n]));
-      const newNodeMap = new Map(newNodes.map(n => [n.id, n]));
-
-      // Detect deleted nodes
-      for (const oldNode of nodesRef.current) {
-        if (!newNodeMap.has(oldNode.id) && oldNode.type !== NodeType.ROOT) {
-          onDeleteNodeRef.current(oldNode.id);
-        }
-      }
-
-      // Detect added/updated nodes
-      for (const newNode of newNodes) {
-        const oldNode = oldNodeMap.get(newNode.id);
-        if (!oldNode) {
-          // New node added via simple-mind-map — add to parent
-          if (newNode.parentId) {
-            onAddSubNodeRef.current(newNode.parentId, newNode.text || undefined);
-          }
-        } else {
-          // Check for text or other changes
-          const updates: Partial<GoalNode> = {};
-          if (newNode.text !== oldNode.text) updates.text = newNode.text;
-          if (newNode.collapsed !== oldNode.collapsed) updates.collapsed = newNode.collapsed;
-          if (newNode.parentId !== oldNode.parentId && newNode.parentId) {
-            onReparentNodeRef.current(newNode.id, newNode.parentId);
-          }
-          if (Object.keys(updates).length > 0) {
-            onUpdateNodeRef.current(newNode.id, updates);
+      // Walk the tree and check for text differences
+      const syncTextChanges = (smmNode: SMMNode) => {
+        const goalId = smmNode.data?.goalId || smmNode.data?.uid;
+        if (goalId) {
+          const current = nodesRef.current.find(n => n.id === goalId);
+          if (current && smmNode.data.text !== current.text) {
+            onUpdateNodeRef.current(goalId, { text: smmNode.data.text });
           }
         }
-      }
-
-      setTimeout(() => { isInternalUpdateRef.current = false; }, 100);
+        for (const child of smmNode.children || []) {
+          syncTextChanges(child);
+        }
+      };
+      syncTextChanges(data);
     });
 
-    // Handle mindmap-center event
+    // --- Event: mindmap-center (from other components) ---
     const handleCenter = (e: Event) => {
       const detail = (e as CustomEvent).detail;
       if (detail?.nodeId) {
-        // Find node in the mind map and focus on it
         mindMap.execCommand('GO_TARGET_NODE', detail.nodeId);
       } else {
         mindMap.view?.reset?.();
@@ -409,48 +320,39 @@ const MindMap: React.FC<MindMapProps> = ({
       mindMapRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Only init once
+  }, []); // Init once
 
-  // --- Update data when nodes/links change from outside ---
+  // --- Sync data from React → simple-mind-map when props change ---
   useEffect(() => {
     const mindMap = mindMapRef.current;
-    if (!mindMap || isInternalUpdateRef.current) return;
+    if (!mindMap) return;
 
-    const newKey = computeStructureKey(nodes, links);
+    const newKey = computeStructureKey(nodes, links, selectedNodeId);
     if (newKey === lastStructureKeyRef.current) return;
     lastStructureKeyRef.current = newKey;
 
-    const treeData = goalNodesToTree(nodes, links);
+    const treeData = goalNodesToTree(nodes, links, selectedNodeId);
     if (!treeData) return;
 
-    isInternalUpdateRef.current = true;
+    lastSetDataTimeRef.current = Date.now();
     mindMap.setData(treeData);
-    setTimeout(() => { isInternalUpdateRef.current = false; }, 100);
-  }, [nodes, links]);
+  }, [nodes, links, selectedNodeId]);
 
-  // --- Handle layout changes ---
+  // --- Layout changes ---
   const handleLayoutChange = useCallback((newLayout: LayoutMode) => {
     setLayout(newLayout);
-    const mindMap = mindMapRef.current;
-    if (mindMap) {
-      mindMap.setLayout(newLayout);
-    }
+    mindMapRef.current?.setLayout(newLayout);
   }, []);
 
-  // --- Handle resize ---
+  // --- Resize ---
   useEffect(() => {
-    const mindMap = mindMapRef.current;
-    if (mindMap) {
-      mindMap.resize();
-    }
+    mindMapRef.current?.resize();
   }, [width, height]);
 
-  // --- Handle editing state ---
+  // --- Trigger text editing when editingNodeId is set ---
   useEffect(() => {
     if (!editingNodeId || !mindMapRef.current) return;
-    // Find the node in the mind map and trigger text edit
     const mindMap = mindMapRef.current;
-    // Use renderer's node list to find the target
     const allNodes = mindMap.renderer?.root
       ? getAllRenderedNodes(mindMap.renderer.root)
       : [];
@@ -459,47 +361,11 @@ const MindMap: React.FC<MindMapProps> = ({
     );
     if (target) {
       mindMap.execCommand('SET_NODE_ACTIVE', target, true);
-      // Small delay to ensure node is active before triggering edit
       setTimeout(() => {
         mindMap.renderer?.textEdit?.show?.(target);
       }, 50);
     }
   }, [editingNodeId]);
-
-  // --- Update node styles based on status ---
-  useEffect(() => {
-    const mindMap = mindMapRef.current;
-    if (!mindMap) return;
-
-    // After tree renders, apply status-based border colors
-    const applyStatusColors = () => {
-      const allNodes = mindMap.renderer?.root
-        ? getAllRenderedNodes(mindMap.renderer.root)
-        : [];
-
-      for (const renderedNode of allNodes) {
-        const goalId = renderedNode.nodeData?.data?.goalId;
-        if (!goalId) continue;
-        const goalNode = nodesRef.current.find(n => n.id === goalId);
-        if (!goalNode) continue;
-
-        const color = STATUS_COLORS[goalNode.status] || '#3B82F6';
-        const isSelected = goalNode.id === selectedNodeId;
-
-        // Apply border color based on status
-        renderedNode.setStyle?.('borderColor', isSelected ? '#CCFF00' : color);
-        renderedNode.setStyle?.('borderWidth', isSelected ? 3 : 2);
-      }
-    };
-
-    mindMap.on('node_tree_render_end', applyStatusColors);
-    // Apply immediately too
-    applyStatusColors();
-
-    return () => {
-      mindMap.off('node_tree_render_end', applyStatusColors);
-    };
-  }, [nodes, selectedNodeId]);
 
   return (
     <div className="w-full h-full bg-deep-space relative overflow-hidden">
