@@ -111,7 +111,7 @@ const App: React.FC = () => {
         type: NodeType.ROOT,
         status: NodeStatus.PENDING,
         progress: 0,
-        imageUrl: 'https://picsum.photos/seed/supercoach-root/200/200',
+        imageUrl: undefined,
         collapsed: false
     }
   ]);
