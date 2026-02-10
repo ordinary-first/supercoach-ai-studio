@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
 import { GoalNode, GoalLink, NodeType, NodeStatus } from '../types';
+import { getLinkId } from '../hooks/useAutoSave';
 
 type LayoutMode = 'force' | 'radial' | 'tree' | 'horizontal';
 
@@ -78,126 +79,78 @@ const MindMap: React.FC<MindMapProps> = ({
     const tree = buildTree(d3Nodes);
     if (!tree) return positions;
 
+    // Use D3's built-in Reingold-Tilford tree layout algorithm
+    const root = d3.hierarchy(tree, d => d.children);
+
     if (mode === 'radial') {
-      // Root at center
-      positions.set(tree.id, { x: w / 2, y: h / 2 });
+      // Radial: map tree to polar coordinates, then convert to cartesian
+      const radius = Math.min(w, h) / 2 - 100;
+      const treeLayout = d3.tree<TreeNode>()
+        .size([2 * Math.PI, Math.max(radius, 180)])
+        .separation((a, b) => (a.parent === b.parent ? 1 : 2) / a.depth);
 
-      // Count leaves for proportional sector allocation
-      const countLeaves = (node: TreeNode): number => {
-        if (node.children.length === 0) return 1;
-        return node.children.reduce((sum, c) => sum + countLeaves(c), 0);
-      };
+      treeLayout(root);
 
-      // Recursively assign each child within its parent's angular sector
-      const assignRadial = (node: TreeNode, depth: number, angleStart: number, angleEnd: number) => {
-        if (node.children.length === 0) return;
-
-        // Use equal spacing for cleaner look when there are few siblings
-        const useEqualSpacing = node.children.length <= 8;
-
-        // Responsive radius calculation to prevent overlap
-        const minSpacing = 100; // minimum px between nodes on same ring
-        const baseRadius = 220 + depth * 140;
-        const circumference = Math.max(node.children.length * minSpacing, 2 * Math.PI * baseRadius);
-        const radius = Math.max(180, circumference / (2 * Math.PI));
-
-        if (useEqualSpacing) {
-          // Equal angular spacing for clean distribution
-          const angleSpan = (angleEnd - angleStart) / node.children.length;
-          node.children.forEach((child, i) => {
-            const childAngle = angleStart + angleSpan * (i + 0.5);
-
-            positions.set(child.id, {
-              x: w / 2 + radius * Math.cos(childAngle),
-              y: h / 2 + radius * Math.sin(childAngle),
-            });
-
-            // Recursively assign children their sector
-            assignRadial(child, depth + 1, angleStart + angleSpan * i, angleStart + angleSpan * (i + 1));
-          });
+      root.descendants().forEach(node => {
+        if (!node.parent) {
+          // Root at center
+          positions.set(node.data.id, { x: w / 2, y: h / 2 });
         } else {
-          // Leaf-weighted proportional spacing for many siblings
-          const parentLeaves = countLeaves(node);
-          let angleCursor = angleStart;
-
-          node.children.forEach(child => {
-            const childLeaves = countLeaves(child);
-            const childAngleSpan = ((angleEnd - angleStart) * childLeaves) / parentLeaves;
-            const childAngle = angleCursor + childAngleSpan / 2;
-
-            positions.set(child.id, {
-              x: w / 2 + radius * Math.cos(childAngle),
-              y: h / 2 + radius * Math.sin(childAngle),
-            });
-
-            assignRadial(child, depth + 1, angleCursor, angleCursor + childAngleSpan);
-            angleCursor += childAngleSpan;
+          // Polar to cartesian: x = angle, y = radius
+          const angle = node.x - Math.PI / 2; // rotate so first child starts at top
+          positions.set(node.data.id, {
+            x: w / 2 + node.y * Math.cos(angle),
+            y: h / 2 + node.y * Math.sin(angle),
           });
         }
-      };
-
-      assignRadial(tree, 0, -Math.PI / 2, 2 * Math.PI - Math.PI / 2);
+      });
     } else if (mode === 'tree') {
-      // Vertical tree: root at top center
+      // Vertical tree: root at top, children below
+      const leafCount = root.leaves().length;
+      const nodeSpacing = 120;
       const levelSpacing = 150;
+      const totalWidth = Math.max(leafCount * nodeSpacing, w * 0.6);
+      const totalHeight = Math.max((root.height || 1) * levelSpacing, 200);
 
-      // Count total leaves for proper spacing
-      const countLeaves = (node: TreeNode): number => {
-        if (node.children.length === 0) return 1;
-        return node.children.reduce((sum, c) => sum + countLeaves(c), 0);
-      };
-      const totalLeaves = countLeaves(tree);
-      const totalWidth = Math.max(totalLeaves * 120, w * 0.8);
-      const startX = w / 2 - totalWidth / 2;
+      const treeLayout = d3.tree<TreeNode>()
+        .size([totalWidth, totalHeight])
+        .separation((a, b) => (a.parent === b.parent ? 1 : 1.5));
 
-      const assignProportional = (node: TreeNode, depth: number, xMin: number, xMax: number) => {
-        const cx = (xMin + xMax) / 2;
-        const cy = 100 + depth * levelSpacing;
-        positions.set(node.id, { x: cx, y: cy });
+      treeLayout(root);
 
-        if (node.children.length > 0) {
-          const parentLeaves = countLeaves(node);
-          let xCursor = xMin;
-          node.children.forEach(child => {
-            const childLeaves = countLeaves(child);
-            const childWidth = ((xMax - xMin) * childLeaves) / parentLeaves;
-            assignProportional(child, depth + 1, xCursor, xCursor + childWidth);
-            xCursor += childWidth;
-          });
-        }
-      };
+      const offsetX = w / 2 - totalWidth / 2;
+      const offsetY = 100;
 
-      assignProportional(tree, 0, startX, startX + totalWidth);
+      root.descendants().forEach(node => {
+        positions.set(node.data.id, {
+          x: node.x + offsetX,
+          y: node.y + offsetY,
+        });
+      });
     } else if (mode === 'horizontal') {
-      // Horizontal tree: root at left center
+      // Horizontal tree: root at left, children to the right
+      const leafCount = root.leaves().length;
+      const nodeSpacing = 100;
       const levelSpacing = 200;
+      const totalHeight = Math.max(leafCount * nodeSpacing, h * 0.6);
+      const totalWidth = Math.max((root.height || 1) * levelSpacing, 200);
 
-      const countLeaves = (node: TreeNode): number => {
-        if (node.children.length === 0) return 1;
-        return node.children.reduce((sum, c) => sum + countLeaves(c), 0);
-      };
-      const totalLeaves = countLeaves(tree);
-      const totalHeight = Math.max(totalLeaves * 100, h * 0.8);
-      const startY = h / 2 - totalHeight / 2;
+      const treeLayout = d3.tree<TreeNode>()
+        .size([totalHeight, totalWidth])
+        .separation((a, b) => (a.parent === b.parent ? 1 : 1.5));
 
-      const assignProportional = (node: TreeNode, depth: number, yMin: number, yMax: number) => {
-        const cx = 150 + depth * levelSpacing;
-        const cy = (yMin + yMax) / 2;
-        positions.set(node.id, { x: cx, y: cy });
+      treeLayout(root);
 
-        if (node.children.length > 0) {
-          const parentLeaves = countLeaves(node);
-          let yCursor = yMin;
-          node.children.forEach(child => {
-            const childLeaves = countLeaves(child);
-            const childHeight = ((yMax - yMin) * childLeaves) / parentLeaves;
-            assignProportional(child, depth + 1, yCursor, yCursor + childHeight);
-            yCursor += childHeight;
-          });
-        }
-      };
+      // Swap x↔y for horizontal orientation
+      const offsetX = 150;
+      const offsetY = h / 2 - totalHeight / 2;
 
-      assignProportional(tree, 0, startY, startY + totalHeight);
+      root.descendants().forEach(node => {
+        positions.set(node.data.id, {
+          x: node.y + offsetX,   // depth → horizontal position
+          y: node.x + offsetY,   // breadth → vertical position
+        });
+      });
     }
     // 'force' mode returns empty map (simulation handles positioning)
     return positions;
@@ -314,7 +267,7 @@ const MindMap: React.FC<MindMapProps> = ({
     }
 
     // Only rebuild SVG if the structure (node ids, links, editingNodeId, or layout) actually changed
-    const structureKey = nodes.map(n => `${n.id}:${n.text}:${n.status}:${n.collapsed}:${n.imageUrl || ''}`).join('|') + '||' + links.map(l => `${typeof l.source === 'object' ? (l.source as any).id : l.source}-${typeof l.target === 'object' ? (l.target as any).id : l.target}`).join('|') + '||' + (editingNodeId || '') + '||' + layout;
+    const structureKey = nodes.map(n => `${n.id}:${n.text}:${n.status}:${n.collapsed}:${n.imageUrl || ''}`).join('|') + '||' + links.map(l => `${getLinkId(l.source)}-${getLinkId(l.target)}`).join('|') + '||' + (editingNodeId || '') + '||' + layout;
     if (structureKey === prevStructureRef.current) return;
     prevStructureRef.current = structureKey;
 

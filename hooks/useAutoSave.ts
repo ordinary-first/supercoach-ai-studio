@@ -5,7 +5,7 @@ import { saveGoalData, saveTodos } from '../services/firebaseService';
 // Helper to safely get link source/target ID (D3 may store objects or strings)
 export const getLinkId = (ref: string | GoalNode | { id: string }): string => {
   if (typeof ref === 'string') return ref;
-  return (ref as { id: string }).id;
+  return ref.id;
 };
 
 export function useAutoSave(
