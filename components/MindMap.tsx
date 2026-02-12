@@ -475,6 +475,18 @@ const MindMap: React.FC<MindMapProps> = ({
             <span className="w-5 h-5 flex items-center justify-center text-emerald-400 text-xs">&#x2705;</span>
             투두로 추가하기
           </button>
+          {nodes.find(n => n.id === contextMenu.nodeId)?.type !== NodeType.ROOT && (
+            <>
+              <div className="mx-3 border-t border-white/10" />
+              <button
+                onClick={() => { onDeleteNode(contextMenu.nodeId); setContextMenu(null); }}
+                className="w-full px-4 py-2.5 text-left text-sm text-red-400 hover:bg-red-500/15 flex items-center gap-2.5 transition-colors"
+              >
+                <span className="w-5 h-5 flex items-center justify-center text-xs">&#x1f5d1;</span>
+                노드 삭제하기
+              </button>
+            </>
+          )}
         </div>
       )}
     </div>
