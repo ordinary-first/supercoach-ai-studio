@@ -1,5 +1,16 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { GoogleGenAI } from '@google/genai';
+import sharp from 'sharp';
+
+/** Compress base64 image to 400x400 JPEG ~30-50KB */
+async function compressImage(base64Data: string): Promise<string> {
+  const buffer = Buffer.from(base64Data, 'base64');
+  const compressed = await sharp(buffer)
+    .resize(400, 400, { fit: 'cover' })
+    .jpeg({ quality: 70 })
+    .toBuffer();
+  return `data:image/jpeg;base64,${compressed.toString('base64')}`;
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -54,15 +65,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         contents: { parts },
         config: {
           responseModalities: ['TEXT', 'IMAGE'],
-          imageConfig: { aspectRatio: '1:1', imageSize: '2K' },
+          imageConfig: { aspectRatio: '1:1' },
         },
       });
 
       for (const part of response.candidates?.[0]?.content?.parts || []) {
         if (part.inlineData && part.inlineData.data) {
-          return res.status(200).json({
-            imageDataUrl: `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`,
-          });
+          const compressed = await compressImage(part.inlineData.data);
+          return res.status(200).json({ imageDataUrl: compressed });
         }
       }
 
@@ -76,15 +86,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         contents: { parts: [{ text: textPrompt }] },
         config: {
           responseModalities: ['TEXT', 'IMAGE'],
-          imageConfig: { aspectRatio: '1:1', imageSize: '2K' },
+          imageConfig: { aspectRatio: '1:1' },
         },
       });
 
       for (const part of response.candidates?.[0]?.content?.parts || []) {
         if (part.inlineData && part.inlineData.data) {
-          return res.status(200).json({
-            imageDataUrl: `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`,
-          });
+          const compressed = await compressImage(part.inlineData.data);
+          return res.status(200).json({ imageDataUrl: compressed });
         }
       }
 
