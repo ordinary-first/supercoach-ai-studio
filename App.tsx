@@ -12,7 +12,7 @@ import LandingPage from './components/LandingPage';
 import UserProfilePage from './components/UserProfilePage';
 import { GoalNode, GoalLink, NodeType, NodeStatus, ToDoItem, ChatMessage, RepeatFrequency } from './types';
 import { generateGoalImage } from './services/aiService';
-import { logout, getUserId, saveProfile, uploadNodeImage, isGuestUser } from './services/firebaseService';
+import { logout, getUserId, saveProfile } from './services/firebaseService';
 import { useAuth } from './hooks/useAuth';
 import { useAutoSave, getLinkId } from './hooks/useAutoSave';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
@@ -192,16 +192,11 @@ const App: React.FC = () => {
       const childTexts = nodes
         .filter(n => n.parentId === nodeId && n.text)
         .map(n => n.text);
-      const dataUrl = await generateGoalImage(node.text, userProfile, childTexts);
-      if (dataUrl) {
-        const currentUserId = getUserId();
-        if (currentUserId && !isGuestUser(currentUserId)) {
-          const storageUrl = await uploadNodeImage(currentUserId, nodeId, dataUrl);
-          handleUpdateNode(nodeId, { imageUrl: storageUrl });
-        } else {
-          handleUpdateNode(nodeId, { imageUrl: dataUrl });
-        }
-      }
+      const currentUserId = getUserId();
+      const imageUrl = await generateGoalImage(
+        node.text, userProfile, childTexts, currentUserId, nodeId
+      );
+      if (imageUrl) handleUpdateNode(nodeId, { imageUrl });
     } catch {
       addToast('이미지 생성에 실패했습니다', 'warning');
     } finally {

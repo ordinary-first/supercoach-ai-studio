@@ -2,7 +2,7 @@
   "name": "super-coach",
   "private": true,
   "version": "1.1.0",
-  "displayVersion": "V02.12r6",
+  "displayVersion": "V02.12r7",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.988.0",
     "@google/genai": "^1.32.0",
     "firebase": "^12.7.0",
     "lucide-react": "^0.559.0",

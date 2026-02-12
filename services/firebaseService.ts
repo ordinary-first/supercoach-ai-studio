@@ -9,7 +9,6 @@ import {
   User
 } from "firebase/auth";
 import { getFirestore, doc, setDoc, getDoc } from "firebase/firestore";
-import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { GoalNode, GoalLink, UserProfile, ToDoItem } from '../types';
 
 const isDev = typeof process !== 'undefined' && process.env.NODE_ENV === 'development';
@@ -29,8 +28,6 @@ const firebaseConfig = {
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
-export const storage = getStorage(app);
-
 const googleProvider = new GoogleAuthProvider();
 // 인증 시 항상 계정 선택 창이 뜨도록 설정
 googleProvider.setCustomParameters({ prompt: 'select_account' });
@@ -184,25 +181,6 @@ export const testFirestoreConnection = async (userId: string): Promise<boolean> 
     }
     return false;
   }
-};
-
-/** base64 data URL → Firebase Storage 업로드 → 다운로드 URL 반환 */
-export const uploadNodeImage = async (
-  userId: string, nodeId: string, dataUrl: string
-): Promise<string> => {
-  const base64 = dataUrl.split(',')[1];
-  const buffer = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
-  const storageRef = ref(storage, `users/${userId}/goal-images/${nodeId}.jpg`);
-  await uploadBytes(storageRef, buffer, { contentType: 'image/jpeg' });
-  return getDownloadURL(storageRef);
-};
-
-/** Firebase Storage에서 노드 이미지 삭제 */
-export const deleteNodeImage = async (
-  userId: string, nodeId: string
-): Promise<void> => {
-  const storageRef = ref(storage, `users/${userId}/goal-images/${nodeId}.jpg`);
-  await deleteObject(storageRef).catch(() => {});
 };
 
 export const saveGoalData = async (userId: string, nodes: GoalNode[], links: GoalLink[]): Promise<void> => {

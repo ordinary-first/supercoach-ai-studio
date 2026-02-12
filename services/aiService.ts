@@ -42,17 +42,21 @@ export const sendChatMessage = async (
 export const generateGoalImage = async (
   goalText: string,
   profile: UserProfile | null = null,
-  childTexts: string[] = []
+  childTexts: string[] = [],
+  userId?: string | null,
+  nodeId?: string,
 ): Promise<string | undefined> => {
   try {
     const response = await fetch('/api/generate-image', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt: goalText, profile, childTexts }),
+      body: JSON.stringify({
+        prompt: goalText, profile, childTexts, userId, nodeId,
+      }),
     });
     if (!response.ok) return undefined;
     const data = await response.json();
-    return data.imageDataUrl || undefined;
+    return data.imageUrl || data.imageDataUrl || undefined;
   } catch (error) {
     console.error("Image Gen Error:", error);
     return undefined;
