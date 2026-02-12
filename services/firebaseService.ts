@@ -186,7 +186,7 @@ export const testFirestoreConnection = async (userId: string): Promise<boolean> 
 
 export const saveGoalData = async (userId: string, nodes: GoalNode[], links: GoalLink[]): Promise<void> => {
   const now = Date.now();
-  const MAX_IMG = 100_000;
+  const MAX_IMG = 500_000;
   const serializedNodes = nodes.map(n => ({ id: n.id, text: n.text, type: n.type, status: n.status, progress: n.progress, parentId: n.parentId || null, imageUrl: (n.imageUrl && n.imageUrl.length <= MAX_IMG) ? n.imageUrl : null, collapsed: n.collapsed || false }));
   const serializedLinks = links.map(l => ({ source: typeof l.source === 'object' ? (l.source as any).id : l.source, target: typeof l.target === 'object' ? (l.target as any).id : l.target }));
   const payload = { nodes: serializedNodes, links: serializedLinks, updatedAt: now };
@@ -210,7 +210,7 @@ export const saveGoalData = async (userId: string, nodes: GoalNode[], links: Goa
 
 /** 100KB 초과 base64 imageUrl 제거 (구형 2-5MB 이미지 마이그레이션) */
 const sanitizeGoalData = (data: { nodes: any[]; links: any[]; updatedAt?: number }) => {
-  const MAX_IMAGE_CHARS = 100_000; // ~75KB raw
+  const MAX_IMAGE_CHARS = 500_000; // ~375KB raw
   let stripped = 0;
   data.nodes = data.nodes.map((n: any) => {
     if (n.imageUrl && n.imageUrl.length > MAX_IMAGE_CHARS) {
