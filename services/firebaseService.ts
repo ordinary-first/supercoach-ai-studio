@@ -9,6 +9,7 @@ import {
   User
 } from "firebase/auth";
 import { getFirestore, doc, setDoc, getDoc } from "firebase/firestore";
+import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { GoalNode, GoalLink, UserProfile, ToDoItem } from '../types';
 
 const isDev = typeof process !== 'undefined' && process.env.NODE_ENV === 'development';
@@ -28,6 +29,7 @@ const firebaseConfig = {
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+export const storage = getStorage(app);
 
 const googleProvider = new GoogleAuthProvider();
 // 인증 시 항상 계정 선택 창이 뜨도록 설정
@@ -184,10 +186,28 @@ export const testFirestoreConnection = async (userId: string): Promise<boolean> 
   }
 };
 
+/** base64 data URL → Firebase Storage 업로드 → 다운로드 URL 반환 */
+export const uploadNodeImage = async (
+  userId: string, nodeId: string, dataUrl: string
+): Promise<string> => {
+  const base64 = dataUrl.split(',')[1];
+  const buffer = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+  const storageRef = ref(storage, `users/${userId}/goal-images/${nodeId}.jpg`);
+  await uploadBytes(storageRef, buffer, { contentType: 'image/jpeg' });
+  return getDownloadURL(storageRef);
+};
+
+/** Firebase Storage에서 노드 이미지 삭제 */
+export const deleteNodeImage = async (
+  userId: string, nodeId: string
+): Promise<void> => {
+  const storageRef = ref(storage, `users/${userId}/goal-images/${nodeId}.jpg`);
+  await deleteObject(storageRef).catch(() => {});
+};
+
 export const saveGoalData = async (userId: string, nodes: GoalNode[], links: GoalLink[]): Promise<void> => {
   const now = Date.now();
-  const MAX_IMG = 500_000;
-  const serializedNodes = nodes.map(n => ({ id: n.id, text: n.text, type: n.type, status: n.status, progress: n.progress, parentId: n.parentId || null, imageUrl: (n.imageUrl && n.imageUrl.length <= MAX_IMG) ? n.imageUrl : null, collapsed: n.collapsed || false }));
+  const serializedNodes = nodes.map(n => ({ id: n.id, text: n.text, type: n.type, status: n.status, progress: n.progress, parentId: n.parentId || null, imageUrl: n.imageUrl || null, collapsed: n.collapsed || false }));
   const serializedLinks = links.map(l => ({ source: typeof l.source === 'object' ? (l.source as any).id : l.source, target: typeof l.target === 'object' ? (l.target as any).id : l.target }));
   const payload = { nodes: serializedNodes, links: serializedLinks, updatedAt: now };
 
@@ -208,19 +228,18 @@ export const saveGoalData = async (userId: string, nodes: GoalNode[], links: Goa
   }
 };
 
-/** 100KB 초과 base64 imageUrl 제거 (구형 2-5MB 이미지 마이그레이션) */
+/** 구형 인라인 base64 이미지 제거 (Firebase Storage URL만 보존) */
 const sanitizeGoalData = (data: { nodes: any[]; links: any[]; updatedAt?: number }) => {
-  const MAX_IMAGE_CHARS = 500_000; // ~375KB raw
   let stripped = 0;
   data.nodes = data.nodes.map((n: any) => {
-    if (n.imageUrl && n.imageUrl.length > MAX_IMAGE_CHARS) {
+    if (n.imageUrl && n.imageUrl.startsWith('data:') && n.imageUrl.length > 100_000) {
       stripped++;
       return { ...n, imageUrl: null };
     }
     return n;
   });
   if (stripped > 0) {
-    log(`[Load:Goals] 🧹 Stripped ${stripped} oversized imageUrl(s)`);
+    log(`[Load:Goals] Stripped ${stripped} legacy base64 image(s)`);
   }
   return data;
 };
