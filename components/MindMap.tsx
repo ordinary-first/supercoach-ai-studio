@@ -23,6 +23,7 @@ interface MindMapProps {
   onDeleteNode: (nodeId: string) => void;
   onReparentNode: (childId: string, newParentId: string) => void;
   onConvertNodeToTask?: (nodeId: string) => void;
+  onGenerateImage?: (nodeId: string) => void;
   onAddSubNode: (parentId: string) => void;
   width: number;
   height: number;
@@ -208,11 +209,15 @@ const layoutOptions: { mode: LayoutMode; label: string }[] = [
 // --- Component ---
 const MindMap: React.FC<MindMapProps> = ({
   nodes, links, selectedNodeId, onNodeClick, onUpdateNode, onDeleteNode,
-  onReparentNode, onAddSubNode, width, height, editingNodeId, onEditEnd, imageLoadingNodes
+  onReparentNode, onConvertNodeToTask, onGenerateImage, onAddSubNode,
+  width, height, editingNodeId, onEditEnd, imageLoadingNodes
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const mindMapRef = useRef<any>(null);
   const [layout, setLayout] = useState<LayoutMode>('mindMap');
+  const [contextMenu, setContextMenu] = useState<{
+    x: number; y: number; nodeId: string;
+  } | null>(null);
 
   // Timestamp of last setData call — used to ignore data_change events that we caused
   const lastSetDataTimeRef = useRef(0);
@@ -228,8 +233,10 @@ const MindMap: React.FC<MindMapProps> = ({
 
   const onNodeClickRef = useRef(onNodeClick);
   const onUpdateNodeRef = useRef(onUpdateNode);
+  const setContextMenuRef = useRef(setContextMenu);
   onNodeClickRef.current = onNodeClick;
   onUpdateNodeRef.current = onUpdateNode;
+  setContextMenuRef.current = setContextMenu;
 
   // --- Initialize MindMap (once) ---
   useEffect(() => {
@@ -278,12 +285,49 @@ const MindMap: React.FC<MindMapProps> = ({
     mindMap.keyCommand.removeShortcut('Delete');
     mindMap.keyCommand.removeShortcut('Backspace');
 
-    // --- Event: Node click → selection ---
+    // --- Event: Node click → selection + close context menu ---
     mindMap.on('node_click', (node: any, _e: any) => {
+      setContextMenuRef.current(null);
       const goalId = node?.nodeData?.data?.goalId || node?.nodeData?.data?.uid;
       if (!goalId) return;
       const goalNode = nodesRef.current.find(n => n.id === goalId);
       if (goalNode) onNodeClickRef.current(goalNode);
+    });
+
+    // --- Event: Right-click / contextmenu → show context menu ---
+    mindMap.on('node_contextmenu', (e: any, node: any) => {
+      e.preventDefault?.();
+      e.e?.preventDefault?.();
+      const evt = e.e || e;
+      const goalId = node?.nodeData?.data?.goalId || node?.nodeData?.data?.uid;
+      if (!goalId) return;
+      const rect = containerRef.current?.getBoundingClientRect();
+      const x = (evt.clientX || evt.pageX || 0) - (rect?.left || 0);
+      const y = (evt.clientY || evt.pageY || 0) - (rect?.top || 0);
+      setContextMenuRef.current({ x, y, nodeId: goalId });
+    });
+
+    // --- Long-press for mobile → show context menu ---
+    let longPressTimer: ReturnType<typeof setTimeout> | null = null;
+    let longPressNode: string | null = null;
+
+    mindMap.on('node_mousedown', (node: any, e: any) => {
+      const goalId = node?.nodeData?.data?.goalId || node?.nodeData?.data?.uid;
+      if (!goalId) return;
+      longPressNode = goalId;
+      longPressTimer = setTimeout(() => {
+        const evt = e.e || e;
+        const rect = containerRef.current?.getBoundingClientRect();
+        const x = (evt.clientX || evt.touches?.[0]?.clientX || 0) - (rect?.left || 0);
+        const y = (evt.clientY || evt.touches?.[0]?.clientY || 0) - (rect?.top || 0);
+        setContextMenuRef.current({ x, y, nodeId: goalId });
+        longPressNode = null;
+      }, 600);
+    });
+
+    mindMap.on('node_mouseup', () => {
+      if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+      longPressNode = null;
     });
 
     // --- Event: data_change → sync text edits back to React ---
@@ -308,6 +352,9 @@ const MindMap: React.FC<MindMapProps> = ({
       syncTextChanges(data);
     });
 
+    // Close context menu on background click
+    mindMap.on('draw_click', () => { setContextMenuRef.current(null); });
+
     // --- Event: mindmap-center (from other components) ---
     const handleCenter = (e: Event) => {
       const detail = (e as CustomEvent).detail;
@@ -320,6 +367,7 @@ const MindMap: React.FC<MindMapProps> = ({
     window.addEventListener('mindmap-center', handleCenter);
 
     return () => {
+      if (longPressTimer) clearTimeout(longPressTimer);
       window.removeEventListener('mindmap-center', handleCenter);
       mindMap.destroy?.();
       mindMapRef.current = null;
@@ -405,6 +453,30 @@ const MindMap: React.FC<MindMapProps> = ({
         className="w-full h-full cursor-grab active:cursor-grabbing"
         style={{ width, height }}
       />
+
+      {/* Context Menu (right-click / long-press) */}
+      {contextMenu && (
+        <div
+          className="absolute z-50 bg-[#0d1b30]/95 backdrop-blur-md border border-white/15 rounded-xl shadow-2xl py-1.5 min-w-[180px] animate-fade-in"
+          style={{ left: contextMenu.x, top: contextMenu.y }}
+        >
+          <button
+            onClick={() => { onGenerateImage?.(contextMenu.nodeId); setContextMenu(null); }}
+            className="w-full px-4 py-2.5 text-left text-sm text-white hover:bg-white/10 flex items-center gap-2.5 transition-colors"
+          >
+            <span className="w-5 h-5 flex items-center justify-center text-neon-lime text-xs">&#x1f3a8;</span>
+            이미지 생성하기
+          </button>
+          <div className="mx-3 border-t border-white/10" />
+          <button
+            onClick={() => { onConvertNodeToTask?.(contextMenu.nodeId); setContextMenu(null); }}
+            className="w-full px-4 py-2.5 text-left text-sm text-white hover:bg-white/10 flex items-center gap-2.5 transition-colors"
+          >
+            <span className="w-5 h-5 flex items-center justify-center text-emerald-400 text-xs">&#x2705;</span>
+            투두로 추가하기
+          </button>
+        </div>
+      )}
     </div>
   );
 };
