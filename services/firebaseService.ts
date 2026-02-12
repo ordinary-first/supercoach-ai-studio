@@ -210,7 +210,7 @@ export const saveGoalData = async (userId: string, nodes: GoalNode[], links: Goa
 const sanitizeGoalData = (data: { nodes: any[]; links: any[]; updatedAt?: number }) => {
   let stripped = 0;
   data.nodes = data.nodes.map((n: any) => {
-    if (n.imageUrl && n.imageUrl.startsWith('data:') && n.imageUrl.length > 100_000) {
+    if (n.imageUrl && n.imageUrl.startsWith('data:') && n.imageUrl.length > 500_000) {
       stripped++;
       return { ...n, imageUrl: null };
     }

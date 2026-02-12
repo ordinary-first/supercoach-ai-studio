@@ -135,15 +135,31 @@ export default async function handler(
     const compressed = await compressToBuffer(rawBase64);
 
     // Upload to R2 if userId+nodeId provided and R2 configured
+    console.log('[R2 Debug]', {
+      hasUserId: !!userId,
+      hasNodeId: !!nodeId,
+      R2_PUBLIC_URL: R2_PUBLIC_URL || '(empty)',
+      R2_ACCOUNT_ID: process.env.R2_ACCOUNT_ID ? 'set' : 'missing',
+      R2_ACCESS_KEY_ID: process.env.R2_ACCESS_KEY_ID ? 'set' : 'missing',
+      compressedSize: compressed.length,
+    });
+
     if (userId && nodeId && R2_PUBLIC_URL) {
-      const key = `goals/${userId}/${nodeId}.jpg`;
-      const url = await uploadToR2(key, compressed);
-      return res.status(200).json({ imageUrl: url });
+      try {
+        const key = `goals/${userId}/${nodeId}.jpg`;
+        const url = await uploadToR2(key, compressed);
+        console.log('[R2 Upload] Success:', url);
+        return res.status(200).json({ imageUrl: url });
+      } catch (r2Err: any) {
+        console.error('[R2 Upload] Failed:', r2Err?.message);
+        // Fall through to base64 fallback
+      }
     }
 
     // Fallback: return base64 (guest users or R2 not configured)
     const dataUrl =
       `data:image/jpeg;base64,${compressed.toString('base64')}`;
+    console.log('[R2 Fallback] Returning base64, length:', dataUrl.length);
     return res.status(200).json({ imageDataUrl: dataUrl });
   } catch (error: any) {
     console.error('Image Generation Error:', error);
