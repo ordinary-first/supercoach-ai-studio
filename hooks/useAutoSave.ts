@@ -102,7 +102,7 @@ export function useAutoSave(
           nodes: currentNodes.map(n => ({
             id: n.id, text: n.text, type: n.type, status: n.status,
             progress: n.progress, parentId: n.parentId || null,
-            imageUrl: n.imageUrl || null, collapsed: n.collapsed || false,
+            imageUrl: (n.imageUrl && n.imageUrl.length <= 100_000) ? n.imageUrl : null, collapsed: n.collapsed || false,
           })),
           links: currentLinks.map(l => ({
             source: getLinkId(l.source),

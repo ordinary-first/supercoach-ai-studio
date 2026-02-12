@@ -280,7 +280,20 @@ export const loadGoalData = async (userId: string): Promise<{ nodes: GoalNode[];
     return null;
   }
 
-  return sanitizeGoalData(result);
+  const sanitized = sanitizeGoalData(result);
+
+  // Force-sync: write sanitized winner back to BOTH stores immediately.
+  // This eliminates discrepancies that cause image flip-flop on refresh.
+  const syncPayload = { nodes: sanitized.nodes, links: sanitized.links, updatedAt: Date.now() };
+  try {
+    localStorage.setItem(`supercoach_goals_${userId}`, JSON.stringify(syncPayload));
+  } catch (e) {}
+  if (!isGuestUser(userId)) {
+    const docRef = doc(db, 'users', userId, 'data', 'goals');
+    setDoc(docRef, syncPayload).catch(() => {});
+  }
+
+  return sanitized;
 };
 
 export const saveTodos = async (userId: string, todos: ToDoItem[]): Promise<void> => {

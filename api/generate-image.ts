@@ -78,8 +78,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       return res.status(200).json({ imageDataUrl: null });
     } else {
-      // Simple goal image — include child context for more relevant imagery (Nano Banana Pro)
-      const textPrompt = `Photorealistic, cinematic, high quality image of ${personDesc} embodying the success of: "${prompt}".${childContext} Focus on the emotional peak of achievement. No text overlay, no watermarks.`;
+      // Simple goal image — concrete scene that directly represents the goal
+      const textPrompt = `Create a single photorealistic image that directly illustrates this personal goal: "${prompt}".${childContext} Show a concrete, specific scene — not abstract or metaphorical. The scene should feel aspirational and warm. Square composition, soft cinematic lighting. Absolutely no text, letters, words, or watermarks in the image.`;
 
       const response = await ai.models.generateContent({
         model: 'gemini-3-pro-image-preview',
