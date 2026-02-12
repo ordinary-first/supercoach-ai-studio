@@ -160,6 +160,8 @@ const App: React.FC = () => {
 
   const handleUpdateRootNode = useCallback(async (text: string) => {
       handleUpdateNode('root', { text });
+      const rootNode = nodes.find(n => n.id === 'root');
+      if (rootNode?.imageUrl) return;
       setImageLoadingNodes(prev => new Set(prev).add('root'));
       try {
         // Gather child node texts for context-aware image generation
@@ -174,6 +176,38 @@ const App: React.FC = () => {
         setImageLoadingNodes(prev => { const next = new Set(prev); next.delete('root'); return next; });
       }
   }, [handleUpdateNode, userProfile, addToast, nodes]);
+
+  const handleGenerateNodeImage = useCallback(async (nodeId: string) => {
+    const targetNode = nodes.find(n => n.id === nodeId);
+    if (!targetNode || !targetNode.text?.trim()) {
+      addToast('이미지를 생성할 노드 텍스트가 필요합니다', 'warning');
+      return;
+    }
+
+    setImageLoadingNodes(prev => new Set(prev).add(nodeId));
+    try {
+      const parentText = targetNode.parentId
+        ? nodes.find(n => n.id === targetNode.parentId)?.text
+        : '';
+      const childTexts = nodes
+        .filter(n => n.parentId === nodeId && n.text)
+        .map(n => n.text);
+      const contextTexts = [parentText, ...childTexts].filter(Boolean);
+      const imageUrl = await generateGoalImage(targetNode.text, userProfile, contextTexts);
+      if (imageUrl) {
+        handleUpdateNode(nodeId, { imageUrl });
+        addToast('노드 이미지를 생성했습니다', 'success');
+      }
+    } catch {
+      addToast('이미지 생성에 실패했습니다', 'warning');
+    } finally {
+      setImageLoadingNodes(prev => {
+        const next = new Set(prev);
+        next.delete(nodeId);
+        return next;
+      });
+    }
+  }, [addToast, handleUpdateNode, nodes, userProfile]);
 
   const handleAddSubNode = useCallback(async (parentId: string, text?: string) => {
     const newNodeId = Date.now().toString();
@@ -334,6 +368,7 @@ const App: React.FC = () => {
         <>
           <MindMap
             nodes={visibleNodes} links={visibleLinks} selectedNodeId={selectedNode?.id} onNodeClick={setSelectedNode} onUpdateNode={handleUpdateNode} onDeleteNode={handleDeleteNode} onReparentNode={handleReparentNode} onAddSubNode={handleAddSubNode} editingNodeId={editingNodeId} onEditEnd={() => setEditingNodeId(null)} width={dimensions.width} height={dimensions.height} imageLoadingNodes={imageLoadingNodes}
+            onGenerateNodeImage={handleGenerateNodeImage}
           />
 
           <div className="absolute top-[72px] left-6 z-50">

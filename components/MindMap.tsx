@@ -29,6 +29,7 @@ interface MindMapProps {
   editingNodeId?: string | null;
   onEditEnd?: () => void;
   imageLoadingNodes?: Set<string>;
+  onGenerateNodeImage?: (nodeId: string) => void;
 }
 
 // --- Status → border color mapping ---
@@ -206,13 +207,21 @@ const layoutOptions: { mode: LayoutMode; label: string }[] = [
 ];
 
 // --- Component ---
+
+interface NodeImageMenuState {
+  nodeId: string;
+  x: number;
+  y: number;
+}
+
 const MindMap: React.FC<MindMapProps> = ({
   nodes, links, selectedNodeId, onNodeClick, onUpdateNode, onDeleteNode,
-  onReparentNode, onAddSubNode, width, height, editingNodeId, onEditEnd, imageLoadingNodes
+  onReparentNode, onAddSubNode, width, height, editingNodeId, onEditEnd, imageLoadingNodes, onGenerateNodeImage
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const mindMapRef = useRef<any>(null);
   const [layout, setLayout] = useState<LayoutMode>('mindMap');
+  const [nodeImageMenu, setNodeImageMenu] = useState<NodeImageMenuState | null>(null);
 
   // Timestamp of last setData call — used to ignore data_change events that we caused
   const lastSetDataTimeRef = useRef(0);
@@ -228,8 +237,10 @@ const MindMap: React.FC<MindMapProps> = ({
 
   const onNodeClickRef = useRef(onNodeClick);
   const onUpdateNodeRef = useRef(onUpdateNode);
+  const onGenerateNodeImageRef = useRef(onGenerateNodeImage);
   onNodeClickRef.current = onNodeClick;
   onUpdateNodeRef.current = onUpdateNode;
+  onGenerateNodeImageRef.current = onGenerateNodeImage;
 
   // --- Initialize MindMap (once) ---
   useEffect(() => {
@@ -286,6 +297,18 @@ const MindMap: React.FC<MindMapProps> = ({
       if (goalNode) onNodeClickRef.current(goalNode);
     });
 
+    // --- Event: node context menu (right click / long press) ---
+    mindMap.on('node_contextmenu', (node: any, e: any) => {
+      e?.preventDefault?.();
+      const goalId = node?.nodeData?.data?.goalId || node?.nodeData?.data?.uid;
+      if (!goalId || !onGenerateNodeImageRef.current) return;
+      setNodeImageMenu({
+        nodeId: goalId,
+        x: e?.clientX ?? window.innerWidth / 2,
+        y: e?.clientY ?? window.innerHeight / 2,
+      });
+    });
+
     // --- Event: data_change → sync text edits back to React ---
     // ONLY syncs text changes from in-place editing. Ignores changes we caused.
     mindMap.on('data_change', (data: SMMNode) => {
@@ -309,6 +332,8 @@ const MindMap: React.FC<MindMapProps> = ({
     });
 
     // --- Event: mindmap-center (from other components) ---
+    const handleCloseNodeImageMenu = () => setNodeImageMenu(null);
+
     const handleCenter = (e: Event) => {
       const detail = (e as CustomEvent).detail;
       if (detail?.nodeId) {
@@ -318,9 +343,11 @@ const MindMap: React.FC<MindMapProps> = ({
       }
     };
     window.addEventListener('mindmap-center', handleCenter);
+    window.addEventListener('click', handleCloseNodeImageMenu);
 
     return () => {
       window.removeEventListener('mindmap-center', handleCenter);
+      window.removeEventListener('click', handleCloseNodeImageMenu);
       mindMap.destroy?.();
       mindMapRef.current = null;
     };
@@ -405,6 +432,20 @@ const MindMap: React.FC<MindMapProps> = ({
         className="w-full h-full cursor-grab active:cursor-grabbing"
         style={{ width, height }}
       />
+
+      {nodeImageMenu && (
+        <button
+          className="absolute z-20 bg-black/80 border border-white/20 px-3 py-2 rounded-xl text-xs text-neon-lime font-semibold hover:bg-black/95"
+          style={{ left: Math.max(8, nodeImageMenu.x - 60), top: Math.max(8, nodeImageMenu.y - 16) }}
+          onClick={(e) => {
+            e.stopPropagation();
+            onGenerateNodeImageRef.current?.(nodeImageMenu.nodeId);
+            setNodeImageMenu(null);
+          }}
+        >
+          사진 생성하기
+        </button>
+      )}
     </div>
   );
 };
