@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Check, Trash2, Plus, ListTodo, Circle, CheckCircle2, Target, Bell, Calendar, Repeat, Sun, ArrowLeft, ChevronRight, Layout, X } from 'lucide-react';
 import { ToDoItem, RepeatFrequency } from '../types';
-import CloseButton from './CloseButton';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 
 interface ToDoListProps {
@@ -99,7 +98,6 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, onOpenCalendar, to
                   >
                       <Calendar size={24} className="group-hover:scale-110 transition-transform"/>
                   </button>
-                  <CloseButton onClick={onClose} />
               </div>
           </div>
 

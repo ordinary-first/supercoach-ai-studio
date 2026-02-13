@@ -8,7 +8,6 @@ import {
     generateGoalImage, generateSuccessNarrative, generateSpeech,
     generateVideo, generateVisualizationImage
 } from '../services/aiService';
-import CloseButton from './CloseButton';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 
 interface SavedVisualization {
@@ -354,7 +353,7 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({ isOpen, onClose
                                 시각화 스튜디오
                             </h1>
                         </div>
-                        <CloseButton onClick={onClose} size="md" />
+                        <div className="w-10" />
                     </div>
 
                     {/* CREATE VIEW CONTENT */}

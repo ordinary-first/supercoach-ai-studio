@@ -1,7 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Sun, CheckCircle2, Lock, AlertCircle, Trophy, Star, ArrowLeft } from 'lucide-react';
 import { ToDoItem, RepeatFrequency } from '../types';
-import CloseButton from './CloseButton';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 
 interface CalendarViewProps {
@@ -713,7 +712,6 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
                 )}
             </div>
 
-            <CloseButton onClick={onClose} size="lg" />
         </div>
 
         {/* Legend / Status Bar (hidden in day view for cleaner look) */}
