@@ -1,4 +1,4 @@
-# Secret Coach AI Studio — Agent Context
+﻿# Secret Coach AI Studio ??Agent Context
 
 ## Project Overview
 - **Stack**: React 19 + Vite 6 + TypeScript (SPA)
@@ -14,7 +14,7 @@
 
 ### Data Flow
 - Dual-write: always localStorage + Firestore for non-guest users
-- `isGuestUser(uid?)` gates Firestore access — guest users skip cloud entirely
+- `isGuestUser(uid?)` gates Firestore access ??guest users skip cloud entirely
 - Timestamp-based conflict resolution (`updatedAt`) on load
 - Auto-save triggers on data change
 
@@ -69,7 +69,7 @@ npm run cap:open:android # Open Android Studio project
 
 ### Version Bumping
 Every code change MUST bump `displayVersion` in `package.json`.
-Format: `V{MM}.{DD}r{revision}` — e.g. `V02.13r01` = Feb 13, 1st revision.
+Format: `V{MM}.{DD}r{revision}` ??e.g. `V02.13r01` = Feb 13, 1st revision.
 Same-day changes increment revision (r2, r3...). New day resets to r1.
 
 ## Agent Handoff Protocol
@@ -81,8 +81,11 @@ When one agent completes work that another agent will continue:
 
 ## Current Status
 _Last updated: 2026-02-14_
-- Added top-right settings panel in `App.tsx`
-- Added language selector (`English` / `한국어`) with `localStorage` persistence
-- Reflected selected language to `document.documentElement.lang`
-- Version: V02.14r01
+- Replaced top-right text button with icon-only settings trigger in App.tsx
+- Added full-screen SettingsPage.tsx for settings navigation-style flow
+- Moved language selector (English / Korean) into Settings page
+- Added placeholder rows for future settings expansion (subscription/account/notifications)
+- Reflected selected language to document.documentElement.lang
+- Version: V02.14r02
 - Remaining: iOS platform add/build must be done on macOS
+

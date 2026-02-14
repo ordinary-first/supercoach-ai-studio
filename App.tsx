@@ -1,4 +1,4 @@
-
+﻿
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import MindMap from './components/MindMap';
 import CoachChat from './components/CoachChat';
@@ -10,6 +10,7 @@ import VisualizationModal from './components/VisualizationModal';
 import CalendarView from './components/CalendarView';
 import LandingPage from './components/LandingPage';
 import UserProfilePage from './components/UserProfilePage';
+import SettingsPage from './components/SettingsPage';
 import { GoalNode, GoalLink, NodeType, NodeStatus, ToDoItem, ChatMessage, RepeatFrequency } from './types';
 import { generateGoalImage } from './services/aiService';
 import { logout, getUserId, saveProfile } from './services/firebaseService';
@@ -18,6 +19,7 @@ import { useAutoSave, getLinkId } from './hooks/useAutoSave';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useToast } from './hooks/useToast';
 import ToastContainer from './components/ToastContainer';
+import { Settings as SettingsIcon } from 'lucide-react';
 
 // Helper function to calculate the next occurrence date for recurring todos
 const calculateNextDate = (repeat: RepeatFrequency, fromDate: Date): number => {
@@ -114,12 +116,12 @@ const App: React.FC = () => {
   const [dimensions, setDimensions] = useState({ width: window.innerWidth, height: window.innerHeight });
   const [activeTab, setActiveTab] = useState<TabType>('GOALS');
   const [language, setLanguage] = useState<AppLanguage>(getInitialLanguage);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isSettingsPageOpen, setIsSettingsPageOpen] = useState(false);
 
   const [nodes, setNodes] = useState<GoalNode[]>([
     {
         id: 'root',
-        text: '나의 인생 비전',
+        text: '?섏쓽 ?몄깮 鍮꾩쟾',
         type: NodeType.ROOT,
         status: NodeStatus.PENDING,
         progress: 0,
@@ -200,7 +202,7 @@ const App: React.FC = () => {
     }
   }, [dimensions, nodes, handleUpdateNode]);
 
-  // 명시적 이미지 생성 (롱프레스 메뉴에서 호출)
+  // 紐낆떆???대?吏 ?앹꽦 (濡깊봽?덉뒪 硫붾돱?먯꽌 ?몄텧)
   const handleGenerateNodeImage = useCallback(async (nodeId: string) => {
     const node = nodes.find(n => n.id === nodeId);
     if (!node) return;
@@ -215,7 +217,7 @@ const App: React.FC = () => {
       );
       if (imageUrl) handleUpdateNode(nodeId, { imageUrl });
     } catch {
-      addToast('이미지 생성에 실패했습니다', 'warning');
+      addToast('?대?吏 ?앹꽦???ㅽ뙣?덉뒿?덈떎', 'warning');
     } finally {
       setImageLoadingNodes(prev => {
         const next = new Set(prev); next.delete(nodeId); return next;
@@ -223,7 +225,7 @@ const App: React.FC = () => {
     }
   }, [nodes, handleUpdateNode, userProfile, addToast]);
 
-  // 노드를 투두로 변환 (롱프레스 메뉴에서 호출)
+  // ?몃뱶瑜??щ몢濡?蹂??(濡깊봽?덉뒪 硫붾돱?먯꽌 ?몄텧)
   const handleConvertNodeToTodo = useCallback((nodeId: string) => {
     const node = nodes.find(n => n.id === nodeId);
     if (!node || !node.text) return;
@@ -235,7 +237,7 @@ const App: React.FC = () => {
       linkedNodeId: nodeId,
       linkedNodeText: node.text,
     }, ...prev]);
-    addToast('투두에 추가되었습니다', 'success');
+    addToast('Todo added.', 'success');
   }, [nodes, addToast]);
 
   const executeDeleteNode = useCallback((nodeId: string) => {
@@ -338,16 +340,13 @@ const App: React.FC = () => {
       return { visibleNodes: nodes.filter(n => visibleNodeSet.has(n.id)), visibleLinks: links.filter(l => visibleNodeSet.has(getLinkId(l.source)) && visibleNodeSet.has(getLinkId(l.target))) };
   }, [nodes, links]);
 
-  const settingsLabel = language === 'ko' ? '설정' : 'Settings';
-  const languageLabel = language === 'ko' ? '언어' : 'Language';
-
   // --- Render ---
   if (isInitializing || (userProfile && !isDataLoaded)) {
     return (
       <div className="fixed inset-0 bg-deep-space flex flex-col items-center justify-center gap-6">
         <div className="w-12 h-12 border-4 border-neon-lime border-t-transparent rounded-full animate-spin"></div>
         <p className="text-xs text-gray-500 font-mono tracking-widest animate-pulse">
-          {isInitializing ? '인증 중...' : '데이터 로딩 중...'}
+          {isInitializing ? '?몄쬆 以?..' : '?곗씠??濡쒕뵫 以?..'}
         </p>
       </div>
     );
@@ -371,8 +370,7 @@ const App: React.FC = () => {
                 className="flex items-center gap-2 bg-black/40 backdrop-blur-md border border-white/10 px-4 py-2 rounded-full text-[10px] font-bold tracking-widest text-neon-lime hover:bg-neon-lime hover:text-black transition-all"
               >
                   <span className="bg-neon-lime/20 px-1.5 py-0.5 rounded text-[8px] border border-neon-lime/30">K</span>
-                  단축키
-              </button>
+                  ?⑥텞??              </button>
           </div>
 
         </>
@@ -380,32 +378,12 @@ const App: React.FC = () => {
 
       <div className="absolute top-6 right-6 z-[60]">
         <button
-          onClick={() => setIsSettingsOpen(prev => !prev)}
-          className="flex items-center gap-2 bg-black/40 backdrop-blur-md border border-white/10 px-4 py-2 rounded-full text-[10px] font-bold tracking-widest text-gray-200 hover:bg-white/15 transition-all"
-          aria-label={settingsLabel}
+          onClick={() => setIsSettingsPageOpen(true)}
+          className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md border border-white/10 text-gray-200 hover:bg-white/15 transition-all flex items-center justify-center"
+          aria-label="Open settings"
         >
-          {settingsLabel}
+          <SettingsIcon size={18} />
         </button>
-
-        {isSettingsOpen && (
-          <div className="mt-2 w-44 rounded-2xl border border-white/10 bg-black/70 backdrop-blur-md p-3 animate-fade-in">
-            <label
-              htmlFor="language-select"
-              className="block text-[10px] tracking-widest text-gray-400 mb-2"
-            >
-              {languageLabel}
-            </label>
-            <select
-              id="language-select"
-              value={language}
-              onChange={(event) => setLanguage(event.target.value as AppLanguage)}
-              className="w-full bg-black/40 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white outline-none focus:border-neon-lime"
-            >
-              <option value="en">English</option>
-              <option value="ko">한국어</option>
-            </select>
-          </div>
-        )}
       </div>
 
       <ToDoList isOpen={activeTab === 'TODO'} onClose={() => setActiveTab('GOALS')} onOpenCalendar={() => setActiveTab('CALENDAR')} todos={todos} onAddToDo={(text) => {
@@ -425,15 +403,14 @@ const App: React.FC = () => {
         <div className="fixed top-3 left-1/2 -translate-x-1/2 z-[52] flex items-center gap-2 bg-black/70 backdrop-blur-md border border-white/10 rounded-full px-3 py-1.5 animate-fade-in">
           <div className={`w-2 h-2 rounded-full ${syncStatus === 'local-only' ? 'bg-yellow-400' : 'bg-red-400'} animate-pulse`} />
           <span className="text-[10px] font-bold text-gray-300 tracking-wide">
-            {syncStatus === 'local-only' ? '이 기기에만 저장됨' : '동기화 불가'}
+            {syncStatus === 'local-only' ? '??湲곌린?먮쭔 ??λ맖' : '?숆린??遺덇?'}
           </span>
           {syncStatus === 'local-only' && (
             <button
               onClick={() => { logout(); setUserProfile(null); setActiveTab('GOALS'); }}
               className="text-[9px] text-neon-lime font-bold ml-1 hover:underline"
             >
-              로그인
-            </button>
+              濡쒓렇??            </button>
           )}
         </div>
       )}
@@ -442,8 +419,15 @@ const App: React.FC = () => {
         isOpen={activeTab === 'PROFILE'} onClose={() => setActiveTab('GOALS')} profile={userProfile} onSave={(p) => {
           setUserProfile(p);
           const uid = getUserId();
-          if (uid) saveProfile(uid, p).catch(() => addToast('프로필 저장에 실패했습니다', 'error'));
+          if (uid) saveProfile(uid, p).catch(() => addToast('?꾨줈????μ뿉 ?ㅽ뙣?덉뒿?덈떎', 'error'));
         }} onLogout={() => { logout(); setUserProfile(null); setActiveTab('GOALS'); }}
+      />
+
+      <SettingsPage
+        isOpen={isSettingsPageOpen}
+        onClose={() => setIsSettingsPageOpen(false)}
+        language={language}
+        onLanguageChange={setLanguage}
       />
 
       {deleteConfirmNodeId && (
@@ -451,13 +435,13 @@ const App: React.FC = () => {
               <div className="bg-[#0a0f1a] border border-white/10 rounded-3xl p-8 max-w-sm w-full mx-4 shadow-2xl">
                   <div className="text-center space-y-4">
                       <div className="w-16 h-16 mx-auto rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center">
-                          <span className="text-3xl">🗑️</span>
+                          <span className="text-3xl">!</span>
                       </div>
-                      <h3 className="text-xl font-display font-bold text-white">노드 삭제</h3>
+                      <h3 className="text-xl font-display font-bold text-white">?몃뱶 ??젣</h3>
                       <p className="text-sm text-gray-400">
-                          "{nodes.find(n => n.id === deleteConfirmNodeId)?.text || '이 노드'}"를 삭제하시겠습니까?
+                          "{nodes.find(n => n.id === deleteConfirmNodeId)?.text || '???몃뱶'}"瑜???젣?섏떆寃좎뒿?덇퉴?
                           {nodes.filter(n => n.parentId === deleteConfirmNodeId).length > 0 && (
-                              <span className="block mt-1 text-red-400">하위 노드도 함께 삭제됩니다.</span>
+                              <span className="block mt-1 text-red-400">?섏쐞 ?몃뱶???④퍡 ??젣?⑸땲??</span>
                           )}
                       </p>
                       <div className="flex gap-3 pt-2">
@@ -465,13 +449,13 @@ const App: React.FC = () => {
                               onClick={() => setDeleteConfirmNodeId(null)}
                               className="flex-1 px-6 py-3 bg-white/5 border border-white/10 rounded-full text-sm font-bold text-gray-300 hover:bg-white/10 transition-all"
                           >
-                              취소
+                              痍⑥냼
                           </button>
                           <button
                               onClick={() => executeDeleteNode(deleteConfirmNodeId)}
                               className="flex-1 px-6 py-3 bg-red-500 rounded-full text-sm font-bold text-white hover:bg-red-400 transition-all shadow-[0_0_20px_rgba(239,68,68,0.3)]"
                           >
-                              삭제
+                              ??젣
                           </button>
                       </div>
                   </div>
@@ -485,3 +469,4 @@ const App: React.FC = () => {
 };
 
 export default App;
+
