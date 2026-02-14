@@ -100,9 +100,21 @@ const calculateNextDate = (repeat: RepeatFrequency, fromDate: Date): number => {
   }
 };
 
+type AppLanguage = 'en' | 'ko';
+
+const LANGUAGE_STORAGE_KEY = 'app_language';
+
+const getInitialLanguage = (): AppLanguage => {
+  const saved = localStorage.getItem(LANGUAGE_STORAGE_KEY);
+  if (saved === 'en' || saved === 'ko') return saved;
+  return navigator.language.toLowerCase().startsWith('ko') ? 'ko' : 'en';
+};
+
 const App: React.FC = () => {
   const [dimensions, setDimensions] = useState({ width: window.innerWidth, height: window.innerHeight });
   const [activeTab, setActiveTab] = useState<TabType>('GOALS');
+  const [language, setLanguage] = useState<AppLanguage>(getInitialLanguage);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const [nodes, setNodes] = useState<GoalNode[]>([
     {
@@ -142,6 +154,11 @@ const App: React.FC = () => {
     useAuth(handleGoalDataLoaded, handleTodosLoaded);
 
   useAutoSave(nodes, links, todos, userProfile, isDataLoaded, userId);
+
+  useEffect(() => {
+    localStorage.setItem(LANGUAGE_STORAGE_KEY, language);
+    document.documentElement.lang = language;
+  }, [language]);
 
   // Window resize listener
   useEffect(() => {
@@ -321,6 +338,9 @@ const App: React.FC = () => {
       return { visibleNodes: nodes.filter(n => visibleNodeSet.has(n.id)), visibleLinks: links.filter(l => visibleNodeSet.has(getLinkId(l.source)) && visibleNodeSet.has(getLinkId(l.target))) };
   }, [nodes, links]);
 
+  const settingsLabel = language === 'ko' ? '설정' : 'Settings';
+  const languageLabel = language === 'ko' ? '언어' : 'Language';
+
   // --- Render ---
   if (isInitializing || (userProfile && !isDataLoaded)) {
     return (
@@ -357,6 +377,36 @@ const App: React.FC = () => {
 
         </>
       )}
+
+      <div className="absolute top-6 right-6 z-[60]">
+        <button
+          onClick={() => setIsSettingsOpen(prev => !prev)}
+          className="flex items-center gap-2 bg-black/40 backdrop-blur-md border border-white/10 px-4 py-2 rounded-full text-[10px] font-bold tracking-widest text-gray-200 hover:bg-white/15 transition-all"
+          aria-label={settingsLabel}
+        >
+          {settingsLabel}
+        </button>
+
+        {isSettingsOpen && (
+          <div className="mt-2 w-44 rounded-2xl border border-white/10 bg-black/70 backdrop-blur-md p-3 animate-fade-in">
+            <label
+              htmlFor="language-select"
+              className="block text-[10px] tracking-widest text-gray-400 mb-2"
+            >
+              {languageLabel}
+            </label>
+            <select
+              id="language-select"
+              value={language}
+              onChange={(event) => setLanguage(event.target.value as AppLanguage)}
+              className="w-full bg-black/40 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white outline-none focus:border-neon-lime"
+            >
+              <option value="en">English</option>
+              <option value="ko">한국어</option>
+            </select>
+          </div>
+        )}
+      </div>
 
       <ToDoList isOpen={activeTab === 'TODO'} onClose={() => setActiveTab('GOALS')} onOpenCalendar={() => setActiveTab('CALENDAR')} todos={todos} onAddToDo={(text) => {
   const trimmed = text.trim().slice(0, 500);

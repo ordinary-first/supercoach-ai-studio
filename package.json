@@ -1,15 +1,22 @@
 {
-  "name": "super-coach",
+  "name": "secret-coach",
   "private": true,
   "version": "1.1.0",
-  "displayVersion": "V02.13r01",
+  "displayVersion": "V02.14r01",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "build:cap": "npm run build && npx cap sync",
+    "cap:sync": "npx cap sync",
+    "cap:add:android": "npx cap add android",
+    "cap:open:android": "npx cap open android",
+    "cap:run:android": "npm run build && npx cap run android"
   },
   "dependencies": {
+    "@capacitor/android": "^8.1.0",
+    "@capacitor/core": "^8.1.0",
     "@aws-sdk/client-s3": "^3.988.0",
     "@google/genai": "^1.32.0",
     "firebase": "^12.7.0",
@@ -21,6 +28,7 @@
     "zustand": "^5.0.10"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.1.0",
     "@types/node": "^22.14.0",
     "@vercel/node": "^5.1.8",
     "@vitejs/plugin-react": "^5.0.0",
