@@ -1,6 +1,10 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { FieldValue } from 'firebase-admin/firestore';
-import { validateEvent, WebhookVerificationError } from '@polar-sh/sdk/webhooks';
+import { validateEvent, WebhookVerificationError as PolarWebhookVerificationError } from '@polar-sh/sdk/webhooks';
+import {
+  Webhook as StandardWebhook,
+  WebhookVerificationError as StandardWebhookVerificationError,
+} from 'standardwebhooks';
 import { getAdminDb } from '../lib/firebaseAdmin.js';
 
 const SUPPORTED_EVENTS = new Set([
@@ -21,24 +25,99 @@ const trim = (value: string | undefined): string => (value ?? '').trim();
 const toHeaders = (headers: VercelRequest['headers']): Record<string, string> => {
   const result: Record<string, string> = {};
   for (const [key, value] of Object.entries(headers)) {
-    if (typeof value === 'string') result[key] = value;
-    else if (Array.isArray(value)) result[key] = value.join(',');
+    const normalizedKey = key.toLowerCase();
+    if (typeof value === 'string') result[normalizedKey] = value;
+    else if (Array.isArray(value)) result[normalizedKey] = value.join(',');
   }
   return result;
 };
 
-const readRawBody = async (req: VercelRequest): Promise<Buffer> => {
-  if (Buffer.isBuffer(req.body)) return req.body;
-  if (typeof req.body === 'string') return Buffer.from(req.body);
-  if (req.body && typeof req.body === 'object') {
-    return Buffer.from(JSON.stringify(req.body));
+type VerifiedEvent = {
+  type: string;
+  data: unknown;
+  timestamp: Date;
+};
+
+const parseTimestamp = (raw: unknown): Date | null => {
+  if (raw instanceof Date && !Number.isNaN(raw.getTime())) return raw;
+  if (typeof raw === 'string') {
+    const d = new Date(raw);
+    if (!Number.isNaN(d.getTime())) return d;
+  }
+  return null;
+};
+
+const verifyEvent = (
+  rawBody: Buffer,
+  headers: Record<string, string>,
+  webhookSecret: string
+): VerifiedEvent => {
+  // Primary path: Polar SDK verification (expects secret in plain text; SDK base64-encodes internally).
+  try {
+    const event = validateEvent(rawBody, headers, webhookSecret) as {
+      type: string;
+      data: unknown;
+      timestamp?: unknown;
+    };
+
+    const timestamp = parseTimestamp(event.timestamp) ?? new Date();
+    return { type: event.type, data: event.data, timestamp };
+  } catch (error) {
+    if (!(error instanceof PolarWebhookVerificationError)) {
+      throw error;
+    }
   }
 
+  // Fallback path: some senders provide a base64-encoded secret already. Verify with the raw secret as base64.
+  try {
+    const webhook = new StandardWebhook(webhookSecret);
+    const parsed = webhook.verify(rawBody, headers) as unknown;
+    const obj = asObject(parsed) ?? asObject(JSON.parse(rawBody.toString('utf8')));
+    if (!obj) throw new Error('Invalid webhook payload');
+
+    const type = asString(obj.type);
+    if (!type) throw new Error('Missing event type');
+
+    const timestamp =
+      parseTimestamp(obj.timestamp) ??
+      (() => {
+        const headerTs = asString(headers['webhook-timestamp']);
+        if (headerTs) {
+          const secs = Number(headerTs);
+          if (Number.isFinite(secs) && secs > 0) return new Date(secs * 1000);
+        }
+        return new Date();
+      })();
+
+    return { type, data: obj.data, timestamp };
+  } catch (error) {
+    if (error instanceof StandardWebhookVerificationError) {
+      throw new PolarWebhookVerificationError(error.message);
+    }
+    // If fallback path fails for any reason, treat it as signature failure to keep the surface strict.
+    throw new PolarWebhookVerificationError('Invalid webhook signature');
+  }
+};
+
+const readRawBody = async (req: VercelRequest): Promise<Buffer> => {
   const chunks: Buffer[] = [];
   for await (const chunk of req) {
     chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : Buffer.from(chunk));
   }
-  return Buffer.concat(chunks);
+  if (chunks.length > 0) return Buffer.concat(chunks);
+
+  // Some runtimes pre-parse the body and keep a raw representation. Prefer those when present.
+  const anyReq = req as unknown as { rawBody?: unknown };
+  if (Buffer.isBuffer(anyReq.rawBody)) return anyReq.rawBody;
+  if (typeof anyReq.rawBody === 'string') return Buffer.from(anyReq.rawBody);
+
+  // Fallback: use whatever the runtime provided. Note: this may break signature verification if
+  // the runtime already parsed and re-serialized JSON with different bytes.
+  if (Buffer.isBuffer(req.body)) return req.body;
+  if (typeof req.body === 'string') return Buffer.from(req.body);
+  if (req.body && typeof req.body === 'object') return Buffer.from(JSON.stringify(req.body));
+
+  return Buffer.from('');
 };
 
 const planByProductId = (productId: string | null): string | null => {
@@ -200,14 +279,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const rawBody = await readRawBody(req);
+  if (rawBody.length === 0) {
+    return res.status(400).json({ error: 'Empty webhook body' });
+  }
   const headers = toHeaders(req.headers);
 
-  let event: ReturnType<typeof validateEvent>;
+  let event: VerifiedEvent;
   try {
-    event = validateEvent(rawBody, headers, webhookSecret);
+    event = verifyEvent(rawBody, headers, webhookSecret);
   } catch (error) {
-    if (error instanceof WebhookVerificationError) {
-      return res.status(403).json({ error: 'Invalid webhook signature' });
+    if (error instanceof PolarWebhookVerificationError) {
+      const missing = ['webhook-id', 'webhook-timestamp', 'webhook-signature'].filter(
+        (k) => !headers[k]
+      );
+      return res.status(403).json({
+        error: 'Invalid webhook signature',
+        missingHeaders: missing.length > 0 ? missing : null,
+      });
     }
     return res.status(400).json({ error: 'Invalid webhook payload' });
   }

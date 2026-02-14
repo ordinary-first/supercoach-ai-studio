@@ -80,7 +80,7 @@ When one agent completes work that another agent will continue:
 3. Note any gotchas or decisions made
 
 ## Current Status
-_Last updated: 2026-02-14_
+_Last updated: 2026-02-15_
 - Replaced top-right text button with icon-only settings trigger in App.tsx
 - Added full-screen SettingsPage.tsx for settings navigation-style flow
 - Added Polar compliance checklist UI in settings (digital-only / no human service / no donation / instant access)
@@ -119,6 +119,11 @@ _Last updated: 2026-02-14_
 - Added legal policy pages + links:
   - Public pages: `/terms`, `/privacy`, `/refund` (served from `public/`)
   - Linked from Settings (near checkout) and LandingPage
-- Version: V02.14r14
+- Webhook signature verification hardening:
+  - `api/polar-webhook.ts` now supports both plain and base64 secret verification paths
+  - returns 403 with missing header hints for easier debugging
+- Fixed Polar webhook 403 root cause:
+  - `api/polar-webhook.ts` now verifies signatures against the raw request body (stream-first)
+- Version: V02.15r01
 - Remaining: iOS platform add/build must be done on macOS
 
