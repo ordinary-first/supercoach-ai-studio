@@ -104,6 +104,12 @@ _Last updated: 2026-02-14_
   - reads `checkout_id` from success URL query
   - calls `verifyPolarCheckout`
   - shows success/error toast and cleans URL param
-- Version: V02.14r08
+- Added Firebase Admin bootstrap:
+  - `lib/firebaseAdmin.ts` (server-only Firestore admin initialization)
+- Upgraded Polar webhook endpoint:
+  - `api/polar-webhook.ts` now verifies Standard Webhooks signature
+  - syncs billing/subscription state to Firestore (`users/{uid}/billing/polar`)
+  - mirrors entitlement summary to profile (`users/{uid}/profile/main`)
+- Version: V02.14r10
 - Remaining: iOS platform add/build must be done on macOS
 
