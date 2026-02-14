@@ -114,6 +114,8 @@ _Last updated: 2026-02-14_
   - `api/polar-webhook.ts` imports internal module with `.js` extension (ESM)
 - Added custom domain redirect:
   - `vercel.json` redirects `www.secretcoach.ai/*` -> `secretcoach.ai/*`
-- Version: V02.14r12
+- Improved Polar checkout error visibility:
+  - `api/create-checkout.ts` now returns `polarDetail` on 4xx/5xx for debugging
+- Version: V02.14r13
 - Remaining: iOS platform add/build must be done on macOS
 

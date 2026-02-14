@@ -113,13 +113,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const parsed = raw.length > 0 ? (JSON.parse(raw) as Record<string, unknown>) : {};
 
     if (!polarResponse.ok) {
+      const detail = parsed.detail;
       const errorMessage =
-        typeof parsed.detail === 'string'
-          ? parsed.detail
+        typeof detail === 'string'
+          ? detail
           : typeof parsed.error === 'string'
             ? parsed.error
             : 'Failed to create Polar checkout';
-      return res.status(polarResponse.status).json({ error: errorMessage });
+
+      // Return structured details to debug schema/validation errors without leaking secrets.
+      return res.status(polarResponse.status).json({
+        error: errorMessage,
+        polarStatus: polarResponse.status,
+        polarError: typeof parsed.error === 'string' ? parsed.error : null,
+        polarDetail: detail ?? null,
+      });
     }
 
     const checkoutUrl =
