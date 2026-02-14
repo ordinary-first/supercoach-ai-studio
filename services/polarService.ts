@@ -11,6 +11,17 @@ interface CreateCheckoutResponse {
   url: string;
 }
 
+export interface VerifyCheckoutResponse {
+  verified: boolean;
+  checkoutId: string;
+  checkoutStatus: string;
+  plan: PlanTier | null;
+  productId: string | null;
+  subscriptionId: string | null;
+  isSubscriptionActive: boolean;
+  externalCustomerId: string | null;
+}
+
 const toMessage = (value: unknown): string => {
   if (typeof value === 'string' && value.trim().length > 0) {
     return value.trim();
@@ -37,4 +48,23 @@ export const createPolarCheckout = async (
   }
 
   return { url: result.url };
+};
+
+export const verifyPolarCheckout = async (
+  checkoutId: string
+): Promise<VerifyCheckoutResponse> => {
+  const response = await fetch(
+    `/api/verify-checkout?checkout_id=${encodeURIComponent(checkoutId)}`,
+    { method: 'GET' }
+  );
+
+  const result = (await response.json().catch(() => ({}))) as
+    | VerifyCheckoutResponse
+    | { error?: string };
+
+  if (!response.ok || !('verified' in result)) {
+    throw new Error(toMessage((result as { error?: string }).error));
+  }
+
+  return result;
 };

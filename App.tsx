@@ -13,6 +13,7 @@ import UserProfilePage from './components/UserProfilePage';
 import SettingsPage from './components/SettingsPage';
 import { GoalNode, GoalLink, NodeType, NodeStatus, ToDoItem, ChatMessage, RepeatFrequency } from './types';
 import { generateGoalImage } from './services/aiService';
+import { verifyPolarCheckout } from './services/polarService';
 import { logout, getUserId, saveProfile } from './services/firebaseService';
 import { useAuth } from './hooks/useAuth';
 import { useAutoSave, getLinkId } from './hooks/useAutoSave';
@@ -161,6 +162,41 @@ const App: React.FC = () => {
     localStorage.setItem(LANGUAGE_STORAGE_KEY, language);
     document.documentElement.lang = language;
   }, [language]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const params = new URLSearchParams(window.location.search);
+    const checkoutId = params.get('checkout_id');
+    if (!checkoutId) return;
+
+    (async () => {
+      try {
+        const result = await verifyPolarCheckout(checkoutId);
+        if (cancelled) return;
+
+        if (result.verified && result.isSubscriptionActive) {
+          addToast('결제가 확인되었습니다. 구독이 활성화됐습니다.', 'success');
+        } else if (result.verified) {
+          addToast('결제는 확인되었습니다.', 'success');
+        } else {
+          addToast('결제 확인 중입니다. 잠시 후 다시 확인해주세요.', 'warning');
+        }
+      } catch {
+        if (!cancelled) {
+          addToast('결제 검증에 실패했습니다. 다시 시도해주세요.', 'error');
+        }
+      } finally {
+        if (cancelled) return;
+        const clean = new URL(window.location.href);
+        clean.searchParams.delete('checkout_id');
+        window.history.replaceState({}, '', clean.toString());
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [addToast]);
 
   // Window resize listener
   useEffect(() => {

@@ -95,9 +95,15 @@ _Last updated: 2026-02-14_
 - Added Polar checkout API route:
   - `api/create-checkout.ts` (plan -> product mapping, checkout session creation)
 - Added client billing service:
-  - `services/polarService.ts` (`createPolarCheckout`)
+  - `services/polarService.ts` (`createPolarCheckout`, `verifyPolarCheckout`)
 - Updated `SettingsPage` to show 4 plans and start checkout directly.
 - Fixed runtime hook-order issue in `SettingsPage` causing React minified error #310.
-- Version: V02.14r07
+- Added checkout verification API:
+  - `api/verify-checkout.ts` (server-side verification by checkout_id)
+- Added auto verification in `App.tsx`:
+  - reads `checkout_id` from success URL query
+  - calls `verifyPolarCheckout`
+  - shows success/error toast and cleans URL param
+- Version: V02.14r08
 - Remaining: iOS platform add/build must be done on macOS
 
