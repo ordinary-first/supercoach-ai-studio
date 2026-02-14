@@ -32,7 +32,7 @@ const googleProvider = new GoogleAuthProvider();
 // 인증 시 항상 계정 선택 창이 뜨도록 설정
 googleProvider.setCustomParameters({ prompt: 'select_account' });
 
-const GUEST_KEY = 'super_coach_guest_user';
+const GUEST_KEY = 'secret_coach_guest_user';
 
 /**
  * 팝업 방식으로 구글 로그인 진행
@@ -76,7 +76,7 @@ export const loginAsGuest = () => {
   const guestUser = {
     uid: 'guest_' + (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substr(2, 9)),
     name: '익명 사용자',
-    email: 'guest@supercoach.ai',
+    email: 'guest@secretcoach.ai',
     isGuest: true,
     gender: 'Other' as const,
     age: '25',
@@ -191,7 +191,7 @@ export const saveGoalData = async (userId: string, nodes: GoalNode[], links: Goa
 
   // Always save to localStorage
   try {
-    localStorage.setItem(`supercoach_goals_${userId}`, JSON.stringify(payload));
+    localStorage.setItem(`secretcoach_goals_${userId}`, JSON.stringify(payload));
   } catch (e) { console.error('[Save:Goals] localStorage failed:', e); }
 
   // Also save to Firestore for non-guest users
@@ -249,7 +249,7 @@ export const loadGoalData = async (userId: string): Promise<{ nodes: GoalNode[];
 
   // Always try localStorage
   try {
-    const raw = localStorage.getItem(`supercoach_goals_${userId}`);
+    const raw = localStorage.getItem(`secretcoach_goals_${userId}`);
     if (raw) {
       localData = JSON.parse(raw);
       log('[Load:Goals] localStorage data found, updatedAt:', localData.updatedAt);
@@ -283,7 +283,7 @@ export const loadGoalData = async (userId: string): Promise<{ nodes: GoalNode[];
   // This eliminates discrepancies that cause image flip-flop on refresh.
   const syncPayload = { nodes: sanitized.nodes, links: sanitized.links, updatedAt: Date.now() };
   try {
-    localStorage.setItem(`supercoach_goals_${userId}`, JSON.stringify(syncPayload));
+    localStorage.setItem(`secretcoach_goals_${userId}`, JSON.stringify(syncPayload));
   } catch (e) {}
   if (!isGuestUser(userId)) {
     const docRef = doc(db, 'users', userId, 'data', 'goals');
@@ -299,7 +299,7 @@ export const saveTodos = async (userId: string, todos: ToDoItem[]): Promise<void
 
   // Always save to localStorage
   try {
-    localStorage.setItem(`supercoach_todos_${userId}`, JSON.stringify(payload));
+    localStorage.setItem(`secretcoach_todos_${userId}`, JSON.stringify(payload));
   } catch (e) { console.error('[Save:Todos] localStorage failed:', e); }
 
   // Also save to Firestore for non-guest users
@@ -334,7 +334,7 @@ export const loadTodos = async (userId: string): Promise<ToDoItem[] | null> => {
 
   // Always try localStorage (handle both old format: raw array, new format: { items, updatedAt })
   try {
-    const raw = localStorage.getItem(`supercoach_todos_${userId}`);
+    const raw = localStorage.getItem(`secretcoach_todos_${userId}`);
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) {
@@ -366,7 +366,7 @@ export const loadTodos = async (userId: string): Promise<ToDoItem[] | null> => {
 export const saveProfile = async (userId: string, profile: UserProfile): Promise<void> => {
   // Always save to localStorage
   try {
-    localStorage.setItem(`supercoach_profile_${userId}`, JSON.stringify(profile));
+    localStorage.setItem(`secretcoach_profile_${userId}`, JSON.stringify(profile));
   } catch (e) { console.error('[Save:Profile] localStorage failed:', e); }
 
   // Also save to Firestore for non-guest users
@@ -384,7 +384,7 @@ export const saveProfile = async (userId: string, profile: UserProfile): Promise
 
   // Gallery separately in localStorage
   try {
-    localStorage.setItem(`supercoach_gallery_${userId}`, JSON.stringify(profile.gallery || []));
+    localStorage.setItem(`secretcoach_gallery_${userId}`, JSON.stringify(profile.gallery || []));
   } catch (e) {}
 };
 
@@ -408,7 +408,7 @@ export const loadProfile = async (userId: string): Promise<UserProfile | null> =
   // Fallback to localStorage
   if (!profile) {
     try {
-      const data = localStorage.getItem(`supercoach_profile_${userId}`);
+      const data = localStorage.getItem(`secretcoach_profile_${userId}`);
       if (data) {
         profile = JSON.parse(data);
         log('[Load:Profile] localStorage data found');
@@ -419,7 +419,7 @@ export const loadProfile = async (userId: string): Promise<UserProfile | null> =
   // Restore gallery from localStorage (always, since Firestore doesn't store it)
   if (profile) {
     try {
-      const gallery = localStorage.getItem(`supercoach_gallery_${userId}`);
+      const gallery = localStorage.getItem(`secretcoach_gallery_${userId}`);
       if (gallery) profile.gallery = JSON.parse(gallery);
     } catch (e) {}
   }

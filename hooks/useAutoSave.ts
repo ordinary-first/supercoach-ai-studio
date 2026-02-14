@@ -110,8 +110,8 @@ export function useAutoSave(
           })),
           updatedAt: now,
         };
-        localStorage.setItem(`supercoach_goals_${uid}`, JSON.stringify(serializedGoals));
-        localStorage.setItem(`supercoach_todos_${uid}`, JSON.stringify({ items: currentTodos, updatedAt: now }));
+        localStorage.setItem(`secretcoach_goals_${uid}`, JSON.stringify(serializedGoals));
+        localStorage.setItem(`secretcoach_todos_${uid}`, JSON.stringify({ items: currentTodos, updatedAt: now }));
       } catch (e) {
         console.warn('beforeunload save failed:', e);
       }

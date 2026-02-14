@@ -428,6 +428,7 @@ const App: React.FC = () => {
         onClose={() => setIsSettingsPageOpen(false)}
         language={language}
         onLanguageChange={setLanguage}
+        userAge={userProfile.age}
       />
 
       {deleteConfirmNodeId && (

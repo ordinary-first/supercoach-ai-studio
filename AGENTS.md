@@ -83,9 +83,10 @@ When one agent completes work that another agent will continue:
 _Last updated: 2026-02-14_
 - Replaced top-right text button with icon-only settings trigger in App.tsx
 - Added full-screen SettingsPage.tsx for settings navigation-style flow
+- Added Polar compliance checklist UI in settings (digital-only / no human service / no donation / instant access)
+- Added age-based checkout readiness guard (18+ only message before payment integration)
 - Moved language selector (English / Korean) into Settings page
-- Added placeholder rows for future settings expansion (subscription/account/notifications)
 - Reflected selected language to document.documentElement.lang
-- Version: V02.14r02
+- Version: V02.14r03
 - Remaining: iOS platform add/build must be done on macOS
 

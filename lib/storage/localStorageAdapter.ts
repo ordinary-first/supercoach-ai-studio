@@ -2,7 +2,7 @@ import { ToDoItem, UserProfile, GoalNode } from '../../types';
 
 export class LocalStorageAdapter {
   private getStorageKey(userId: string, type: 'todos' | 'goals' | 'profile'): string {
-    return `supercoach_${type}_${userId}`;
+    return `secretcoach_${type}_${userId}`;
   }
 
   // === User Profile Methods ===

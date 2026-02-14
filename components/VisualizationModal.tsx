@@ -27,7 +27,7 @@ interface VisualizationModalProps {
     nodes: GoalNode[];
 }
 
-const STORAGE_KEY = 'supercoach_saved_vis';
+const STORAGE_KEY = 'secretcoach_saved_vis';
 
 const VisualizationModal: React.FC<VisualizationModalProps> = ({ isOpen, onClose, userProfile, nodes }) => {
     const focusTrapRef = useFocusTrap(isOpen);

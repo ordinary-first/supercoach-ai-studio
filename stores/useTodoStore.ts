@@ -104,7 +104,7 @@ export const useTodoStore = create<TodoState>()(
       reset: () => set(initialState),
     }),
     {
-      name: 'supercoach-todo-storage',
+      name: 'secretcoach-todo-storage',
       partialize: (state) => ({
         todos: state.todos,
         filter: state.filter,

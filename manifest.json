@@ -1,15 +1,15 @@
 
 {
-  "short_name": "SuperCoach",
-  "name": "Super Coach: Neural Goal Setting",
+  "short_name": "SecretCoach",
+  "name": "Secret Coach: Neural Goal Setting",
   "icons": [
     {
-      "src": "https://api.dicebear.com/7.x/bottts/svg?seed=SuperCoach&backgroundColor=050b14",
+      "src": "https://api.dicebear.com/7.x/bottts/svg?seed=SecretCoach&backgroundColor=050b14",
       "sizes": "192x192",
       "type": "image/svg+xml"
     },
     {
-      "src": "https://api.dicebear.com/7.x/bottts/svg?seed=SuperCoach&backgroundColor=050b14",
+      "src": "https://api.dicebear.com/7.x/bottts/svg?seed=SecretCoach&backgroundColor=050b14",
       "sizes": "512x512",
       "type": "image/svg+xml"
     }
