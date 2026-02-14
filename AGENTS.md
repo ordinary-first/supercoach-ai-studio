@@ -112,6 +112,8 @@ _Last updated: 2026-02-14_
   - mirrors entitlement summary to profile (`users/{uid}/profile/main`)
 - Fixed Vercel runtime for webhook:
   - `api/polar-webhook.ts` imports internal module with `.js` extension (ESM)
-- Version: V02.14r11
+- Added custom domain redirect:
+  - `vercel.json` redirects `www.secretcoach.ai/*` -> `secretcoach.ai/*`
+- Version: V02.14r12
 - Remaining: iOS platform add/build must be done on macOS
 

@@ -1,0 +1,11 @@
+{
+  "redirects": [
+    {
+      "source": "/(.*)",
+      "has": [{ "type": "host", "value": "www.secretcoach.ai" }],
+      "destination": "https://secretcoach.ai/$1",
+      "permanent": true
+    }
+  ]
+}
+
