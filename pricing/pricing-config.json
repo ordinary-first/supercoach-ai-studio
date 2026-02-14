@@ -1,0 +1,112 @@
+{
+  "meta": {
+    "updatedAt": "2026-02-14",
+    "currency": "USD",
+    "notes": "Update this file first when limits/models/prices change."
+  },
+  "fees": {
+    "polarSubscriptionPercent": 0.045,
+    "polarFixedUsd": 0.4
+  },
+  "openaiPricing": {
+    "textModels": {
+      "gpt-4o-mini": {
+        "inputPer1MUsd": 0.15,
+        "outputPer1MUsd": 0.6
+      }
+    },
+    "imageModels": {
+      "gpt-image-1.5": {
+        "low1024Usd": 0.009,
+        "medium1024Usd": 0.034,
+        "high1024Usd": 0.133
+      },
+      "gpt-image-1": {
+        "low1024Usd": 0.011,
+        "medium1024Usd": 0.042,
+        "high1024Usd": 0.167
+      },
+      "gpt-image-1-mini": {
+        "low1024Usd": 0.005,
+        "medium1024Usd": 0.011,
+        "high1024Usd": 0.036
+      }
+    },
+    "audioModels": {
+      "gpt-4o-mini-tts": {
+        "perMinuteUsd": 0.015
+      }
+    },
+    "videoModels": {
+      "sora-2": {
+        "perSecond720pUsd": 0.1
+      }
+    }
+  },
+  "assumptions": {
+    "chatInputTokensPerMessage": 1200,
+    "chatOutputTokensPerMessage": 350,
+    "narrativeInputTokensPerCall": 1500,
+    "narrativeOutputTokensPerCall": 600,
+    "videoLengthSeconds": 8,
+    "infra": {
+      "fixedMonthlyUsd": 40,
+      "assumedPaidUsers": 100,
+      "variablePerPaidUserUsd": 0.35
+    }
+  },
+  "tiers": [
+    {
+      "name": "Explorer",
+      "priceUsd": 0,
+      "limits": {
+        "chatMessages": 300,
+        "narrativeCalls": 5,
+        "imageCredits": 8,
+        "highImageCreditRatioExpected": 0,
+        "highImageCreditRatioWorst": 0,
+        "audioMinutes": 0,
+        "videoGenerations": 0
+      }
+    },
+    {
+      "name": "Essential",
+      "priceUsd": 9.99,
+      "limits": {
+        "chatMessages": 2500,
+        "narrativeCalls": 20,
+        "imageCredits": 80,
+        "highImageCreditRatioExpected": 0,
+        "highImageCreditRatioWorst": 0,
+        "audioMinutes": 30,
+        "videoGenerations": 0
+      }
+    },
+    {
+      "name": "Visionary",
+      "priceUsd": 19.99,
+      "limits": {
+        "chatMessages": 6000,
+        "narrativeCalls": 40,
+        "imageCredits": 180,
+        "highImageCreditRatioExpected": 0.7,
+        "highImageCreditRatioWorst": 1,
+        "audioMinutes": 90,
+        "videoGenerations": 4
+      }
+    },
+    {
+      "name": "Master",
+      "priceUsd": 49.99,
+      "limits": {
+        "chatMessages": 15000,
+        "narrativeCalls": 80,
+        "imageCredits": 450,
+        "highImageCreditRatioExpected": 0.8,
+        "highImageCreditRatioWorst": 1,
+        "audioMinutes": 240,
+        "videoGenerations": 12
+      }
+    }
+  ]
+}

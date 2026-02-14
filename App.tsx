@@ -429,6 +429,9 @@ const App: React.FC = () => {
         language={language}
         onLanguageChange={setLanguage}
         userAge={userProfile.age}
+        userEmail={userProfile.email}
+        userName={userProfile.name}
+        externalCustomerId={userProfile.googleId || userId || undefined}
       />
 
       {deleteConfirmNodeId && (

@@ -2,7 +2,7 @@
   "name": "secret-coach",
   "private": true,
   "version": "1.1.0",
-  "displayVersion": "V02.14r03",
+  "displayVersion": "V02.14r06",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -12,7 +12,8 @@
     "cap:sync": "npx cap sync",
     "cap:add:android": "npx cap add android",
     "cap:open:android": "npx cap open android",
-    "cap:run:android": "npm run build && npx cap run android"
+    "cap:run:android": "npm run build && npx cap run android",
+    "pricing:calc": "node pricing/calc-pricing.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.1.0",

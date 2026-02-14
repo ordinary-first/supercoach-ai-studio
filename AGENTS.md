@@ -87,6 +87,16 @@ _Last updated: 2026-02-14_
 - Added age-based checkout readiness guard (18+ only message before payment integration)
 - Moved language selector (English / Korean) into Settings page
 - Reflected selected language to document.documentElement.lang
-- Version: V02.14r03
+- Added reusable pricing calculator for OpenAI migration:
+  - `pricing/pricing-config.json` (all cost assumptions and tier limits)
+  - `pricing/calc-pricing.mjs` (expected/worst margin simulation)
+  - `pricing/README.md` (formula + tier differentiation guide)
+- Added `api/polar-webhook.ts` endpoint (initial live receiver for selected Polar events)
+- Added Polar checkout API route:
+  - `api/create-checkout.ts` (plan -> product mapping, checkout session creation)
+- Added client billing service:
+  - `services/polarService.ts` (`createPolarCheckout`)
+- Updated `SettingsPage` to show 4 plans and start checkout directly.
+- Version: V02.14r06
 - Remaining: iOS platform add/build must be done on macOS
 

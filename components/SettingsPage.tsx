@@ -1,14 +1,16 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   AlertTriangle,
   BadgeCheck,
   ChevronRight,
   Crown,
   Globe,
+  Loader2,
   Settings,
   ShieldCheck,
   X,
 } from 'lucide-react';
+import { createPolarCheckout, type PlanTier } from '../services/polarService';
 
 type LanguageOption = 'en' | 'ko';
 
@@ -18,6 +20,9 @@ interface SettingsPageProps {
   language: LanguageOption;
   onLanguageChange: (language: LanguageOption) => void;
   userAge?: string;
+  userEmail?: string;
+  userName?: string;
+  externalCustomerId?: string;
 }
 
 const LABELS = {
@@ -25,35 +30,48 @@ const LABELS = {
     title: 'Settings',
     language: 'Language',
     subscription: 'Subscription',
+    choosePlan: 'Choose your plan',
+    checkout: 'Start checkout',
+    redirecting: 'Redirecting...',
     account: 'Account',
     notifications: 'Notifications',
-    comingSoon: 'Coming soon',
     polarPolicyTitle: 'Polar compliance',
     adultReady: 'Checkout ready (18+)',
     ageBlocked: 'Checkout blocked: adults only (18+).',
-    ageMissing: 'Add your age in profile to enable checkout review.',
+    ageMissing: 'Add your age in profile to enable checkout.',
     ruleDigitalOnly: 'Digital SaaS only. No physical goods.',
     ruleNoHumanService: 'No consulting or human-delivered service.',
     ruleNoDonation: 'No donations, tips, or pure money transfers.',
     ruleInstantAccess: 'Paid users must get immediate in-app access.',
+    checkoutFailed: 'Failed to create checkout session.',
   },
   ko: {
     title: '설정',
     language: '언어',
     subscription: '구독',
+    choosePlan: '플랜 선택',
+    checkout: '결제 시작',
+    redirecting: '이동 중...',
     account: '계정',
     notifications: '알림',
-    comingSoon: '준비 중',
     polarPolicyTitle: 'Polar 규정 체크',
     adultReady: '결제 준비 가능 (18+)',
-    ageBlocked: '결제 차단: 성인(18+)만 허용됩니다.',
-    ageMissing: '프로필에 나이를 입력하면 결제 검토를 진행할 수 있습니다.',
+    ageBlocked: '결제 차단: 성인(18+)만 이용 가능합니다.',
+    ageMissing: '프로필에 나이를 입력하면 결제를 진행할 수 있습니다.',
     ruleDigitalOnly: '디지털 SaaS만 판매. 물리 상품 금지.',
     ruleNoHumanService: '컨설팅/인적 서비스 결제 금지.',
-    ruleNoDonation: '후원/기부/순수 송금 형태 결제 금지.',
-    ruleInstantAccess: '결제 즉시 앱 내 디지털 접근 제공.',
+    ruleNoDonation: '후원/기부/팁 형태 결제 금지.',
+    ruleInstantAccess: '결제 즉시 유료 기능 접근 제공.',
+    checkoutFailed: '체크아웃 세션 생성에 실패했습니다.',
   },
 };
+
+const PLANS: { plan: PlanTier; title: string; price: string }[] = [
+  { plan: 'explorer', title: 'Explorer', price: 'Free' },
+  { plan: 'essential', title: 'Essential', price: '$9.99/mo' },
+  { plan: 'visionary', title: 'Visionary', price: '$19.99/mo' },
+  { plan: 'master', title: 'Master', price: '$49.99/mo' },
+];
 
 const parseAge = (rawAge?: string): number | null => {
   if (!rawAge) return null;
@@ -68,13 +86,53 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
   language,
   onLanguageChange,
   userAge,
+  userEmail,
+  userName,
+  externalCustomerId,
 }) => {
+  const [loadingPlan, setLoadingPlan] = useState<PlanTier | null>(null);
+  const [checkoutError, setCheckoutError] = useState('');
+
   if (!isOpen) return null;
 
   const labels = LABELS[language];
   const age = parseAge(userAge);
   const hasAge = age !== null;
   const isAdult = hasAge && age >= 18;
+
+  const customerId = useMemo(() => {
+    if (externalCustomerId && externalCustomerId.trim().length > 0) {
+      return externalCustomerId.trim();
+    }
+    if (userEmail && userEmail.trim().length > 0) {
+      return `email:${userEmail.trim().toLowerCase()}`;
+    }
+    return undefined;
+  }, [externalCustomerId, userEmail]);
+
+  const handleCheckout = async (plan: PlanTier) => {
+    if (!isAdult) return;
+
+    setCheckoutError('');
+    setLoadingPlan(plan);
+
+    try {
+      const { url } = await createPolarCheckout({
+        plan,
+        customerEmail: userEmail,
+        customerName: userName,
+        externalCustomerId: customerId,
+      });
+      window.location.assign(url);
+    } catch (error) {
+      const message =
+        error instanceof Error && error.message.trim().length > 0
+          ? error.message
+          : labels.checkoutFailed;
+      setCheckoutError(message);
+      setLoadingPlan(null);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-[120] bg-deep-space text-white">
@@ -106,7 +164,9 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
             </div>
             <select
               value={language}
-              onChange={(event) => onLanguageChange(event.target.value as LanguageOption)}
+              onChange={(event) =>
+                onLanguageChange(event.target.value as LanguageOption)
+              }
               className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-neon-lime"
             >
               <option value="en">English</option>
@@ -120,7 +180,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                 <Crown size={16} className="text-neon-lime" />
                 <span className="text-sm">{labels.subscription}</span>
               </div>
-              <span className="text-[11px] text-gray-400">{labels.comingSoon}</span>
+              <span className="text-[11px] text-gray-400">{labels.choosePlan}</span>
             </div>
 
             <div className="px-4 py-3 border-b border-white/10">
@@ -138,16 +198,48 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
               </div>
             </div>
 
+            <div className="px-4 py-3.5 border-b border-white/10 space-y-2">
+              {PLANS.map((item) => {
+                const isLoading = loadingPlan === item.plan;
+                return (
+                  <button
+                    key={item.plan}
+                    onClick={() => handleCheckout(item.plan)}
+                    disabled={!isAdult || loadingPlan !== null}
+                    className="w-full flex items-center justify-between rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 text-left hover:border-neon-lime/40 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <div>
+                      <p className="text-sm text-white font-medium">{item.title}</p>
+                      <p className="text-[11px] text-gray-400">{item.price}</p>
+                    </div>
+                    <span className="inline-flex items-center gap-1 text-xs text-neon-lime">
+                      {isLoading ? (
+                        <>
+                          <Loader2 size={13} className="animate-spin" />
+                          {labels.redirecting}
+                        </>
+                      ) : (
+                        labels.checkout
+                      )}
+                    </span>
+                  </button>
+                );
+              })}
+              {checkoutError && (
+                <p className="text-xs text-red-300 pt-1">{checkoutError}</p>
+              )}
+            </div>
+
             <div className="px-4 py-3.5">
               <div className="flex items-center gap-2 text-xs text-gray-300 mb-2">
                 <ShieldCheck size={14} className="text-neon-lime" />
                 <span>{labels.polarPolicyTitle}</span>
               </div>
               <ul className="space-y-1.5 text-[12px] text-gray-400">
-                <li>• {labels.ruleDigitalOnly}</li>
-                <li>• {labels.ruleNoHumanService}</li>
-                <li>• {labels.ruleNoDonation}</li>
-                <li>• {labels.ruleInstantAccess}</li>
+                <li>{labels.ruleDigitalOnly}</li>
+                <li>{labels.ruleNoHumanService}</li>
+                <li>{labels.ruleNoDonation}</li>
+                <li>{labels.ruleInstantAccess}</li>
               </ul>
             </div>
           </section>
