@@ -116,6 +116,9 @@ _Last updated: 2026-02-14_
   - `vercel.json` redirects `www.secretcoach.ai/*` -> `secretcoach.ai/*`
 - Improved Polar checkout error visibility:
   - `api/create-checkout.ts` now returns `polarDetail` on 4xx/5xx for debugging
-- Version: V02.14r13
+- Added legal policy pages + links:
+  - Public pages: `/terms`, `/privacy`, `/refund` (served from `public/`)
+  - Linked from Settings (near checkout) and LandingPage
+- Version: V02.14r14
 - Remaining: iOS platform add/build must be done on macOS
 

@@ -5,7 +5,21 @@
       "has": [{ "type": "host", "value": "www.secretcoach.ai" }],
       "destination": "https://secretcoach.ai/$1",
       "permanent": true
+    },
+    {
+      "source": "/terms",
+      "destination": "/terms/",
+      "permanent": true
+    },
+    {
+      "source": "/privacy",
+      "destination": "/privacy/",
+      "permanent": true
+    },
+    {
+      "source": "/refund",
+      "destination": "/refund/",
+      "permanent": true
     }
   ]
 }
-

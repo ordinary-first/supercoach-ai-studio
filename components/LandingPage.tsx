@@ -95,6 +95,34 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginSuccess }) => {
                   로그인 시 브라우저가 Google 인증 페이지로 이동합니다.<br/>
                   완료 후 자동으로 다시 돌아오게 됩니다.
                 </p>
+                <div className="mt-4 flex flex-wrap items-center justify-center gap-3 text-[9px] font-bold text-gray-500 uppercase tracking-widest">
+                  <a
+                    className="hover:text-neon-lime transition-colors"
+                    href="/terms"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Terms
+                  </a>
+                  <span className="opacity-40">|</span>
+                  <a
+                    className="hover:text-neon-lime transition-colors"
+                    href="/privacy"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Privacy
+                  </a>
+                  <span className="opacity-40">|</span>
+                  <a
+                    className="hover:text-neon-lime transition-colors"
+                    href="/refund"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Refunds
+                  </a>
+                </div>
             </div>
         </div>
 

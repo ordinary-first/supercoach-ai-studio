@@ -43,6 +43,12 @@ const LABELS = {
     ruleNoHumanService: 'No consulting or human-delivered service.',
     ruleNoDonation: 'No donations, tips, or pure money transfers.',
     ruleInstantAccess: 'Paid users must get immediate in-app access.',
+    legalTitle: 'Legal',
+    legalHint:
+      'By continuing, you agree to the Terms of Service and acknowledge the Privacy Policy and Refund Policy.',
+    terms: 'Terms',
+    privacy: 'Privacy',
+    refund: 'Refunds',
     checkoutFailed: 'Failed to create checkout session.',
   },
   ko: {
@@ -62,6 +68,12 @@ const LABELS = {
     ruleNoHumanService: '컨설팅/인적 서비스 결제 금지.',
     ruleNoDonation: '후원/기부/팁 형태 결제 금지.',
     ruleInstantAccess: '결제 즉시 유료 기능 접근 제공.',
+    legalTitle: '약관/정책',
+    legalHint:
+      '결제를 진행하면 서비스 이용약관에 동의하고, 개인정보 처리방침 및 환불규정을 확인한 것으로 간주합니다.',
+    terms: '이용약관',
+    privacy: '개인정보',
+    refund: '환불규정',
     checkoutFailed: '체크아웃 세션 생성에 실패했습니다.',
   },
 };
@@ -241,6 +253,42 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                 <li>{labels.ruleNoDonation}</li>
                 <li>{labels.ruleInstantAccess}</li>
               </ul>
+            </div>
+
+            <div className="px-4 py-3.5 border-t border-white/10">
+              <div className="flex items-center gap-2 text-xs text-gray-300 mb-2">
+                <ShieldCheck size={14} className="text-neon-lime" />
+                <span>{labels.legalTitle}</span>
+              </div>
+              <p className="text-[11px] text-gray-400 leading-relaxed">
+                {labels.legalHint}
+              </p>
+              <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
+                <a
+                  href="/terms"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded-full border border-white/10 bg-black/30 px-3 py-1 text-neon-lime hover:border-neon-lime/40"
+                >
+                  {labels.terms}
+                </a>
+                <a
+                  href="/privacy"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded-full border border-white/10 bg-black/30 px-3 py-1 text-neon-lime hover:border-neon-lime/40"
+                >
+                  {labels.privacy}
+                </a>
+                <a
+                  href="/refund"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded-full border border-white/10 bg-black/30 px-3 py-1 text-neon-lime hover:border-neon-lime/40"
+                >
+                  {labels.refund}
+                </a>
+              </div>
             </div>
           </section>
 
