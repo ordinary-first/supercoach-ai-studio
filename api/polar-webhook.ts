@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { FieldValue } from 'firebase-admin/firestore';
 import { validateEvent, WebhookVerificationError } from '@polar-sh/sdk/webhooks';
-import { getAdminDb } from '../lib/firebaseAdmin';
+import { getAdminDb } from '../lib/firebaseAdmin.js';
 
 const SUPPORTED_EVENTS = new Set([
   'subscription.created',
