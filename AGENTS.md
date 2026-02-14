@@ -97,6 +97,7 @@ _Last updated: 2026-02-14_
 - Added client billing service:
   - `services/polarService.ts` (`createPolarCheckout`)
 - Updated `SettingsPage` to show 4 plans and start checkout directly.
-- Version: V02.14r06
+- Fixed runtime hook-order issue in `SettingsPage` causing React minified error #310.
+- Version: V02.14r07
 - Remaining: iOS platform add/build must be done on macOS
 

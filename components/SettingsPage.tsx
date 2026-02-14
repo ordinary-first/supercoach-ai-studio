@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import {
   AlertTriangle,
   BadgeCheck,
@@ -100,7 +100,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
   const hasAge = age !== null;
   const isAdult = hasAge && age >= 18;
 
-  const customerId = useMemo(() => {
+  const customerId = (() => {
     if (externalCustomerId && externalCustomerId.trim().length > 0) {
       return externalCustomerId.trim();
     }
@@ -108,7 +108,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
       return `email:${userEmail.trim().toLowerCase()}`;
     }
     return undefined;
-  }, [externalCustomerId, userEmail]);
+  })();
 
   const handleCheckout = async (plan: PlanTier) => {
     if (!isAdult) return;
