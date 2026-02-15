@@ -216,8 +216,22 @@ const MindMap: React.FC<MindMapProps> = ({
   const mindMapRef = useRef<any>(null);
   const [layout, setLayout] = useState<LayoutMode>('mindMap');
   const [contextMenu, setContextMenu] = useState<{
-    x: number; y: number; nodeId: string;
+    x: number; y: number; nodeId: string; scale: number;
   } | null>(null);
+  const [viewScale, setViewScale] = useState(1);
+
+  const getCurrentMindMapScale = useCallback(() => {
+    const mindMap = mindMapRef.current;
+
+    const direct = mindMap?.view?.scale;
+    if (typeof direct === 'number' && Number.isFinite(direct)) return direct;
+
+    const transform = mindMap?.draw?.transform?.();
+    const fromDraw = transform?.scaleX;
+    if (typeof fromDraw === 'number' && Number.isFinite(fromDraw)) return fromDraw;
+
+    return 1;
+  }, []);
 
   // Timestamp of last setData call — used to ignore data_change events that we caused
   const lastSetDataTimeRef = useRef(0);
@@ -276,6 +290,13 @@ const MindMap: React.FC<MindMapProps> = ({
 
     mindMapRef.current = mindMap;
 
+    // Track current zoom scale so overlay UI (context menu) can match mind-map zoom level.
+    const handleScale = (scale: number) => {
+      if (typeof scale === 'number' && Number.isFinite(scale)) setViewScale(scale);
+    };
+    mindMap.on('scale', handleScale);
+    handleScale(mindMap.view?.scale ?? 1);
+
     // Disable built-in keyboard shortcuts that conflict with our app
     // (We handle add/delete through App.tsx UI buttons)
     mindMap.keyCommand.removeShortcut('Tab');
@@ -304,7 +325,9 @@ const MindMap: React.FC<MindMapProps> = ({
       const rect = containerRef.current?.getBoundingClientRect();
       const x = (evt.clientX || evt.pageX || 0) - (rect?.left || 0);
       const y = (evt.clientY || evt.pageY || 0) - (rect?.top || 0);
-      setContextMenuRef.current({ x, y, nodeId: goalId });
+      const scale = getCurrentMindMapScale();
+      setViewScale(scale);
+      setContextMenuRef.current({ x, y, nodeId: goalId, scale });
     });
 
     // --- Long-press for mobile → show context menu ---
@@ -320,7 +343,9 @@ const MindMap: React.FC<MindMapProps> = ({
         const rect = containerRef.current?.getBoundingClientRect();
         const x = (evt.clientX || evt.touches?.[0]?.clientX || 0) - (rect?.left || 0);
         const y = (evt.clientY || evt.touches?.[0]?.clientY || 0) - (rect?.top || 0);
-        setContextMenuRef.current({ x, y, nodeId: goalId });
+        const scale = getCurrentMindMapScale();
+        setViewScale(scale);
+        setContextMenuRef.current({ x, y, nodeId: goalId, scale });
         longPressNode = null;
       }, 600);
     });
@@ -369,6 +394,7 @@ const MindMap: React.FC<MindMapProps> = ({
     return () => {
       if (longPressTimer) clearTimeout(longPressTimer);
       window.removeEventListener('mindmap-center', handleCenter);
+      mindMap.off?.('scale', handleScale);
       mindMap.destroy?.();
       mindMapRef.current = null;
     };
@@ -458,7 +484,12 @@ const MindMap: React.FC<MindMapProps> = ({
       {contextMenu && (
         <div
           className="absolute z-50 bg-[#0d1b30]/95 backdrop-blur-md border border-white/15 rounded-xl shadow-2xl py-1.5 min-w-[180px] animate-fade-in"
-          style={{ left: contextMenu.x, top: contextMenu.y }}
+          style={{
+            left: contextMenu.x,
+            top: contextMenu.y,
+            transform: `scale(${contextMenu.scale || viewScale})`,
+            transformOrigin: 'top left',
+          }}
         >
           <button
             onClick={() => { onGenerateImage?.(contextMenu.nodeId); setContextMenu(null); }}

@@ -87,6 +87,8 @@ _Last updated: 2026-02-15_
 - Added age-based checkout readiness guard (18+ only message before payment integration)
 - Moved language selector (English / Korean) into Settings page
 - Reflected selected language to document.documentElement.lang
+- Fixed mobile long-press context menu sizing to follow mind-map zoom scale (`components/MindMap.tsx`)
+- Hardened context menu scaling on mobile by reading current zoom scale at menu-open time (`components/MindMap.tsx`)
 - Added reusable pricing calculator for OpenAI migration:
   - `pricing/pricing-config.json` (all cost assumptions and tier limits)
   - `pricing/calc-pricing.mjs` (expected/worst margin simulation)
@@ -124,6 +126,6 @@ _Last updated: 2026-02-15_
   - returns 403 with missing header hints for easier debugging
 - Fixed Polar webhook 403 root cause:
   - `api/polar-webhook.ts` now verifies signatures against the raw request body (stream-first)
-- Version: V02.15r01
+- Version: V02.15r03
 - Remaining: iOS platform add/build must be done on macOS
 
