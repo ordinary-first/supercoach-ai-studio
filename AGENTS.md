@@ -89,6 +89,8 @@ _Last updated: 2026-02-15_
 - Reflected selected language to document.documentElement.lang
 - Fixed mobile long-press context menu sizing to follow mind-map zoom scale (`components/MindMap.tsx`)
 - Hardened context menu scaling on mobile by reading current zoom scale at menu-open time (`components/MindMap.tsx`)
+- Fixed mobile header layout: reduced "SECRET COACH" footprint and prevented version/settings overlap (`components/MindMap.tsx`, `App.tsx`)
+- Fixed mojibake/깨진 한글 UI 텍스트 in App (loading, shortcuts, sync status, delete confirm) (`App.tsx`)
 - Added reusable pricing calculator for OpenAI migration:
   - `pricing/pricing-config.json` (all cost assumptions and tier limits)
   - `pricing/calc-pricing.mjs` (expected/worst margin simulation)
@@ -126,6 +128,6 @@ _Last updated: 2026-02-15_
   - returns 403 with missing header hints for easier debugging
 - Fixed Polar webhook 403 root cause:
   - `api/polar-webhook.ts` now verifies signatures against the raw request body (stream-first)
-- Version: V02.15r03
+- Version: V02.15r04
 - Remaining: iOS platform add/build must be done on macOS
 

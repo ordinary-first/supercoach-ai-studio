@@ -122,7 +122,7 @@ const App: React.FC = () => {
   const [nodes, setNodes] = useState<GoalNode[]>([
     {
         id: 'root',
-        text: '?섏쓽 ?몄깮 鍮꾩쟾',
+        text: '나의 인생 비전',
         type: NodeType.ROOT,
         status: NodeStatus.PENDING,
         progress: 0,
@@ -253,7 +253,7 @@ const App: React.FC = () => {
       );
       if (imageUrl) handleUpdateNode(nodeId, { imageUrl });
     } catch {
-      addToast('?대?吏 ?앹꽦???ㅽ뙣?덉뒿?덈떎', 'warning');
+      addToast('이미지 생성에 실패했습니다', 'warning');
     } finally {
       setImageLoadingNodes(prev => {
         const next = new Set(prev); next.delete(nodeId); return next;
@@ -382,7 +382,7 @@ const App: React.FC = () => {
       <div className="fixed inset-0 bg-deep-space flex flex-col items-center justify-center gap-6">
         <div className="w-12 h-12 border-4 border-neon-lime border-t-transparent rounded-full animate-spin"></div>
         <p className="text-xs text-gray-500 font-mono tracking-widest animate-pulse">
-          {isInitializing ? '?몄쬆 以?..' : '?곗씠??濡쒕뵫 以?..'}
+          {isInitializing ? '초기화 중...' : '데이터 로딩 중...'}
         </p>
       </div>
     );
@@ -400,27 +400,28 @@ const App: React.FC = () => {
             nodes={visibleNodes} links={visibleLinks} selectedNodeId={selectedNode?.id} onNodeClick={setSelectedNode} onUpdateNode={handleUpdateNode} onDeleteNode={handleDeleteNode} onReparentNode={handleReparentNode} onAddSubNode={handleAddSubNode} onGenerateImage={handleGenerateNodeImage} onConvertNodeToTask={handleConvertNodeToTodo} editingNodeId={editingNodeId} onEditEnd={() => setEditingNodeId(null)} width={dimensions.width} height={dimensions.height} imageLoadingNodes={imageLoadingNodes}
           />
 
-          <div className="absolute top-[72px] left-6 z-50">
-              <button
-                onClick={() => setIsShortcutsOpen(prev => !prev)}
-                className="flex items-center gap-2 bg-black/40 backdrop-blur-md border border-white/10 px-4 py-2 rounded-full text-[10px] font-bold tracking-widest text-neon-lime hover:bg-neon-lime hover:text-black transition-all"
-              >
-                  <span className="bg-neon-lime/20 px-1.5 py-0.5 rounded text-[8px] border border-neon-lime/30">K</span>
-                  ?⑥텞??              </button>
-          </div>
+           <div className="absolute top-[64px] left-3 md:top-[72px] md:left-6 z-50">
+               <button
+                 onClick={() => setIsShortcutsOpen(prev => !prev)}
+                 className="flex items-center gap-2 bg-black/40 backdrop-blur-md border border-white/10 px-3 py-1.5 md:px-4 md:py-2 rounded-full text-[10px] font-bold tracking-widest text-neon-lime hover:bg-neon-lime hover:text-black transition-all"
+               >
+                   <span className="bg-neon-lime/20 px-1.5 py-0.5 rounded text-[8px] border border-neon-lime/30">K</span>
+                   단축키
+               </button>
+           </div>
 
-        </>
-      )}
-
-      <div className="absolute top-6 right-6 z-[60]">
-        <button
-          onClick={() => setIsSettingsPageOpen(true)}
-          className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md border border-white/10 text-gray-200 hover:bg-white/15 transition-all flex items-center justify-center"
-          aria-label="Open settings"
-        >
-          <SettingsIcon size={18} />
-        </button>
-      </div>
+         </>
+       )}
+ 
+       <div className="absolute top-3 right-3 md:top-6 md:right-6 z-[60]">
+         <button
+           onClick={() => setIsSettingsPageOpen(true)}
+           className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md border border-white/10 text-gray-200 hover:bg-white/15 transition-all flex items-center justify-center"
+           aria-label="Open settings"
+         >
+           <SettingsIcon size={18} />
+         </button>
+       </div>
 
       <ToDoList isOpen={activeTab === 'TODO'} onClose={() => setActiveTab('GOALS')} onOpenCalendar={() => setActiveTab('CALENDAR')} todos={todos} onAddToDo={(text) => {
   const trimmed = text.trim().slice(0, 500);
@@ -439,14 +440,15 @@ const App: React.FC = () => {
         <div className="fixed top-3 left-1/2 -translate-x-1/2 z-[52] flex items-center gap-2 bg-black/70 backdrop-blur-md border border-white/10 rounded-full px-3 py-1.5 animate-fade-in">
           <div className={`w-2 h-2 rounded-full ${syncStatus === 'local-only' ? 'bg-yellow-400' : 'bg-red-400'} animate-pulse`} />
           <span className="text-[10px] font-bold text-gray-300 tracking-wide">
-            {syncStatus === 'local-only' ? '??湲곌린?먮쭔 ??λ맖' : '?숆린??遺덇?'}
+            {syncStatus === 'local-only' ? '로컬에서만 저장 중' : '동기화 불가'}
           </span>
           {syncStatus === 'local-only' && (
             <button
               onClick={() => { logout(); setUserProfile(null); setActiveTab('GOALS'); }}
               className="text-[9px] text-neon-lime font-bold ml-1 hover:underline"
             >
-              濡쒓렇??            </button>
+              로그아웃
+            </button>
           )}
         </div>
       )}
@@ -455,7 +457,7 @@ const App: React.FC = () => {
         isOpen={activeTab === 'PROFILE'} onClose={() => setActiveTab('GOALS')} profile={userProfile} onSave={(p) => {
           setUserProfile(p);
           const uid = getUserId();
-          if (uid) saveProfile(uid, p).catch(() => addToast('?꾨줈????μ뿉 ?ㅽ뙣?덉뒿?덈떎', 'error'));
+          if (uid) saveProfile(uid, p).catch(() => addToast('프로필 저장에 실패했습니다', 'error'));
         }} onLogout={() => { logout(); setUserProfile(null); setActiveTab('GOALS'); }}
       />
 
@@ -474,14 +476,14 @@ const App: React.FC = () => {
           <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in">
               <div className="bg-[#0a0f1a] border border-white/10 rounded-3xl p-8 max-w-sm w-full mx-4 shadow-2xl">
                   <div className="text-center space-y-4">
-                      <div className="w-16 h-16 mx-auto rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center">
-                          <span className="text-3xl">!</span>
-                      </div>
-                      <h3 className="text-xl font-display font-bold text-white">?몃뱶 ??젣</h3>
+                       <div className="w-16 h-16 mx-auto rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center">
+                           <span className="text-3xl">!</span>
+                       </div>
+                      <h3 className="text-xl font-display font-bold text-white">노드 삭제</h3>
                       <p className="text-sm text-gray-400">
-                          "{nodes.find(n => n.id === deleteConfirmNodeId)?.text || '???몃뱶'}"瑜???젣?섏떆寃좎뒿?덇퉴?
+                          "{nodes.find(n => n.id === deleteConfirmNodeId)?.text || '이 노드'}"를 삭제하시겠습니까?
                           {nodes.filter(n => n.parentId === deleteConfirmNodeId).length > 0 && (
-                              <span className="block mt-1 text-red-400">?섏쐞 ?몃뱶???④퍡 ??젣?⑸땲??</span>
+                              <span className="block mt-1 text-red-400">하위 노드도 함께 삭제됩니다.</span>
                           )}
                       </p>
                       <div className="flex gap-3 pt-2">
@@ -489,13 +491,13 @@ const App: React.FC = () => {
                               onClick={() => setDeleteConfirmNodeId(null)}
                               className="flex-1 px-6 py-3 bg-white/5 border border-white/10 rounded-full text-sm font-bold text-gray-300 hover:bg-white/10 transition-all"
                           >
-                              痍⑥냼
+                              취소
                           </button>
                           <button
                               onClick={() => executeDeleteNode(deleteConfirmNodeId)}
                               className="flex-1 px-6 py-3 bg-red-500 rounded-full text-sm font-bold text-white hover:bg-red-400 transition-all shadow-[0_0_20px_rgba(239,68,68,0.3)]"
                           >
-                              ??젣
+                              삭제
                           </button>
                       </div>
                   </div>

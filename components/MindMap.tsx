@@ -449,20 +449,25 @@ const MindMap: React.FC<MindMapProps> = ({
   return (
     <div className="w-full h-full bg-deep-space relative overflow-hidden">
       {/* Header */}
-      <div className="absolute top-4 left-4 z-10 pointer-events-none select-none">
-        <h1 className="text-2xl font-display text-white tracking-widest drop-shadow-[0_0_10px_rgba(204,255,0,0.5)]">
-          SECRET COACH <span className="text-neon-lime text-xs align-top">{__APP_VERSION__}</span>
-        </h1>
-        <p className="text-gray-400 text-xs font-body">Neural Interface Active</p>
+      <div className="absolute top-3 left-3 z-10 pointer-events-none select-none max-w-[calc(100%-72px)]">
+        <div className="flex items-baseline gap-2 flex-wrap">
+          <h1 className="text-lg sm:text-xl md:text-2xl font-display text-white tracking-[0.22em] md:tracking-widest leading-none drop-shadow-[0_0_10px_rgba(204,255,0,0.5)]">
+            SECRET COACH
+          </h1>
+          <span className="text-neon-lime text-[10px] md:text-xs font-mono tracking-wide">
+            {__APP_VERSION__}
+          </span>
+        </div>
+        <p className="text-gray-400 text-[10px] md:text-xs font-body">Neural Interface Active</p>
       </div>
 
       {/* Layout Switcher */}
-      <div className="absolute top-16 right-4 z-10 flex bg-black/60 backdrop-blur-md border border-white/10 rounded-full px-1 py-0.5 gap-0.5">
+      <div className="absolute top-14 right-3 md:top-16 md:right-4 z-10 flex bg-black/60 backdrop-blur-md border border-white/10 rounded-full px-1 py-0.5 gap-0.5">
         {layoutOptions.map(opt => (
           <button
             key={opt.mode}
             onClick={() => handleLayoutChange(opt.mode)}
-            className={`px-2.5 py-1 rounded-full text-[10px] font-semibold transition-all duration-200 ${
+            className={`px-2 py-1 rounded-full text-[9px] md:text-[10px] font-semibold transition-all duration-200 ${
               layout === opt.mode
                 ? 'bg-neon-lime text-black shadow-[0_0_8px_rgba(204,255,0,0.5)]'
                 : 'text-gray-400 hover:text-white hover:bg-white/10'
