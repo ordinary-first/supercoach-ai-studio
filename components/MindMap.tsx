@@ -247,9 +247,11 @@ const MindMap: React.FC<MindMapProps> = ({
 
   const onNodeClickRef = useRef(onNodeClick);
   const onUpdateNodeRef = useRef(onUpdateNode);
+  const onAddSubNodeRef = useRef(onAddSubNode);
   const setContextMenuRef = useRef(setContextMenu);
   onNodeClickRef.current = onNodeClick;
   onUpdateNodeRef.current = onUpdateNode;
+  onAddSubNodeRef.current = onAddSubNode;
   setContextMenuRef.current = setContextMenu;
 
   // --- Initialize MindMap (once) ---
@@ -277,6 +279,18 @@ const MindMap: React.FC<MindMapProps> = ({
       readonly: false,
       enableShortcutOnlyWhenMouseInSvg: true,
       createNewNodeBehavior: 'notActive',
+      // Prevent Chinese default text when the library inserts nodes internally.
+      defaultInsertSecondLevelNodeText: '새 노드',
+      defaultInsertBelowSecondLevelNodeText: '새 노드',
+      defaultGeneralizationText: '요약',
+      defaultAssociativeLineText: '',
+      // Hook the built-in "+" quick-create button so node creation goes through React state.
+      // This avoids Chinese placeholder text and allows immediate text editing via editingNodeId.
+      customQuickCreateChildBtnClick: (nodeIns: any) => {
+        const goalId = nodeIns?.nodeData?.data?.goalId || nodeIns?.nodeData?.data?.uid;
+        if (!goalId) return;
+        onAddSubNodeRef.current?.(goalId);
+      },
       expandBtnStyle: {
         color: '#CCFF00',
         fill: '#0a1a2f',
@@ -441,7 +455,7 @@ const MindMap: React.FC<MindMapProps> = ({
     if (target) {
       mindMap.execCommand('SET_NODE_ACTIVE', target, true);
       setTimeout(() => {
-        mindMap.renderer?.textEdit?.show?.(target);
+        mindMap.renderer?.textEdit?.show?.({ node: target, isInserting: true });
       }, 50);
     }
   }, [editingNodeId]);
