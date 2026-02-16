@@ -8,6 +8,7 @@ import {
     generateGoalImage, generateSuccessNarrative, generateSpeech,
     generateVideo, generateVisualizationImage
 } from '../services/aiService';
+import { getUserId } from '../services/firebaseService';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 
 interface SavedVisualization {
@@ -27,7 +28,15 @@ interface VisualizationModalProps {
     nodes: GoalNode[];
 }
 
-const STORAGE_KEY = 'secretcoach_saved_vis';
+const STORAGE_KEY_BASE = 'secretcoach_saved_vis';
+const STORAGE_KEY_LEGACY = STORAGE_KEY_BASE;
+
+function getStorageKey(userId: string | null): string {
+    if (typeof userId === 'string' && userId.trim().length > 0) {
+        return `${STORAGE_KEY_BASE}_${userId}`;
+    }
+    return `${STORAGE_KEY_BASE}_anon`;
+}
 
 const VisualizationModal: React.FC<VisualizationModalProps> = ({ isOpen, onClose, userProfile, nodes }) => {
     const focusTrapRef = useFocusTrap(isOpen);
@@ -70,18 +79,32 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({ isOpen, onClose
     // Long press state for saved items
     const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    // Load saved items from localStorage on mount
+    const storageKey = getStorageKey(getUserId());
+
+    // Load saved items from localStorage (scoped by uid)
     useEffect(() => {
         try {
-            const raw = localStorage.getItem(STORAGE_KEY);
+            // One-time migration: legacy unscoped key -> current scoped key (only if empty).
+            const existing = localStorage.getItem(storageKey);
+            if (!existing) {
+                const legacy = localStorage.getItem(STORAGE_KEY_LEGACY);
+                if (legacy) {
+                    localStorage.setItem(storageKey, legacy);
+                    localStorage.removeItem(STORAGE_KEY_LEGACY);
+                }
+            }
+
+            const raw = localStorage.getItem(storageKey);
             if (raw) {
                 const parsed = JSON.parse(raw) as SavedVisualization[];
                 setSavedItems(parsed);
+            } else {
+                setSavedItems([]);
             }
         } catch (e) {
             console.error('Failed to load saved visualizations:', e);
         }
-    }, []);
+    }, [storageKey]);
 
     // Reset viewMode to 'create' when opening
     useEffect(() => {
@@ -273,11 +296,11 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({ isOpen, onClose
     // --- SAVE / DELETE ---
     const persistSavedItems = useCallback((items: SavedVisualization[]) => {
         try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+            localStorage.setItem(storageKey, JSON.stringify(items));
         } catch (e) {
             console.error('Failed to persist saved visualizations:', e);
         }
-    }, []);
+    }, [storageKey]);
 
     const handleSave = () => {
         if (!currentResult || isSaved) return;

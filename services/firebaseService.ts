@@ -39,6 +39,10 @@ const GUEST_KEY = 'secret_coach_guest_user';
  */
 export const loginWithGoogle = async (): Promise<User | null> => {
   try {
+    // Force account re-pick: avoid silently reusing existing Firebase session.
+    if (auth.currentUser) {
+      try { await signOut(auth); } catch { /* ignore */ }
+    }
     const result = await signInWithPopup(auth, googleProvider);
     if (result?.user) {
       localStorage.removeItem(GUEST_KEY);

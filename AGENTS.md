@@ -82,7 +82,9 @@ When one agent completes work that another agent will continue:
 ## Current Status
 _Last updated: 2026-02-16_
 - Fixed cross-account data bleed: force reload per uid and reset in-memory state on uid change (`hooks/useAuth.ts`, `App.tsx`)
-- Bumped `displayVersion` to `V02.16r01` (`package.json`)
+- Fixed cross-account data bleed in Visualization gallery: localStorage key is now uid-scoped + legacy key migration (`components/VisualizationModal.tsx`)
+- Hardened Google login account switching: sign out before `signInWithPopup` to avoid reusing prior Firebase session (`services/firebaseService.ts`)
+- Bumped `displayVersion` to `V02.16r02` (`package.json`)
 - Replaced top-right text button with icon-only settings trigger in App.tsx
 - Added full-screen SettingsPage.tsx for settings navigation-style flow
 - Added Polar compliance checklist UI in settings (digital-only / no human service / no donation / instant access)
@@ -131,6 +133,6 @@ _Last updated: 2026-02-16_
   - returns 403 with missing header hints for easier debugging
 - Fixed Polar webhook 403 root cause:
   - `api/polar-webhook.ts` now verifies signatures against the raw request body (stream-first)
-- Version: V02.15r05
+- Version: V02.16r02
 - Remaining: iOS platform add/build must be done on macOS
 
