@@ -81,6 +81,9 @@ When one agent completes work that another agent will continue:
 
 ## Current Status
 _Last updated: 2026-02-16_
+- Fixed action bar node anchoring so it follows selected node while map translates/zooms (`components/MindMap.tsx`)
+- Hardened action bar localization by resolving labels with app language + document language fallback (`components/MindMap.tsx`)
+- Bumped `displayVersion` to `V02.16r12` (`package.json`)
 - Localized mind-map action bar by app language (`ko`/`en`) via `language` prop wiring (`App.tsx`, `components/MindMap.tsx`)
 - Repositioned action bar to avoid node overlap by anchoring near node bounds (prefer top, fallback bottom near header) (`components/MindMap.tsx`)
 - Bumped `displayVersion` to `V02.16r11` (`package.json`)
@@ -172,6 +175,6 @@ _Last updated: 2026-02-16_
   - returns 403 with missing header hints for easier debugging
 - Fixed Polar webhook 403 root cause:
   - `api/polar-webhook.ts` now verifies signatures against the raw request body (stream-first)
-- Version: V02.16r11
+- Version: V02.16r12
 - Remaining: iOS platform add/build must be done on macOS
 

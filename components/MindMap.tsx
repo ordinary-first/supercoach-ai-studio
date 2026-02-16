@@ -70,6 +70,15 @@ interface SMMNode {
   children: SMMNode[];
 }
 
+interface ActionBarState {
+  x: number;
+  y: number;
+  nodeId: string;
+  scale: number;
+  placement: 'top' | 'bottom';
+  isMoreOpen: boolean;
+}
+
 /** Convert flat GoalNode[] + GoalLink[] to simple-mind-map tree format.
  *  Border colors are baked into node data based on status + selection. */
 function goalNodesToTree(
@@ -243,16 +252,11 @@ const MindMap: React.FC<MindMapProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const mindMapRef = useRef<any>(null);
   const [layout, setLayout] = useState<LayoutMode>('mindMap');
-  const [actionBar, setActionBar] = useState<{
-    x: number;
-    y: number;
-    nodeId: string;
-    scale: number;
-    placement: 'top' | 'bottom';
-    isMoreOpen: boolean;
-  } | null>(null);
+  const [actionBar, setActionBar] = useState<ActionBarState | null>(null);
   const [viewScale, setViewScale] = useState(1);
-  const labels = ACTION_BAR_LABELS[language];
+  const languageByDom = document.documentElement.lang.toLowerCase().startsWith('ko') ? 'ko' : 'en';
+  const resolvedLanguage: 'en' | 'ko' = language === 'ko' || languageByDom === 'ko' ? 'ko' : 'en';
+  const labels = ACTION_BAR_LABELS[resolvedLanguage];
 
   const getCurrentMindMapScale = useCallback(() => {
     const mindMap = mindMapRef.current;
@@ -266,6 +270,38 @@ const MindMap: React.FC<MindMapProps> = ({
 
     return 1;
   }, []);
+
+  const getRenderedNodeByGoalId = useCallback((goalId: string) => {
+    const mindMap = mindMapRef.current;
+    const root = mindMap?.renderer?.root;
+    if (!root) return null;
+    const allNodes = getAllRenderedNodes(root);
+    return allNodes.find(
+      (n: any) => n?.nodeData?.data?.goalId === goalId || n?.nodeData?.data?.uid === goalId,
+    ) || null;
+  }, []);
+
+  const computeActionBarFromRenderedNode = useCallback((node: any): Omit<ActionBarState, 'nodeId' | 'isMoreOpen'> | null => {
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (!rect || !node || typeof node.getRectInSvg !== 'function') return null;
+    const nodeRect = node.getRectInSvg();
+    if (!nodeRect) return null;
+
+    const centerX = nodeRect.left + nodeRect.width / 2;
+    const minTopForAbove = 110;
+    const placement: 'top' | 'bottom' = nodeRect.top > minTopForAbove ? 'top' : 'bottom';
+    const targetY = placement === 'top' ? nodeRect.top - 10 : nodeRect.bottom + 10;
+    const margin = 12;
+    const x = Math.max(margin, Math.min(rect.width - margin, centerX));
+    const y = Math.max(margin, Math.min(rect.height - margin, targetY));
+
+    return {
+      x,
+      y,
+      scale: getCurrentMindMapScale(),
+      placement,
+    };
+  }, [getCurrentMindMapScale]);
 
   // Timestamp of last setData call ??used to ignore data_change events that we caused
   const lastSetDataTimeRef = useRef(0);
@@ -284,6 +320,7 @@ const MindMap: React.FC<MindMapProps> = ({
   const onUpdateNodeRef = useRef(onUpdateNode);
   const onAddSubNodeRef = useRef(onAddSubNode);
   const setActionBarRef = useRef(setActionBar);
+  const actionBarRef = useRef<ActionBarState | null>(null);
   const lastTapRef = useRef<{ nodeId: string; ts: number }>({
     nodeId: '',
     ts: 0,
@@ -293,6 +330,7 @@ const MindMap: React.FC<MindMapProps> = ({
   onUpdateNodeRef.current = onUpdateNode;
   onAddSubNodeRef.current = onAddSubNode;
   setActionBarRef.current = setActionBar;
+  actionBarRef.current = actionBar;
 
   // Block native page pinch/gesture handling inside the map container.
   // simple-mind-map's touch plugin still receives touch events and handles map zoom.
@@ -384,9 +422,35 @@ const MindMap: React.FC<MindMapProps> = ({
       if (typeof scale === 'number' && Number.isFinite(scale)) {
         setViewScale(scale);
       }
-      setActionBarRef.current(null);
+      const current = actionBarRef.current;
+      if (!current) return;
+      const renderedNode = getRenderedNodeByGoalId(current.nodeId);
+      const next = renderedNode ? computeActionBarFromRenderedNode(renderedNode) : null;
+      if (!next) {
+        setActionBarRef.current(null);
+        return;
+      }
+      setActionBarRef.current((prev) => {
+        if (!prev || prev.nodeId !== current.nodeId) return prev;
+        return { ...prev, ...next };
+      });
+    };
+    const handleTranslate = () => {
+      const current = actionBarRef.current;
+      if (!current) return;
+      const renderedNode = getRenderedNodeByGoalId(current.nodeId);
+      const next = renderedNode ? computeActionBarFromRenderedNode(renderedNode) : null;
+      if (!next) {
+        setActionBarRef.current(null);
+        return;
+      }
+      setActionBarRef.current((prev) => {
+        if (!prev || prev.nodeId !== current.nodeId) return prev;
+        return { ...prev, ...next };
+      });
     };
     mindMap.on('scale', handleScale);
+    mindMap.on('translate', handleTranslate);
     handleScale(mindMap.view?.scale ?? 1);
 
     // Disable built-in keyboard shortcuts that conflict with our app
@@ -417,42 +481,15 @@ const MindMap: React.FC<MindMapProps> = ({
       }
       lastTapRef.current = { nodeId: goalId, ts: now };
 
-      const evt = e?.e || e || {};
-      const rect = containerRef.current?.getBoundingClientRect();
-      const fallbackX = (rect?.width || width) / 2;
-      const fallbackY = (rect?.height || height) / 2;
-      const nodeRect = typeof node?.getRectInSvg === 'function'
-        ? node.getRectInSvg()
-        : null;
-      const nodeCenterX = nodeRect ? nodeRect.left + nodeRect.width / 2 : fallbackX;
-      const clickX = ((evt.clientX || evt.pageX || 0) - (rect?.left || 0)) || nodeCenterX;
-
-      let placement: 'top' | 'bottom' = 'top';
-      let x = nodeCenterX || clickX || fallbackX;
-      let y = fallbackY;
-      if (nodeRect) {
-        const minTopForAbove = 110;
-        placement = nodeRect.top > minTopForAbove ? 'top' : 'bottom';
-        y = placement === 'top' ? nodeRect.top - 10 : nodeRect.bottom + 10;
-      } else {
-        y = ((evt.clientY || evt.pageY || 0) - (rect?.top || 0)) || fallbackY;
-        placement = y > 110 ? 'top' : 'bottom';
-      }
-
-      if (rect) {
-        const margin = 12;
-        x = Math.max(margin, Math.min(rect.width - margin, x));
-        y = Math.max(margin, Math.min(rect.height - margin, y));
-      }
-      const scale = getCurrentMindMapScale();
-
-      setViewScale(scale);
+      const position = computeActionBarFromRenderedNode(node);
+      if (!position) return;
+      setViewScale(position.scale);
       setActionBarRef.current({
-        x,
-        y,
+        x: position.x,
+        y: position.y,
         nodeId: goalId,
-        scale,
-        placement,
+        scale: position.scale,
+        placement: position.placement,
         isMoreOpen: false,
       });
     });
@@ -496,6 +533,7 @@ const MindMap: React.FC<MindMapProps> = ({
     return () => {
       window.removeEventListener('mindmap-center', handleCenter);
       mindMap.off?.('scale', handleScale);
+      mindMap.off?.('translate', handleTranslate);
       mindMap.destroy?.();
       mindMapRef.current = null;
     };
