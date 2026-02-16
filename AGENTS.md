@@ -80,7 +80,9 @@ When one agent completes work that another agent will continue:
 3. Note any gotchas or decisions made
 
 ## Current Status
-_Last updated: 2026-02-15_
+_Last updated: 2026-02-16_
+- Fixed cross-account data bleed: force reload per uid and reset in-memory state on uid change (`hooks/useAuth.ts`, `App.tsx`)
+- Bumped `displayVersion` to `V02.16r01` (`package.json`)
 - Replaced top-right text button with icon-only settings trigger in App.tsx
 - Added full-screen SettingsPage.tsx for settings navigation-style flow
 - Added Polar compliance checklist UI in settings (digital-only / no human service / no donation / instant access)

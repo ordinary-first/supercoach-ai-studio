@@ -1,5 +1,5 @@
 ﻿
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import MindMap from './components/MindMap';
 import CoachChat from './components/CoachChat';
 import CoachBubble from './components/CoachBubble';
@@ -107,6 +107,18 @@ type AppLanguage = 'en' | 'ko';
 
 const LANGUAGE_STORAGE_KEY = 'app_language';
 
+const createInitialGoalNodes = (): GoalNode[] => [
+  {
+    id: 'root',
+    text: '나의 인생 비전',
+    type: NodeType.ROOT,
+    status: NodeStatus.PENDING,
+    progress: 0,
+    imageUrl: undefined,
+    collapsed: false,
+  },
+];
+
 const getInitialLanguage = (): AppLanguage => {
   const saved = localStorage.getItem(LANGUAGE_STORAGE_KEY);
   if (saved === 'en' || saved === 'ko') return saved;
@@ -119,17 +131,7 @@ const App: React.FC = () => {
   const [language, setLanguage] = useState<AppLanguage>(getInitialLanguage);
   const [isSettingsPageOpen, setIsSettingsPageOpen] = useState(false);
 
-  const [nodes, setNodes] = useState<GoalNode[]>([
-    {
-        id: 'root',
-        text: '나의 인생 비전',
-        type: NodeType.ROOT,
-        status: NodeStatus.PENDING,
-        progress: 0,
-        imageUrl: undefined,
-        collapsed: false
-    }
-  ]);
+  const [nodes, setNodes] = useState<GoalNode[]>(createInitialGoalNodes);
   const [links, setLinks] = useState<GoalLink[]>([]);
   const [todos, setTodos] = useState<ToDoItem[]>([]);
   const [selectedNode, setSelectedNode] = useState<GoalNode | null>(null);
@@ -157,6 +159,23 @@ const App: React.FC = () => {
     useAuth(handleGoalDataLoaded, handleTodosLoaded);
 
   useAutoSave(nodes, links, todos, userProfile, isDataLoaded, userId);
+
+  // Prevent cross-account data bleed: reset in-memory state when the uid changes.
+  const prevUserIdRef = useRef<string | null | undefined>(undefined);
+  useEffect(() => {
+    if (prevUserIdRef.current === undefined) {
+      prevUserIdRef.current = userId;
+      return;
+    }
+    if (prevUserIdRef.current === userId) return;
+
+    prevUserIdRef.current = userId;
+    setNodes(createInitialGoalNodes());
+    setLinks([]);
+    setTodos([]);
+    setSelectedNode(null);
+    setChatMessages([]);
+  }, [userId]);
 
   useEffect(() => {
     localStorage.setItem(LANGUAGE_STORAGE_KEY, language);

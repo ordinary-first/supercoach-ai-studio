@@ -29,20 +29,31 @@ export function useAuth(
   const [isDataLoaded, setIsDataLoaded] = useState(false);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('offline');
   const userIdRef = useRef<string | null>(null);
+  const loadedUserIdRef = useRef<string | null>(null);
+  const isLoadingRef = useRef(false);
 
   // 1. Auth state listener
   useEffect(() => {
     const unsubscribe = onAuthUpdate((profile) => {
       setUserProfile(profile);
       setIsInitializing(false);
+
+      const uid = profile ? getUserId() : null;
+      const prevUid = userIdRef.current;
+
       if (profile) {
         localStorage.setItem('user_profile', JSON.stringify(profile));
-        const uid = getUserId();
-        if (uid && uid !== userIdRef.current) {
-          userIdRef.current = uid;
-        }
-      } else {
+      }
+
+      // Important: data is scoped by uid. If uid changes, force a reload.
+      if (uid && uid !== prevUid) {
+        userIdRef.current = uid;
+        loadedUserIdRef.current = null;
+        setIsDataLoaded(false);
+      } else if (!uid) {
         userIdRef.current = null;
+        loadedUserIdRef.current = null;
+        setIsDataLoaded(false);
       }
     });
 
@@ -52,7 +63,10 @@ export function useAuth(
   // 2. Load user data from Firestore/localStorage when profile is available
   useEffect(() => {
     if (!userProfile) {
+      loadedUserIdRef.current = null;
+      isLoadingRef.current = false;
       setIsDataLoaded(false);
+      setSyncStatus('offline');
       return;
     }
 
@@ -64,9 +78,13 @@ export function useAuth(
     userIdRef.current = userId;
 
     // Skip if already loaded for this user
-    if (isDataLoaded) return;
+    if (loadedUserIdRef.current === userId && isDataLoaded) return;
+    if (isLoadingRef.current) return;
 
     const loadData = async () => {
+      isLoadingRef.current = true;
+      setIsDataLoaded(false);
+
       // Update sync status + test Firestore connection
       setSyncStatus(getSyncStatus());
       testFirestoreConnection(userId).then(() => {
@@ -79,6 +97,9 @@ export function useAuth(
           loadTodos(userId),
           loadProfile(userId),
         ]);
+
+        // If user switched accounts while loading, ignore this result.
+        if (userIdRef.current !== userId) return;
 
         if (goalData && goalData.nodes.length > 0) {
           onGoalDataLoaded(goalData.nodes, goalData.links);
@@ -105,7 +126,11 @@ export function useAuth(
       } catch (e) {
         console.error('Data loading error:', e);
       } finally {
-        setIsDataLoaded(true);
+        isLoadingRef.current = false;
+        if (userIdRef.current === userId) {
+          loadedUserIdRef.current = userId;
+          setIsDataLoaded(true);
+        }
       }
     };
 
