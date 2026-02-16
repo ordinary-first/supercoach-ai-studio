@@ -160,3 +160,22 @@ export const generateVideo = async (prompt: string, profile: UserProfile | null)
         return undefined;
     }
 };
+
+export const uploadNodeImage = async (
+    imageDataUrl: string,
+    userId?: string | null,
+    nodeId?: string,
+): Promise<string | undefined> => {
+    try {
+        const response = await fetch('/api/upload-node-image', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ imageDataUrl, userId, nodeId }),
+        });
+        if (!response.ok) return undefined;
+        const data = await response.json();
+        return data.imageUrl || data.imageDataUrl || undefined;
+    } catch {
+        return undefined;
+    }
+};

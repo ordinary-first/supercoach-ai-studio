@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useCallback, useState } from 'react';
+﻿import React, { useEffect, useRef, useCallback, useState } from 'react';
 import MindMapSDK from 'simple-mind-map';
 import Drag from 'simple-mind-map/src/plugins/Drag.js';
 import RainbowLines from 'simple-mind-map/src/plugins/RainbowLines.js';
@@ -19,11 +19,13 @@ interface MindMapProps {
   links: GoalLink[];
   selectedNodeId?: string;
   onNodeClick: (node: GoalNode) => void;
+  onEditNode?: (nodeId: string) => void;
   onUpdateNode: (nodeId: string, updates: Partial<GoalNode>) => void;
   onDeleteNode: (nodeId: string) => void;
   onReparentNode: (childId: string, newParentId: string) => void;
   onConvertNodeToTask?: (nodeId: string) => void;
   onGenerateImage?: (nodeId: string) => void;
+  onInsertImage?: (nodeId: string) => void;
   onAddSubNode: (parentId: string) => void;
   width: number;
   height: number;
@@ -32,7 +34,7 @@ interface MindMapProps {
   imageLoadingNodes?: Set<string>;
 }
 
-// --- Status → border color mapping ---
+// --- Status ??border color mapping ---
 const STATUS_COLORS: Record<string, string> = {
   [NodeStatus.PENDING]: '#3B82F6',
   [NodeStatus.COMPLETED]: '#10B981',
@@ -75,7 +77,7 @@ function goalNodesToTree(
   const root = nodes.find(n => n.type === NodeType.ROOT);
   if (!root) return null;
 
-  // Build parent→children mapping from links
+  // Build parent?뭖hildren mapping from links
   const childrenMap = new Map<string, string[]>();
   for (const link of links) {
     const sourceId = getLinkId(link.source);
@@ -200,23 +202,27 @@ const RAINBOW_COLORS = [
 ];
 
 const layoutOptions: { mode: LayoutMode; label: string }[] = [
-  { mode: 'mindMap', label: '마인드맵' },
-  { mode: 'logicalStructure', label: '논리 구조' },
-  { mode: 'logicalStructureLeft', label: '왼쪽 구조' },
-  { mode: 'organizationStructure', label: '조직도' },
+  { mode: 'mindMap', label: 'Mind' },
+  { mode: 'logicalStructure', label: 'Logical' },
+  { mode: 'logicalStructureLeft', label: 'Logical Left' },
+  { mode: 'organizationStructure', label: 'Org' },
 ];
 
 // --- Component ---
 const MindMap: React.FC<MindMapProps> = ({
-  nodes, links, selectedNodeId, onNodeClick, onUpdateNode, onDeleteNode,
-  onReparentNode, onConvertNodeToTask, onGenerateImage, onAddSubNode,
+  nodes, links, selectedNodeId, onNodeClick, onEditNode, onUpdateNode, onDeleteNode,
+  onReparentNode, onConvertNodeToTask, onGenerateImage, onInsertImage, onAddSubNode,
   width, height, editingNodeId, onEditEnd, imageLoadingNodes
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const mindMapRef = useRef<any>(null);
   const [layout, setLayout] = useState<LayoutMode>('mindMap');
-  const [contextMenu, setContextMenu] = useState<{
-    x: number; y: number; nodeId: string; scale: number;
+  const [actionBar, setActionBar] = useState<{
+    x: number;
+    y: number;
+    nodeId: string;
+    scale: number;
+    isMoreOpen: boolean;
   } | null>(null);
   const [viewScale, setViewScale] = useState(1);
 
@@ -233,7 +239,7 @@ const MindMap: React.FC<MindMapProps> = ({
     return 1;
   }, []);
 
-  // Timestamp of last setData call — used to ignore data_change events that we caused
+  // Timestamp of last setData call ??used to ignore data_change events that we caused
   const lastSetDataTimeRef = useRef(0);
   // Track the last structure key we pushed to simple-mind-map
   const lastStructureKeyRef = useRef('');
@@ -246,13 +252,19 @@ const MindMap: React.FC<MindMapProps> = ({
   selectedNodeIdRef.current = selectedNodeId;
 
   const onNodeClickRef = useRef(onNodeClick);
+  const onEditNodeRef = useRef(onEditNode);
   const onUpdateNodeRef = useRef(onUpdateNode);
   const onAddSubNodeRef = useRef(onAddSubNode);
-  const setContextMenuRef = useRef(setContextMenu);
+  const setActionBarRef = useRef(setActionBar);
+  const lastTapRef = useRef<{ nodeId: string; ts: number }>({
+    nodeId: '',
+    ts: 0,
+  });
   onNodeClickRef.current = onNodeClick;
+  onEditNodeRef.current = onEditNode;
   onUpdateNodeRef.current = onUpdateNode;
   onAddSubNodeRef.current = onAddSubNode;
-  setContextMenuRef.current = setContextMenu;
+  setActionBarRef.current = setActionBar;
 
   // --- Initialize MindMap (once) ---
   useEffect(() => {
@@ -280,9 +292,9 @@ const MindMap: React.FC<MindMapProps> = ({
       enableShortcutOnlyWhenMouseInSvg: true,
       createNewNodeBehavior: 'notActive',
       // Prevent Chinese default text when the library inserts nodes internally.
-      defaultInsertSecondLevelNodeText: '새 노드',
-      defaultInsertBelowSecondLevelNodeText: '새 노드',
-      defaultGeneralizationText: '요약',
+      defaultInsertSecondLevelNodeText: '???몃뱶',
+      defaultInsertBelowSecondLevelNodeText: '???몃뱶',
+      defaultGeneralizationText: '?붿빟',
       defaultAssociativeLineText: '',
       // Hook the built-in "+" quick-create button so node creation goes through React state.
       // This avoids Chinese placeholder text and allows immediate text editing via editingNodeId.
@@ -304,9 +316,12 @@ const MindMap: React.FC<MindMapProps> = ({
 
     mindMapRef.current = mindMap;
 
-    // Track current zoom scale so overlay UI (context menu) can match mind-map zoom level.
+    // Track current zoom scale so overlay UI can match mind-map zoom level.
     const handleScale = (scale: number) => {
-      if (typeof scale === 'number' && Number.isFinite(scale)) setViewScale(scale);
+      if (typeof scale === 'number' && Number.isFinite(scale)) {
+        setViewScale(scale);
+      }
+      setActionBarRef.current(null);
     };
     mindMap.on('scale', handleScale);
     handleScale(mindMap.view?.scale ?? 1);
@@ -320,56 +335,44 @@ const MindMap: React.FC<MindMapProps> = ({
     mindMap.keyCommand.removeShortcut('Delete');
     mindMap.keyCommand.removeShortcut('Backspace');
 
-    // --- Event: Node click → selection + close context menu ---
-    mindMap.on('node_click', (node: any, _e: any) => {
-      setContextMenuRef.current(null);
+    // --- Event: Node click -> selection + action bar ---
+    mindMap.on('node_click', (node: any, e: any) => {
       const goalId = node?.nodeData?.data?.goalId || node?.nodeData?.data?.uid;
       if (!goalId) return;
       const goalNode = nodesRef.current.find(n => n.id === goalId);
       if (goalNode) onNodeClickRef.current(goalNode);
-    });
 
-    // --- Event: Right-click / contextmenu → show context menu ---
-    mindMap.on('node_contextmenu', (e: any, node: any) => {
-      e.preventDefault?.();
-      e.e?.preventDefault?.();
-      const evt = e.e || e;
-      const goalId = node?.nodeData?.data?.goalId || node?.nodeData?.data?.uid;
-      if (!goalId) return;
+      const now = Date.now();
+      if (
+        lastTapRef.current.nodeId === goalId
+        && now - lastTapRef.current.ts <= 320
+      ) {
+        onEditNodeRef.current?.(goalId);
+        lastTapRef.current = { nodeId: '', ts: 0 };
+        setActionBarRef.current(null);
+        return;
+      }
+      lastTapRef.current = { nodeId: goalId, ts: now };
+
+      const evt = e?.e || e || {};
       const rect = containerRef.current?.getBoundingClientRect();
-      const x = (evt.clientX || evt.pageX || 0) - (rect?.left || 0);
-      const y = (evt.clientY || evt.pageY || 0) - (rect?.top || 0);
+      const fallbackX = (rect?.width || width) / 2;
+      const fallbackY = (rect?.height || height) / 2;
+      const x = ((evt.clientX || evt.pageX || 0) - (rect?.left || 0)) || fallbackX;
+      const y = ((evt.clientY || evt.pageY || 0) - (rect?.top || 0)) || fallbackY;
       const scale = getCurrentMindMapScale();
+
       setViewScale(scale);
-      setContextMenuRef.current({ x, y, nodeId: goalId, scale });
+      setActionBarRef.current({
+        x,
+        y,
+        nodeId: goalId,
+        scale,
+        isMoreOpen: false,
+      });
     });
 
-    // --- Long-press for mobile → show context menu ---
-    let longPressTimer: ReturnType<typeof setTimeout> | null = null;
-    let longPressNode: string | null = null;
-
-    mindMap.on('node_mousedown', (node: any, e: any) => {
-      const goalId = node?.nodeData?.data?.goalId || node?.nodeData?.data?.uid;
-      if (!goalId) return;
-      longPressNode = goalId;
-      longPressTimer = setTimeout(() => {
-        const evt = e.e || e;
-        const rect = containerRef.current?.getBoundingClientRect();
-        const x = (evt.clientX || evt.touches?.[0]?.clientX || 0) - (rect?.left || 0);
-        const y = (evt.clientY || evt.touches?.[0]?.clientY || 0) - (rect?.top || 0);
-        const scale = getCurrentMindMapScale();
-        setViewScale(scale);
-        setContextMenuRef.current({ x, y, nodeId: goalId, scale });
-        longPressNode = null;
-      }, 600);
-    });
-
-    mindMap.on('node_mouseup', () => {
-      if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
-      longPressNode = null;
-    });
-
-    // --- Event: data_change → sync text edits back to React ---
+    // --- Event: data_change ??sync text edits back to React ---
     // ONLY syncs text changes from in-place editing. Ignores changes we caused.
     mindMap.on('data_change', (data: SMMNode) => {
       // Ignore if we caused this change via setData/updateData
@@ -392,7 +395,7 @@ const MindMap: React.FC<MindMapProps> = ({
     });
 
     // Close context menu on background click
-    mindMap.on('draw_click', () => { setContextMenuRef.current(null); });
+    mindMap.on('draw_click', () => { setActionBarRef.current(null); });
 
     // --- Event: mindmap-center (from other components) ---
     const handleCenter = (e: Event) => {
@@ -406,7 +409,6 @@ const MindMap: React.FC<MindMapProps> = ({
     window.addEventListener('mindmap-center', handleCenter);
 
     return () => {
-      if (longPressTimer) clearTimeout(longPressTimer);
       window.removeEventListener('mindmap-center', handleCenter);
       mindMap.off?.('scale', handleScale);
       mindMap.destroy?.();
@@ -415,7 +417,7 @@ const MindMap: React.FC<MindMapProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Init once
 
-  // --- Sync data from React → simple-mind-map when props change ---
+  // --- Sync data from React ??simple-mind-map when props change ---
   useEffect(() => {
     const mindMap = mindMapRef.current;
     if (!mindMap) return;
@@ -460,6 +462,11 @@ const MindMap: React.FC<MindMapProps> = ({
     }
   }, [editingNodeId]);
 
+  const actionNode = actionBar
+    ? nodes.find((node) => node.id === actionBar.nodeId) || null
+    : null;
+  const isRootActionNode = actionNode?.type === NodeType.ROOT;
+
   return (
     <div className="w-full h-full bg-deep-space relative overflow-hidden">
       {/* Header */}
@@ -499,43 +506,109 @@ const MindMap: React.FC<MindMapProps> = ({
         style={{ width, height }}
       />
 
-      {/* Context Menu (right-click / long-press) */}
-      {contextMenu && (
+      {/* Node Action Bar (single tap selection) */}
+      {actionBar && actionNode && (
         <div
-          className="absolute z-50 bg-[#0d1b30]/95 backdrop-blur-md border border-white/15 rounded-xl shadow-2xl py-1.5 min-w-[180px] animate-fade-in"
+          className="absolute z-50"
           style={{
-            left: contextMenu.x,
-            top: contextMenu.y,
-            transform: `scale(${contextMenu.scale || viewScale})`,
+            left: actionBar.x,
+            top: actionBar.y,
+            transform: `scale(${actionBar.scale || viewScale})`,
             transformOrigin: 'top left',
           }}
         >
-          <button
-            onClick={() => { onGenerateImage?.(contextMenu.nodeId); setContextMenu(null); }}
-            className="w-full px-4 py-2.5 text-left text-sm text-white hover:bg-white/10 flex items-center gap-2.5 transition-colors"
-          >
-            <span className="w-5 h-5 flex items-center justify-center text-neon-lime text-xs">&#x1f3a8;</span>
-            이미지 생성하기
-          </button>
-          <div className="mx-3 border-t border-white/10" />
-          <button
-            onClick={() => { onConvertNodeToTask?.(contextMenu.nodeId); setContextMenu(null); }}
-            className="w-full px-4 py-2.5 text-left text-sm text-white hover:bg-white/10 flex items-center gap-2.5 transition-colors"
-          >
-            <span className="w-5 h-5 flex items-center justify-center text-emerald-400 text-xs">&#x2705;</span>
-            투두로 추가하기
-          </button>
-          {nodes.find(n => n.id === contextMenu.nodeId)?.type !== NodeType.ROOT && (
-            <>
-              <div className="mx-3 border-t border-white/10" />
+          <div className="flex items-center gap-1 rounded-full border border-white/15 bg-[#0d1b30]/95 p-1 shadow-2xl backdrop-blur-md">
+            <button
+              onClick={() => {
+                onAddSubNode(actionBar.nodeId);
+                setActionBar(null);
+              }}
+              className="rounded-full px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/10"
+            >
+              Child
+            </button>
+
+            {!isRootActionNode && (
+              <>
+                <button
+                  onClick={() => {
+                    const parentId = actionNode.parentId;
+                    if (parentId) {
+                      onAddSubNode(parentId);
+                    }
+                    setActionBar(null);
+                  }}
+                  className="rounded-full px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/10"
+                >
+                  Sibling
+                </button>
+                <button
+                  onClick={() => {
+                    onConvertNodeToTask?.(actionBar.nodeId);
+                    setActionBar(null);
+                  }}
+                  className="rounded-full px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/10"
+                >
+                  Todo
+                </button>
+              </>
+            )}
+
+            <button
+              onClick={() => {
+                onGenerateImage?.(actionBar.nodeId);
+                setActionBar(null);
+              }}
+              className="rounded-full px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/10"
+            >
+              Generate
+            </button>
+
+            {isRootActionNode ? (
               <button
-                onClick={() => { onDeleteNode(contextMenu.nodeId); setContextMenu(null); }}
-                className="w-full px-4 py-2.5 text-left text-sm text-red-400 hover:bg-red-500/15 flex items-center gap-2.5 transition-colors"
+                onClick={() => {
+                  onInsertImage?.(actionBar.nodeId);
+                  setActionBar(null);
+                }}
+                className="rounded-full px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/10"
               >
-                <span className="w-5 h-5 flex items-center justify-center text-xs">&#x1f5d1;</span>
-                노드 삭제하기
+                Insert
               </button>
-            </>
+            ) : (
+              <button
+                onClick={() => {
+                  setActionBar((prev) => (
+                    prev ? { ...prev, isMoreOpen: !prev.isMoreOpen } : prev
+                  ));
+                }}
+                className="rounded-full px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/10"
+              >
+                More
+              </button>
+            )}
+          </div>
+
+          {!isRootActionNode && actionBar.isMoreOpen && (
+            <div className="mt-2 min-w-[150px] rounded-xl border border-white/15 bg-[#0d1b30]/95 p-1 shadow-2xl backdrop-blur-md">
+              <button
+                onClick={() => {
+                  onInsertImage?.(actionBar.nodeId);
+                  setActionBar(null);
+                }}
+                className="w-full rounded-lg px-3 py-2 text-left text-xs font-semibold text-white hover:bg-white/10"
+              >
+                Insert image
+              </button>
+              <button
+                onClick={() => {
+                  onDeleteNode(actionBar.nodeId);
+                  setActionBar(null);
+                }}
+                className="mt-1 w-full rounded-lg px-3 py-2 text-left text-xs font-semibold text-red-400 hover:bg-red-500/15"
+              >
+                Delete
+              </button>
+            </div>
           )}
         </div>
       )}
@@ -565,3 +638,4 @@ export default React.memo(MindMap, (prev, next) => {
     prev.imageLoadingNodes === next.imageLoadingNodes
   );
 });
+

@@ -81,6 +81,15 @@ When one agent completes work that another agent will continue:
 
 ## Current Status
 _Last updated: 2026-02-16_
+- Replaced mind-map long-press/right-click context menu with single-tap action bar (`components/MindMap.tsx`)
+- Added node action bar policy by node type:
+  - Non-root: `Child`, `Sibling`, `Todo`, `Generate` + `More(Insert image, Delete)`
+  - Root: `Child`, `Generate`, `Insert` only
+- Kept text edit entry on double-click/double-tap and wired through App edit state (`components/MindMap.tsx`, `App.tsx`)
+- Added node image insert upload flow:
+  - Client: hidden file input + upload handler (`App.tsx`, `services/aiService.ts`)
+  - API: `POST /api/upload-node-image` with 400x400 JPEG compression and R2 upload fallback (`api/upload-node-image.ts`)
+- Bumped `displayVersion` to `V02.16r07` (`package.json`)
 - Image generation policy split by use-case:
   - Mind map node image: `gpt-image-1-mini` + `low` (`api/generate-image.ts`, `services/aiService.ts`)
   - Visualization image: `gpt-image-1.5` + default `medium`, optional `high` (`api/generate-image.ts`, `components/VisualizationModal.tsx`)
@@ -146,6 +155,6 @@ _Last updated: 2026-02-16_
   - returns 403 with missing header hints for easier debugging
 - Fixed Polar webhook 403 root cause:
   - `api/polar-webhook.ts` now verifies signatures against the raw request body (stream-first)
-- Version: V02.16r06
+- Version: V02.16r07
 - Remaining: iOS platform add/build must be done on macOS
 

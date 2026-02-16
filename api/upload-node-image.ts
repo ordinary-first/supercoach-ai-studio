@@ -1,0 +1,86 @@
+import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import sharp from 'sharp';
+
+// --- R2 Setup (trim env vars: vercel env add can include trailing newlines) ---
+const R2_ACCOUNT_ID = (process.env.R2_ACCOUNT_ID || '').trim();
+const R2_ACCESS_KEY = (process.env.R2_ACCESS_KEY_ID || '').trim();
+const R2_SECRET_KEY = (process.env.R2_SECRET_ACCESS_KEY || '').trim();
+const R2_BUCKET = (process.env.R2_BUCKET_NAME || 'secretcoach-images').trim();
+const R2_PUBLIC_URL = (process.env.R2_PUBLIC_URL || '').trim();
+
+const r2 = new S3Client({
+  region: 'auto',
+  endpoint: `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+  credentials: {
+    accessKeyId: R2_ACCESS_KEY,
+    secretAccessKey: R2_SECRET_KEY,
+  },
+});
+
+function parseDataUrl(dataUrl: string): { mimeType: string; base64: string } | null {
+  const match = String(dataUrl).match(/^data:(image\/\w+);base64,(.+)$/);
+  if (!match) return null;
+  return { mimeType: match[1], base64: match[2] };
+}
+
+async function compressToBuffer(base64Data: string): Promise<Buffer> {
+  const buffer = Buffer.from(base64Data, 'base64');
+  return sharp(buffer)
+    .resize(400, 400, { fit: 'cover' })
+    .jpeg({ quality: 70 })
+    .toBuffer();
+}
+
+async function uploadToR2(key: string, buffer: Buffer): Promise<string> {
+  await r2.send(new PutObjectCommand({
+    Bucket: R2_BUCKET,
+    Key: key,
+    Body: buffer,
+    ContentType: 'image/jpeg',
+  }));
+  return `${R2_PUBLIC_URL}/${key}`;
+}
+
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') return res.status(200).end();
+
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  try {
+    const { imageDataUrl, userId, nodeId } = req.body || {};
+    if (!imageDataUrl) {
+      return res.status(400).json({ error: 'imageDataUrl is required' });
+    }
+
+    const parsed = parseDataUrl(String(imageDataUrl));
+    if (!parsed) {
+      return res.status(400).json({ error: 'Invalid image data URL' });
+    }
+
+    const compressed = await compressToBuffer(parsed.base64);
+
+    if (userId && nodeId && R2_PUBLIC_URL) {
+      try {
+        const key = `goals/${userId}/${nodeId}.jpg`;
+        const imageUrl = await uploadToR2(key, compressed);
+        return res.status(200).json({ imageUrl });
+      } catch (r2Err: any) {
+        console.error('[R2 Upload] Failed:', r2Err?.message);
+      }
+    }
+
+    return res.status(200).json({
+      imageDataUrl: `data:image/jpeg;base64,${compressed.toString('base64')}`,
+    });
+  } catch (error: any) {
+    console.error('Upload Node Image Error:', error);
+    return res.status(500).json({ error: error?.message || 'Internal error' });
+  }
+}
+

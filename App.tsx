@@ -12,7 +12,7 @@ import LandingPage from './components/LandingPage';
 import UserProfilePage from './components/UserProfilePage';
 import SettingsPage from './components/SettingsPage';
 import { GoalNode, GoalLink, NodeType, NodeStatus, ToDoItem, ChatMessage, RepeatFrequency } from './types';
-import { generateGoalImage } from './services/aiService';
+import { generateGoalImage, uploadNodeImage } from './services/aiService';
 import { verifyPolarCheckout } from './services/polarService';
 import { logout, getUserId, saveProfile } from './services/firebaseService';
 import { useAuth } from './hooks/useAuth';
@@ -141,6 +141,8 @@ const App: React.FC = () => {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [imageLoadingNodes, setImageLoadingNodes] = useState<Set<string>>(new Set());
+  const insertImageInputRef = useRef<HTMLInputElement>(null);
+  const insertImageTargetNodeRef = useRef<string | null>(null);
 
   // Stable callbacks for useAuth to avoid re-triggering data load effect
   const handleGoalDataLoaded = useCallback((loadedNodes: GoalNode[], loadedLinks: GoalLink[]) => {
@@ -295,6 +297,42 @@ const App: React.FC = () => {
     addToast('Todo added.', 'success');
   }, [nodes, addToast]);
 
+  const handleInsertNodeImage = useCallback((nodeId: string) => {
+    insertImageTargetNodeRef.current = nodeId;
+    insertImageInputRef.current?.click();
+  }, []);
+
+  const handleInsertNodeImageFileChange = useCallback(async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = e.target.files?.[0];
+    const nodeId = insertImageTargetNodeRef.current;
+    e.target.value = '';
+    if (!file || !nodeId) return;
+
+    try {
+      const imageDataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ''));
+        reader.onerror = () => reject(new Error('file_read_error'));
+        reader.readAsDataURL(file);
+      });
+
+      const currentUserId = getUserId();
+      const uploaded = await uploadNodeImage(imageDataUrl, currentUserId, nodeId);
+      if (uploaded) {
+        handleUpdateNode(nodeId, { imageUrl: uploaded });
+        addToast('이미지가 노드에 삽입되었습니다.', 'success');
+      } else {
+        addToast('이미지 삽입에 실패했습니다.', 'warning');
+      }
+    } catch {
+      addToast('이미지 삽입에 실패했습니다.', 'warning');
+    } finally {
+      insertImageTargetNodeRef.current = null;
+    }
+  }, [addToast, handleUpdateNode]);
+
   const executeDeleteNode = useCallback((nodeId: string) => {
       if (nodeId === 'root') return;
       const nodesToDelete = new Set<string>();
@@ -416,7 +454,7 @@ const App: React.FC = () => {
       {activeTab === 'GOALS' && (
         <>
           <MindMap
-            nodes={visibleNodes} links={visibleLinks} selectedNodeId={selectedNode?.id} onNodeClick={setSelectedNode} onUpdateNode={handleUpdateNode} onDeleteNode={handleDeleteNode} onReparentNode={handleReparentNode} onAddSubNode={handleAddSubNode} onGenerateImage={handleGenerateNodeImage} onConvertNodeToTask={handleConvertNodeToTodo} editingNodeId={editingNodeId} onEditEnd={() => setEditingNodeId(null)} width={dimensions.width} height={dimensions.height} imageLoadingNodes={imageLoadingNodes}
+            nodes={visibleNodes} links={visibleLinks} selectedNodeId={selectedNode?.id} onNodeClick={setSelectedNode} onEditNode={(nodeId) => setEditingNodeId(nodeId)} onUpdateNode={handleUpdateNode} onDeleteNode={handleDeleteNode} onReparentNode={handleReparentNode} onAddSubNode={handleAddSubNode} onGenerateImage={handleGenerateNodeImage} onInsertImage={handleInsertNodeImage} onConvertNodeToTask={handleConvertNodeToTodo} editingNodeId={editingNodeId} onEditEnd={() => setEditingNodeId(null)} width={dimensions.width} height={dimensions.height} imageLoadingNodes={imageLoadingNodes}
           />
 
            <div className="absolute top-[64px] left-3 md:top-[72px] md:left-6 z-50">
@@ -453,6 +491,13 @@ const App: React.FC = () => {
       <ShortcutsPanel isOpen={isShortcutsOpen} onClose={() => setIsShortcutsOpen(false)} />
       <BottomDock activeTab={activeTab} onTabChange={handleTabChange} />
       <CoachBubble isOpen={isChatOpen} onToggle={() => setIsChatOpen(prev => !prev)} />
+      <input
+        ref={insertImageInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleInsertNodeImageFileChange}
+      />
 
       {/* Sync Status Indicator */}
       {syncStatus !== 'cloud' && (
