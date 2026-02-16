@@ -81,6 +81,11 @@ When one agent completes work that another agent will continue:
 
 ## Current Status
 _Last updated: 2026-02-16_
+- Hardened visualization image generation fallback:
+  - `api/generate-image.ts` now retries once with `gpt-image-1` when primary response is empty
+  - Supports both `b64_json` and `url` paths before returning empty media
+- Softened video-empty warning copy in visualization result to indicate queued generation state (`components/VisualizationModal.tsx`)
+- Bumped `displayVersion` to `V02.16r16` (`package.json`)
 - Fixed profile-page Korean mojibake risk by normalizing `components/UserProfilePage.tsx` to UTF-8 encoding
 - Bumped `displayVersion` to `V02.16r15` (`package.json`)
 - Removed app-level localStorage dependency for user data:

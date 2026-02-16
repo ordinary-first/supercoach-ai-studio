@@ -4,7 +4,6 @@ import sharp from 'sharp';
 import { toFile } from 'openai/uploads';
 import { getOpenAIClient } from '../lib/openaiClient.js';
 
-// --- R2 Setup (trim env vars: vercel env add can include trailing newlines) ---
 const R2_ACCOUNT_ID = (process.env.R2_ACCOUNT_ID || '').trim();
 const R2_ACCESS_KEY = (process.env.R2_ACCESS_KEY_ID || '').trim();
 const R2_SECRET_KEY = (process.env.R2_SECRET_ACCESS_KEY || '').trim();
@@ -30,7 +29,6 @@ async function uploadToR2(key: string, buffer: Buffer): Promise<string> {
   return `${R2_PUBLIC_URL}/${key}`;
 }
 
-/** Compress raw image bytes (base64) to 400x400 JPEG buffer */
 async function compressToBuffer(base64Data: string): Promise<Buffer> {
   const buffer = Buffer.from(base64Data, 'base64');
   return sharp(buffer)
@@ -80,6 +78,30 @@ function resolveImagePolicy(input: {
   };
 }
 
+type GeneratedImagePayload = {
+  b64: string | null;
+  url: string | null;
+};
+
+async function generateWithPrompt(
+  openai: any,
+  model: string,
+  quality: 'low' | 'medium' | 'high',
+  prompt: string,
+): Promise<GeneratedImagePayload> {
+  const response: any = await openai.images.generate({
+    model,
+    prompt,
+    size: '1024x1024',
+    quality,
+  });
+
+  return {
+    b64: response?.data?.[0]?.b64_json || null,
+    url: response?.data?.[0]?.url || null,
+  };
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -107,12 +129,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     } = req.body || {};
 
     const openai = getOpenAIClient();
-    const policy = resolveImagePolicy({
-      imagePurpose,
-      imageQuality,
-      userId,
-      nodeId,
-    });
+    const policy = resolveImagePolicy({ imagePurpose, imageQuality, userId, nodeId });
 
     const personDesc = profile
       ? `${profile.name}, a ${profile.age}yo person in ${profile.location}`
@@ -122,13 +139,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ? ` This goal encompasses these sub-goals: ${childTexts.join(', ')}.`
       : '';
 
+    const textPrompt = `Create a single photorealistic image that directly illustrates this personal goal: "${String(prompt || '')}".${childContext} Show a concrete, specific scene, not abstract or metaphorical. The scene should feel aspirational and warm. Square composition, soft cinematic lighting. Absolutely no text, letters, words, or watermarks in the image.`;
+
     let rawBase64: string | null = null;
     let rawImageUrl: string | null = null;
 
     if (!policy.isNodeImage && Array.isArray(referenceImages) && referenceImages.length > 0) {
-      // Visualization image with reference images (edits endpoint)
       const files: any[] = [];
-      for (let i = 0; i < referenceImages.length; i++) {
+      for (let i = 0; i < referenceImages.length; i += 1) {
         const parsed = parseDataUrl(referenceImages[i]);
         if (!parsed) continue;
         const buf = Buffer.from(parsed.base64, 'base64');
@@ -146,18 +164,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       rawBase64 = response?.data?.[0]?.b64_json || null;
       rawImageUrl = response?.data?.[0]?.url || null;
     } else {
-      // Goal image
-      const textPrompt = `Create a single photorealistic image that directly illustrates this personal goal: "${String(prompt || '')}".${childContext} Show a concrete, specific scene — not abstract or metaphorical. The scene should feel aspirational and warm. Square composition, soft cinematic lighting. Absolutely no text, letters, words, or watermarks in the image.`;
+      const result = await generateWithPrompt(openai, policy.model, policy.quality, textPrompt);
+      rawBase64 = result.b64;
+      rawImageUrl = result.url;
+    }
 
-      const response: any = await openai.images.generate({
-        model: policy.model,
-        prompt: textPrompt,
-        size: '1024x1024',
-        quality: policy.quality,
-      });
-
-      rawBase64 = response?.data?.[0]?.b64_json || null;
-      rawImageUrl = response?.data?.[0]?.url || null;
+    if (!rawBase64 && !rawImageUrl) {
+      const fallback = await generateWithPrompt(openai, 'gpt-image-1', 'medium', textPrompt);
+      rawBase64 = fallback.b64;
+      rawImageUrl = fallback.url;
     }
 
     if (!rawBase64 && rawImageUrl) {
@@ -168,10 +183,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json({ imageUrl: null, imageDataUrl: null });
     }
 
-    // Compress image
     const compressed = await compressToBuffer(rawBase64);
 
-    // Upload to R2 if userId+nodeId provided and R2 configured
     if (userId && nodeId && R2_PUBLIC_URL) {
       try {
         const key = `goals/${userId}/${nodeId}.jpg`;
@@ -179,11 +192,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(200).json({ imageUrl: url });
       } catch (r2Err: any) {
         console.error('[R2 Upload] Failed:', r2Err?.message);
-        // Fall through to base64 fallback
       }
     }
 
-    // Fallback: return base64 (guest users or R2 not configured)
     const dataUrl = `data:image/jpeg;base64,${compressed.toString('base64')}`;
     return res.status(200).json({ imageDataUrl: dataUrl });
   } catch (error: any) {

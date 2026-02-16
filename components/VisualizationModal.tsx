@@ -299,8 +299,8 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
       if (settings.video && !result.videoUrl) {
         setErrorMessage((prev) =>
           prev
-            ? `${prev} 영상도 준비되지 않았습니다.`
-            : '영상이 아직 준비되지 않았습니다. 잠시 후 다시 생성해주세요.',
+            ? `${prev} 영상은 생성 대기 중일 수 있습니다.`
+            : '영상은 생성 대기 중일 수 있습니다. 잠시 후 다시 시도해주세요.',
         );
       }
 
