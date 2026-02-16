@@ -81,6 +81,11 @@ When one agent completes work that another agent will continue:
 
 ## Current Status
 _Last updated: 2026-02-16_
+- Visualization save hardening r22 completed:
+  - Added strict save-time sanitization for visualization payload strings (UTF-8 normalization, control-char removal, URL-only media fields, length limits) across client + service + API paths
+  - Added server-side `invalid-argument` rescue write in `api/save-visualization.ts` (fallback to minimal text payload so save does not fully fail)
+  - Improved media field safety by storing only `http/https` URLs for image/audio/video metadata
+- Bumped `displayVersion` to `V02.16r22` (`package.json`)
 - Visualization stability hotfix r21 completed:
   - Result media UI now keeps generated image visible even after video is ready (`components/VisualizationModal.tsx`)
   - Audio playback for URL assets switched from `fetch+decodeAudioData` to native `HTMLAudioElement` path to avoid mobile CORS/decode failures (`components/VisualizationModal.tsx`)

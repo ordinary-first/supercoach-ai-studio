@@ -304,27 +304,41 @@ const sanitizeFirestorePayload = <T extends Record<string, any>>(payload: T): Pa
 
 const sanitizeFirestoreString = (value: unknown): string | undefined => {
   if (typeof value !== 'string') return undefined;
-  const maybeWellFormed = value as string & { toWellFormed?: () => string };
-  const normalized =
-    typeof maybeWellFormed.toWellFormed === 'function'
-      ? maybeWellFormed.toWellFormed()
-      : value;
+  let normalized = value;
+  try {
+    normalized = new TextDecoder().decode(new TextEncoder().encode(value));
+  } catch {
+    normalized = value;
+  }
   const cleaned = normalized
     .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, ' ')
     .trim();
   return cleaned || undefined;
 };
 
+const sanitizeStorageUrl = (value: unknown): string | undefined => {
+  const clean = sanitizeFirestoreString(value);
+  if (!clean) return undefined;
+  if (!clean.startsWith('http://') && !clean.startsWith('https://')) return undefined;
+  return clean.slice(0, 4000);
+};
+
+const sanitizeVideoId = (value: unknown): string | undefined => {
+  const clean = sanitizeFirestoreString(value);
+  if (!clean) return undefined;
+  return clean.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 200);
+};
+
 const normalizeVisualizationInput = (item: VisualizationWriteInput): VisualizationWriteInput => {
   const normalized: VisualizationWriteInput = {
-    inputText: sanitizeFirestoreString(item.inputText) || 'Visualization',
+    inputText: (sanitizeFirestoreString(item.inputText) || 'Visualization').slice(0, 50000),
   };
 
-  const text = sanitizeFirestoreString(item.text);
-  const imageUrl = sanitizeFirestoreString(item.imageUrl);
-  const audioUrl = sanitizeFirestoreString(item.audioUrl);
-  const videoUrl = sanitizeFirestoreString(item.videoUrl);
-  const videoId = sanitizeFirestoreString(item.videoId);
+  const text = sanitizeFirestoreString(item.text)?.slice(0, 50000);
+  const imageUrl = sanitizeStorageUrl(item.imageUrl);
+  const audioUrl = sanitizeStorageUrl(item.audioUrl);
+  const videoUrl = sanitizeStorageUrl(item.videoUrl);
+  const videoId = sanitizeVideoId(item.videoId);
   const videoStatus = sanitizeFirestoreString(item.videoStatus);
 
   if (text) normalized.text = text;

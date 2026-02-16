@@ -99,15 +99,29 @@ const formatErrorMeta = (prefix: string, error?: ErrorMeta): string => {
 
 const sanitizeFirestoreString = (value?: string): string | undefined => {
   if (typeof value !== 'string') return undefined;
-  const maybeWellFormed = value as string & { toWellFormed?: () => string };
-  const normalized =
-    typeof maybeWellFormed.toWellFormed === 'function'
-      ? maybeWellFormed.toWellFormed()
-      : value;
+  let normalized = value;
+  try {
+    normalized = new TextDecoder().decode(new TextEncoder().encode(value));
+  } catch {
+    normalized = value;
+  }
   const cleaned = normalized
     .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, ' ')
     .trim();
   return cleaned || undefined;
+};
+
+const sanitizeStorageUrl = (value?: string): string | undefined => {
+  const clean = sanitizeFirestoreString(value);
+  if (!clean) return undefined;
+  if (!clean.startsWith('http://') && !clean.startsWith('https://')) return undefined;
+  return clean.slice(0, 4000);
+};
+
+const sanitizeVideoId = (value?: string): string | undefined => {
+  const clean = sanitizeFirestoreString(value);
+  if (!clean) return undefined;
+  return clean.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 200);
 };
 
 const toResultFromSaved = (item: SavedVisualization): VisualizationResult => ({
@@ -515,11 +529,11 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
           sanitizeFirestoreString(currentResult.text) ||
           'Visualization',
       };
-      const cleanText = sanitizeFirestoreString(currentResult.text);
-      const cleanImageUrl = sanitizeFirestoreString(imageUrl);
-      const cleanAudioUrl = sanitizeFirestoreString(audioUrl);
-      const cleanVideoUrl = sanitizeFirestoreString(videoUrl);
-      const cleanVideoId = sanitizeFirestoreString(currentResult.videoId);
+      const cleanText = sanitizeFirestoreString(currentResult.text)?.slice(0, 50000);
+      const cleanImageUrl = sanitizeStorageUrl(imageUrl);
+      const cleanAudioUrl = sanitizeStorageUrl(audioUrl);
+      const cleanVideoUrl = sanitizeStorageUrl(videoUrl);
+      const cleanVideoId = sanitizeVideoId(currentResult.videoId);
       if (cleanText) payload.text = cleanText;
       if (cleanImageUrl) payload.imageUrl = cleanImageUrl;
       if (cleanAudioUrl) payload.audioUrl = cleanAudioUrl;

@@ -21,15 +21,29 @@ const createRequestId = (): string => {
 
 const sanitizeString = (value: unknown): string | undefined => {
   if (typeof value !== 'string') return undefined;
-  const maybeWellFormed = value as string & { toWellFormed?: () => string };
-  const normalized =
-    typeof maybeWellFormed.toWellFormed === 'function'
-      ? maybeWellFormed.toWellFormed()
-      : value;
+  let normalized = value;
+  try {
+    normalized = Buffer.from(value, 'utf8').toString('utf8');
+  } catch {
+    normalized = value;
+  }
   const trimmed = normalized
     .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, ' ')
     .trim();
   return trimmed ? trimmed : undefined;
+};
+
+const sanitizeStorageUrl = (value: unknown): string | undefined => {
+  const clean = sanitizeString(value);
+  if (!clean) return undefined;
+  if (!clean.startsWith('http://') && !clean.startsWith('https://')) return undefined;
+  return clean.slice(0, 4000);
+};
+
+const sanitizeVideoId = (value: unknown): string | undefined => {
+  const clean = sanitizeString(value);
+  if (!clean) return undefined;
+  return clean.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 200);
 };
 
 const sanitizePayload = (raw: unknown): SaveVisualizationPayload | null => {
@@ -40,13 +54,13 @@ const sanitizePayload = (raw: unknown): SaveVisualizationPayload | null => {
 
   const payload: SaveVisualizationPayload = { inputText };
   const text = sanitizeString(source.text);
-  const imageUrl = sanitizeString(source.imageUrl);
-  const audioUrl = sanitizeString(source.audioUrl);
-  const videoUrl = sanitizeString(source.videoUrl);
-  const videoId = sanitizeString(source.videoId);
+  const imageUrl = sanitizeStorageUrl(source.imageUrl);
+  const audioUrl = sanitizeStorageUrl(source.audioUrl);
+  const videoUrl = sanitizeStorageUrl(source.videoUrl);
+  const videoId = sanitizeVideoId(source.videoId);
   const videoStatusRaw = sanitizeString(source.videoStatus);
 
-  if (text) payload.text = text;
+  if (text) payload.text = text.slice(0, 50000);
   if (imageUrl) payload.imageUrl = imageUrl;
   if (audioUrl) payload.audioUrl = audioUrl;
   if (videoUrl) payload.videoUrl = videoUrl;
@@ -115,11 +129,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       `${now}_${Math.random().toString(36).slice(2, 8)}`;
 
     const db = getAdminDb();
-    await db.doc(`users/${uid}/data/visualizations/${id}`).set({
-      ...payload,
-      timestamp: now,
-      updatedAt: now,
-    });
+    const targetRef = db.doc(`users/${uid}/data/visualizations/${id}`);
+    try {
+      await targetRef.set({
+        ...payload,
+        timestamp: now,
+        updatedAt: now,
+      });
+    } catch (writeError: any) {
+      if (String(writeError?.code || '') !== 'invalid-argument') throw writeError;
+      await targetRef.set({
+        inputText: payload.inputText || 'Visualization',
+        text: payload.text || payload.inputText || 'Visualization',
+        timestamp: now,
+        updatedAt: now,
+      });
+    }
 
     return res.status(200).json({ id, savedAt: now, requestId });
   } catch (error: any) {
