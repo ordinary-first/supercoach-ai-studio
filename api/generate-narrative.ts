@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { GoogleGenAI } from '@google/genai';
+import { getOpenAIClient } from '../lib/openaiClient.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -11,28 +11,35 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
+  if (!process.env.OPENAI_API_KEY?.trim()) {
     return res.status(500).json({ error: 'API key not configured' });
   }
 
   try {
-    const { goalContext, profile } = req.body;
-    const ai = new GoogleGenAI({ apiKey });
+    const { goalContext, profile } = req.body || {};
+    const openai = getOpenAIClient();
 
-    const prompt = `당신은 최면 치료사입니다. ${profile?.name}님의 목표 리스트를 보고, 그가 성공한 미래에 완전히 몰입하게 만드는 1인칭 시점의 한국어 최면 스크립트를 작성하십시오.
-        목표들: ${goalContext}
-        사용자 배경: ${profile?.bio || '성공을 갈망함'}
-        분량: 100자 내외.`;
+    const prompt = [
+      '당신은 최면 치료사입니다.',
+      '사용자의 목표 목록을 보고, 목표가 이미 달성된 미래를 1인칭 시점으로 생생하게 느끼게 하는 짧은 최면 스크립트를 작성하세요.',
+      '조건:',
+      '- 한국어',
+      '- 1000자 이내',
+      '- 지나친 과장/공포/의학적 진단 금지',
+      '',
+      `목표:\n${String(goalContext || '')}`,
+      `사용자 배경:\n${String(profile?.bio || '')}`,
+    ].join('\n');
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: prompt,
+    const response: any = await openai.responses.create({
+      model: 'gpt-4o-mini',
+      input: prompt,
     });
 
-    return res.status(200).json({ text: response.text || '' });
+    return res.status(200).json({ text: response?.output_text || '' });
   } catch (error: any) {
     console.error('Narrative Generation Error:', error);
     return res.status(200).json({ text: '' });
   }
 }
+

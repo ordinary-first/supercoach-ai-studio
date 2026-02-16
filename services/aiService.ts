@@ -2,7 +2,7 @@
 import { UserProfile } from "../types";
 
 // Response type matching the shape returned by /api/chat
-// This mirrors the relevant parts of GenerateContentResponse from @google/genai
+// This mirrors the response shape the client expects (historically Gemini-like).
 export interface ChatApiResponse {
   candidates?: {
     content?: {
@@ -111,14 +111,39 @@ export const generateSpeech = async (text: string): Promise<string | undefined> 
 
 export const generateVideo = async (prompt: string, profile: UserProfile | null): Promise<string | undefined> => {
     try {
-        const response = await fetch('/api/generate-video', {
+        const userId = profile?.googleId || null;
+
+        const createResponse = await fetch('/api/generate-video', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prompt, profile }),
+            body: JSON.stringify({ prompt, profile, userId }),
         });
-        if (!response.ok) return undefined;
-        const data = await response.json();
-        return data.videoUrl || undefined;
+        if (!createResponse.ok) return undefined;
+
+        const created = await createResponse.json();
+        if (created?.videoUrl) return created.videoUrl;
+        const videoId = created?.videoId;
+        if (!videoId) return undefined;
+
+        const startedAt = Date.now();
+        const TIMEOUT_MS = 3 * 60 * 1000;
+
+        while (Date.now() - startedAt < TIMEOUT_MS) {
+            await new Promise((r) => setTimeout(r, 5000));
+
+            const pollResponse = await fetch('/api/generate-video', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ videoId, userId }),
+            });
+            if (!pollResponse.ok) return undefined;
+
+            const polled = await pollResponse.json();
+            if (polled?.videoUrl) return polled.videoUrl;
+            if (polled?.status === 'failed') return undefined;
+        }
+
+        return undefined;
     } catch (error) {
         return undefined;
     }

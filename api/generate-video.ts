@@ -1,5 +1,36 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { GoogleGenAI } from '@google/genai';
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+
+// --- R2 Setup (trim env vars: vercel env add can include trailing newlines) ---
+const R2_ACCOUNT_ID = (process.env.R2_ACCOUNT_ID || '').trim();
+const R2_ACCESS_KEY = (process.env.R2_ACCESS_KEY_ID || '').trim();
+const R2_SECRET_KEY = (process.env.R2_SECRET_ACCESS_KEY || '').trim();
+const R2_BUCKET = (process.env.R2_BUCKET_NAME || 'secretcoach-images').trim();
+const R2_PUBLIC_URL = (process.env.R2_PUBLIC_URL || '').trim();
+
+const r2 = new S3Client({
+  region: 'auto',
+  endpoint: `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+  credentials: {
+    accessKeyId: R2_ACCESS_KEY,
+    secretAccessKey: R2_SECRET_KEY,
+  },
+});
+
+function safePathSegment(value: string): string {
+  const cleaned = String(value || '').replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 128);
+  return cleaned || 'guest';
+}
+
+async function uploadVideoToR2(key: string, buffer: Buffer): Promise<string> {
+  await r2.send(new PutObjectCommand({
+    Bucket: R2_BUCKET,
+    Key: key,
+    Body: buffer,
+    ContentType: 'video/mp4',
+  }));
+  return `${R2_PUBLIC_URL}/${key}`;
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -11,74 +42,87 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = process.env.OPENAI_API_KEY?.trim();
   if (!apiKey) {
     return res.status(500).json({ error: 'API key not configured' });
   }
 
   try {
-    const { prompt, profile } = req.body;
-    const ai = new GoogleGenAI({ apiKey });
+    const { prompt, profile, videoId, userId } = req.body || {};
+    const baseUrl = (process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1').trim();
+    const authHeaders = { Authorization: `Bearer ${apiKey}` };
 
-    const videoPrompt = `Cinematic movie scene of ${profile?.name || 'A person'} achieving: ${prompt}. High quality, photorealistic, 4k.`;
+    // Poll existing job
+    if (videoId) {
+      const jobRes = await fetch(`${baseUrl}/videos/${encodeURIComponent(String(videoId))}`, {
+        method: 'GET',
+        headers: authHeaders,
+      });
+      if (!jobRes.ok) {
+        return res.status(200).json({ videoUrl: null, videoId: String(videoId), status: 'unknown' });
+      }
 
-    let operation = await ai.models.generateVideos({
-      model: 'veo-3.1-fast-generate-preview',
-      prompt: videoPrompt,
-      config: {
-        numberOfVideos: 1,
-        resolution: '720p',
-        aspectRatio: '16:9',
+      const job: any = await jobRes.json();
+      const status = String(job?.status || 'unknown');
+
+      if (status !== 'completed') {
+        return res.status(200).json({ videoUrl: null, videoId: String(videoId), status });
+      }
+
+      const contentRes = await fetch(
+        `${baseUrl}/videos/${encodeURIComponent(String(videoId))}/content`,
+        { method: 'GET', headers: authHeaders },
+      );
+      if (!contentRes.ok) {
+        return res.status(200).json({ videoUrl: null, videoId: String(videoId), status: 'completed' });
+      }
+
+      const videoBuffer = Buffer.from(await contentRes.arrayBuffer());
+
+      if (R2_PUBLIC_URL) {
+        try {
+          const owner = safePathSegment(userId || profile?.googleId || 'guest');
+          const key = `videos/${owner}/${safePathSegment(String(videoId))}.mp4`;
+          const url = await uploadVideoToR2(key, videoBuffer);
+          return res.status(200).json({ videoUrl: url, videoId: String(videoId), status });
+        } catch (r2Err: any) {
+          console.error('[R2 Upload] Failed:', r2Err?.message);
+        }
+      }
+
+      const dataUrl = `data:video/mp4;base64,${videoBuffer.toString('base64')}`;
+      return res.status(200).json({ videoUrl: dataUrl, videoId: String(videoId), status });
+    }
+
+    // Create new job
+    const name = profile?.name || 'A person';
+    const videoPrompt = `Cinematic movie scene of ${name} achieving: ${String(prompt || '')}. High quality, photorealistic, 4k.`;
+
+    const createdRes = await fetch(`${baseUrl}/videos`, {
+      method: 'POST',
+      headers: {
+        ...authHeaders,
+        'Content-Type': 'application/json',
       },
+      body: JSON.stringify({
+        model: 'sora-2',
+        prompt: videoPrompt,
+        seconds: '8',
+        size: '1280x720',
+      }),
     });
 
-    // Poll until done, with a 55s timeout (Vercel limit is 60s for serverless functions)
-    const startTime = Date.now();
-    const TIMEOUT_MS = 55000;
-
-    while (!operation.done) {
-      if (Date.now() - startTime > TIMEOUT_MS) {
-        return res.status(504).json({
-          error: 'Video generation timed out. Please try again.',
-        });
-      }
-      await new Promise((resolve) => setTimeout(resolve, 10000));
-      operation = await ai.operations.getVideosOperation({ operation });
-    }
-
-    const downloadLink =
-      operation.response?.generatedVideos?.[0]?.video?.uri;
-
-    if (!downloadLink) {
+    if (!createdRes.ok) {
       return res.status(200).json({ videoUrl: null });
     }
 
-    // Fetch the video server-side with the API key so the key is never exposed to the client.
-    // Then return the video as a proxied base64 data URL, or stream it.
-    // For simplicity and to avoid Vercel response size limits, we return a proxied URL
-    // that the client can use. Since we can't persist a signed URL easily,
-    // we fetch the video bytes and return them as base64.
-    try {
-      const separator = downloadLink.includes('?') ? '&' : '?';
-      const authenticatedUrl = `${downloadLink}${separator}key=${apiKey}`;
-      const videoResponse = await fetch(authenticatedUrl);
+    const created: any = await createdRes.json();
 
-      if (!videoResponse.ok) {
-        return res.status(200).json({ videoUrl: null });
-      }
-
-      const videoBuffer = await videoResponse.arrayBuffer();
-      const base64Video = Buffer.from(videoBuffer).toString('base64');
-      const contentType =
-        videoResponse.headers.get('content-type') || 'video/mp4';
-
-      return res.status(200).json({
-        videoUrl: `data:${contentType};base64,${base64Video}`,
-      });
-    } catch (fetchError) {
-      console.error('Video download error:', fetchError);
-      return res.status(200).json({ videoUrl: null });
-    }
+    return res.status(200).json({
+      videoUrl: null,
+      videoId: created?.id || null,
+      status: created?.status || 'queued',
+    });
   } catch (error: any) {
     console.error('Video Generation Error:', error);
     return res.status(200).json({ videoUrl: null });

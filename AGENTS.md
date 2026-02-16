@@ -5,7 +5,7 @@
 - **State**: Zustand (no Redux)
 - **Auth**: Firebase Auth (Google signInWithPopup)
 - **DB**: Firestore (cloud) + localStorage (offline)
-- **AI**: Google Gemini (@google/genai)
+- **AI**: OpenAI (Responses API + gpt-image + TTS + Sora)
 - **Deploy**: Vercel (https://web-legacy-ruddy.vercel.app/)
 - **Firebase**: project `coach-52bf4`
 - **Package Manager**: npm (lock file exists)
@@ -81,6 +81,12 @@ When one agent completes work that another agent will continue:
 
 ## Current Status
 _Last updated: 2026-02-16_
+- Migrated AI serverless routes from Gemini to OpenAI:
+  - Chat: Responses API + function tools (`api/chat.ts`)
+  - Narrative: Responses API (`api/generate-narrative.ts`)
+  - Images: `gpt-image-1.5` generate/edit (`api/generate-image.ts`)
+  - Speech: `gpt-4o-mini-tts` PCM16 output (`api/generate-speech.ts`)
+  - Video: `sora-2` job + polling (`api/generate-video.ts`, `services/aiService.ts`)
 - Fixed cross-account data bleed: force reload per uid and reset in-memory state on uid change (`hooks/useAuth.ts`, `App.tsx`)
 - Fixed cross-account data bleed in Visualization gallery: localStorage key is now uid-scoped + legacy key migration (`components/VisualizationModal.tsx`)
 - Hardened Google login account switching: sign out before `signInWithPopup` to avoid reusing prior Firebase session (`services/firebaseService.ts`)
@@ -135,6 +141,6 @@ _Last updated: 2026-02-16_
   - returns 403 with missing header hints for easier debugging
 - Fixed Polar webhook 403 root cause:
   - `api/polar-webhook.ts` now verifies signatures against the raw request body (stream-first)
-- Version: V02.16r04
+- Version: V02.16r05
 - Remaining: iOS platform add/build must be done on macOS
 
