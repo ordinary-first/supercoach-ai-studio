@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+﻿import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Sparkles,
   ArrowLeft,
@@ -15,6 +15,7 @@ import {
   X,
   Save,
   Trash2,
+  Clock,
 } from 'lucide-react';
 import { UserProfile, GoalNode } from '../types';
 import {
@@ -24,14 +25,15 @@ import {
   pollVideoStatus,
   generateVisualizationImage,
   uploadVisualizationAsset,
-  type VideoGenerationResult,
 } from '../services/aiService';
 import {
   deleteVisualization,
   getUserId,
   loadVisualizations,
   saveVisualization,
+  saveVisualizationViaApi,
   SavedVisualization,
+  VisualizationWriteInput,
   updateVisualization,
 } from '../services/firebaseService';
 import { useFocusTrap } from '../hooks/useFocusTrap';
@@ -43,7 +45,14 @@ interface VisualizationModalProps {
   nodes: GoalNode[];
 }
 
-type SavedVideoStatus = 'pending' | 'ready' | 'failed';
+type GenerationStatus = 'idle' | 'completed' | 'failed';
+type SavedVideoStatus = 'idle' | 'pending' | 'ready' | 'failed';
+
+type ErrorMeta = {
+  code?: string;
+  message?: string;
+  requestId?: string;
+};
 
 interface VisualizationResult {
   inputText: string;
@@ -53,8 +62,13 @@ interface VisualizationResult {
   audioUrl?: string;
   videoUrl?: string;
   videoId?: string;
-  videoStatus?: SavedVideoStatus;
   visualizationId?: string;
+  textStatus: GenerationStatus;
+  imageStatus: GenerationStatus;
+  audioStatus: GenerationStatus;
+  videoStatus: SavedVideoStatus;
+  audioError?: ErrorMeta;
+  videoError?: ErrorMeta;
 }
 
 const VIDEO_DURATION_SEC = 4;
@@ -64,18 +78,22 @@ const getActiveUserId = (profile: UserProfile | null): string | null => {
   return getUserId() || profile?.googleId || null;
 };
 
-const sanitizePayload = <T extends Record<string, unknown>>(payload: T): Partial<T> => {
-  return Object.entries(payload).reduce((acc, [key, value]) => {
-    if (value === undefined) return acc;
-    return { ...acc, [key]: value };
-  }, {} as Partial<T>);
+const toErrorMeta = (error: unknown): ErrorMeta => {
+  if (!error || typeof error !== 'object') return {};
+  const source = error as Record<string, unknown>;
+  return {
+    code: typeof source.code === 'string' ? source.code : undefined,
+    message: typeof source.message === 'string' ? source.message : undefined,
+    requestId: typeof source.requestId === 'string' ? source.requestId : undefined,
+  };
 };
 
-const toSavedVideoStatus = (video: VideoGenerationResult): SavedVideoStatus => {
-  if (video.videoUrl) return 'ready';
-  if (video.status === 'failed') return 'failed';
-  if (video.videoId) return 'pending';
-  return 'failed';
+const formatErrorMeta = (prefix: string, error?: ErrorMeta): string => {
+  if (!error) return prefix;
+  const code = error.code ? `코드: ${error.code}` : '';
+  const requestId = error.requestId ? `요청ID: ${error.requestId}` : '';
+  const details = [code, requestId].filter(Boolean).join(', ');
+  return details ? `${prefix} (${details})` : prefix;
 };
 
 const toResultFromSaved = (item: SavedVisualization): VisualizationResult => ({
@@ -86,8 +104,27 @@ const toResultFromSaved = (item: SavedVisualization): VisualizationResult => ({
   audioUrl: item.audioUrl,
   videoUrl: item.videoUrl,
   videoId: item.videoId,
-  videoStatus: item.videoStatus,
+  textStatus: item.text ? 'completed' : 'idle',
+  imageStatus: item.imageUrl ? 'completed' : 'idle',
+  audioStatus: item.audioUrl ? 'completed' : 'idle',
+  videoStatus: item.videoUrl ? 'ready' : item.videoStatus || 'idle',
 });
+
+const toPersistedVideoStatus = (
+  status: SavedVideoStatus,
+): 'pending' | 'ready' | 'failed' | undefined => {
+  if (status === 'pending') return 'pending';
+  if (status === 'ready') return 'ready';
+  if (status === 'failed') return 'failed';
+  return undefined;
+};
+
+const toStatusClass = (status: string): string => {
+  if (status === 'completed' || status === 'ready') return 'bg-green-500/15 text-green-300 border-green-500/20';
+  if (status === 'failed') return 'bg-red-500/15 text-red-300 border-red-500/20';
+  if (status === 'pending') return 'bg-yellow-500/15 text-yellow-200 border-yellow-500/20';
+  return 'bg-white/5 text-gray-400 border-white/10';
+};
 
 const VisualizationModal: React.FC<VisualizationModalProps> = ({
   isOpen,
@@ -110,6 +147,7 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
   const [generatingStep, setGeneratingStep] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [infoMessage, setInfoMessage] = useState('');
+
   const [currentResult, setCurrentResult] = useState<VisualizationResult | null>(null);
   const [isSaved, setIsSaved] = useState(false);
   const [savedItems, setSavedItems] = useState<SavedVisualization[]>([]);
@@ -133,7 +171,6 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
       try {
         sourceNodeRef.current.stop();
       } catch {
-        // no-op
       }
       sourceNodeRef.current = null;
     }
@@ -146,12 +183,12 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
       try {
         sourceNodeRef.current.stop();
       } catch {
-        // no-op
       }
     }
     if (audioCtxRef.current.state === 'suspended') {
       audioCtxRef.current.resume().catch(() => {});
     }
+
     const source = audioCtxRef.current.createBufferSource();
     source.buffer = audioBufferRef.current;
     source.loop = loop;
@@ -172,15 +209,13 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
 
     const binaryString = atob(base64);
     const bytes = new Uint8Array(binaryString.length);
-    for (let i = 0; i < binaryString.length; i += 1) {
-      bytes[i] = binaryString.charCodeAt(i);
-    }
+    for (let i = 0; i < binaryString.length; i += 1) bytes[i] = binaryString.charCodeAt(i);
+
     const dataInt16 = new Int16Array(bytes.buffer);
     const buffer = audioCtxRef.current.createBuffer(1, dataInt16.length, 24000);
     const channelData = buffer.getChannelData(0);
-    for (let i = 0; i < channelData.length; i += 1) {
-      channelData[i] = dataInt16[i] / 32768.0;
-    }
+    for (let i = 0; i < channelData.length; i += 1) channelData[i] = dataInt16[i] / 32768.0;
+
     audioBufferRef.current = buffer;
     playAudio(true);
   }, [playAudio]);
@@ -197,9 +232,9 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
     audioBufferRef.current = audioBuffer;
     playAudio(true);
   }, [playAudio]);
-
   const refreshPendingVideo = useCallback(async (target: VisualizationResult) => {
     if (!activeUserId || !target.videoId || target.videoStatus !== 'pending') return;
+
     setIsCheckingPendingVideo(true);
     clearMessages();
     try {
@@ -207,28 +242,34 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
       if (result.videoUrl) {
         const updates = { videoUrl: result.videoUrl, videoStatus: 'ready' as const, videoId: target.videoId };
         setCurrentResult((prev) => (prev ? { ...prev, ...updates } : prev));
-        if (target.visualizationId) {
-          await updateVisualization(activeUserId, target.visualizationId, updates);
-          setSavedItems((prev) =>
-            prev.map((item) => (item.id === target.visualizationId ? { ...item, ...updates } : item)),
-          );
-        }
+        setSavedItems((prev) =>
+          prev.map((item) => (item.id === target.visualizationId ? { ...item, ...updates } : item)),
+        );
+        if (target.visualizationId) await updateVisualization(activeUserId, target.visualizationId, updates);
         setInfoMessage('영상 생성이 완료되었습니다.');
-      } else if (result.status === 'failed') {
-        const updates = { videoStatus: 'failed' as const, videoId: target.videoId };
-        setCurrentResult((prev) => (prev ? { ...prev, ...updates } : prev));
-        if (target.visualizationId) {
-          await updateVisualization(activeUserId, target.visualizationId, updates);
-          setSavedItems((prev) =>
-            prev.map((item) => (item.id === target.visualizationId ? { ...item, ...updates } : item)),
-          );
-        }
-        setErrorMessage('영상 생성이 실패했습니다. 다시 생성해 주세요.');
-      } else {
-        setInfoMessage('영상 생성 대기 중입니다. 잠시 후 다시 확인해 주세요.');
+        return;
       }
-    } catch {
-      setErrorMessage('영상 상태를 확인하지 못했습니다.');
+
+      if (result.status === 'failed') {
+        const videoError = {
+          code: result.errorCode,
+          message: result.errorMessage,
+          requestId: result.requestId,
+        };
+        setCurrentResult((prev) => (prev ? { ...prev, videoStatus: 'failed', videoError } : prev));
+        if (target.visualizationId) {
+          await updateVisualization(activeUserId, target.visualizationId, {
+            videoStatus: 'failed',
+            videoId: target.videoId,
+          });
+        }
+        setErrorMessage(formatErrorMeta('영상 생성이 실패했습니다.', videoError));
+        return;
+      }
+
+      setInfoMessage('영상 생성이 아직 진행 중입니다. 잠시 후 다시 확인해 주세요.');
+    } catch (error: unknown) {
+      setErrorMessage(formatErrorMeta('영상 상태 확인에 실패했습니다.', toErrorMeta(error)));
     } finally {
       setIsCheckingPendingVideo(false);
     }
@@ -239,28 +280,31 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
       setSavedItems([]);
       return;
     }
+
     let cancelled = false;
     loadVisualizations(activeUserId)
       .then((items) => {
         if (!cancelled) setSavedItems(items);
       })
-      .catch(() => {
-        if (!cancelled) setErrorMessage('저장된 시각화를 불러오지 못했습니다.');
+      .catch((error: unknown) => {
+        if (!cancelled) {
+          setErrorMessage(formatErrorMeta('저장된 시각화를 불러오지 못했습니다.', toErrorMeta(error)));
+        }
       });
+
     return () => {
       cancelled = true;
     };
   }, [activeUserId, isOpen]);
 
   useEffect(() => {
-    if (!isOpen) return;
-    setViewMode('create');
-    clearMessages();
-  }, [clearMessages, isOpen]);
-
-  useEffect(() => {
-    if (!isOpen) stopAudio();
-  }, [isOpen, stopAudio]);
+    if (isOpen) {
+      setViewMode('create');
+      clearMessages();
+    } else {
+      stopAudio();
+    }
+  }, [clearMessages, isOpen, stopAudio]);
 
   useEffect(() => {
     return () => {
@@ -271,13 +315,18 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
 
   useEffect(() => {
     if (viewMode !== 'result' || !currentResult) return;
+
     stopAudio();
     if (currentResult.audioData) {
-      prepareAudioFromPcm(currentResult.audioData).catch(() => setErrorMessage('오디오 재생 준비 실패'));
+      prepareAudioFromPcm(currentResult.audioData).catch(() => {
+        setErrorMessage('오디오 재생 준비에 실패했습니다.');
+      });
       return;
     }
     if (currentResult.audioUrl) {
-      prepareAudioFromUrl(currentResult.audioUrl).catch(() => setErrorMessage('오디오 재생 준비 실패'));
+      prepareAudioFromUrl(currentResult.audioUrl).catch(() => {
+        setErrorMessage('오디오 재생 준비에 실패했습니다.');
+      });
     }
   }, [currentResult, prepareAudioFromPcm, prepareAudioFromUrl, stopAudio, viewMode]);
 
@@ -285,7 +334,15 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
     setIsGenerating(true);
     setIsSaved(false);
     clearMessages();
-    const result: VisualizationResult = { inputText };
+
+    const result: VisualizationResult = {
+      inputText,
+      textStatus: 'idle',
+      imageStatus: 'idle',
+      audioStatus: 'idle',
+      videoStatus: 'idle',
+    };
+
     try {
       const goalContext = nodes.map((node) => `- ${node.text}`).join('\n');
       const fullPrompt = inputText || goalContext;
@@ -293,7 +350,9 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
       if (settings.text) {
         setGeneratingStep('텍스트 생성 중...');
         result.text = await generateSuccessNarrative(fullPrompt, userProfile);
+        result.textStatus = result.text ? 'completed' : 'failed';
       }
+
       if (settings.image) {
         setGeneratingStep('이미지 생성 중...');
         result.imageUrl = await generateVisualizationImage(
@@ -302,32 +361,66 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
           userProfile,
           visualImageQuality,
         );
-      }
-      if (settings.audio) {
-        setGeneratingStep('오디오 생성 중...');
-        result.audioData = await generateSpeech(result.text || fullPrompt);
-      }
-      if (settings.video) {
-        setGeneratingStep('영상 생성 중...');
-        const video = await generateVideo(fullPrompt, userProfile, VIDEO_DURATION_SEC);
-        result.videoUrl = video.videoUrl;
-        result.videoId = video.videoId;
-        result.videoStatus = toSavedVideoStatus(video);
+        result.imageStatus = result.imageUrl ? 'completed' : 'failed';
       }
 
-      if (settings.image && !result.imageUrl) {
-        setErrorMessage('이미지 생성이 완료되지 않았습니다. 다시 시도해 주세요.');
+      if (settings.audio) {
+        setGeneratingStep('오디오 생성 중...');
+        const speechResult = await generateSpeech(result.text || fullPrompt);
+        if (speechResult.status === 'completed' && speechResult.audioData) {
+          result.audioData = speechResult.audioData;
+          result.audioStatus = 'completed';
+        } else {
+          result.audioStatus = 'failed';
+          result.audioError = {
+            code: speechResult.errorCode,
+            message: speechResult.errorMessage,
+            requestId: speechResult.requestId,
+          };
+        }
       }
-      if (settings.video && result.videoStatus === 'pending') {
+
+      if (settings.video) {
+        setGeneratingStep('영상 생성 중...');
+        const videoResult = await generateVideo(fullPrompt, userProfile, VIDEO_DURATION_SEC);
+        result.videoId = videoResult.videoId;
+        result.videoUrl = videoResult.videoUrl;
+        result.videoError = {
+          code: videoResult.errorCode,
+          message: videoResult.errorMessage,
+          requestId: videoResult.requestId,
+        };
+
+        if (videoResult.videoUrl) result.videoStatus = 'ready';
+        else if (videoResult.status === 'queued' || videoResult.status === 'in_progress') result.videoStatus = 'pending';
+        else result.videoStatus = 'failed';
+      }
+
+      if (result.imageStatus === 'failed') {
+        setErrorMessage('이미지 생성이 완료되지 않았습니다.');
+      }
+      if (result.audioStatus === 'failed') {
+        setErrorMessage((prev) =>
+          prev
+            ? `${prev} ${formatErrorMeta('오디오 생성 실패.', result.audioError)}`
+            : formatErrorMeta('오디오 생성 실패.', result.audioError),
+        );
+      }
+      if (result.videoStatus === 'pending') {
         setInfoMessage('영상 생성 대기 중입니다. 저장 후 나중에 다시 확인할 수 있습니다.');
       }
-      if (settings.video && result.videoStatus === 'failed') {
-        setErrorMessage('영상 생성에 실패했습니다. 이미지/텍스트는 저장할 수 있습니다.');
+      if (result.videoStatus === 'failed') {
+        setErrorMessage((prev) =>
+          prev
+            ? `${prev} ${formatErrorMeta('영상 생성 실패.', result.videoError)}`
+            : formatErrorMeta('영상 생성 실패.', result.videoError),
+        );
       }
+
       setCurrentResult(result);
       setViewMode('result');
-    } catch {
-      setErrorMessage('시각화 생성 중 오류가 발생했습니다.');
+    } catch (error: unknown) {
+      setErrorMessage(formatErrorMeta('시각화 생성 중 오류가 발생했습니다.', toErrorMeta(error)));
     } finally {
       setIsGenerating(false);
       setGeneratingStep('');
@@ -340,49 +433,81 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
       setErrorMessage('로그인 후 저장할 수 있습니다.');
       return;
     }
+
     setIsSaving(true);
     clearMessages();
+
     try {
       const visualizationId = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
       let imageUrl = currentResult.imageUrl;
       if (imageUrl?.startsWith('data:')) {
-        imageUrl = await uploadVisualizationAsset('image', activeUserId, visualizationId, { dataUrl: imageUrl });
+        imageUrl = await uploadVisualizationAsset('image', activeUserId, visualizationId, {
+          dataUrl: imageUrl,
+        });
       }
+
       let audioUrl = currentResult.audioUrl;
       if (!audioUrl && currentResult.audioData) {
         audioUrl = await uploadVisualizationAsset('audio', activeUserId, visualizationId, {
           audioData: currentResult.audioData,
         });
       }
+
       let videoUrl = currentResult.videoUrl;
       if (videoUrl?.startsWith('data:')) {
-        videoUrl = await uploadVisualizationAsset('video', activeUserId, visualizationId, { dataUrl: videoUrl });
+        videoUrl = await uploadVisualizationAsset('video', activeUserId, visualizationId, {
+          dataUrl: videoUrl,
+        });
       }
 
-      const videoStatus: SavedVideoStatus | undefined = videoUrl ? 'ready' : currentResult.videoStatus;
-      const payload = sanitizePayload({
-        inputText: currentResult.inputText,
-        text: currentResult.text,
-        imageUrl,
-        audioUrl,
-        videoUrl,
-        videoId: currentResult.videoId,
-        videoStatus,
-      });
-      const saved = await saveVisualization(activeUserId, payload);
+      const payload: VisualizationWriteInput = { inputText: currentResult.inputText };
+      if (currentResult.text) payload.text = currentResult.text;
+      if (imageUrl) payload.imageUrl = imageUrl;
+      if (audioUrl) payload.audioUrl = audioUrl;
+      if (videoUrl) payload.videoUrl = videoUrl;
+      if (currentResult.videoId) payload.videoId = currentResult.videoId;
+      const persistedVideoStatus = videoUrl ? 'ready' : toPersistedVideoStatus(currentResult.videoStatus);
+      if (persistedVideoStatus) payload.videoStatus = persistedVideoStatus;
+
+      let saved: SavedVisualization;
+      try {
+        saved = await saveVisualization(activeUserId, payload);
+      } catch (primaryError: unknown) {
+        const primaryMeta = toErrorMeta(primaryError);
+        try {
+          saved = await saveVisualizationViaApi(payload, visualizationId);
+          setInfoMessage(formatErrorMeta('클라이언트 저장 실패 후 서버 경로로 저장했습니다.', primaryMeta));
+        } catch (fallbackError: unknown) {
+          const fallbackMeta = toErrorMeta(fallbackError);
+          setErrorMessage(
+            `${formatErrorMeta('시각화 저장에 실패했습니다.', primaryMeta)} ${formatErrorMeta(
+              '서버 fallback 저장도 실패했습니다.',
+              fallbackMeta,
+            )}`,
+          );
+          return;
+        }
+      }
 
       setSavedItems((prev) => [saved, ...prev]);
       setCurrentResult((prev) =>
         prev
-          ? { ...prev, visualizationId: saved.id, imageUrl, audioUrl, videoUrl, videoStatus }
+          ? {
+              ...prev,
+              visualizationId: saved.id,
+              imageUrl,
+              audioUrl,
+              videoUrl,
+              videoStatus: persistedVideoStatus || prev.videoStatus,
+            }
           : prev,
       );
       setIsSaved(true);
-      if (videoStatus === 'pending') {
-        setInfoMessage('영상은 아직 생성 중입니다. 저장 후 다시 열어 확인할 수 있습니다.');
+
+      if (persistedVideoStatus === 'pending') {
+        setInfoMessage('영상은 아직 생성 중입니다. 저장 후 다시 열어 상태를 확인하세요.');
       }
-    } catch {
-      setErrorMessage('시각화 저장에 실패했습니다.');
     } finally {
       setIsSaving(false);
     }
@@ -396,7 +521,7 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
     setIsSaved(true);
     setViewMode('result');
     if (loaded.videoStatus === 'pending' && loaded.videoId) {
-      setInfoMessage('영상 생성 대기 중입니다. 상태를 확인합니다...');
+      setInfoMessage('영상 생성 대기 상태입니다. 자동으로 상태를 확인합니다.');
       void refreshPendingVideo(loaded);
     }
   };
@@ -406,8 +531,8 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
     try {
       await deleteVisualization(activeUserId, id);
       setSavedItems((prev) => prev.filter((item) => item.id !== id));
-    } catch {
-      setErrorMessage('저장된 시각화를 삭제하지 못했습니다.');
+    } catch (error: unknown) {
+      setErrorMessage(formatErrorMeta('저장 항목 삭제에 실패했습니다.', toErrorMeta(error)));
     }
   };
 
@@ -428,15 +553,9 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
     event.target.value = '';
   };
 
-  const toggleSetting = (key: keyof typeof settings) => {
-    setSettings((prev) => ({ ...prev, [key]: !prev[key] }));
-  };
-
   if (!isOpen) return null;
 
   const hasAudio = Boolean(currentResult?.audioData || currentResult?.audioUrl);
-  const isVideoPending = currentResult?.videoStatus === 'pending' && currentResult?.videoId;
-
   return (
     <div ref={focusTrapRef} className="fixed inset-0 z-50 bg-deep-space flex flex-col">
       <header className="h-14 md:h-20 px-4 md:px-6 border-b border-white/5 flex items-center justify-between">
@@ -468,8 +587,16 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
 
       <main className="flex-1 overflow-y-auto pb-[120px]">
         <div className="max-w-3xl mx-auto p-4 md:p-6 space-y-4">
-          {errorMessage && <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">{errorMessage}</div>}
-          {infoMessage && <div className="rounded-xl border border-neon-lime/30 bg-neon-lime/10 p-3 text-sm text-neon-lime">{infoMessage}</div>}
+          {errorMessage && (
+            <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">
+              {errorMessage}
+            </div>
+          )}
+          {infoMessage && (
+            <div className="rounded-xl border border-neon-lime/30 bg-neon-lime/10 p-3 text-sm text-neon-lime">
+              {infoMessage}
+            </div>
+          )}
 
           {viewMode === 'create' ? (
             <>
@@ -527,7 +654,7 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
                 ].map(({ key, label, icon: Icon }) => (
                   <button
                     key={key}
-                    onClick={() => toggleSetting(key)}
+                    onClick={() => setSettings((prev) => ({ ...prev, [key]: !prev[key] }))}
                     className={`px-3 py-2 rounded-full text-xs flex items-center gap-1 ${
                       settings[key] ? 'bg-neon-lime text-black' : 'bg-white/5 text-gray-300'
                     }`}
@@ -606,6 +733,10 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
                           )}
                         </div>
                         <p className="text-xs mt-1 truncate">{item.inputText || item.text || 'Visualization'}</p>
+                        <div className="flex items-center gap-1 text-[10px] text-gray-500 mt-0.5">
+                          <Clock size={10} />
+                          <span>{new Date(item.timestamp).toLocaleDateString()}</span>
+                        </div>
                         {item.videoStatus === 'pending' && (
                           <span className="absolute top-1 left-1 text-[10px] px-1 py-0.5 rounded bg-black/70 text-neon-lime">
                             영상 대기
@@ -628,6 +759,13 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
             </>
           ) : (
             <>
+              <div className="flex flex-wrap gap-2">
+                <span className={`px-2 py-1 text-xs rounded border ${toStatusClass(currentResult?.textStatus || 'idle')}`}>텍스트: {currentResult?.textStatus || 'idle'}</span>
+                <span className={`px-2 py-1 text-xs rounded border ${toStatusClass(currentResult?.imageStatus || 'idle')}`}>이미지: {currentResult?.imageStatus || 'idle'}</span>
+                <span className={`px-2 py-1 text-xs rounded border ${toStatusClass(currentResult?.audioStatus || 'idle')}`}>오디오: {currentResult?.audioStatus || 'idle'}</span>
+                <span className={`px-2 py-1 text-xs rounded border ${toStatusClass(currentResult?.videoStatus || 'idle')}`}>영상: {currentResult?.videoStatus || 'idle'}</span>
+              </div>
+
               <div className="rounded-2xl border border-white/10 overflow-hidden bg-black">
                 {currentResult?.videoUrl ? (
                   <video src={currentResult.videoUrl} controls autoPlay loop muted playsInline className="w-full aspect-video object-cover" />
@@ -640,13 +778,11 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
                 )}
               </div>
 
-              {isVideoPending && (
+              {currentResult?.videoStatus === 'pending' && currentResult.videoId && (
                 <div className="p-3 rounded-xl border border-white/10 bg-white/5 flex items-center justify-between gap-3">
                   <span className="text-sm">영상 생성 대기 중입니다.</span>
                   <button
-                    onClick={() => {
-                      if (currentResult) void refreshPendingVideo(currentResult);
-                    }}
+                    onClick={() => void refreshPendingVideo(currentResult)}
                     disabled={isCheckingPendingVideo}
                     className="px-3 py-1 rounded-full text-xs bg-neon-lime text-black disabled:opacity-50"
                   >
@@ -677,11 +813,8 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
                     </button>
                     <button
                       onClick={() => {
-                        if (isPlaying) {
-                          stopAudio();
-                        } else {
-                          playAudio(isLooping);
-                        }
+                        if (isPlaying) stopAudio();
+                        else playAudio(isLooping);
                       }}
                       className="p-2 rounded-full bg-white text-black"
                     >

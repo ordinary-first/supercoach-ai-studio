@@ -81,6 +81,15 @@ When one agent completes work that another agent will continue:
 
 ## Current Status
 _Last updated: 2026-02-16_
+- Visualization outage recovery v2 completed:
+  - Added failure-code surfacing for TTS (`api/generate-speech.ts`) with structured success/failure schema
+  - Normalized video API responses with explicit `errorCode/errorMessage/requestId` and removed silent-unknown paths (`api/generate-video.ts`)
+  - Added hybrid save fallback API (`api/save-visualization.ts`) using Firebase Admin token verification
+  - Extended Firebase Admin helper with `getAdminAuth()` for server-side auth verification (`lib/firebaseAdmin.ts`)
+  - Upgraded client service result types for audio/video error propagation (`services/aiService.ts`)
+  - Added `saveVisualizationViaApi` fallback helper (`services/firebaseService.ts`)
+  - Rebuilt `components/VisualizationModal.tsx` in UTF-8 with per-step status chips, error-code messaging, and automatic save fallback
+- Bumped `displayVersion` to `V02.16r19` (`package.json`)
 - Fixed login-page Korean mojibake root cause:
   - `components/LandingPage.tsx` file encoding converted from CP949(ANSI) to UTF-8
   - Prevents garbled Korean text on built/deployed login screen

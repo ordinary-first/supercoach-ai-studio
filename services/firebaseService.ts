@@ -54,6 +54,8 @@ export interface SavedVisualization {
   updatedAt?: number;
 }
 
+export type VisualizationWriteInput = Omit<SavedVisualization, 'id' | 'timestamp' | 'updatedAt'>;
+
 export interface UserSettings {
   language: 'en' | 'ko';
   updatedAt: number;
@@ -302,7 +304,7 @@ const sanitizeFirestorePayload = <T extends Record<string, any>>(payload: T): Pa
 
 export const saveVisualization = async (
   userId: string,
-  item: Omit<SavedVisualization, 'id' | 'timestamp' | 'updatedAt'>,
+  item: VisualizationWriteInput,
 ): Promise<SavedVisualization> => {
   if (!userId) throw new Error('userId required');
 
@@ -320,6 +322,67 @@ export const saveVisualization = async (
     id,
     timestamp: now,
     updatedAt: now,
+    ...item,
+  };
+};
+
+const parseApiJson = async (response: Response): Promise<Record<string, unknown>> => {
+  try {
+    return (await response.json()) as Record<string, unknown>;
+  } catch {
+    return {};
+  }
+};
+
+const createApiError = (
+  code: string,
+  message: string,
+  requestId?: string,
+): Error & { code: string; requestId?: string } => {
+  const error = new Error(message) as Error & { code: string; requestId?: string };
+  error.code = code;
+  error.requestId = requestId;
+  return error;
+};
+
+export const saveVisualizationViaApi = async (
+  item: VisualizationWriteInput,
+  visualizationId?: string,
+): Promise<SavedVisualization> => {
+  const currentUser = auth.currentUser;
+  if (!currentUser) {
+    throw createApiError('AUTH_REQUIRED', '로그인이 필요합니다.');
+  }
+
+  const token = await currentUser.getIdToken();
+  const payload = sanitizeFirestorePayload(item);
+  const response = await fetch('/api/save-visualization', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ visualizationId, payload }),
+  });
+
+  const body = await parseApiJson(response);
+  if (!response.ok) {
+    const code = String(body.errorCode || `SAVE_API_${response.status}`);
+    const message = String(body.errorMessage || '시각화 저장 API 호출에 실패했습니다.');
+    const requestId = typeof body.requestId === 'string' ? body.requestId : undefined;
+    throw createApiError(code, message, requestId);
+  }
+
+  const savedId =
+    typeof body.id === 'string' && body.id.trim()
+      ? body.id
+      : visualizationId || `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const savedAt = Number(body.savedAt || Date.now());
+
+  return {
+    id: savedId,
+    timestamp: savedAt,
+    updatedAt: savedAt,
     ...item,
   };
 };

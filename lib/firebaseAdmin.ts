@@ -1,4 +1,5 @@
-import { cert, getApps, initializeApp } from 'firebase-admin/app';
+import { cert, getApps, initializeApp, type App } from 'firebase-admin/app';
+import { getAuth, type Auth } from 'firebase-admin/auth';
 import { getFirestore, type Firestore } from 'firebase-admin/firestore';
 
 const trim = (value: string | undefined): string => (value ?? '').trim();
@@ -12,10 +13,12 @@ const getPrivateKey = (): string => {
   return unquoted.replace(/\\n/g, '\n');
 };
 
+let cachedApp: App | null = null;
 let cachedDb: Firestore | null = null;
+let cachedAuth: Auth | null = null;
 
-export const getAdminDb = (): Firestore => {
-  if (cachedDb) return cachedDb;
+const getAdminApp = (): App => {
+  if (cachedApp) return cachedApp;
 
   const projectId = trim(process.env.FIREBASE_ADMIN_PROJECT_ID);
   const clientEmail = trim(process.env.FIREBASE_ADMIN_CLIENT_EMAIL);
@@ -25,13 +28,24 @@ export const getAdminDb = (): Firestore => {
     throw new Error('Missing Firebase Admin credentials');
   }
 
-  const app =
+  cachedApp =
     getApps().length > 0
       ? getApps()[0]
       : initializeApp({
           credential: cert({ projectId, clientEmail, privateKey }),
         });
 
-  cachedDb = getFirestore(app);
+  return cachedApp;
+};
+
+export const getAdminDb = (): Firestore => {
+  if (cachedDb) return cachedDb;
+  cachedDb = getFirestore(getAdminApp());
   return cachedDb;
+};
+
+export const getAdminAuth = (): Auth => {
+  if (cachedAuth) return cachedAuth;
+  cachedAuth = getAuth(getAdminApp());
+  return cachedAuth;
 };
