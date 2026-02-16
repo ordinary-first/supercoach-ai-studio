@@ -81,6 +81,10 @@ When one agent completes work that another agent will continue:
 
 ## Current Status
 _Last updated: 2026-02-16_
+- Fixed login-page Korean mojibake root cause:
+  - `components/LandingPage.tsx` file encoding converted from CP949(ANSI) to UTF-8
+  - Prevents garbled Korean text on built/deployed login screen
+- Bumped `displayVersion` to `V02.16r18` (`package.json`)
 - Stabilized visualization flow (`components/VisualizationModal.tsx`):
   - Video generation now uses 4s default duration via new object response path
   - Distinguishes video `pending` vs `failed` in UI

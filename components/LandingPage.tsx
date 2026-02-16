@@ -1,13 +1,7 @@
 import React, { useState } from 'react';
 import type { UserProfile } from '../types';
 import { loginWithGoogle } from '../services/firebaseService';
-import {
-  AlertTriangle,
-  Chrome,
-  HelpCircle,
-  Settings,
-  ShieldCheck,
-} from 'lucide-react';
+import { AlertTriangle, Chrome, HelpCircle, Settings, ShieldCheck } from 'lucide-react';
 
 interface LandingPageProps {
   onLoginSuccess: (profile: UserProfile) => void;
@@ -24,7 +18,7 @@ const LandingPage: React.FC<LandingPageProps> = () => {
     try {
       await loginWithGoogle();
     } catch (error: any) {
-      setErrorMessage(error?.message || '·Î±×ÀÎ Áß ¿À·ù°¡ ¹ß»ıÇß½À´Ï´Ù.');
+      setErrorMessage(error?.message || 'ë¡œê·¸ì¸ ì¤‘ ì˜¤ë¥˜ê°€ ë°œìƒí–ˆìŠµë‹ˆë‹¤.');
     } finally {
       setIsLoggingIn(false);
     }
@@ -52,7 +46,9 @@ const LandingPage: React.FC<LandingPageProps> = () => {
             <h2 className="text-[10px] font-bold text-neon-lime uppercase tracking-widest">
               System Authorization
             </h2>
-            <p className="text-[11px] text-gray-400">Google °èÁ¤À¸·Î ·Î±×ÀÎÇØ ¸ñÇ¥ µ¥ÀÌÅÍ¸¦ Å¬¶ó¿ìµå¿¡ ÀúÀåÇÏ¼¼¿ä.</p>
+            <p className="text-[11px] text-gray-400">
+              Google ê³„ì •ìœ¼ë¡œ ë¡œê·¸ì¸í•´ ëª©í‘œ ë°ì´í„°ë¥¼ í´ë¼ìš°ë“œì— ì €ì¥í•˜ì„¸ìš”.
+            </p>
           </div>
 
           <div className="space-y-3">
@@ -74,7 +70,7 @@ const LandingPage: React.FC<LandingPageProps> = () => {
             </button>
 
             <p className="text-[9px] text-gray-600 text-center px-4">
-              ·Î±×ÀÎ ÈÄ µ¥ÀÌÅÍ´Â °èÁ¤ ±âÁØÀ¸·Î Firestore/R2¿¡ ÀúÀåµË´Ï´Ù.
+              ë¡œê·¸ì¸ í›„ ë°ì´í„°ëŠ” ê³„ì • ê¸°ì¤€ìœ¼ë¡œ Firestore/R2ì— ì €ì¥ë©ë‹ˆë‹¤.
             </p>
           </div>
 
@@ -87,9 +83,9 @@ const LandingPage: React.FC<LandingPageProps> = () => {
 
           <div className="pt-4 border-t border-white/5">
             <p className="text-[9px] text-gray-500 text-center leading-relaxed">
-              ·Î±×ÀÎ ½Ã ºê¶ó¿ìÀú´Â Firebase ÀÎÁõ »óÅÂ¸¦ À¯ÁöÇÕ´Ï´Ù.
+              ë¡œê·¸ì¸ ì‹œ ë¸Œë¼ìš°ì €ëŠ” Firebase ì¸ì¦ ìƒíƒœë¥¼ ìœ ì§€í•©ë‹ˆë‹¤.
               <br />
-              »ç¿ëÀÚ µ¥ÀÌÅÍ´Â ·ÎÄÃÀÌ ¾Æ´Ñ ¹é¿£µå¿¡ ÀúÀåµË´Ï´Ù.
+              ì‚¬ìš©ì ë°ì´í„°ëŠ” ë¡œì»¬ì´ ì•„ë‹Œ ë°±ì—”ë“œì— ì €ì¥ë©ë‹ˆë‹¤.
             </p>
             <div className="mt-4 flex flex-wrap items-center justify-center gap-3 text-[9px] font-bold text-gray-500 uppercase tracking-widest">
               <a className="hover:text-neon-lime transition-colors" href="/terms" target="_blank" rel="noreferrer">Terms</a>
@@ -116,19 +112,23 @@ const LandingPage: React.FC<LandingPageProps> = () => {
               <div className="p-3 bg-neon-lime/10 rounded-2xl">
                 <HelpCircle className="text-neon-lime" size={24} />
               </div>
-              <button onClick={() => setShowSetupGuide(false)} className="text-gray-500 hover:text-white">
+              <button
+                onClick={() => setShowSetupGuide(false)}
+                className="text-gray-500 hover:text-white"
+              >
                 <Settings size={20} />
               </button>
             </div>
 
-            <h3 className="text-xl font-display font-bold">ÀÎÁõ µµ¸ŞÀÎ °¡ÀÌµå</h3>
+            <h3 className="text-xl font-display font-bold">ì¸ì¦ ë„ë©”ì¸ ê°€ì´ë“œ</h3>
 
             <div className="space-y-4 bg-white/5 p-5 rounded-2xl">
               <p className="text-[11px] text-gray-400 leading-relaxed">
-                Origin not allowed ¿À·ù°¡ ³ª¿À¸é ¾Æ·¡ ÁÖ¼Ò¸¦ Firebase Console ÀÎÁõ µµ¸ŞÀÎ¿¡ Ãß°¡ÇÏ¼¼¿ä.
+                Origin not allowed ì˜¤ë¥˜ê°€ ë‚˜ì˜¤ë©´ ì•„ë˜ ì£¼ì†Œë¥¼ Firebase Console ì¸ì¦ ë„ë©”ì¸ì—
+                ì¶”ê°€í•˜ì„¸ìš”.
               </p>
               <div className="space-y-2">
-                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">º¹»çÇÒ ÁÖ¼Ò</p>
+                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">ë³µì‚¬í•  ì£¼ì†Œ</p>
                 <code className="block bg-black p-3 rounded text-neon-lime font-mono text-xs overflow-x-auto whitespace-nowrap">
                   {window.location.origin}
                 </code>
@@ -139,7 +139,7 @@ const LandingPage: React.FC<LandingPageProps> = () => {
               onClick={() => setShowSetupGuide(false)}
               className="w-full py-4 bg-neon-lime text-black rounded-xl font-bold text-xs uppercase tracking-widest hover:scale-105 transition-all"
             >
-              È®ÀÎ ¿Ï·á
+              í™•ì¸ ì™„ë£Œ
             </button>
           </div>
         </div>
