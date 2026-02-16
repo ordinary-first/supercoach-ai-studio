@@ -19,6 +19,7 @@ type LayoutMode = 'mindMap' | 'logicalStructure' | 'logicalStructureLeft' | 'org
 interface MindMapProps {
   nodes: GoalNode[];
   links: GoalLink[];
+  language: 'en' | 'ko';
   selectedNodeId?: string;
   onNodeClick: (node: GoalNode) => void;
   onEditNode?: (nodeId: string) => void;
@@ -210,9 +211,32 @@ const layoutOptions: { mode: LayoutMode; label: string }[] = [
   { mode: 'organizationStructure', label: 'Org' },
 ];
 
+const ACTION_BAR_LABELS = {
+  en: {
+    child: 'Child',
+    sibling: 'Sibling',
+    todo: 'Todo',
+    generate: 'Generate',
+    insert: 'Insert',
+    more: 'More',
+    insertImage: 'Insert image',
+    delete: 'Delete',
+  },
+  ko: {
+    child: '자식',
+    sibling: '형제',
+    todo: '투두',
+    generate: '이미지 생성',
+    insert: '이미지 삽입',
+    more: '더보기',
+    insertImage: '이미지 삽입',
+    delete: '삭제',
+  },
+} as const;
+
 // --- Component ---
 const MindMap: React.FC<MindMapProps> = ({
-  nodes, links, selectedNodeId, onNodeClick, onEditNode, onUpdateNode, onDeleteNode,
+  nodes, links, language, selectedNodeId, onNodeClick, onEditNode, onUpdateNode, onDeleteNode,
   onReparentNode, onConvertNodeToTask, onGenerateImage, onInsertImage, onAddSubNode,
   width, height, editingNodeId, onEditEnd, imageLoadingNodes
 }) => {
@@ -224,9 +248,11 @@ const MindMap: React.FC<MindMapProps> = ({
     y: number;
     nodeId: string;
     scale: number;
+    placement: 'top' | 'bottom';
     isMoreOpen: boolean;
   } | null>(null);
   const [viewScale, setViewScale] = useState(1);
+  const labels = ACTION_BAR_LABELS[language];
 
   const getCurrentMindMapScale = useCallback(() => {
     const mindMap = mindMapRef.current;
@@ -395,8 +421,29 @@ const MindMap: React.FC<MindMapProps> = ({
       const rect = containerRef.current?.getBoundingClientRect();
       const fallbackX = (rect?.width || width) / 2;
       const fallbackY = (rect?.height || height) / 2;
-      const x = ((evt.clientX || evt.pageX || 0) - (rect?.left || 0)) || fallbackX;
-      const y = ((evt.clientY || evt.pageY || 0) - (rect?.top || 0)) || fallbackY;
+      const nodeRect = typeof node?.getRectInSvg === 'function'
+        ? node.getRectInSvg()
+        : null;
+      const nodeCenterX = nodeRect ? nodeRect.left + nodeRect.width / 2 : fallbackX;
+      const clickX = ((evt.clientX || evt.pageX || 0) - (rect?.left || 0)) || nodeCenterX;
+
+      let placement: 'top' | 'bottom' = 'top';
+      let x = nodeCenterX || clickX || fallbackX;
+      let y = fallbackY;
+      if (nodeRect) {
+        const minTopForAbove = 110;
+        placement = nodeRect.top > minTopForAbove ? 'top' : 'bottom';
+        y = placement === 'top' ? nodeRect.top - 10 : nodeRect.bottom + 10;
+      } else {
+        y = ((evt.clientY || evt.pageY || 0) - (rect?.top || 0)) || fallbackY;
+        placement = y > 110 ? 'top' : 'bottom';
+      }
+
+      if (rect) {
+        const margin = 12;
+        x = Math.max(margin, Math.min(rect.width - margin, x));
+        y = Math.max(margin, Math.min(rect.height - margin, y));
+      }
       const scale = getCurrentMindMapScale();
 
       setViewScale(scale);
@@ -405,6 +452,7 @@ const MindMap: React.FC<MindMapProps> = ({
         y,
         nodeId: goalId,
         scale,
+        placement,
         isMoreOpen: false,
       });
     });
@@ -550,8 +598,10 @@ const MindMap: React.FC<MindMapProps> = ({
           style={{
             left: actionBar.x,
             top: actionBar.y,
-            transform: `scale(${actionBar.scale || viewScale})`,
-            transformOrigin: 'top left',
+            transform: actionBar.placement === 'top'
+              ? `translate(-50%, -100%) scale(${actionBar.scale || viewScale})`
+              : `translate(-50%, 12px) scale(${actionBar.scale || viewScale})`,
+            transformOrigin: 'top center',
           }}
         >
           <div className="flex items-center gap-1 rounded-full border border-white/15 bg-[#0d1b30]/95 p-1 shadow-2xl backdrop-blur-md">
@@ -562,7 +612,7 @@ const MindMap: React.FC<MindMapProps> = ({
               }}
               className="rounded-full px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/10"
             >
-              Child
+              {labels.child}
             </button>
 
             {!isRootActionNode && (
@@ -577,7 +627,7 @@ const MindMap: React.FC<MindMapProps> = ({
                   }}
                   className="rounded-full px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/10"
                 >
-                  Sibling
+                  {labels.sibling}
                 </button>
                 <button
                   onClick={() => {
@@ -586,7 +636,7 @@ const MindMap: React.FC<MindMapProps> = ({
                   }}
                   className="rounded-full px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/10"
                 >
-                  Todo
+                  {labels.todo}
                 </button>
               </>
             )}
@@ -598,7 +648,7 @@ const MindMap: React.FC<MindMapProps> = ({
               }}
               className="rounded-full px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/10"
             >
-              Generate
+              {labels.generate}
             </button>
 
             {isRootActionNode ? (
@@ -609,7 +659,7 @@ const MindMap: React.FC<MindMapProps> = ({
                 }}
                 className="rounded-full px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/10"
               >
-                Insert
+                {labels.insert}
               </button>
             ) : (
               <button
@@ -620,7 +670,7 @@ const MindMap: React.FC<MindMapProps> = ({
                 }}
                 className="rounded-full px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/10"
               >
-                More
+                {labels.more}
               </button>
             )}
           </div>
@@ -634,7 +684,7 @@ const MindMap: React.FC<MindMapProps> = ({
                 }}
                 className="w-full rounded-lg px-3 py-2 text-left text-xs font-semibold text-white hover:bg-white/10"
               >
-                Insert image
+                {labels.insertImage}
               </button>
               <button
                 onClick={() => {
@@ -643,7 +693,7 @@ const MindMap: React.FC<MindMapProps> = ({
                 }}
                 className="mt-1 w-full rounded-lg px-3 py-2 text-left text-xs font-semibold text-red-400 hover:bg-red-500/15"
               >
-                Delete
+                {labels.delete}
               </button>
             </div>
           )}
@@ -668,6 +718,7 @@ export default React.memo(MindMap, (prev, next) => {
   return (
     prev.nodes === next.nodes &&
     prev.links === next.links &&
+    prev.language === next.language &&
     prev.selectedNodeId === next.selectedNodeId &&
     prev.width === next.width &&
     prev.height === next.height &&

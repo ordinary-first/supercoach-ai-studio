@@ -81,6 +81,9 @@ When one agent completes work that another agent will continue:
 
 ## Current Status
 _Last updated: 2026-02-16_
+- Localized mind-map action bar by app language (`ko`/`en`) via `language` prop wiring (`App.tsx`, `components/MindMap.tsx`)
+- Repositioned action bar to avoid node overlap by anchoring near node bounds (prefer top, fallback bottom near header) (`components/MindMap.tsx`)
+- Bumped `displayVersion` to `V02.16r11` (`package.json`)
 - Fixed mojibake/깨진 한글 in Visualization view UI text (`components/VisualizationModal.tsx`)
 - Bumped `displayVersion` to `V02.16r10` (`package.json`)
 - Locked mobile browser zoom only on GOALS tab so header/bottom dock stay fixed:
@@ -169,6 +172,6 @@ _Last updated: 2026-02-16_
   - returns 403 with missing header hints for easier debugging
 - Fixed Polar webhook 403 root cause:
   - `api/polar-webhook.ts` now verifies signatures against the raw request body (stream-first)
-- Version: V02.16r10
+- Version: V02.16r11
 - Remaining: iOS platform add/build must be done on macOS
 
