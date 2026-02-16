@@ -43,6 +43,40 @@ function pickVideoUrlFromJob(job: any): string | null {
   return nested?.url || null;
 }
 
+type VideoStatus = 'queued' | 'in_progress' | 'completed' | 'failed' | 'unknown';
+
+function clampDurationSec(input: unknown): number {
+  const parsed = Number(input);
+  if (!Number.isFinite(parsed)) return 4;
+  return Math.max(2, Math.min(6, Math.round(parsed)));
+}
+
+function asVideoStatus(input: unknown): VideoStatus {
+  const normalized = String(input || '').toLowerCase();
+  if (normalized === 'queued') return 'queued';
+  if (normalized === 'in_progress') return 'in_progress';
+  if (normalized === 'completed' || normalized === 'succeeded') return 'completed';
+  if (normalized === 'failed') return 'failed';
+  return 'unknown';
+}
+
+function respondVideo(
+  res: VercelResponse,
+  payload: {
+    durationSec: number;
+    videoId?: string | null;
+    videoUrl?: string | null;
+    status?: VideoStatus;
+  },
+) {
+  return res.status(200).json({
+    videoUrl: payload.videoUrl || null,
+    videoId: payload.videoId || null,
+    status: payload.status || 'unknown',
+    durationSec: payload.durationSec,
+  });
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -59,7 +93,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { prompt, profile, videoId, userId } = req.body || {};
+    const { prompt, profile, videoId, userId, durationSec } = req.body || {};
+    const effectiveDurationSec = clampDurationSec(durationSec);
     const baseUrl = (process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1').trim();
     const authHeaders = { Authorization: `Bearer ${apiKey}` };
 
@@ -70,14 +105,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         headers: authHeaders,
       });
       if (!jobRes.ok) {
-        return res.status(200).json({ videoUrl: null, videoId: String(videoId), status: 'unknown' });
+        return respondVideo(res, {
+          durationSec: effectiveDurationSec,
+          videoId: String(videoId),
+          status: 'unknown',
+        });
       }
 
       const job: any = await jobRes.json();
-      const status = String(job?.status || 'unknown');
+      const status = asVideoStatus(job?.status);
 
-      if (status !== 'completed' && status !== 'succeeded') {
-        return res.status(200).json({ videoUrl: null, videoId: String(videoId), status });
+      if (status !== 'completed') {
+        return respondVideo(res, {
+          durationSec: effectiveDurationSec,
+          videoId: String(videoId),
+          status,
+        });
       }
 
       const contentRes = await fetch(
@@ -87,9 +130,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (!contentRes.ok) {
         const fallbackUrl = pickVideoUrlFromJob(job);
         if (fallbackUrl) {
-          return res.status(200).json({ videoUrl: fallbackUrl, videoId: String(videoId), status });
+          return respondVideo(res, {
+            durationSec: effectiveDurationSec,
+            videoId: String(videoId),
+            videoUrl: fallbackUrl,
+            status,
+          });
         }
-        return res.status(200).json({ videoUrl: null, videoId: String(videoId), status });
+        return respondVideo(res, {
+          durationSec: effectiveDurationSec,
+          videoId: String(videoId),
+          status,
+        });
       }
 
       const videoBuffer = Buffer.from(await contentRes.arrayBuffer());
@@ -99,14 +151,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           const owner = safePathSegment(userId || profile?.googleId || 'guest');
           const key = `videos/${owner}/${safePathSegment(String(videoId))}.mp4`;
           const url = await uploadVideoToR2(key, videoBuffer);
-          return res.status(200).json({ videoUrl: url, videoId: String(videoId), status });
+          return respondVideo(res, {
+            durationSec: effectiveDurationSec,
+            videoId: String(videoId),
+            videoUrl: url,
+            status,
+          });
         } catch (r2Err: any) {
           console.error('[R2 Upload] Failed:', r2Err?.message);
         }
       }
 
       const dataUrl = `data:video/mp4;base64,${videoBuffer.toString('base64')}`;
-      return res.status(200).json({ videoUrl: dataUrl, videoId: String(videoId), status });
+      return respondVideo(res, {
+        durationSec: effectiveDurationSec,
+        videoId: String(videoId),
+        videoUrl: dataUrl,
+        status,
+      });
     }
 
     // Create new job
@@ -122,25 +184,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       body: JSON.stringify({
         model: 'sora-2',
         prompt: videoPrompt,
-        seconds: '8',
+        seconds: String(effectiveDurationSec),
         size: '1280x720',
       }),
     });
 
     if (!createdRes.ok) {
-      return res.status(200).json({ videoUrl: null });
+      return respondVideo(res, { durationSec: effectiveDurationSec, status: 'unknown' });
     }
 
     const created: any = await createdRes.json();
 
     const createdVideoId = created?.id || created?.video_id || null;
-    return res.status(200).json({
-      videoUrl: null,
+    return respondVideo(res, {
+      durationSec: effectiveDurationSec,
       videoId: createdVideoId,
-      status: created?.status || 'queued',
+      status: asVideoStatus(created?.status || 'queued'),
     });
   } catch (error: any) {
     console.error('Video Generation Error:', error);
-    return res.status(200).json({ videoUrl: null });
+    return respondVideo(res, { durationSec: 4, status: 'unknown' });
   }
 }

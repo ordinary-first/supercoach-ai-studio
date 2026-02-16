@@ -49,6 +49,8 @@ export interface SavedVisualization {
   imageUrl?: string;
   audioUrl?: string;
   videoUrl?: string;
+  videoStatus?: 'pending' | 'ready' | 'failed';
+  videoId?: string;
   updatedAt?: number;
 }
 
@@ -71,11 +73,11 @@ export const loginWithGoogle = async (): Promise<User | null> => {
   } catch (error: any) {
     const code = error?.code || '';
     if (code === 'auth/unauthorized-domain') {
-      error.message = 'Firebase ½ÂÀÎ µµ¸ŞÀÎÀ» È®ÀÎÇØÁÖ¼¼¿ä.';
+      error.message = 'Firebase ìŠ¹ì¸ ë„ë©”ì¸ì„ í™•ì¸í•´ì£¼ì„¸ìš”.';
     } else if (code === 'auth/popup-blocked') {
-      error.message = 'ºê¶ó¿ìÀú ÆË¾÷ Â÷´ÜÀ» ÇØÁ¦ÇÑ µÚ ´Ù½Ã ½ÃµµÇØÁÖ¼¼¿ä.';
+      error.message = 'ë¸Œë¼ìš°ì € íŒì—… ì°¨ë‹¨ì„ í•´ì œí•œ ë’¤ ë‹¤ì‹œ ì‹œë„í•´ì£¼ì„¸ìš”.';
     } else if (code === 'auth/popup-closed-by-user') {
-      error.message = '·Î±×ÀÎ Ã¢ÀÌ ´İÇû½À´Ï´Ù. ´Ù½Ã ½ÃµµÇØÁÖ¼¼¿ä.';
+      error.message = 'ë¡œê·¸ì¸ ì°½ì´ ë‹«í˜”ìŠµë‹ˆë‹¤. ë‹¤ì‹œ ì‹œë„í•´ì£¼ì„¸ìš”.';
     }
     console.error('[Auth] Google Login Error:', code, error);
     throw error;
@@ -279,6 +281,8 @@ export const loadVisualizations = async (userId: string): Promise<SavedVisualiza
         imageUrl: data.imageUrl || undefined,
         audioUrl: data.audioUrl || undefined,
         videoUrl: data.videoUrl || undefined,
+        videoStatus: data.videoStatus || undefined,
+        videoId: data.videoId || undefined,
         updatedAt: Number(data.updatedAt || 0),
       };
     });
@@ -286,6 +290,14 @@ export const loadVisualizations = async (userId: string): Promise<SavedVisualiza
     console.error('[Load:Visualizations] Firestore read failed:', error?.code || error?.message);
     return [];
   }
+};
+
+const sanitizeFirestorePayload = <T extends Record<string, any>>(payload: T): Partial<T> => {
+  return Object.entries(payload).reduce((acc, [key, value]) => {
+    if (value === undefined) return acc;
+    (acc as any)[key] = value;
+    return acc;
+  }, {} as Partial<T>);
 };
 
 export const saveVisualization = async (
@@ -296,11 +308,11 @@ export const saveVisualization = async (
 
   const now = Date.now();
   const id = `${now}_${Math.random().toString(36).slice(2, 8)}`;
-  const payload = {
+  const payload = sanitizeFirestorePayload({
     ...item,
     timestamp: now,
     updatedAt: now,
-  };
+  });
   const docRef = doc(db, 'users', userId, 'data', 'visualizations', id);
   await setDoc(docRef, payload);
 
@@ -310,6 +322,20 @@ export const saveVisualization = async (
     updatedAt: now,
     ...item,
   };
+};
+
+export const updateVisualization = async (
+  userId: string,
+  visualizationId: string,
+  updates: Partial<Omit<SavedVisualization, 'id' | 'timestamp'>>,
+): Promise<void> => {
+  if (!userId || !visualizationId) return;
+  const payload = sanitizeFirestorePayload({
+    ...updates,
+    updatedAt: Date.now(),
+  });
+  const docRef = doc(db, 'users', userId, 'data', 'visualizations', visualizationId);
+  await setDoc(docRef, payload, { merge: true });
 };
 
 export const deleteVisualization = async (userId: string, visualizationId: string): Promise<void> => {

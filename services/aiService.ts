@@ -121,43 +121,99 @@ export const generateSpeech = async (text: string): Promise<string | undefined> 
     } catch (e) { return undefined; }
 };
 
-export const generateVideo = async (prompt: string, profile: UserProfile | null): Promise<string | undefined> => {
+export type VideoGenerationStatus =
+  | 'queued'
+  | 'in_progress'
+  | 'completed'
+  | 'failed'
+  | 'unknown';
+
+export interface VideoGenerationResult {
+  videoUrl?: string;
+  videoId?: string;
+  status: VideoGenerationStatus;
+  durationSec: number;
+}
+
+const toVideoResult = (payload: any, fallbackDurationSec: number): VideoGenerationResult => {
+  const rawStatus = String(payload?.status || 'unknown').toLowerCase();
+  const status: VideoGenerationStatus = (
+    rawStatus === 'queued'
+    || rawStatus === 'in_progress'
+    || rawStatus === 'completed'
+    || rawStatus === 'failed'
+    || rawStatus === 'unknown'
+  ) ? rawStatus : 'unknown';
+
+  return {
+    videoUrl: payload?.videoUrl || undefined,
+    videoId: payload?.videoId || undefined,
+    status,
+    durationSec: Number(payload?.durationSec || fallbackDurationSec || 4),
+  };
+};
+
+export const pollVideoStatus = async (
+  videoId: string,
+  userId?: string | null,
+  durationSec: number = 4,
+): Promise<VideoGenerationResult> => {
+  try {
+    const pollResponse = await fetch('/api/generate-video', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ videoId, userId, durationSec }),
+    });
+    if (!pollResponse.ok) {
+      return { videoId, status: 'unknown', durationSec };
+    }
+    const payload = await pollResponse.json();
+    const result = toVideoResult(payload, durationSec);
+    if (!result.videoId) result.videoId = videoId;
+    return result;
+  } catch {
+    return { videoId, status: 'unknown', durationSec };
+  }
+};
+
+export const generateVideo = async (
+    prompt: string,
+    profile: UserProfile | null,
+    durationSec: number = 4,
+): Promise<VideoGenerationResult> => {
     try {
         const userId = profile?.googleId || null;
 
         const createResponse = await fetch('/api/generate-video', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prompt, profile, userId }),
+            body: JSON.stringify({ prompt, profile, userId, durationSec }),
         });
-        if (!createResponse.ok) return undefined;
+        if (!createResponse.ok) {
+          return { status: 'unknown', durationSec };
+        }
 
-        const created = await createResponse.json();
-        if (created?.videoUrl) return created.videoUrl;
-        const videoId = created?.videoId;
-        if (!videoId) return undefined;
+        const created = toVideoResult(await createResponse.json(), durationSec);
+        if (created.videoUrl) return created;
+        const videoId = created.videoId;
+        if (!videoId) return created;
 
         const startedAt = Date.now();
         const TIMEOUT_MS = 3 * 60 * 1000;
+        let lastResult: VideoGenerationResult = created;
 
         while (Date.now() - startedAt < TIMEOUT_MS) {
             await new Promise((r) => setTimeout(r, 5000));
 
-            const pollResponse = await fetch('/api/generate-video', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ videoId, userId }),
-            });
-            if (!pollResponse.ok) return undefined;
-
-            const polled = await pollResponse.json();
-            if (polled?.videoUrl) return polled.videoUrl;
-            if (polled?.status === 'failed') return undefined;
+            const polled = await pollVideoStatus(videoId, userId, durationSec);
+            lastResult = polled;
+            if (polled.videoUrl) return polled;
+            if (polled.status === 'failed') return polled;
         }
 
-        return undefined;
-    } catch (error) {
-        return undefined;
+        return lastResult;
+    } catch {
+        return { status: 'unknown', durationSec };
     }
 };
 

@@ -81,6 +81,17 @@ When one agent completes work that another agent will continue:
 
 ## Current Status
 _Last updated: 2026-02-16_
+- Stabilized visualization flow (`components/VisualizationModal.tsx`):
+  - Video generation now uses 4s default duration via new object response path
+  - Distinguishes video `pending` vs `failed` in UI
+  - Allows partial save when video is still pending (image/text/audio save first)
+  - Added pending video re-check action and one-shot auto-check on saved-item open
+  - Reworked save payload normalization to avoid undefined fields in Firestore writes
+- Extended video/save contracts:
+  - `api/generate-video.ts` now clamps `durationSec` to 2..6 (default 4) and returns normalized payload
+  - `services/aiService.ts` now returns `VideoGenerationResult` (status/videoId/videoUrl/durationSec)
+  - `services/firebaseService.ts` supports `videoStatus`/`videoId` and adds sanitized partial update helper
+- Bumped `displayVersion` to `V02.16r17` (`package.json`)
 - Hardened visualization image generation fallback:
   - `api/generate-image.ts` now retries once with `gpt-image-1` when primary response is empty
   - Supports both `b64_json` and `url` paths before returning empty media
