@@ -81,6 +81,12 @@ When one agent completes work that another agent will continue:
 
 ## Current Status
 _Last updated: 2026-02-16_
+- Visualization stability hotfix r21 completed:
+  - Result media UI now keeps generated image visible even after video is ready (`components/VisualizationModal.tsx`)
+  - Audio playback for URL assets switched from `fetch+decodeAudioData` to native `HTMLAudioElement` path to avoid mobile CORS/decode failures (`components/VisualizationModal.tsx`)
+  - Save payload safety hardening added for visualization docs: malformed/control characters sanitized before Firestore writes (`components/VisualizationModal.tsx`, `services/firebaseService.ts`, `api/save-visualization.ts`)
+  - Visualization save input now guarantees non-empty `inputText` fallback (`Visualization` default) before client and API save paths (`components/VisualizationModal.tsx`, `services/firebaseService.ts`)
+- Bumped `displayVersion` to `V02.16r21` (`package.json`)
 - Visualization outage recovery r20 completed:
   - Switched visualization image/audio generation to R2-first URL flow (`api/generate-image.ts`, `api/generate-speech.ts`)
   - Standardized generate-image API response schema with `status/requestId/errorCode/errorMessage`

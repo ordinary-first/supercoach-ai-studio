@@ -21,7 +21,14 @@ const createRequestId = (): string => {
 
 const sanitizeString = (value: unknown): string | undefined => {
   if (typeof value !== 'string') return undefined;
-  const trimmed = value.trim();
+  const maybeWellFormed = value as string & { toWellFormed?: () => string };
+  const normalized =
+    typeof maybeWellFormed.toWellFormed === 'function'
+      ? maybeWellFormed.toWellFormed()
+      : value;
+  const trimmed = normalized
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, ' ')
+    .trim();
   return trimmed ? trimmed : undefined;
 };
 

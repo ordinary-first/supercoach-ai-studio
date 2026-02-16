@@ -97,6 +97,19 @@ const formatErrorMeta = (prefix: string, error?: ErrorMeta): string => {
   return details ? `${prefix} (${details})` : prefix;
 };
 
+const sanitizeFirestoreString = (value?: string): string | undefined => {
+  if (typeof value !== 'string') return undefined;
+  const maybeWellFormed = value as string & { toWellFormed?: () => string };
+  const normalized =
+    typeof maybeWellFormed.toWellFormed === 'function'
+      ? maybeWellFormed.toWellFormed()
+      : value;
+  const cleaned = normalized
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, ' ')
+    .trim();
+  return cleaned || undefined;
+};
+
 const toResultFromSaved = (item: SavedVisualization): VisualizationResult => ({
   visualizationId: item.id,
   inputText: item.inputText,
@@ -156,6 +169,7 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
   const audioCtxRef = useRef<AudioContext | null>(null);
   const sourceNodeRef = useRef<AudioBufferSourceNode | null>(null);
   const audioBufferRef = useRef<AudioBuffer | null>(null);
+  const htmlAudioRef = useRef<HTMLAudioElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLooping, setIsLooping] = useState(true);
 
@@ -174,6 +188,11 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
       } catch {
       }
       sourceNodeRef.current = null;
+    }
+    if (htmlAudioRef.current) {
+      htmlAudioRef.current.pause();
+      htmlAudioRef.current.currentTime = 0;
+      htmlAudioRef.current = null;
     }
     setIsPlaying(false);
   }, []);
@@ -203,6 +222,10 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
   }, []);
 
   const prepareAudioFromPcm = useCallback(async (base64: string) => {
+    if (htmlAudioRef.current) {
+      htmlAudioRef.current.pause();
+      htmlAudioRef.current = null;
+    }
     const maybeWebkit = window as Window & { webkitAudioContext?: typeof AudioContext };
     const AudioCtor = window.AudioContext || maybeWebkit.webkitAudioContext;
     if (!AudioCtor) return;
@@ -222,17 +245,19 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
   }, [playAudio]);
 
   const prepareAudioFromUrl = useCallback(async (audioUrl: string) => {
-    const maybeWebkit = window as Window & { webkitAudioContext?: typeof AudioContext };
-    const AudioCtor = window.AudioContext || maybeWebkit.webkitAudioContext;
-    if (!AudioCtor) return;
-    if (!audioCtxRef.current) audioCtxRef.current = new AudioCtor();
-
-    const response = await fetch(audioUrl);
-    if (!response.ok) return;
-    const audioBuffer = await audioCtxRef.current.decodeAudioData(await response.arrayBuffer());
-    audioBufferRef.current = audioBuffer;
-    playAudio(true);
-  }, [playAudio]);
+    if (htmlAudioRef.current) {
+      htmlAudioRef.current.pause();
+      htmlAudioRef.current = null;
+    }
+    const audio = new Audio(audioUrl);
+    audio.preload = 'auto';
+    audio.loop = isLooping;
+    audio.onended = () => {
+      if (!audio.loop) setIsPlaying(false);
+    };
+    htmlAudioRef.current = audio;
+    setIsPlaying(false);
+  }, [isLooping]);
   const refreshPendingVideo = useCallback(async (target: VisualizationResult) => {
     if (!activeUserId || !target.videoId || target.videoStatus !== 'pending') return;
 
@@ -484,12 +509,22 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
         });
       }
 
-      const payload: VisualizationWriteInput = { inputText: currentResult.inputText };
-      if (currentResult.text) payload.text = currentResult.text;
-      if (imageUrl) payload.imageUrl = imageUrl;
-      if (audioUrl) payload.audioUrl = audioUrl;
-      if (videoUrl) payload.videoUrl = videoUrl;
-      if (currentResult.videoId) payload.videoId = currentResult.videoId;
+      const payload: VisualizationWriteInput = {
+        inputText:
+          sanitizeFirestoreString(currentResult.inputText) ||
+          sanitizeFirestoreString(currentResult.text) ||
+          'Visualization',
+      };
+      const cleanText = sanitizeFirestoreString(currentResult.text);
+      const cleanImageUrl = sanitizeFirestoreString(imageUrl);
+      const cleanAudioUrl = sanitizeFirestoreString(audioUrl);
+      const cleanVideoUrl = sanitizeFirestoreString(videoUrl);
+      const cleanVideoId = sanitizeFirestoreString(currentResult.videoId);
+      if (cleanText) payload.text = cleanText;
+      if (cleanImageUrl) payload.imageUrl = cleanImageUrl;
+      if (cleanAudioUrl) payload.audioUrl = cleanAudioUrl;
+      if (cleanVideoUrl) payload.videoUrl = cleanVideoUrl;
+      if (cleanVideoId) payload.videoId = cleanVideoId;
       const persistedVideoStatus = videoUrl ? 'ready' : toPersistedVideoStatus(currentResult.videoStatus);
       if (persistedVideoStatus) payload.videoStatus = persistedVideoStatus;
 
@@ -800,6 +835,11 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
                   </div>
                 )}
               </div>
+              {currentResult?.videoUrl && currentResult?.imageUrl && (
+                <div className="rounded-2xl border border-white/10 overflow-hidden bg-black/40">
+                  <img src={currentResult.imageUrl} alt="생성 이미지" className="w-full aspect-video object-cover" />
+                </div>
+              )}
 
               {currentResult?.videoStatus === 'pending' && currentResult.videoId && (
                 <div className="p-3 rounded-xl border border-white/10 bg-white/5 flex items-center justify-between gap-3">
@@ -829,13 +869,29 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
                         const nextLoop = !isLooping;
                         setIsLooping(nextLoop);
                         if (sourceNodeRef.current) sourceNodeRef.current.loop = nextLoop;
+                        if (htmlAudioRef.current) htmlAudioRef.current.loop = nextLoop;
                       }}
                       className={`p-2 rounded-full ${isLooping ? 'bg-neon-lime text-black' : 'bg-white/10'}`}
                     >
                       <Repeat size={16} />
                     </button>
                     <button
-                      onClick={() => {
+                      onClick={async () => {
+                        if (currentResult?.audioUrl && !currentResult.audioData && htmlAudioRef.current) {
+                          if (isPlaying) {
+                            htmlAudioRef.current.pause();
+                            setIsPlaying(false);
+                          } else {
+                            try {
+                              htmlAudioRef.current.loop = isLooping;
+                              await htmlAudioRef.current.play();
+                              setIsPlaying(true);
+                            } catch {
+                              setErrorMessage('오디오 재생에 실패했습니다.');
+                            }
+                          }
+                          return;
+                        }
                         if (isPlaying) stopAudio();
                         else playAudio(isLooping);
                       }}

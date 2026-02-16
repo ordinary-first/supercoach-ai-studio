@@ -302,16 +302,54 @@ const sanitizeFirestorePayload = <T extends Record<string, any>>(payload: T): Pa
   }, {} as Partial<T>);
 };
 
+const sanitizeFirestoreString = (value: unknown): string | undefined => {
+  if (typeof value !== 'string') return undefined;
+  const maybeWellFormed = value as string & { toWellFormed?: () => string };
+  const normalized =
+    typeof maybeWellFormed.toWellFormed === 'function'
+      ? maybeWellFormed.toWellFormed()
+      : value;
+  const cleaned = normalized
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, ' ')
+    .trim();
+  return cleaned || undefined;
+};
+
+const normalizeVisualizationInput = (item: VisualizationWriteInput): VisualizationWriteInput => {
+  const normalized: VisualizationWriteInput = {
+    inputText: sanitizeFirestoreString(item.inputText) || 'Visualization',
+  };
+
+  const text = sanitizeFirestoreString(item.text);
+  const imageUrl = sanitizeFirestoreString(item.imageUrl);
+  const audioUrl = sanitizeFirestoreString(item.audioUrl);
+  const videoUrl = sanitizeFirestoreString(item.videoUrl);
+  const videoId = sanitizeFirestoreString(item.videoId);
+  const videoStatus = sanitizeFirestoreString(item.videoStatus);
+
+  if (text) normalized.text = text;
+  if (imageUrl) normalized.imageUrl = imageUrl;
+  if (audioUrl) normalized.audioUrl = audioUrl;
+  if (videoUrl) normalized.videoUrl = videoUrl;
+  if (videoId) normalized.videoId = videoId;
+  if (videoStatus === 'pending' || videoStatus === 'ready' || videoStatus === 'failed') {
+    normalized.videoStatus = videoStatus;
+  }
+
+  return normalized;
+};
+
 export const saveVisualization = async (
   userId: string,
   item: VisualizationWriteInput,
 ): Promise<SavedVisualization> => {
   if (!userId) throw new Error('userId required');
 
+  const normalizedItem = normalizeVisualizationInput(item);
   const now = Date.now();
   const id = `${now}_${Math.random().toString(36).slice(2, 8)}`;
   const payload = sanitizeFirestorePayload({
-    ...item,
+    ...normalizedItem,
     timestamp: now,
     updatedAt: now,
   });
@@ -322,7 +360,7 @@ export const saveVisualization = async (
     id,
     timestamp: now,
     updatedAt: now,
-    ...item,
+    ...normalizedItem,
   };
 };
 
@@ -355,7 +393,8 @@ export const saveVisualizationViaApi = async (
   }
 
   const token = await currentUser.getIdToken();
-  const payload = sanitizeFirestorePayload(item);
+  const normalizedItem = normalizeVisualizationInput(item);
+  const payload = sanitizeFirestorePayload(normalizedItem);
   const response = await fetch('/api/save-visualization', {
     method: 'POST',
     headers: {
@@ -383,7 +422,7 @@ export const saveVisualizationViaApi = async (
     id: savedId,
     timestamp: savedAt,
     updatedAt: savedAt,
-    ...item,
+    ...normalizedItem,
   };
 };
 
