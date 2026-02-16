@@ -51,7 +51,12 @@ export const generateGoalImage = async (
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        prompt: goalText, profile, childTexts, userId, nodeId,
+        prompt: goalText,
+        profile,
+        childTexts,
+        userId,
+        nodeId,
+        imagePurpose: 'node',
       }),
     });
     if (!response.ok) return undefined;
@@ -66,13 +71,20 @@ export const generateGoalImage = async (
 export const generateVisualizationImage = async (
     prompt: string,
     referenceImages: string[],
-    profile: UserProfile | null = null
+    profile: UserProfile | null = null,
+    imageQuality: 'medium' | 'high' = 'medium'
 ): Promise<string | undefined> => {
     try {
         const response = await fetch('/api/generate-image', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prompt, profile, referenceImages }),
+            body: JSON.stringify({
+                prompt,
+                profile,
+                referenceImages,
+                imagePurpose: 'visualization',
+                imageQuality,
+            }),
         });
         if (!response.ok) return undefined;
         const data = await response.json();

@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+﻿import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
     Sparkles, ArrowLeft, ImagePlus, FileText, Image as ImageIcon,
     Film, Headphones, Wand2, Loader2, Play, Pause, Repeat, X, Save, Trash2, Clock
 } from 'lucide-react';
 import { UserProfile, GoalNode } from '../types';
 import {
-    generateGoalImage, generateSuccessNarrative, generateSpeech,
+    generateSuccessNarrative, generateSpeech,
     generateVideo, generateVisualizationImage
 } from '../services/aiService';
 import { getUserId } from '../services/firebaseService';
@@ -48,6 +48,7 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({ isOpen, onClose
     const [inputText, setInputText] = useState('');
     const [referenceImages, setReferenceImages] = useState<string[]>([]);
     const [settings, setSettings] = useState({ text: true, image: true, video: false, audio: true });
+    const [visualImageQuality, setVisualImageQuality] = useState<'medium' | 'high'>('medium');
 
     // Generation state
     const [isGenerating, setIsGenerating] = useState(false);
@@ -256,30 +257,31 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({ isOpen, onClose
 
             // 1. Text generation
             if (settings.text) {
-                setGeneratingStep('글 생성 중...');
+                setGeneratingStep('湲 ?앹꽦 以?..');
                 result.text = await generateSuccessNarrative(fullPrompt, userProfile);
             }
 
             // 2. Image generation (with reference images support)
             if (settings.image) {
-                setGeneratingStep('이미지 생성 중...');
-                if (referenceImages.length > 0) {
-                    result.imageUrl = await generateVisualizationImage(fullPrompt, referenceImages, userProfile);
-                } else {
-                    result.imageUrl = await generateGoalImage(fullPrompt, userProfile);
-                }
+                setGeneratingStep('?대?吏 ?앹꽦 以?..');
+                result.imageUrl = await generateVisualizationImage(
+                    fullPrompt,
+                    referenceImages,
+                    userProfile,
+                    visualImageQuality
+                );
             }
 
             // 3. Audio generation (needs text first)
             if (settings.audio) {
-                setGeneratingStep('음성 생성 중...');
+                setGeneratingStep('?뚯꽦 ?앹꽦 以?..');
                 const textForSpeech = result.text || fullPrompt;
                 result.audioData = await generateSpeech(textForSpeech);
             }
 
             // 4. Video generation (slowest, last)
             if (settings.video) {
-                setGeneratingStep('영상 생성 중... (1-2분 소요)');
+                setGeneratingStep('?곸긽 ?앹꽦 以?.. (1-2遺??뚯슂)');
                 result.videoUrl = await generateVideo(fullPrompt, userProfile);
             }
 
@@ -358,10 +360,10 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({ isOpen, onClose
 
     // --- SETTING BUTTONS CONFIG ---
     const settingButtons = [
-        { key: 'text' as const, label: '글', icon: FileText },
-        { key: 'image' as const, label: '이미지', icon: ImageIcon },
-        { key: 'video' as const, label: '영상', icon: Film },
-        { key: 'audio' as const, label: '음성', icon: Headphones },
+        { key: 'text' as const, label: '湲', icon: FileText },
+        { key: 'image' as const, label: '?대?吏', icon: ImageIcon },
+        { key: 'video' as const, label: '?곸긽', icon: Film },
+        { key: 'audio' as const, label: '?뚯꽦', icon: Headphones },
     ];
 
     return (
@@ -373,7 +375,7 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({ isOpen, onClose
                         <div className="flex items-center gap-2">
                             <Sparkles size={20} className="text-neon-lime" />
                             <h1 className="text-lg md:text-xl font-display font-bold text-white tracking-tight">
-                                시각화 스튜디오
+                                ?쒓컖???ㅽ뒠?붿삤
                             </h1>
                         </div>
                         <div className="w-10" />
@@ -383,29 +385,28 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({ isOpen, onClose
                     <div className="flex-1 overflow-y-auto pb-[120px]">
                         <div className="max-w-2xl mx-auto px-4 md:px-6 py-6 space-y-8">
 
-                            {/* 입력 섹션 */}
+                            {/* ?낅젰 ?뱀뀡 */}
                             <div className="space-y-3">
                                 <label className="block text-sm font-bold text-white tracking-wide">
-                                    시각화 프롬프트
+                                    ?쒓컖???꾨＼?꾪듃
                                 </label>
                                 <textarea
                                     value={inputText}
                                     onChange={(e) => setInputText(e.target.value)}
-                                    placeholder="원하는 성공 시각화를 구체적으로 입력하세요... (예: 내가 새 차를 몰고 해변도로를 달리는 모습)"
+                                    placeholder="?먰븯???깃났 ?쒓컖?붾? 援ъ껜?곸쑝濡??낅젰?섏꽭??.. (?? ?닿? ??李⑤? 紐곌퀬 ?대??꾨줈瑜??щ━??紐⑥뒿)"
                                     rows={4}
                                     className="w-full bg-white/5 border border-white/10 rounded-2xl text-white placeholder-gray-500 p-4 text-sm leading-relaxed resize-none focus:outline-none focus:border-neon-lime/50 focus:ring-1 focus:ring-neon-lime/30 transition-all"
                                 />
                             </div>
 
-                            {/* 참고 이미지 섹션 */}
+                            {/* 李멸퀬 ?대?吏 ?뱀뀡 */}
                             <div className="space-y-3">
                                 <div>
                                     <label className="block text-sm font-bold text-white tracking-wide">
-                                        참고 이미지 (선택)
+                                        李멸퀬 ?대?吏 (?좏깮)
                                     </label>
                                     <p className="text-xs text-gray-500 mt-1">
-                                        얼굴 사진, 원하는 차 등 최대 3장
-                                    </p>
+                                        ?쇨뎬 ?ъ쭊, ?먰븯??李???理쒕? 3??                                    </p>
                                 </div>
                                 <div className="grid grid-cols-3 gap-3">
                                     {[0, 1, 2].map((index) => {
@@ -416,7 +417,7 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({ isOpen, onClose
                                                     <div className="relative w-full h-full rounded-xl overflow-hidden border border-white/10">
                                                         <img
                                                             src={referenceImages[index]}
-                                                            alt={`참고 이미지 ${index + 1}`}
+                                                            alt={`李멸퀬 ?대?吏 ${index + 1}`}
                                                             className="w-full h-full object-cover"
                                                         />
                                                         <button
@@ -432,7 +433,7 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({ isOpen, onClose
                                                         className="w-full h-full rounded-xl border-2 border-dashed border-white/10 flex flex-col items-center justify-center gap-2 text-gray-500 hover:border-white/20 hover:text-gray-400 transition-all"
                                                     >
                                                         <ImagePlus size={24} />
-                                                        <span className="text-xs">추가</span>
+                                                        <span className="text-xs">異붽?</span>
                                                     </button>
                                                 )}
                                                 <input
@@ -448,10 +449,10 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({ isOpen, onClose
                                 </div>
                             </div>
 
-                            {/* 생성 설정 섹션 */}
+                            {/* ?앹꽦 ?ㅼ젙 ?뱀뀡 */}
                             <div className="space-y-3">
                                 <label className="block text-sm font-bold text-white tracking-wide">
-                                    생성 옵션
+                                    ?앹꽦 ?듭뀡
                                 </label>
                                 <div className="flex flex-wrap gap-2">
                                     {settingButtons.map(({ key, label, icon: Icon }) => {
@@ -472,9 +473,38 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({ isOpen, onClose
                                         );
                                     })}
                                 </div>
+                                {settings.image && (
+                                    <div className="pt-1">
+                                        <p className="text-xs font-bold text-gray-300 mb-2">
+                                            Image quality
+                                        </p>
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={() => setVisualImageQuality('medium')}
+                                                className={`px-4 py-2 rounded-full text-xs font-bold transition-all ${
+                                                    visualImageQuality === 'medium'
+                                                        ? 'bg-neon-lime text-black'
+                                                        : 'bg-white/5 text-gray-400 border border-white/10 hover:bg-white/10'
+                                                }`}
+                                            >
+                                                Medium
+                                            </button>
+                                            <button
+                                                onClick={() => setVisualImageQuality('high')}
+                                                className={`px-4 py-2 rounded-full text-xs font-bold transition-all ${
+                                                    visualImageQuality === 'high'
+                                                        ? 'bg-neon-lime text-black'
+                                                        : 'bg-white/5 text-gray-400 border border-white/10 hover:bg-white/10'
+                                                }`}
+                                            >
+                                                High
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
-                            {/* 생성하기 버튼 */}
+                            {/* ?앹꽦?섍린 踰꾪듉 */}
                             <button
                                 onClick={handleGenerate}
                                 disabled={isGenerating}
@@ -483,22 +513,21 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({ isOpen, onClose
                                 {isGenerating ? (
                                     <>
                                         <Loader2 size={20} className="animate-spin" />
-                                        <span>{generatingStep || '생성 중...'}</span>
+                                        <span>{generatingStep || '?앹꽦 以?..'}</span>
                                     </>
                                 ) : (
                                     <>
                                         <Wand2 size={20} />
-                                        <span>생성하기</span>
+                                        <span>?앹꽦?섍린</span>
                                     </>
                                 )}
                             </button>
 
-                            {/* 저장된 시각화 갤러리 */}
+                            {/* ??λ맂 ?쒓컖??媛ㅻ윭由?*/}
                             {savedItems.length > 0 && (
                                 <div className="space-y-3">
                                     <label className="block text-sm font-bold text-white tracking-wide">
-                                        저장된 시각화
-                                    </label>
+                                        ??λ맂 ?쒓컖??                                    </label>
                                     <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
                                         {savedItems.map((item) => (
                                             <div
@@ -528,7 +557,7 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({ isOpen, onClose
                                                     {item.imageUrl ? (
                                                         <img
                                                             src={item.imageUrl}
-                                                            alt="시각화"
+                                                            alt="?쒓컖??
                                                             className="w-full h-full object-cover"
                                                         />
                                                     ) : (
@@ -539,7 +568,7 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({ isOpen, onClose
                                                 </div>
                                                 {/* Text + Date */}
                                                 <p className="text-xs text-gray-300 truncate">
-                                                    {item.inputText || item.text?.slice(0, 30) || '시각화'}
+                                                    {item.inputText || item.text?.slice(0, 30) || '?쒓컖??}
                                                 </p>
                                                 <div className="flex items-center gap-1 mt-0.5">
                                                     <Clock size={10} className="text-gray-600" />
@@ -576,7 +605,7 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({ isOpen, onClose
                             <ArrowLeft size={20} />
                         </button>
                         <h1 className="text-lg md:text-xl font-display font-bold text-white tracking-tight">
-                            시각화 결과
+                            ?쒓컖??寃곌낵
                         </h1>
                         <button
                             onClick={handleSave}
@@ -588,7 +617,7 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({ isOpen, onClose
                             }`}
                         >
                             <Save size={16} />
-                            <span>{isSaved ? '저장됨 \u2713' : '저장'}</span>
+                            <span>{isSaved ? '??λ맖 \u2713' : '???}</span>
                         </button>
                     </div>
 
@@ -610,14 +639,14 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({ isOpen, onClose
                                 ) : currentResult?.imageUrl ? (
                                     <img
                                         src={currentResult.imageUrl}
-                                        alt="시각화 이미지"
+                                        alt="?쒓컖???대?吏"
                                         className="w-full aspect-video object-cover transition-transform duration-[60s] ease-linear transform scale-100 group-hover:scale-105"
                                     />
                                 ) : (
                                     <div className="w-full aspect-video flex items-center justify-center bg-gradient-to-br from-neon-lime/5 to-electric-orange/5">
                                         <div className="text-center space-y-2">
                                             <ImageIcon size={48} className="text-gray-700 mx-auto" />
-                                            <p className="text-sm text-gray-600">미디어 없음</p>
+                                            <p className="text-sm text-gray-600">誘몃뵒???놁쓬</p>
                                         </div>
                                     </div>
                                 )}
@@ -650,7 +679,7 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({ isOpen, onClose
                                     <div className="flex-1">
                                         <div className="flex justify-between items-center mb-1">
                                             <span className="text-white font-bold tracking-wider text-sm">
-                                                수면 최면 모드
+                                                ?섎㈃ 理쒕㈃ 紐⑤뱶
                                             </span>
                                             <div className="flex items-center gap-2">
                                                 {isPlaying && (
@@ -663,7 +692,7 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({ isOpen, onClose
                                             </div>
                                         </div>
                                         <div className="text-xs text-gray-500">
-                                            바이노럴 비트 & NLP 잠재의식
+                                            諛붿씠?몃윺 鍮꾪듃 & NLP ?좎옱?섏떇
                                         </div>
                                     </div>
 
@@ -675,7 +704,7 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({ isOpen, onClose
                                                     ? 'bg-neon-lime text-black border-neon-lime'
                                                     : 'bg-transparent text-gray-400 border-gray-600 hover:text-white'
                                             }`}
-                                            title={isLooping ? '무한 반복 켜짐' : '무한 반복 꺼짐'}
+                                            title={isLooping ? '臾댄븳 諛섎났 耳쒖쭚' : '臾댄븳 諛섎났 爰쇱쭚'}
                                         >
                                             <Repeat size={20} />
                                         </button>
@@ -702,3 +731,5 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({ isOpen, onClose
 };
 
 export default VisualizationModal;
+
+

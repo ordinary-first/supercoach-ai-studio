@@ -45,6 +45,30 @@ function parseDataUrl(dataUrl: string): { mimeType: string; base64: string } | n
   return { mimeType: match[1], base64: match[2] };
 }
 
+function resolveImagePolicy(input: {
+  imagePurpose?: string;
+  imageQuality?: string;
+  userId?: string;
+  nodeId?: string;
+}) {
+  const inferredNodeImage = !!input.userId && !!input.nodeId;
+  const isNodeImage = input.imagePurpose === 'node' || inferredNodeImage;
+  if (isNodeImage) {
+    return {
+      model: 'gpt-image-1-mini',
+      quality: 'low' as const,
+      isNodeImage: true,
+    };
+  }
+
+  const quality = input.imageQuality === 'high' ? 'high' : 'medium';
+  return {
+    model: 'gpt-image-1.5',
+    quality: quality as 'medium' | 'high',
+    isNodeImage: false,
+  };
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -67,9 +91,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       childTexts,
       userId,
       nodeId,
+      imagePurpose,
+      imageQuality,
     } = req.body || {};
 
     const openai = getOpenAIClient();
+    const policy = resolveImagePolicy({
+      imagePurpose,
+      imageQuality,
+      userId,
+      nodeId,
+    });
 
     const personDesc = profile
       ? `${profile.name}, a ${profile.age}yo person in ${profile.location}`
@@ -81,7 +113,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     let rawBase64: string | null = null;
 
-    if (Array.isArray(referenceImages) && referenceImages.length > 0) {
+    if (!policy.isNodeImage && Array.isArray(referenceImages) && referenceImages.length > 0) {
       // Visualization image with reference images (edits endpoint)
       const files: any[] = [];
       for (let i = 0; i < referenceImages.length; i++) {
@@ -92,11 +124,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       const response: any = await openai.images.edit({
-        model: 'gpt-image-1.5',
+        model: policy.model,
         image: files,
         prompt: `Photorealistic, cinematic image of ${personDesc} embodying: "${String(prompt || '')}". Use the provided reference images as visual context (face likeness, objects, style). No text overlay. 8k resolution.`,
         size: '1024x1024',
-        quality: 'low',
+        quality: policy.quality,
       });
 
       rawBase64 = response?.data?.[0]?.b64_json || null;
@@ -105,10 +137,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const textPrompt = `Create a single photorealistic image that directly illustrates this personal goal: "${String(prompt || '')}".${childContext} Show a concrete, specific scene — not abstract or metaphorical. The scene should feel aspirational and warm. Square composition, soft cinematic lighting. Absolutely no text, letters, words, or watermarks in the image.`;
 
       const response: any = await openai.images.generate({
-        model: 'gpt-image-1.5',
+        model: policy.model,
         prompt: textPrompt,
         size: '1024x1024',
-        quality: 'low',
+        quality: policy.quality,
       });
 
       rawBase64 = response?.data?.[0]?.b64_json || null;
@@ -143,4 +175,3 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   }
 }
-

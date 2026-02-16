@@ -23,7 +23,7 @@
 |------|------|
 | `App.tsx` | Main orchestrator, data loading, auto-save |
 | `services/firebaseService.ts` | Auth, Firestore CRUD, sync status |
-| `services/aiService.ts` | Gemini AI integration |
+| `services/aiService.ts` | AI API integration |
 | `components/MindMap.tsx` | D3 force-directed goal graph |
 | `components/CoachChat.tsx` | AI coaching chat |
 | `components/ToDoList.tsx` | Todo management |
@@ -81,6 +81,11 @@ When one agent completes work that another agent will continue:
 
 ## Current Status
 _Last updated: 2026-02-16_
+- Image generation policy split by use-case:
+  - Mind map node image: `gpt-image-1-mini` + `low` (`api/generate-image.ts`, `services/aiService.ts`)
+  - Visualization image: `gpt-image-1.5` + default `medium`, optional `high` (`api/generate-image.ts`, `components/VisualizationModal.tsx`)
+- Added visualization image quality toggle UI (Medium/High) (`components/VisualizationModal.tsx`)
+- Bumped `displayVersion` to `V02.16r06` (`package.json`)
 - Migrated AI serverless routes from Gemini to OpenAI:
   - Chat: Responses API + function tools (`api/chat.ts`)
   - Narrative: Responses API (`api/generate-narrative.ts`)
@@ -141,6 +146,6 @@ _Last updated: 2026-02-16_
   - returns 403 with missing header hints for easier debugging
 - Fixed Polar webhook 403 root cause:
   - `api/polar-webhook.ts` now verifies signatures against the raw request body (stream-first)
-- Version: V02.16r05
+- Version: V02.16r06
 - Remaining: iOS platform add/build must be done on macOS
 
