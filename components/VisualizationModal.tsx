@@ -568,7 +568,7 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({ isOpen, onClose
                                                 </div>
                                                 {/* Text + Date */}
                                                 <p className="text-xs text-gray-300 truncate">
-                                                    {item.inputText || item.text?.slice(0, 30) || '?쒓컖??}
+                                                    {item.inputText || item.text?.slice(0, 30) || 'Visualization'}
                                                 </p>
                                                 <div className="flex items-center gap-1 mt-0.5">
                                                     <Clock size={10} className="text-gray-600" />
@@ -617,7 +617,7 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({ isOpen, onClose
                             }`}
                         >
                             <Save size={16} />
-                            <span>{isSaved ? '??λ맖 \u2713' : '???}</span>
+                            <span>{isSaved ? 'Saved \u2713' : 'Save'}</span>
                         </button>
                     </div>
 
