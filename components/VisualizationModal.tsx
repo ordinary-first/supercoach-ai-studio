@@ -557,7 +557,7 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({ isOpen, onClose
                                                     {item.imageUrl ? (
                                                         <img
                                                             src={item.imageUrl}
-                                                            alt="?쒓컖??
+                                                            alt="Visualization thumbnail"
                                                             className="w-full h-full object-cover"
                                                         />
                                                     ) : (
