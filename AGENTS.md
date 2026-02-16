@@ -81,6 +81,8 @@ When one agent completes work that another agent will continue:
 
 ## Current Status
 _Last updated: 2026-02-16_
+- Fixed profile-page Korean mojibake risk by normalizing `components/UserProfilePage.tsx` to UTF-8 encoding
+- Bumped `displayVersion` to `V02.16r15` (`package.json`)
 - Removed app-level localStorage dependency for user data:
   - Language preference now loads/saves via Firestore settings (`App.tsx`, `services/firebaseService.ts`)
   - MindMap action-bar language fallback now uses `language` prop + `document.lang` only (`components/MindMap.tsx`)

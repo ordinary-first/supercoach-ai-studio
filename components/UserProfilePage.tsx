@@ -139,9 +139,9 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({
           </div>
           <div>
             <h1 className="text-lg md:text-2xl font-display font-bold tracking-wider text-white">
-              ÇÁ·ÎÇÊ
+              í”„ë¡œí•„
             </h1>
-            <p className="text-[10px] text-gray-500 font-mono mt-0.5">°³ÀÎ ¼³Á¤</p>
+            <p className="text-[10px] text-gray-500 font-mono mt-0.5">ê°œì¸ ì„¤ì •</p>
           </div>
         </div>
         <button
@@ -151,7 +151,7 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({
           }}
           className="flex items-center gap-2 px-5 py-2 bg-neon-lime text-black font-bold rounded-full hover:bg-white transition-all text-sm"
         >
-          <Save size={16} /> ÀúÀå
+          <Save size={16} /> ì €ì¥
         </button>
       </div>
 
@@ -189,7 +189,7 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 className="bg-transparent text-xl font-bold text-white w-full focus:outline-none border-b border-transparent focus:border-neon-lime/30 pb-1 transition-colors"
-                placeholder="ÀÌ¸§À» ÀÔ·ÂÇÏ¼¼¿ä"
+                placeholder="ì´ë¦„ì„ ì…ë ¥í•˜ì„¸ìš”"
               />
               <p className="text-xs text-gray-500 mt-1">{formData.email}</p>
             </div>
@@ -199,28 +199,28 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({
             <div className="flex items-center gap-4 p-4">
               <Calendar size={18} className="text-gray-500 shrink-0" />
               <div className="flex-1">
-                <p className="text-[10px] text-gray-500 font-bold">³ªÀÌ</p>
+                <p className="text-[10px] text-gray-500 font-bold">ë‚˜ì´</p>
                 <input
                   type="number"
                   value={formData.age}
                   onChange={(e) => setFormData({ ...formData, age: e.target.value })}
                   className="bg-transparent text-white text-sm w-full focus:outline-none mt-0.5"
-                  placeholder="³ªÀÌ¸¦ ÀÔ·ÂÇÏ¼¼¿ä"
+                  placeholder="ë‚˜ì´ë¥¼ ì…ë ¥í•˜ì„¸ìš”"
                 />
               </div>
             </div>
             <div className="flex items-center gap-4 p-4">
               <User size={18} className="text-gray-500 shrink-0" />
               <div className="flex-1">
-                <p className="text-[10px] text-gray-500 font-bold">¼ºº°</p>
+                <p className="text-[10px] text-gray-500 font-bold">ì„±ë³„</p>
                 <select
                   value={formData.gender}
                   onChange={(e) => setFormData({ ...formData, gender: e.target.value as any })}
                   className="bg-transparent text-white text-sm w-full focus:outline-none mt-0.5 appearance-none"
                 >
-                  <option value="Male" className="bg-deep-space">³²¼º</option>
-                  <option value="Female" className="bg-deep-space">¿©¼º</option>
-                  <option value="Other" className="bg-deep-space">±âÅ¸</option>
+                  <option value="Male" className="bg-deep-space">ë‚¨ì„±</option>
+                  <option value="Female" className="bg-deep-space">ì—¬ì„±</option>
+                  <option value="Other" className="bg-deep-space">ê¸°íƒ€</option>
                 </select>
               </div>
               <ChevronRight size={16} className="text-gray-600" />
@@ -228,13 +228,13 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({
             <div className="flex items-center gap-4 p-4">
               <MapPin size={18} className="text-gray-500 shrink-0" />
               <div className="flex-1">
-                <p className="text-[10px] text-gray-500 font-bold">À§Ä¡</p>
+                <p className="text-[10px] text-gray-500 font-bold">ìœ„ì¹˜</p>
                 <input
                   type="text"
                   value={formData.location}
                   onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                   className="bg-transparent text-white text-sm w-full focus:outline-none mt-0.5"
-                  placeholder="µµ½Ã¸¦ ÀÔ·ÂÇÏ¼¼¿ä"
+                  placeholder="ë„ì‹œë¥¼ ì…ë ¥í•˜ì„¸ìš”"
                 />
               </div>
             </div>
@@ -243,12 +243,12 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({
           <div className="space-y-3">
             <div className="flex items-center gap-2 text-gray-400 text-xs font-bold">
               <Quote size={14} className="text-neon-lime" />
-              ÀÚ±â¼Ò°³
+              ìê¸°ì†Œê°œ
             </div>
             <textarea
               value={formData.bio}
               onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
-              placeholder="°ü½É»ç¿Í ¸ñÇ¥¸¦ Àû¾îÁÖ¼¼¿ä."
+              placeholder="ê´€ì‹¬ì‚¬ì™€ ëª©í‘œë¥¼ ì ì–´ì£¼ì„¸ìš”."
               className="w-full h-32 bg-white/5 border border-white/5 rounded-2xl p-4 text-sm text-gray-200 leading-relaxed focus:outline-none focus:border-neon-lime/30 transition-all resize-none"
             />
           </div>
@@ -257,7 +257,7 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-2 text-gray-400 text-xs font-bold">
                 <ImageIcon size={14} className="text-neon-lime" />
-                Æ÷Åä °¶·¯¸®
+                í¬í†  ê°¤ëŸ¬ë¦¬
               </div>
               <span className="text-[10px] text-gray-600">{formData.gallery?.length || 0} / 6</span>
             </div>
@@ -284,7 +284,7 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({
                 >
                   <Plus size={20} />
                   <span className="text-[9px] font-bold">
-                    {isUploadingMedia ? '¾÷·Îµå Áß' : 'Ãß°¡'}
+                    {isUploadingMedia ? 'ì—…ë¡œë“œ ì¤‘' : 'ì¶”ê°€'}
                   </span>
                 </button>
               )}
@@ -302,19 +302,19 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({
           <div className="pt-4">
             {showLogoutConfirm ? (
               <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4 space-y-3">
-                <p className="text-sm text-gray-300">·Î±×¾Æ¿ô ÇÏ½Ã°Ú½À´Ï±î?</p>
+                <p className="text-sm text-gray-300">ë¡œê·¸ì•„ì›ƒ í•˜ì‹œê² ìŠµë‹ˆê¹Œ?</p>
                 <div className="flex gap-2">
                   <button
                     onClick={() => setShowLogoutConfirm(false)}
                     className="flex-1 py-2.5 bg-white/5 hover:bg-white/10 rounded-xl text-sm font-medium transition-all"
                   >
-                    Ãë¼Ò
+                    ì·¨ì†Œ
                   </button>
                   <button
                     onClick={onLogout}
                     className="flex-1 py-2.5 bg-red-600 hover:bg-red-500 rounded-xl text-sm font-medium transition-all"
                   >
-                    ·Î±×¾Æ¿ô
+                    ë¡œê·¸ì•„ì›ƒ
                   </button>
                 </div>
               </div>
@@ -324,7 +324,7 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({
                 className="w-full flex items-center justify-center gap-2 py-3.5 bg-white/5 border border-white/5 rounded-2xl text-gray-500 hover:text-red-400 hover:bg-red-500/5 transition-all"
               >
                 <LogOut size={16} />
-                <span className="text-sm">·Î±×¾Æ¿ô</span>
+                <span className="text-sm">ë¡œê·¸ì•„ì›ƒ</span>
               </button>
             )}
           </div>
