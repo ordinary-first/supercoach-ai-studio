@@ -106,6 +106,11 @@ const calculateNextDate = (repeat: RepeatFrequency, fromDate: Date): number => {
 type AppLanguage = 'en' | 'ko';
 
 const LANGUAGE_STORAGE_KEY = 'app_language';
+const DEFAULT_VIEWPORT_CONTENT =
+  'width=device-width, initial-scale=1.0, viewport-fit=cover';
+const GOALS_LOCKED_VIEWPORT_CONTENT =
+  'width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no, '
+  + 'maximum-scale=1, minimum-scale=1';
 
 const createInitialGoalNodes = (): GoalNode[] => [
   {
@@ -225,6 +230,22 @@ const App: React.FC = () => {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // On mobile GOALS tab, lock browser page zoom so only mind-map canvas zoom is active.
+  useEffect(() => {
+    if (activeTab !== 'GOALS') return;
+    if (!window.matchMedia('(pointer: coarse)').matches) return;
+
+    const viewportMeta = document.querySelector('meta[name="viewport"]');
+    if (!viewportMeta) return;
+
+    const original = viewportMeta.getAttribute('content') || DEFAULT_VIEWPORT_CONTENT;
+    viewportMeta.setAttribute('content', GOALS_LOCKED_VIEWPORT_CONTENT);
+
+    return () => {
+      viewportMeta.setAttribute('content', original);
+    };
+  }, [activeTab]);
 
   // --- Goal Node Operations ---
   const handleUpdateNode = useCallback((nodeId: string, updates: Partial<GoalNode>) => {

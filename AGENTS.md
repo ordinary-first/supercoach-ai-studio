@@ -81,6 +81,18 @@ When one agent completes work that another agent will continue:
 
 ## Current Status
 _Last updated: 2026-02-16_
+- Locked mobile browser zoom only on GOALS tab so header/bottom dock stay fixed:
+  - Added viewport meta lock/unlock effect in `App.tsx` for coarse pointer + GOALS tab only
+  - Lock content: `user-scalable=no, maximum-scale=1, minimum-scale=1`
+- Added map-container native gesture guards in `components/MindMap.tsx`:
+  - Prevent default on multi-touch (`touchstart`/`touchmove` with 2+ touches)
+  - Prevent default on iOS gesture events (`gesturestart`/`gesturechange`/`gestureend`)
+- Bumped `displayVersion` to `V02.16r09` (`package.json`)
+- Fixed mobile pinch zoom reliability in mind map:
+  - Registered `TouchEvent` plugin for `simple-mind-map` (`components/MindMap.tsx`)
+  - Expanded zoom-out floor (`minZoomRatio`/`minTouchZoomScale` to 5%)
+  - Added `touchAction: 'none'` on map container to reduce gesture conflicts
+- Bumped `displayVersion` to `V02.16r08` (`package.json`)
 - Replaced mind-map long-press/right-click context menu with single-tap action bar (`components/MindMap.tsx`)
 - Added node action bar policy by node type:
   - Non-root: `Child`, `Sibling`, `Todo`, `Generate` + `More(Insert image, Delete)`
@@ -155,6 +167,6 @@ _Last updated: 2026-02-16_
   - returns 403 with missing header hints for easier debugging
 - Fixed Polar webhook 403 root cause:
   - `api/polar-webhook.ts` now verifies signatures against the raw request body (stream-first)
-- Version: V02.16r07
+- Version: V02.16r09
 - Remaining: iOS platform add/build must be done on macOS
 

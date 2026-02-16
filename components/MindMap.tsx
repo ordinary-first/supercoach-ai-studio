@@ -3,6 +3,7 @@ import MindMapSDK from 'simple-mind-map';
 import Drag from 'simple-mind-map/src/plugins/Drag.js';
 import RainbowLines from 'simple-mind-map/src/plugins/RainbowLines.js';
 import Select from 'simple-mind-map/src/plugins/Select.js';
+import TouchEvent from 'simple-mind-map/src/plugins/TouchEvent.js';
 import { GoalNode, GoalLink, NodeType, NodeStatus } from '../types';
 import { getLinkId } from '../hooks/useAutoSave';
 
@@ -10,6 +11,7 @@ import { getLinkId } from '../hooks/useAutoSave';
 MindMapSDK.usePlugin(Drag);
 MindMapSDK.usePlugin(RainbowLines);
 MindMapSDK.usePlugin(Select);
+MindMapSDK.usePlugin(TouchEvent);
 
 // --- Types ---
 type LayoutMode = 'mindMap' | 'logicalStructure' | 'logicalStructureLeft' | 'organizationStructure';
@@ -266,6 +268,37 @@ const MindMap: React.FC<MindMapProps> = ({
   onAddSubNodeRef.current = onAddSubNode;
   setActionBarRef.current = setActionBar;
 
+  // Block native page pinch/gesture handling inside the map container.
+  // simple-mind-map's touch plugin still receives touch events and handles map zoom.
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const preventMultiTouchDefault = (event: Event) => {
+      const touchEvent = event as globalThis.TouchEvent;
+      if (touchEvent.touches && touchEvent.touches.length >= 2) {
+        event.preventDefault();
+      }
+    };
+    const preventGestureDefault = (event: Event) => {
+      event.preventDefault();
+    };
+
+    container.addEventListener('touchstart', preventMultiTouchDefault, { passive: false });
+    container.addEventListener('touchmove', preventMultiTouchDefault, { passive: false });
+    container.addEventListener('gesturestart', preventGestureDefault, { passive: false });
+    container.addEventListener('gesturechange', preventGestureDefault, { passive: false });
+    container.addEventListener('gestureend', preventGestureDefault, { passive: false });
+
+    return () => {
+      container.removeEventListener('touchstart', preventMultiTouchDefault);
+      container.removeEventListener('touchmove', preventMultiTouchDefault);
+      container.removeEventListener('gesturestart', preventGestureDefault);
+      container.removeEventListener('gesturechange', preventGestureDefault);
+      container.removeEventListener('gestureend', preventGestureDefault);
+    };
+  }, []);
+
   // --- Initialize MindMap (once) ---
   useEffect(() => {
     if (!containerRef.current) return;
@@ -288,6 +321,10 @@ const MindMap: React.FC<MindMapProps> = ({
       enableFreeDrag: false,
       mousewheelAction: 'zoom',
       scaleRatio: 0.1,
+      minZoomRatio: 5,
+      maxZoomRatio: 400,
+      minTouchZoomScale: 5,
+      maxTouchZoomScale: 400,
       readonly: false,
       enableShortcutOnlyWhenMouseInSvg: true,
       createNewNodeBehavior: 'notActive',
@@ -503,7 +540,7 @@ const MindMap: React.FC<MindMapProps> = ({
       <div
         ref={containerRef}
         className="w-full h-full cursor-grab active:cursor-grabbing"
-        style={{ width, height }}
+        style={{ width, height, touchAction: 'none' }}
       />
 
       {/* Node Action Bar (single tap selection) */}
