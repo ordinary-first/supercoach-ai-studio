@@ -1,14 +1,19 @@
-
-import React, { useState, useEffect } from 'react';
-import { UserProfile } from '../types';
-import { loginWithGoogle, loginAsGuest } from '../services/firebaseService';
-import { ShieldCheck, Chrome, AlertTriangle, Settings, HelpCircle, UserX, ArrowRight } from 'lucide-react';
+import React, { useState } from 'react';
+import type { UserProfile } from '../types';
+import { loginWithGoogle } from '../services/firebaseService';
+import {
+  AlertTriangle,
+  Chrome,
+  HelpCircle,
+  Settings,
+  ShieldCheck,
+} from 'lucide-react';
 
 interface LandingPageProps {
   onLoginSuccess: (profile: UserProfile) => void;
 }
 
-const LandingPage: React.FC<LandingPageProps> = ({ onLoginSuccess }) => {
+const LandingPage: React.FC<LandingPageProps> = () => {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [showSetupGuide, setShowSetupGuide] = useState(false);
@@ -18,156 +23,126 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginSuccess }) => {
     setIsLoggingIn(true);
     try {
       await loginWithGoogle();
-      // onAuthStateChanged in App.tsx will handle the profile update
-    } catch (e: any) {
-      setErrorMessage(e.message || "ë¡œê·¸ì¸ ìš”ì²­ ì¤‘ ì˜¤ë¥˜ê°€ ë°œìƒí–ˆìŠµë‹ˆë‹¤.");
+    } catch (error: any) {
+      setErrorMessage(error?.message || '·Î±×ÀÎ Áß ¿À·ù°¡ ¹ß»ıÇß½À´Ï´Ù.');
     } finally {
       setIsLoggingIn(false);
     }
   };
 
-  const handleGuestEntry = () => {
-    const guest = loginAsGuest();
-    onLoginSuccess(guest as any);
-  };
-
   return (
     <div className="fixed inset-0 bg-[#050B14] flex items-center justify-center font-body text-white overflow-hidden">
-      {/* Cinematic Background */}
       <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-[radial-gradient(circle_at_center,rgba(204,255,0,0.08)_0%,transparent_70%)]"></div>
-          <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20"></div>
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-[radial-gradient(circle_at_center,rgba(204,255,0,0.08)_0%,transparent_70%)]" />
+        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20" />
       </div>
 
       <div className="relative z-10 w-full max-w-md px-6 flex flex-col items-center">
         <div className="mb-8 text-center animate-fade-in">
-            <h1 className="text-5xl font-display font-black tracking-tighter italic">
-                SUPER <span className="text-neon-lime">COACH</span>
-            </h1>
-            <p className="text-[10px] text-gray-500 tracking-[0.3em] uppercase mt-2 font-bold flex items-center justify-center gap-2">
-                <ShieldCheck size={12} className="text-neon-lime" /> Neural Goal Setting System
-            </p>
+          <h1 className="text-5xl font-display font-black tracking-tighter italic">
+            SUPER <span className="text-neon-lime">COACH</span>
+          </h1>
+          <p className="text-[10px] text-gray-500 tracking-[0.3em] uppercase mt-2 font-bold flex items-center justify-center gap-2">
+            <ShieldCheck size={12} className="text-neon-lime" /> Neural Goal Setting System
+          </p>
         </div>
 
         <div className="w-full bg-white/5 backdrop-blur-3xl border border-white/10 rounded-[40px] p-8 shadow-2xl space-y-6">
-            <div className="text-center space-y-1 mb-2">
-              <h2 className="text-[10px] font-bold text-neon-lime uppercase tracking-widest">System Authorization</h2>
-              <p className="text-[11px] text-gray-400">ë‹¹ì‹ ì˜ ë¹„ì „ì„ í˜„ì‹¤ë¡œ ë°”ê¿€ ì½”ì¹­ì´ ì‹œì‘ë©ë‹ˆë‹¤.</p>
+          <div className="text-center space-y-1 mb-2">
+            <h2 className="text-[10px] font-bold text-neon-lime uppercase tracking-widest">
+              System Authorization
+            </h2>
+            <p className="text-[11px] text-gray-400">Google °èÁ¤À¸·Î ·Î±×ÀÎÇØ ¸ñÇ¥ µ¥ÀÌÅÍ¸¦ Å¬¶ó¿ìµå¿¡ ÀúÀåÇÏ¼¼¿ä.</p>
+          </div>
+
+          <div className="space-y-3">
+            <button
+              onClick={handleGoogleLogin}
+              disabled={isLoggingIn}
+              className={`w-full py-5 rounded-full font-black text-sm uppercase tracking-widest flex items-center justify-center gap-4 transition-all active:scale-95 disabled:opacity-50 ${
+                isLoggingIn
+                  ? 'bg-gray-800 text-gray-400'
+                  : 'bg-white text-black hover:bg-neon-lime hover:shadow-[0_0_20px_rgba(204,255,0,0.3)]'
+              }`}
+            >
+              {isLoggingIn ? (
+                <div className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+              ) : (
+                <Chrome size={20} />
+              )}
+              {isLoggingIn ? 'Redirecting...' : 'Google Login'}
+            </button>
+
+            <p className="text-[9px] text-gray-600 text-center px-4">
+              ·Î±×ÀÎ ÈÄ µ¥ÀÌÅÍ´Â °èÁ¤ ±âÁØÀ¸·Î Firestore/R2¿¡ ÀúÀåµË´Ï´Ù.
+            </p>
+          </div>
+
+          {errorMessage && (
+            <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-start gap-3 animate-shake">
+              <AlertTriangle size={16} className="text-red-500 shrink-0 mt-0.5" />
+              <p className="text-[10px] text-red-200 font-mono leading-tight">{errorMessage}</p>
             </div>
+          )}
 
-            <div className="space-y-3">
-              <button 
-                onClick={handleGoogleLogin}
-                disabled={isLoggingIn}
-                className={`w-full py-5 rounded-full font-black text-sm uppercase tracking-widest flex items-center justify-center gap-4 transition-all active:scale-95 disabled:opacity-50 ${
-                  isLoggingIn ? 'bg-gray-800 text-gray-400' : 'bg-white text-black hover:bg-neon-lime hover:shadow-[0_0_20px_rgba(204,255,0,0.3)]'
-                }`}
-              >
-                {isLoggingIn ? (
-                  <div className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin"></div>
-                ) : (
-                  <Chrome size={20} />
-                )}
-                {isLoggingIn ? 'Redirecting...' : 'êµ¬ê¸€ ê³„ì •ìœ¼ë¡œ ë¡œê·¸ì¸'}
-              </button>
-
-              <button
-                onClick={handleGuestEntry}
-                className="w-full py-4 rounded-full font-bold text-[11px] uppercase tracking-[0.2em] flex items-center justify-center gap-3 bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10 hover:text-white transition-all active:scale-95"
-              >
-                <UserX size={16} />
-                ê²ŒìŠ¤íŠ¸ ëª¨ë“œë¡œ ì‹œì‘í•˜ê¸°
-              </button>
-              <p className="text-[9px] text-gray-600 text-center px-4">
-                ê²ŒìŠ¤íŠ¸ ëª¨ë“œëŠ” ì´ ê¸°ê¸°ì—ì„œë§Œ ë°ì´í„°ê°€ ì €ì¥ë©ë‹ˆë‹¤. ë‹¤ë¥¸ ê¸°ê¸°ì™€ ë™ê¸°í™”í•˜ë ¤ë©´ Google ë¡œê·¸ì¸ì„ ì´ìš©í•˜ì„¸ìš”.
-              </p>
+          <div className="pt-4 border-t border-white/5">
+            <p className="text-[9px] text-gray-500 text-center leading-relaxed">
+              ·Î±×ÀÎ ½Ã ºê¶ó¿ìÀú´Â Firebase ÀÎÁõ »óÅÂ¸¦ À¯ÁöÇÕ´Ï´Ù.
+              <br />
+              »ç¿ëÀÚ µ¥ÀÌÅÍ´Â ·ÎÄÃÀÌ ¾Æ´Ñ ¹é¿£µå¿¡ ÀúÀåµË´Ï´Ù.
+            </p>
+            <div className="mt-4 flex flex-wrap items-center justify-center gap-3 text-[9px] font-bold text-gray-500 uppercase tracking-widest">
+              <a className="hover:text-neon-lime transition-colors" href="/terms" target="_blank" rel="noreferrer">Terms</a>
+              <span className="opacity-40">|</span>
+              <a className="hover:text-neon-lime transition-colors" href="/privacy" target="_blank" rel="noreferrer">Privacy</a>
+              <span className="opacity-40">|</span>
+              <a className="hover:text-neon-lime transition-colors" href="/refund" target="_blank" rel="noreferrer">Refunds</a>
             </div>
-
-            {errorMessage && (
-                <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-start gap-3 animate-shake">
-                    <AlertTriangle size={16} className="text-red-500 shrink-0 mt-0.5" />
-                    <p className="text-[10px] text-red-200 font-mono leading-tight">{errorMessage}</p>
-                </div>
-            )}
-
-            <div className="pt-4 border-t border-white/5">
-                <p className="text-[9px] text-gray-500 text-center leading-relaxed">
-                  ë¡œê·¸ì¸ ì‹œ ë¸Œë¼ìš°ì €ê°€ Google ì¸ì¦ í˜ì´ì§€ë¡œ ì´ë™í•©ë‹ˆë‹¤.<br/>
-                  ì™„ë£Œ í›„ ìë™ìœ¼ë¡œ ë‹¤ì‹œ ëŒì•„ì˜¤ê²Œ ë©ë‹ˆë‹¤.
-                </p>
-                <div className="mt-4 flex flex-wrap items-center justify-center gap-3 text-[9px] font-bold text-gray-500 uppercase tracking-widest">
-                  <a
-                    className="hover:text-neon-lime transition-colors"
-                    href="/terms"
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Terms
-                  </a>
-                  <span className="opacity-40">|</span>
-                  <a
-                    className="hover:text-neon-lime transition-colors"
-                    href="/privacy"
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Privacy
-                  </a>
-                  <span className="opacity-40">|</span>
-                  <a
-                    className="hover:text-neon-lime transition-colors"
-                    href="/refund"
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Refunds
-                  </a>
-                </div>
-            </div>
+          </div>
         </div>
 
-        <button 
-            onClick={() => setShowSetupGuide(true)}
-            className="mt-8 text-[10px] font-bold text-gray-600 hover:text-neon-lime flex items-center justify-center gap-2 uppercase tracking-widest transition-colors"
+        <button
+          onClick={() => setShowSetupGuide(true)}
+          className="mt-8 text-[10px] font-bold text-gray-600 hover:text-neon-lime flex items-center justify-center gap-2 uppercase tracking-widest transition-colors"
         >
-            <Settings size={14} /> Domain Check
+          <Settings size={14} /> Domain Check
         </button>
       </div>
 
       {showSetupGuide && (
-          <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-md flex items-center justify-center p-6 animate-fade-in">
-              <div className="bg-[#0a0a10] border border-white/10 rounded-[40px] p-8 max-w-md w-full space-y-6 shadow-2xl">
-                  <div className="flex justify-between items-start">
-                      <div className="p-3 bg-neon-lime/10 rounded-2xl">
-                          <HelpCircle className="text-neon-lime" size={24} />
-                      </div>
-                      <button onClick={() => setShowSetupGuide(false)} className="text-gray-500 hover:text-white">
-                          <Settings size={20} />
-                      </button>
-                  </div>
-                  
-                  <h3 className="text-xl font-display font-bold">ì¸ì¦ ë„ë©”ì¸ ê°€ì´ë“œ</h3>
-                  
-                  <div className="space-y-4 bg-white/5 p-5 rounded-2xl">
-                      <p className="text-[11px] text-gray-400 leading-relaxed">
-                        'Origin not allowed' ì—ëŸ¬ê°€ ë°œìƒí•œë‹¤ë©´, ì•„ë˜ ì£¼ì†Œë¥¼ Firebase Consoleì˜ <b>ìŠ¹ì¸ëœ ë„ë©”ì¸</b> ë¦¬ìŠ¤íŠ¸ì— ì¶”ê°€í•´ì•¼ í•©ë‹ˆë‹¤.
-                      </p>
-                      <div className="space-y-2">
-                          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">ë³µì‚¬í•  ì£¼ì†Œ</p>
-                          <code className="block bg-black p-3 rounded text-neon-lime font-mono text-xs overflow-x-auto whitespace-nowrap">
-                              {window.location.origin}
-                          </code>
-                      </div>
-                  </div>
-
-                  <button 
-                    onClick={() => setShowSetupGuide(false)}
-                    className="w-full py-4 bg-neon-lime text-black rounded-xl font-bold text-xs uppercase tracking-widest hover:scale-105 transition-all"
-                  >
-                      í™•ì¸ ì™„ë£Œ
-                  </button>
+        <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-md flex items-center justify-center p-6 animate-fade-in">
+          <div className="bg-[#0a0a10] border border-white/10 rounded-[40px] p-8 max-w-md w-full space-y-6 shadow-2xl">
+            <div className="flex justify-between items-start">
+              <div className="p-3 bg-neon-lime/10 rounded-2xl">
+                <HelpCircle className="text-neon-lime" size={24} />
               </div>
+              <button onClick={() => setShowSetupGuide(false)} className="text-gray-500 hover:text-white">
+                <Settings size={20} />
+              </button>
+            </div>
+
+            <h3 className="text-xl font-display font-bold">ÀÎÁõ µµ¸ŞÀÎ °¡ÀÌµå</h3>
+
+            <div className="space-y-4 bg-white/5 p-5 rounded-2xl">
+              <p className="text-[11px] text-gray-400 leading-relaxed">
+                Origin not allowed ¿À·ù°¡ ³ª¿À¸é ¾Æ·¡ ÁÖ¼Ò¸¦ Firebase Console ÀÎÁõ µµ¸ŞÀÎ¿¡ Ãß°¡ÇÏ¼¼¿ä.
+              </p>
+              <div className="space-y-2">
+                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">º¹»çÇÒ ÁÖ¼Ò</p>
+                <code className="block bg-black p-3 rounded text-neon-lime font-mono text-xs overflow-x-auto whitespace-nowrap">
+                  {window.location.origin}
+                </code>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setShowSetupGuide(false)}
+              className="w-full py-4 bg-neon-lime text-black rounded-xl font-bold text-xs uppercase tracking-widest hover:scale-105 transition-all"
+            >
+              È®ÀÎ ¿Ï·á
+            </button>
           </div>
+        </div>
       )}
     </div>
   );

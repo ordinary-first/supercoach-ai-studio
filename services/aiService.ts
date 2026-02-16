@@ -88,7 +88,7 @@ export const generateVisualizationImage = async (
         });
         if (!response.ok) return undefined;
         const data = await response.json();
-        return data.imageDataUrl || undefined;
+        return data.imageUrl || data.imageDataUrl || undefined;
     } catch (error) {
         console.error("Visualization Image Gen Error:", error);
         return undefined;
@@ -175,6 +175,53 @@ export const uploadNodeImage = async (
         if (!response.ok) return undefined;
         const data = await response.json();
         return data.imageUrl || data.imageDataUrl || undefined;
+    } catch {
+        return undefined;
+    }
+};
+
+export const uploadProfileGalleryImage = async (
+    imageDataUrl: string,
+    userId: string,
+    slot: 'avatar' | 'gallery' = 'gallery',
+): Promise<string | undefined> => {
+    try {
+        const response = await fetch('/api/upload-profile-gallery-image', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ imageDataUrl, userId, slot }),
+        });
+        if (!response.ok) return undefined;
+        const data = await response.json();
+        return data.imageUrl || undefined;
+    } catch {
+        return undefined;
+    }
+};
+
+type VisualizationAssetType = 'image' | 'audio' | 'video';
+
+export const uploadVisualizationAsset = async (
+    assetType: VisualizationAssetType,
+    userId: string,
+    visualizationId: string,
+    payload: { dataUrl?: string; audioData?: string },
+): Promise<string | undefined> => {
+    try {
+        const response = await fetch('/api/upload-visualization-asset', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                assetType,
+                userId,
+                visualizationId,
+                dataUrl: payload.dataUrl,
+                audioData: payload.audioData,
+            }),
+        });
+        if (!response.ok) return undefined;
+        const data = await response.json();
+        return data.assetUrl || undefined;
     } catch {
         return undefined;
     }

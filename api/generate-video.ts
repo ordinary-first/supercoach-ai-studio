@@ -32,6 +32,17 @@ async function uploadVideoToR2(key: string, buffer: Buffer): Promise<string> {
   return `${R2_PUBLIC_URL}/${key}`;
 }
 
+function pickVideoUrlFromJob(job: any): string | null {
+  const direct = [job?.url, job?.video_url, job?.result_url].find(
+    (value) => typeof value === 'string' && value.length > 0,
+  );
+  if (direct) return direct;
+
+  const outputArray = Array.isArray(job?.output) ? job.output : [];
+  const nested = outputArray.find((item: any) => typeof item?.url === 'string');
+  return nested?.url || null;
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -65,7 +76,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const job: any = await jobRes.json();
       const status = String(job?.status || 'unknown');
 
-      if (status !== 'completed') {
+      if (status !== 'completed' && status !== 'succeeded') {
         return res.status(200).json({ videoUrl: null, videoId: String(videoId), status });
       }
 
@@ -74,7 +85,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         { method: 'GET', headers: authHeaders },
       );
       if (!contentRes.ok) {
-        return res.status(200).json({ videoUrl: null, videoId: String(videoId), status: 'completed' });
+        const fallbackUrl = pickVideoUrlFromJob(job);
+        if (fallbackUrl) {
+          return res.status(200).json({ videoUrl: fallbackUrl, videoId: String(videoId), status });
+        }
+        return res.status(200).json({ videoUrl: null, videoId: String(videoId), status });
       }
 
       const videoBuffer = Buffer.from(await contentRes.arrayBuffer());
@@ -118,9 +133,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const created: any = await createdRes.json();
 
+    const createdVideoId = created?.id || created?.video_id || null;
     return res.status(200).json({
       videoUrl: null,
-      videoId: created?.id || null,
+      videoId: createdVideoId,
       status: created?.status || 'queued',
     });
   } catch (error: any) {

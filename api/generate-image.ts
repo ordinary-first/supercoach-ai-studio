@@ -39,6 +39,17 @@ async function compressToBuffer(base64Data: string): Promise<Buffer> {
     .toBuffer();
 }
 
+async function loadImageAsBase64FromUrl(url: string): Promise<string | null> {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) return null;
+    const buffer = Buffer.from(await response.arrayBuffer());
+    return buffer.toString('base64');
+  } catch {
+    return null;
+  }
+}
+
 function parseDataUrl(dataUrl: string): { mimeType: string; base64: string } | null {
   const match = String(dataUrl).match(/^data:(image\/\w+);base64,(.+)$/);
   if (!match) return null;
@@ -112,6 +123,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       : '';
 
     let rawBase64: string | null = null;
+    let rawImageUrl: string | null = null;
 
     if (!policy.isNodeImage && Array.isArray(referenceImages) && referenceImages.length > 0) {
       // Visualization image with reference images (edits endpoint)
@@ -132,6 +144,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
 
       rawBase64 = response?.data?.[0]?.b64_json || null;
+      rawImageUrl = response?.data?.[0]?.url || null;
     } else {
       // Goal image
       const textPrompt = `Create a single photorealistic image that directly illustrates this personal goal: "${String(prompt || '')}".${childContext} Show a concrete, specific scene — not abstract or metaphorical. The scene should feel aspirational and warm. Square composition, soft cinematic lighting. Absolutely no text, letters, words, or watermarks in the image.`;
@@ -144,6 +157,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
 
       rawBase64 = response?.data?.[0]?.b64_json || null;
+      rawImageUrl = response?.data?.[0]?.url || null;
+    }
+
+    if (!rawBase64 && rawImageUrl) {
+      rawBase64 = await loadImageAsBase64FromUrl(rawImageUrl);
     }
 
     if (!rawBase64) {

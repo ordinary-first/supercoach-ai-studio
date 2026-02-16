@@ -42,10 +42,6 @@ export function useAuth(
       const uid = profile ? (profile as UserProfile).googleId ?? getUserId() : null;
       const prevUid = userIdRef.current;
 
-      if (profile) {
-        localStorage.setItem('user_profile', JSON.stringify(profile));
-      }
-
       // Important: data is scoped by uid. If uid changes, force a reload.
       if (uid && uid !== prevUid) {
         userIdRef.current = uid;
@@ -61,7 +57,7 @@ export function useAuth(
     return () => unsubscribe();
   }, []);
 
-  // 2. Load user data from Firestore/localStorage when profile is available
+  // 2. Load user data from Firestore when profile is available
   useEffect(() => {
     if (!userProfile) {
       loadedUserIdRef.current = null;

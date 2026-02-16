@@ -255,7 +255,10 @@ const MindMap: React.FC<MindMapProps> = ({
   const [actionBar, setActionBar] = useState<ActionBarState | null>(null);
   const [viewScale, setViewScale] = useState(1);
   const languageByDom = document.documentElement.lang.toLowerCase().startsWith('ko') ? 'ko' : 'en';
-  const resolvedLanguage: 'en' | 'ko' = language === 'ko' || languageByDom === 'ko' ? 'ko' : 'en';
+  const resolvedLanguage: 'en' | 'ko' = (
+    language === 'ko'
+    || languageByDom === 'ko'
+  ) ? 'ko' : 'en';
   const labels = ACTION_BAR_LABELS[resolvedLanguage];
 
   const getCurrentMindMapScale = useCallback(() => {
@@ -302,6 +305,19 @@ const MindMap: React.FC<MindMapProps> = ({
       placement,
     };
   }, [getCurrentMindMapScale]);
+
+  const syncActionBarToNode = useCallback((nodeId: string) => {
+    const renderedNode = getRenderedNodeByGoalId(nodeId);
+    const next = renderedNode ? computeActionBarFromRenderedNode(renderedNode) : null;
+    if (!next) {
+      setActionBarRef.current(null);
+      return;
+    }
+    setActionBarRef.current((prev) => {
+      if (!prev || prev.nodeId !== nodeId) return prev;
+      return { ...prev, ...next };
+    });
+  }, [computeActionBarFromRenderedNode, getRenderedNodeByGoalId]);
 
   // Timestamp of last setData call ??used to ignore data_change events that we caused
   const lastSetDataTimeRef = useRef(0);
@@ -424,33 +440,21 @@ const MindMap: React.FC<MindMapProps> = ({
       }
       const current = actionBarRef.current;
       if (!current) return;
-      const renderedNode = getRenderedNodeByGoalId(current.nodeId);
-      const next = renderedNode ? computeActionBarFromRenderedNode(renderedNode) : null;
-      if (!next) {
-        setActionBarRef.current(null);
-        return;
-      }
-      setActionBarRef.current((prev) => {
-        if (!prev || prev.nodeId !== current.nodeId) return prev;
-        return { ...prev, ...next };
-      });
+      syncActionBarToNode(current.nodeId);
     };
     const handleTranslate = () => {
       const current = actionBarRef.current;
       if (!current) return;
-      const renderedNode = getRenderedNodeByGoalId(current.nodeId);
-      const next = renderedNode ? computeActionBarFromRenderedNode(renderedNode) : null;
-      if (!next) {
-        setActionBarRef.current(null);
-        return;
-      }
-      setActionBarRef.current((prev) => {
-        if (!prev || prev.nodeId !== current.nodeId) return prev;
-        return { ...prev, ...next };
-      });
+      syncActionBarToNode(current.nodeId);
+    };
+    const handleViewDataChange = () => {
+      const current = actionBarRef.current;
+      if (!current) return;
+      syncActionBarToNode(current.nodeId);
     };
     mindMap.on('scale', handleScale);
     mindMap.on('translate', handleTranslate);
+    mindMap.on('view_data_change', handleViewDataChange);
     handleScale(mindMap.view?.scale ?? 1);
 
     // Disable built-in keyboard shortcuts that conflict with our app
@@ -534,6 +538,7 @@ const MindMap: React.FC<MindMapProps> = ({
       window.removeEventListener('mindmap-center', handleCenter);
       mindMap.off?.('scale', handleScale);
       mindMap.off?.('translate', handleTranslate);
+      mindMap.off?.('view_data_change', handleViewDataChange);
       mindMap.destroy?.();
       mindMapRef.current = null;
     };

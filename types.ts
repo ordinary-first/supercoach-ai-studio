@@ -47,8 +47,8 @@ export interface UserProfile {
   location: string;
   avatarUrl?: string; 
   googleId?: string;
-  bio?: string;      // ìê¸°ì†Œê°œ
-  gallery?: string[]; // ê´€ë ¨ ì‚¬ì§„ë“¤ (base64 ë°°ì—´)
+  bio?: string;       // ÀÚ±â¼Ò°³
+  gallery?: string[]; // °¶·¯¸® ÀÌ¹ÌÁö URL ¹è¿­
 }
 
 export type RepeatFrequency = 
@@ -81,3 +81,4 @@ export interface ToDoItem {
   priority?: TodoPriority;
   tags?: string[];
 }
+

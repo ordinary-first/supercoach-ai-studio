@@ -4,7 +4,7 @@
 - **Stack**: React 19 + Vite 6 + TypeScript (SPA)
 - **State**: Zustand (no Redux)
 - **Auth**: Firebase Auth (Google signInWithPopup)
-- **DB**: Firestore (cloud) + localStorage (offline)
+- **DB**: Firestore (metadata) + R2 (file assets)
 - **AI**: OpenAI (Responses API + gpt-image + TTS + Sora)
 - **Deploy**: Vercel (https://web-legacy-ruddy.vercel.app/)
 - **Firebase**: project `coach-52bf4`
@@ -13,10 +13,10 @@
 ## Architecture
 
 ### Data Flow
-- Dual-write: always localStorage + Firestore for non-guest users
-- `isGuestUser(uid?)` gates Firestore access ??guest users skip cloud entirely
-- Timestamp-based conflict resolution (`updatedAt`) on load
-- Auto-save triggers on data change
+- Firebase Auth persistence keeps login across refreshes
+- User data is backend-only (Firestore + R2), no app-level localStorage persistence
+- Auto-save writes goals/todos/profile to Firestore
+- Visualization save path uploads assets to R2 and stores metadata in Firestore
 
 ### Key Files
 | File | Role |
@@ -81,6 +81,19 @@ When one agent completes work that another agent will continue:
 
 ## Current Status
 _Last updated: 2026-02-16_
+- Removed app-level localStorage dependency for user data:
+  - Language preference now loads/saves via Firestore settings (`App.tsx`, `services/firebaseService.ts`)
+  - MindMap action-bar language fallback now uses `language` prop + `document.lang` only (`components/MindMap.tsx`)
+- Migrated Visualization persistence to backend:
+  - Removed localStorage gallery persistence (`components/VisualizationModal.tsx`)
+  - Added Firestore load/save/delete integration (`components/VisualizationModal.tsx`, `services/firebaseService.ts`)
+  - Added R2 upload flow for generated image/audio/video assets before save (`components/VisualizationModal.tsx`, `services/aiService.ts`, `api/upload-visualization-asset.ts`)
+- Profile gallery/avatar upload remains R2 URL-based persistence (`components/UserProfilePage.tsx`, `api/upload-profile-gallery-image.ts`)
+- Updated `UserProfile.gallery` semantics to URL array (`types.ts`)
+- Bumped `displayVersion` to `V02.16r14` (`package.json`)
+- Fixed action bar desync during map drag by syncing position on `view_data_change` (drag pan transform path) (`components/MindMap.tsx`)
+- Added language fallback for action bar labels using `app_language` + `document.lang` to avoid stale English labels (`components/MindMap.tsx`)
+- Bumped `displayVersion` to `V02.16r13` (`package.json`)
 - Fixed action bar node anchoring so it follows selected node while map translates/zooms (`components/MindMap.tsx`)
 - Hardened action bar localization by resolving labels with app language + document language fallback (`components/MindMap.tsx`)
 - Bumped `displayVersion` to `V02.16r12` (`package.json`)
@@ -175,6 +188,6 @@ _Last updated: 2026-02-16_
   - returns 403 with missing header hints for easier debugging
 - Fixed Polar webhook 403 root cause:
   - `api/polar-webhook.ts` now verifies signatures against the raw request body (stream-first)
-- Version: V02.16r12
+- Version: V02.16r13
 - Remaining: iOS platform add/build must be done on macOS
 

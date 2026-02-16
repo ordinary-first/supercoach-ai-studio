@@ -16,17 +16,7 @@ export function useAutoSave(
   isDataLoaded: boolean,
   userId: string | null,
 ): void {
-  // Refs for beforeunload (always have latest values)
-  const nodesRef = useRef(nodes);
-  const linksRef = useRef(links);
-  const todosRef = useRef(todos);
-  const isDataLoadedRef = useRef(isDataLoaded);
   const userIdRef = useRef(userId);
-
-  useEffect(() => { nodesRef.current = nodes; }, [nodes]);
-  useEffect(() => { linksRef.current = links; }, [links]);
-  useEffect(() => { todosRef.current = todos; }, [todos]);
-  useEffect(() => { isDataLoadedRef.current = isDataLoaded; }, [isDataLoaded]);
   useEffect(() => { userIdRef.current = userId; }, [userId]);
 
   // Debounce timers for auto-save
@@ -81,43 +71,5 @@ export function useAutoSave(
     };
   }, [todos, userProfile, isDataLoaded]);
 
-  // Flush pending saves before page unload
-  useEffect(() => {
-    const handleBeforeUnload = () => {
-      const uid = userIdRef.current;
-      if (!uid || !isDataLoadedRef.current) return;
-
-      // Cancel pending debounced saves
-      if (goalSaveTimerRef.current) clearTimeout(goalSaveTimerRef.current);
-      if (todoSaveTimerRef.current) clearTimeout(todoSaveTimerRef.current);
-
-      // Synchronously save to localStorage (Firestore is async and won't complete before unload)
-      try {
-        const currentNodes = nodesRef.current;
-        const currentLinks = linksRef.current;
-        const currentTodos = todosRef.current;
-        const now = Date.now();
-
-        const serializedGoals = {
-          nodes: currentNodes.map(n => ({
-            id: n.id, text: n.text, type: n.type, status: n.status,
-            progress: n.progress, parentId: n.parentId || null,
-            imageUrl: n.imageUrl || null, collapsed: n.collapsed || false,
-          })),
-          links: currentLinks.map(l => ({
-            source: getLinkId(l.source),
-            target: getLinkId(l.target),
-          })),
-          updatedAt: now,
-        };
-        localStorage.setItem(`secretcoach_goals_${uid}`, JSON.stringify(serializedGoals));
-        localStorage.setItem(`secretcoach_todos_${uid}`, JSON.stringify({ items: currentTodos, updatedAt: now }));
-      } catch (e) {
-        console.warn('beforeunload save failed:', e);
-      }
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, []); // Empty deps - registered once, uses refs for latest values
+  // No local persistence fallback: backend is the single source of truth.
 }

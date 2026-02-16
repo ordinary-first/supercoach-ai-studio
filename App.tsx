@@ -14,7 +14,13 @@ import SettingsPage from './components/SettingsPage';
 import { GoalNode, GoalLink, NodeType, NodeStatus, ToDoItem, ChatMessage, RepeatFrequency } from './types';
 import { generateGoalImage, uploadNodeImage } from './services/aiService';
 import { verifyPolarCheckout } from './services/polarService';
-import { logout, getUserId, saveProfile } from './services/firebaseService';
+import {
+  logout,
+  getUserId,
+  loadUserSettings,
+  saveProfile,
+  saveUserSettings,
+} from './services/firebaseService';
 import { useAuth } from './hooks/useAuth';
 import { useAutoSave, getLinkId } from './hooks/useAutoSave';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
@@ -105,7 +111,6 @@ const calculateNextDate = (repeat: RepeatFrequency, fromDate: Date): number => {
 
 type AppLanguage = 'en' | 'ko';
 
-const LANGUAGE_STORAGE_KEY = 'app_language';
 const DEFAULT_VIEWPORT_CONTENT =
   'width=device-width, initial-scale=1.0, viewport-fit=cover';
 const GOALS_LOCKED_VIEWPORT_CONTENT =
@@ -125,8 +130,6 @@ const createInitialGoalNodes = (): GoalNode[] => [
 ];
 
 const getInitialLanguage = (): AppLanguage => {
-  const saved = localStorage.getItem(LANGUAGE_STORAGE_KEY);
-  if (saved === 'en' || saved === 'ko') return saved;
   return navigator.language.toLowerCase().startsWith('ko') ? 'ko' : 'en';
 };
 
@@ -134,6 +137,7 @@ const App: React.FC = () => {
   const [dimensions, setDimensions] = useState({ width: window.innerWidth, height: window.innerHeight });
   const [activeTab, setActiveTab] = useState<TabType>('GOALS');
   const [language, setLanguage] = useState<AppLanguage>(getInitialLanguage);
+  const [isLanguageLoaded, setIsLanguageLoaded] = useState(false);
   const [isSettingsPageOpen, setIsSettingsPageOpen] = useState(false);
 
   const [nodes, setNodes] = useState<GoalNode[]>(createInitialGoalNodes);
@@ -185,9 +189,44 @@ const App: React.FC = () => {
   }, [userId]);
 
   useEffect(() => {
-    localStorage.setItem(LANGUAGE_STORAGE_KEY, language);
     document.documentElement.lang = language;
   }, [language]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!userId) {
+      setLanguage(getInitialLanguage());
+      setIsLanguageLoaded(true);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    setIsLanguageLoaded(false);
+    loadUserSettings(userId)
+      .then((settings) => {
+        if (cancelled) return;
+        if (settings?.language === 'ko' || settings?.language === 'en') {
+          setLanguage(settings.language);
+        } else {
+          setLanguage(getInitialLanguage());
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setIsLanguageLoaded(true);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
+
+  useEffect(() => {
+    if (!userId || !isLanguageLoaded) return;
+    saveUserSettings(userId, { language }).catch(() => {
+      addToast('언어 설정 저장에 실패했습니다.', 'warning');
+    });
+  }, [addToast, isLanguageLoaded, language, userId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -521,20 +560,12 @@ const App: React.FC = () => {
       />
 
       {/* Sync Status Indicator */}
-      {syncStatus !== 'cloud' && (
+      {syncStatus === 'offline' && userProfile && (
         <div className="fixed top-3 left-1/2 -translate-x-1/2 z-[52] flex items-center gap-2 bg-black/70 backdrop-blur-md border border-white/10 rounded-full px-3 py-1.5 animate-fade-in">
-          <div className={`w-2 h-2 rounded-full ${syncStatus === 'local-only' ? 'bg-yellow-400' : 'bg-red-400'} animate-pulse`} />
+          <div className="w-2 h-2 rounded-full bg-red-400 animate-pulse" />
           <span className="text-[10px] font-bold text-gray-300 tracking-wide">
-            {syncStatus === 'local-only' ? '로컬에서만 저장 중' : '동기화 불가'}
+            동기화 불가
           </span>
-          {syncStatus === 'local-only' && (
-            <button
-              onClick={() => { logout(); setUserProfile(null); setActiveTab('GOALS'); }}
-              className="text-[9px] text-neon-lime font-bold ml-1 hover:underline"
-            >
-              로그아웃
-            </button>
-          )}
         </div>
       )}
 
