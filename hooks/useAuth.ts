@@ -38,7 +38,8 @@ export function useAuth(
       setUserProfile(profile);
       setIsInitializing(false);
 
-      const uid = profile ? getUserId() : null;
+      // Use uid from the auth callback payload (googleId) to avoid timing races with auth.currentUser.
+      const uid = profile ? (profile as UserProfile).googleId ?? getUserId() : null;
       const prevUid = userIdRef.current;
 
       if (profile) {
@@ -70,7 +71,7 @@ export function useAuth(
       return;
     }
 
-    const userId = userIdRef.current || getUserId();
+    const userId = userIdRef.current || userProfile.googleId || getUserId();
     if (!userId) {
       setIsDataLoaded(true);
       return;

@@ -84,7 +84,8 @@ _Last updated: 2026-02-16_
 - Fixed cross-account data bleed: force reload per uid and reset in-memory state on uid change (`hooks/useAuth.ts`, `App.tsx`)
 - Fixed cross-account data bleed in Visualization gallery: localStorage key is now uid-scoped + legacy key migration (`components/VisualizationModal.tsx`)
 - Hardened Google login account switching: sign out before `signInWithPopup` to avoid reusing prior Firebase session (`services/firebaseService.ts`)
-- Bumped `displayVersion` to `V02.16r02` (`package.json`)
+- Fixed account switch race: derive uid from auth callback payload (`hooks/useAuth.ts`)
+- Bumped `displayVersion` to `V02.16r03` (`package.json`)
 - Replaced top-right text button with icon-only settings trigger in App.tsx
 - Added full-screen SettingsPage.tsx for settings navigation-style flow
 - Added Polar compliance checklist UI in settings (digital-only / no human service / no donation / instant access)
@@ -133,6 +134,6 @@ _Last updated: 2026-02-16_
   - returns 403 with missing header hints for easier debugging
 - Fixed Polar webhook 403 root cause:
   - `api/polar-webhook.ts` now verifies signatures against the raw request body (stream-first)
-- Version: V02.16r02
+- Version: V02.16r03
 - Remaining: iOS platform add/build must be done on macOS
 
