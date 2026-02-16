@@ -1,4 +1,4 @@
-import { UserProfile } from '../types';
+﻿import { UserProfile } from '../types';
 
 export interface ChatApiResponse {
   candidates?: {
@@ -32,6 +32,40 @@ const parseJsonSafe = async <T = Record<string, unknown>>(response: Response): P
   } catch {
     return {} as T;
   }
+};
+
+const sleep = async (ms: number): Promise<void> => {
+  await new Promise((resolve) => setTimeout(resolve, ms));
+};
+
+const isRetryableStatus = (status: number): boolean => {
+  return status === 429 || status >= 500;
+};
+
+const fetchWithRetry = async (
+  input: RequestInfo | URL,
+  init?: RequestInit,
+  maxRetries: number = 1,
+): Promise<Response> => {
+  let attempt = 0;
+
+  while (attempt <= maxRetries) {
+    try {
+      const response = await fetch(input, init);
+      if (isRetryableStatus(response.status) && attempt < maxRetries) {
+        attempt += 1;
+        await sleep(300 * attempt);
+        continue;
+      }
+      return response;
+    } catch (error) {
+      if (attempt >= maxRetries) throw error;
+      attempt += 1;
+      await sleep(300 * attempt);
+    }
+  }
+
+  throw new Error('Fetch retry failed');
 };
 
 const toApiError = (
@@ -108,25 +142,63 @@ export const generateVisualizationImage = async (
   referenceImages: string[],
   profile: UserProfile | null = null,
   imageQuality: 'medium' | 'high' = 'medium',
-): Promise<string | undefined> => {
+  userId?: string | null,
+  visualizationId?: string,
+): Promise<ImageGenerationResult> => {
   try {
-    const response = await fetch('/api/generate-image', {
+    const response = await fetchWithRetry('/api/generate-image', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         prompt,
         profile,
         referenceImages,
+        userId,
+        visualizationId,
         imagePurpose: 'visualization',
         imageQuality,
       }),
-    });
-    if (!response.ok) return undefined;
-    const data = await response.json();
-    return data.imageUrl || data.imageDataUrl || undefined;
-  } catch (error) {
-    console.error('Visualization Image Gen Error:', error);
-    return undefined;
+    }, 1);
+
+    const payload = await parseJsonSafe<Record<string, unknown>>(response);
+    if (!response.ok) {
+      const apiError = toApiError(
+        payload,
+        response.status,
+        'IMAGE_API_ERROR',
+        '이미지 생성에 실패했습니다.',
+      );
+      return {
+        status: 'failed',
+        errorCode: apiError.errorCode,
+        errorMessage: apiError.errorMessage,
+        requestId: apiError.requestId,
+      };
+    }
+
+    const imageUrl = toOptionalString(payload.imageUrl) || toOptionalString(payload.imageDataUrl);
+    const imageStatus = toOptionalString(payload.status);
+    if (!imageUrl || (imageStatus && imageStatus !== 'completed')) {
+      return {
+        status: 'failed',
+        errorCode: toOptionalString(payload.errorCode) || 'IMAGE_EMPTY_RESULT',
+        errorMessage:
+          toOptionalString(payload.errorMessage) || '이미지 생성 결과가 비어 있습니다.',
+        requestId: toOptionalString(payload.requestId),
+      };
+    }
+
+    return {
+      status: 'completed',
+      imageUrl,
+      requestId: toOptionalString(payload.requestId),
+    };
+  } catch {
+    return {
+      status: 'failed',
+      errorCode: 'IMAGE_NETWORK_ERROR',
+      errorMessage: '이미지 생성 요청 중 네트워크 오류가 발생했습니다.',
+    };
   }
 };
 
@@ -148,21 +220,34 @@ export const generateSuccessNarrative = async (
   }
 };
 
+export interface ImageGenerationResult {
+  status: 'completed' | 'failed';
+  imageUrl?: string;
+  errorCode?: string;
+  errorMessage?: string;
+  requestId?: string;
+}
+
 export interface AudioGenerationResult {
   status: 'completed' | 'failed';
+  audioUrl?: string;
   audioData?: string;
   errorCode?: string;
   errorMessage?: string;
   requestId?: string;
 }
 
-export const generateSpeech = async (text: string): Promise<AudioGenerationResult> => {
+export const generateSpeech = async (
+  text: string,
+  userId?: string | null,
+  visualizationId?: string,
+): Promise<AudioGenerationResult> => {
   try {
-    const response = await fetch('/api/generate-speech', {
+    const response = await fetchWithRetry('/api/generate-speech', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text }),
-    });
+      body: JSON.stringify({ text, userId, visualizationId }),
+    }, 1);
 
     const payload = await parseJsonSafe<Record<string, unknown>>(response);
     if (!response.ok) {
@@ -180,19 +265,21 @@ export const generateSpeech = async (text: string): Promise<AudioGenerationResul
       };
     }
 
-    if (toOptionalString(payload.status) !== 'completed' || !toOptionalString(payload.audioData)) {
+    const audioUrl = toOptionalString(payload.audioUrl);
+    const audioData = toOptionalString(payload.audioData);
+    if (toOptionalString(payload.status) !== 'completed' || (!audioUrl && !audioData)) {
       return {
         status: 'failed',
         errorCode: toOptionalString(payload.errorCode) || 'SPEECH_EMPTY_AUDIO',
-        errorMessage:
-          toOptionalString(payload.errorMessage) || '오디오 생성 결과가 비어 있습니다.',
+        errorMessage: toOptionalString(payload.errorMessage) || '오디오 생성 결과가 비어 있습니다.',
         requestId: toOptionalString(payload.requestId),
       };
     }
 
     return {
       status: 'completed',
-      audioData: toOptionalString(payload.audioData),
+      audioUrl,
+      audioData,
       requestId: toOptionalString(payload.requestId),
     };
   } catch {
@@ -245,17 +332,23 @@ const toVideoResult = (
   };
 };
 
+const isTransientVideoError = (errorCode?: string): boolean => {
+  if (!errorCode) return false;
+  if (errorCode.includes('NETWORK')) return true;
+  return /(?:^|_)(429|5\d\d)$/.test(errorCode);
+};
+
 export const pollVideoStatus = async (
   videoId: string,
   userId?: string | null,
   durationSec: number = 4,
 ): Promise<VideoGenerationResult> => {
   try {
-    const response = await fetch('/api/generate-video', {
+    const response = await fetchWithRetry('/api/generate-video', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ videoId, userId, durationSec }),
-    });
+    }, 1);
 
     const payload = await parseJsonSafe<Record<string, unknown>>(response);
     if (!response.ok) {
@@ -263,7 +356,7 @@ export const pollVideoStatus = async (
         payload,
         response.status,
         'VIDEO_POLL_ERROR',
-        '영상 상태 조회에 실패했습니다.',
+        '영상 상태 확인에 실패했습니다.',
       );
       return {
         videoId,
@@ -284,7 +377,7 @@ export const pollVideoStatus = async (
       status: 'failed',
       durationSec,
       errorCode: 'VIDEO_POLL_NETWORK_ERROR',
-      errorMessage: '영상 상태 조회 중 네트워크 오류가 발생했습니다.',
+      errorMessage: '영상 상태 확인 중 네트워크 오류가 발생했습니다.',
     };
   }
 };
@@ -297,11 +390,11 @@ export const generateVideo = async (
   try {
     const userId = profile?.googleId || null;
 
-    const createResponse = await fetch('/api/generate-video', {
+    const createResponse = await fetchWithRetry('/api/generate-video', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ prompt, profile, userId, durationSec }),
-    });
+    }, 1);
 
     const createPayload = await parseJsonSafe<Record<string, unknown>>(createResponse);
     if (!createResponse.ok) {
@@ -333,16 +426,29 @@ export const generateVideo = async (
     }
 
     const startedAt = Date.now();
-    const TIMEOUT_MS = 3 * 60 * 1000;
+    const TIMEOUT_MS = 45 * 1000;
     let lastResult: VideoGenerationResult = created;
 
     while (Date.now() - startedAt < TIMEOUT_MS) {
-      await new Promise((resolve) => setTimeout(resolve, 5000));
+      await sleep(5000);
 
       const polled = await pollVideoStatus(created.videoId, userId, durationSec);
       lastResult = polled;
       if (polled.videoUrl) return polled;
-      if (polled.status === 'failed') return polled;
+      if (polled.status === 'failed' && !isTransientVideoError(polled.errorCode)) return polled;
+    }
+
+    if (
+      lastResult.videoId &&
+      (lastResult.status === 'queued' ||
+        lastResult.status === 'in_progress' ||
+        lastResult.status === 'unknown' ||
+        isTransientVideoError(lastResult.errorCode))
+    ) {
+      return {
+        ...lastResult,
+        status: lastResult.status === 'queued' ? 'queued' : 'in_progress',
+      };
     }
 
     return lastResult;

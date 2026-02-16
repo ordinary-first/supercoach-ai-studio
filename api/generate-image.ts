@@ -19,6 +19,46 @@ const r2 = new S3Client({
   },
 });
 
+const createRequestId = (): string => {
+  return `image_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+};
+
+const safePathSegment = (value: unknown): string => {
+  const cleaned = String(value || '').replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 128);
+  return cleaned || 'unknown';
+};
+
+const fail = (
+  res: VercelResponse,
+  requestId: string,
+  statusCode: number,
+  errorCode: string,
+  errorMessage: string,
+) => {
+  return res.status(statusCode).json({
+    status: 'failed',
+    imageUrl: null,
+    imageDataUrl: null,
+    errorCode,
+    errorMessage,
+    requestId,
+  });
+};
+
+const complete = (
+  res: VercelResponse,
+  requestId: string,
+  imageUrl?: string | null,
+  imageDataUrl?: string | null,
+) => {
+  return res.status(200).json({
+    status: 'completed',
+    imageUrl: imageUrl || null,
+    imageDataUrl: imageDataUrl || null,
+    requestId,
+  });
+};
+
 async function uploadToR2(key: string, buffer: Buffer): Promise<string> {
   await r2.send(new PutObjectCommand({
     Bucket: R2_BUCKET,
@@ -103,17 +143,19 @@ async function generateWithPrompt(
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  const requestId = createRequestId();
+
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+    return fail(res, requestId, 405, 'METHOD_NOT_ALLOWED', 'Method not allowed');
   }
 
   if (!process.env.OPENAI_API_KEY?.trim()) {
-    return res.status(500).json({ error: 'API key not configured' });
+    return fail(res, requestId, 500, 'API_KEY_NOT_CONFIGURED', 'API key not configured');
   }
 
   try {
@@ -124,12 +166,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       childTexts,
       userId,
       nodeId,
+      visualizationId,
       imagePurpose,
       imageQuality,
     } = req.body || {};
 
+    const cleanPrompt = String(prompt || '').trim();
+    if (!cleanPrompt) {
+      return fail(res, requestId, 400, 'EMPTY_PROMPT', 'prompt is required');
+    }
+
     const openai = getOpenAIClient();
-    const policy = resolveImagePolicy({ imagePurpose, imageQuality, userId, nodeId });
+    const cleanUserId = typeof userId === 'string' ? userId.trim() : '';
+    const cleanNodeId = typeof nodeId === 'string' ? nodeId.trim() : '';
+    const cleanVisualizationId = typeof visualizationId === 'string' ? visualizationId.trim() : '';
+    const cleanImagePurpose = typeof imagePurpose === 'string' ? imagePurpose.trim() : '';
+
+    const policy = resolveImagePolicy({
+      imagePurpose: cleanImagePurpose,
+      imageQuality,
+      userId: cleanUserId || undefined,
+      nodeId: cleanNodeId || undefined,
+    });
 
     const personDesc = profile
       ? `${profile.name}, a ${profile.age}yo person in ${profile.location}`
@@ -139,7 +197,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ? ` This goal encompasses these sub-goals: ${childTexts.join(', ')}.`
       : '';
 
-    const textPrompt = `Create a single photorealistic image that directly illustrates this personal goal: "${String(prompt || '')}".${childContext} Show a concrete, specific scene, not abstract or metaphorical. The scene should feel aspirational and warm. Square composition, soft cinematic lighting. Absolutely no text, letters, words, or watermarks in the image.`;
+    const textPrompt = `Create a single photorealistic image that directly illustrates this personal goal: "${cleanPrompt}".${childContext} Show a concrete, specific scene, not abstract or metaphorical. The scene should feel aspirational and warm. Square composition, soft cinematic lighting. Absolutely no text, letters, words, or watermarks in the image.`;
 
     let rawBase64: string | null = null;
     let rawImageUrl: string | null = null;
@@ -156,7 +214,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const response: any = await openai.images.edit({
         model: policy.model,
         image: files,
-        prompt: `Photorealistic, cinematic image of ${personDesc} embodying: "${String(prompt || '')}". Use the provided reference images as visual context (face likeness, objects, style). No text overlay. 8k resolution.`,
+        prompt: `Photorealistic, cinematic image of ${personDesc} embodying: "${cleanPrompt}". Use the provided reference images as visual context (face likeness, objects, style). No text overlay. 8k resolution.`,
         size: '1024x1024',
         quality: policy.quality,
       });
@@ -180,27 +238,44 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     if (!rawBase64) {
-      return res.status(200).json({ imageUrl: null, imageDataUrl: null });
+      return fail(res, requestId, 502, 'IMAGE_EMPTY_RESULT', 'Image generation result is empty');
     }
 
     const compressed = await compressToBuffer(rawBase64);
 
-    if (userId && nodeId && R2_PUBLIC_URL) {
+    if (cleanUserId && cleanNodeId && R2_PUBLIC_URL) {
       try {
-        const key = `goals/${userId}/${nodeId}.jpg`;
+        const key = `goals/${safePathSegment(cleanUserId)}/${safePathSegment(cleanNodeId)}.jpg`;
         const url = await uploadToR2(key, compressed);
-        return res.status(200).json({ imageUrl: url });
-      } catch (r2Err: any) {
-        console.error('[R2 Upload] Failed:', r2Err?.message);
+        return complete(res, requestId, url, null);
+      } catch (r2Error: unknown) {
+        const message = r2Error instanceof Error ? r2Error.message : 'R2 upload failed';
+        console.error('[generate-image][node-r2]', requestId, message);
+      }
+    }
+
+    if (
+      cleanImagePurpose === 'visualization' &&
+      cleanUserId &&
+      cleanVisualizationId &&
+      R2_PUBLIC_URL
+    ) {
+      try {
+        const key = `visualizations/${safePathSegment(cleanUserId)}/${safePathSegment(cleanVisualizationId)}/image.jpg`;
+        const url = await uploadToR2(key, compressed);
+        return complete(res, requestId, url, null);
+      } catch (r2Error: unknown) {
+        const message = r2Error instanceof Error ? r2Error.message : 'R2 upload failed';
+        console.error('[generate-image][viz-r2]', requestId, message);
       }
     }
 
     const dataUrl = `data:image/jpeg;base64,${compressed.toString('base64')}`;
-    return res.status(200).json({ imageDataUrl: dataUrl });
-  } catch (error: any) {
-    console.error('Image Generation Error:', error);
-    return res.status(500).json({
-      error: error?.message || 'Internal error',
-    });
+    return complete(res, requestId, null, dataUrl);
+  } catch (error: unknown) {
+    const errorCode = 'IMAGE_GENERATION_FAILED';
+    const errorMessage = error instanceof Error ? error.message : 'Internal error';
+    console.error('[generate-image]', requestId, errorCode, errorMessage);
+    return fail(res, requestId, 500, errorCode, errorMessage);
   }
 }

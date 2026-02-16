@@ -1,8 +1,29 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { getOpenAIClient } from '../lib/openaiClient.js';
+
+const R2_ACCOUNT_ID = (process.env.R2_ACCOUNT_ID || '').trim();
+const R2_ACCESS_KEY = (process.env.R2_ACCESS_KEY_ID || '').trim();
+const R2_SECRET_KEY = (process.env.R2_SECRET_ACCESS_KEY || '').trim();
+const R2_BUCKET = (process.env.R2_BUCKET_NAME || 'secretcoach-images').trim();
+const R2_PUBLIC_URL = (process.env.R2_PUBLIC_URL || '').trim();
+
+const r2 = new S3Client({
+  region: 'auto',
+  endpoint: `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+  credentials: {
+    accessKeyId: R2_ACCESS_KEY,
+    secretAccessKey: R2_SECRET_KEY,
+  },
+});
 
 const createRequestId = (): string => {
   return `speech_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+};
+
+const safePathSegment = (value: unknown): string => {
+  const cleaned = String(value || '').replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 128);
+  return cleaned || 'unknown';
 };
 
 const resolveErrorCode = (error: unknown): string => {
@@ -19,6 +40,41 @@ const resolveErrorMessage = (error: unknown): string => {
   const maybeMessage = (error as Record<string, unknown>).message;
   if (typeof maybeMessage === 'string' && maybeMessage.trim()) return maybeMessage;
   return 'Speech generation failed';
+};
+
+const pcm16ToWavBuffer = (pcmBuffer: Buffer, sampleRate: number = 24000): Buffer => {
+  const channels = 1;
+  const bitsPerSample = 16;
+  const byteRate = sampleRate * channels * (bitsPerSample / 8);
+  const blockAlign = channels * (bitsPerSample / 8);
+  const dataSize = pcmBuffer.length;
+  const header = Buffer.alloc(44);
+
+  header.write('RIFF', 0);
+  header.writeUInt32LE(36 + dataSize, 4);
+  header.write('WAVE', 8);
+  header.write('fmt ', 12);
+  header.writeUInt32LE(16, 16);
+  header.writeUInt16LE(1, 20);
+  header.writeUInt16LE(channels, 22);
+  header.writeUInt32LE(sampleRate, 24);
+  header.writeUInt32LE(byteRate, 28);
+  header.writeUInt16LE(blockAlign, 32);
+  header.writeUInt16LE(bitsPerSample, 34);
+  header.write('data', 36);
+  header.writeUInt32LE(dataSize, 40);
+
+  return Buffer.concat([header, pcmBuffer]);
+};
+
+const uploadToR2 = async (key: string, body: Buffer): Promise<string> => {
+  await r2.send(new PutObjectCommand({
+    Bucket: R2_BUCKET,
+    Key: key,
+    Body: body,
+    ContentType: 'audio/wav',
+  }));
+  return `${R2_PUBLIC_URL}/${key}`;
 };
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -48,7 +104,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { text } = req.body || {};
+    const { text, userId, visualizationId } = req.body || {};
     const openai = getOpenAIClient();
 
     const cleanText = String(text || '').replace(/\*\*/g, '').trim();
@@ -69,6 +125,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
     const audioBuffer = Buffer.from(await audio.arrayBuffer());
+
+    const cleanUserId = typeof userId === 'string' ? userId.trim() : '';
+    const cleanVisualizationId = typeof visualizationId === 'string' ? visualizationId.trim() : '';
+
+    if (R2_PUBLIC_URL && cleanUserId && cleanVisualizationId) {
+      try {
+        const key = `visualizations/${safePathSegment(cleanUserId)}/${safePathSegment(cleanVisualizationId)}/audio.wav`;
+        const wav = pcm16ToWavBuffer(audioBuffer);
+        const audioUrl = await uploadToR2(key, wav);
+        return res.status(200).json({
+          status: 'completed',
+          audioUrl,
+          requestId,
+        });
+      } catch (r2Error: unknown) {
+        const message = r2Error instanceof Error ? r2Error.message : 'R2 upload failed';
+        console.error('[generate-speech][r2-upload]', requestId, message);
+      }
+    }
+
     return res.status(200).json({
       status: 'completed',
       audioData: audioBuffer.toString('base64'),

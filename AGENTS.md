@@ -81,6 +81,14 @@ When one agent completes work that another agent will continue:
 
 ## Current Status
 _Last updated: 2026-02-16_
+- Visualization outage recovery r20 completed:
+  - Switched visualization image/audio generation to R2-first URL flow (`api/generate-image.ts`, `api/generate-speech.ts`)
+  - Standardized generate-image API response schema with `status/requestId/errorCode/errorMessage`
+  - Added one-retry network policy for visualization media/video requests (`services/aiService.ts`)
+  - Reduced video polling wait to 45s and return pending-friendly status on timeout (`services/aiService.ts`)
+  - Updated visualization generation flow with per-request `generationId` and user-scoped API params (`components/VisualizationModal.tsx`)
+  - Improved image failure message to include error code metadata in UI (`components/VisualizationModal.tsx`)
+- Bumped `displayVersion` to `V02.16r20` (`package.json`)
 - Visualization outage recovery v2 completed:
   - Added failure-code surfacing for TTS (`api/generate-speech.ts`) with structured success/failure schema
   - Normalized video API responses with explicit `errorCode/errorMessage/requestId` and removed silent-unknown paths (`api/generate-video.ts`)

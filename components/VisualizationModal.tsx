@@ -67,6 +67,7 @@ interface VisualizationResult {
   imageStatus: GenerationStatus;
   audioStatus: GenerationStatus;
   videoStatus: SavedVideoStatus;
+  imageError?: ErrorMeta;
   audioError?: ErrorMeta;
   videoError?: ErrorMeta;
 }
@@ -317,14 +318,14 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
     if (viewMode !== 'result' || !currentResult) return;
 
     stopAudio();
-    if (currentResult.audioData) {
-      prepareAudioFromPcm(currentResult.audioData).catch(() => {
+    if (currentResult.audioUrl) {
+      prepareAudioFromUrl(currentResult.audioUrl).catch(() => {
         setErrorMessage('오디오 재생 준비에 실패했습니다.');
       });
       return;
     }
-    if (currentResult.audioUrl) {
-      prepareAudioFromUrl(currentResult.audioUrl).catch(() => {
+    if (currentResult.audioData) {
+      prepareAudioFromPcm(currentResult.audioData).catch(() => {
         setErrorMessage('오디오 재생 준비에 실패했습니다.');
       });
     }
@@ -346,6 +347,7 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
     try {
       const goalContext = nodes.map((node) => `- ${node.text}`).join('\n');
       const fullPrompt = inputText || goalContext;
+      const generationId = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
       if (settings.text) {
         setGeneratingStep('텍스트 생성 중...');
@@ -355,19 +357,36 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
 
       if (settings.image) {
         setGeneratingStep('이미지 생성 중...');
-        result.imageUrl = await generateVisualizationImage(
+        const imageResult = await generateVisualizationImage(
           fullPrompt,
           referenceImages,
           userProfile,
           visualImageQuality,
+          activeUserId,
+          generationId,
         );
-        result.imageStatus = result.imageUrl ? 'completed' : 'failed';
+        if (imageResult.status === 'completed' && imageResult.imageUrl) {
+          result.imageUrl = imageResult.imageUrl;
+          result.imageStatus = 'completed';
+        } else {
+          result.imageStatus = 'failed';
+          result.imageError = {
+            code: imageResult.errorCode,
+            message: imageResult.errorMessage,
+            requestId: imageResult.requestId,
+          };
+        }
       }
 
       if (settings.audio) {
         setGeneratingStep('오디오 생성 중...');
-        const speechResult = await generateSpeech(result.text || fullPrompt);
-        if (speechResult.status === 'completed' && speechResult.audioData) {
+        const speechResult = await generateSpeech(
+          result.text || fullPrompt,
+          activeUserId,
+          generationId,
+        );
+        if (speechResult.status === 'completed' && (speechResult.audioUrl || speechResult.audioData)) {
+          result.audioUrl = speechResult.audioUrl;
           result.audioData = speechResult.audioData;
           result.audioStatus = 'completed';
         } else {
@@ -397,7 +416,11 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
       }
 
       if (result.imageStatus === 'failed') {
-        setErrorMessage('이미지 생성이 완료되지 않았습니다.');
+        setErrorMessage((prev) =>
+          prev
+            ? `${prev} ${formatErrorMeta('이미지 생성 실패.', result.imageError)}`
+            : formatErrorMeta('이미지 생성 실패.', result.imageError),
+        );
       }
       if (result.audioStatus === 'failed') {
         setErrorMessage((prev) =>
