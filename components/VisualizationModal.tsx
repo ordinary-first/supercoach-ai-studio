@@ -58,6 +58,7 @@ interface VisualizationResult {
   inputText: string;
   text?: string;
   imageUrl?: string;
+  imageDataUrl?: string;
   audioData?: string;
   audioUrl?: string;
   videoUrl?: string;
@@ -107,6 +108,8 @@ const sanitizeFirestoreString = (value?: string): string | undefined => {
   }
   const cleaned = normalized
     .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, ' ')
+    .replace(/[\uD800-\uDFFF]/g, '')
+    .replace(/[\uFFFE\uFFFF]/g, '')
     .trim();
   return cleaned || undefined;
 };
@@ -406,6 +409,7 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
         );
         if (imageResult.status === 'completed' && imageResult.imageUrl) {
           result.imageUrl = imageResult.imageUrl;
+          result.imageDataUrl = imageResult.imageDataUrl;
           result.imageStatus = 'completed';
         } else {
           result.imageStatus = 'failed';
@@ -842,7 +846,17 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
                 {currentResult?.videoUrl ? (
                   <video src={currentResult.videoUrl} controls autoPlay loop muted playsInline className="w-full aspect-video object-cover" />
                 ) : currentResult?.imageUrl ? (
-                  <img src={currentResult.imageUrl} alt="시각화 이미지" className="w-full aspect-video object-cover" />
+                  <img
+                    src={currentResult.imageUrl}
+                    alt="시각화 이미지"
+                    onError={(e) => {
+                      const fallback = currentResult?.imageDataUrl;
+                      if (fallback && e.currentTarget.src !== fallback) {
+                        e.currentTarget.src = fallback;
+                      }
+                    }}
+                    className="w-full aspect-video object-cover"
+                  />
                 ) : (
                   <div className="aspect-video flex items-center justify-center text-gray-600">
                     <ImageIcon size={36} />
@@ -851,7 +865,17 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
               </div>
               {currentResult?.videoUrl && currentResult?.imageUrl && (
                 <div className="rounded-2xl border border-white/10 overflow-hidden bg-black/40">
-                  <img src={currentResult.imageUrl} alt="생성 이미지" className="w-full aspect-video object-cover" />
+                  <img
+                    src={currentResult.imageUrl}
+                    alt="생성 이미지"
+                    onError={(e) => {
+                      const fallback = currentResult?.imageDataUrl;
+                      if (fallback && e.currentTarget.src !== fallback) {
+                        e.currentTarget.src = fallback;
+                      }
+                    }}
+                    className="w-full aspect-video object-cover"
+                  />
                 </div>
               )}
 

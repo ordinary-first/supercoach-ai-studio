@@ -177,6 +177,7 @@ export const generateVisualizationImage = async (
     }
 
     const imageUrl = toOptionalString(payload.imageUrl) || toOptionalString(payload.imageDataUrl);
+    const imageDataUrl = toOptionalString(payload.imageDataUrl);
     const imageStatus = toOptionalString(payload.status);
     if (!imageUrl || (imageStatus && imageStatus !== 'completed')) {
       return {
@@ -191,6 +192,7 @@ export const generateVisualizationImage = async (
     return {
       status: 'completed',
       imageUrl,
+      imageDataUrl,
       requestId: toOptionalString(payload.requestId),
     };
   } catch {
@@ -223,6 +225,7 @@ export const generateSuccessNarrative = async (
 export interface ImageGenerationResult {
   status: 'completed' | 'failed';
   imageUrl?: string;
+  imageDataUrl?: string;
   errorCode?: string;
   errorMessage?: string;
   requestId?: string;
@@ -452,12 +455,13 @@ export const generateVideo = async (
     }
 
     return lastResult;
-  } catch {
+  } catch (error: unknown) {
+    const detail = error instanceof Error ? error.message : String(error);
     return {
       status: 'failed',
       durationSec,
       errorCode: 'VIDEO_CLIENT_EXCEPTION',
-      errorMessage: '영상 생성 요청 중 예외가 발생했습니다.',
+      errorMessage: `영상 생성 요청 중 예외: ${detail}`,
     };
   }
 };

@@ -29,6 +29,8 @@ const sanitizeString = (value: unknown): string | undefined => {
   }
   const trimmed = normalized
     .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, ' ')
+    .replace(/[\uD800-\uDFFF]/g, '')
+    .replace(/[\uFFFE\uFFFF]/g, '')
     .trim();
   return trimmed ? trimmed : undefined;
 };
@@ -139,8 +141,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     } catch (writeError: any) {
       if (String(writeError?.code || '') !== 'invalid-argument') throw writeError;
       await targetRef.set({
-        inputText: payload.inputText || 'Visualization',
-        text: payload.text || payload.inputText || 'Visualization',
+        inputText: (payload.inputText || 'Visualization').slice(0, 1000),
         timestamp: now,
         updatedAt: now,
       });

@@ -242,12 +242,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const compressed = await compressToBuffer(rawBase64);
+    const dataUrl = `data:image/jpeg;base64,${compressed.toString('base64')}`;
 
     if (cleanUserId && cleanNodeId && R2_PUBLIC_URL) {
       try {
         const key = `goals/${safePathSegment(cleanUserId)}/${safePathSegment(cleanNodeId)}.jpg`;
         const url = await uploadToR2(key, compressed);
-        return complete(res, requestId, url, null);
+        return complete(res, requestId, url, dataUrl);
       } catch (r2Error: unknown) {
         const message = r2Error instanceof Error ? r2Error.message : 'R2 upload failed';
         console.error('[generate-image][node-r2]', requestId, message);
@@ -263,14 +264,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       try {
         const key = `visualizations/${safePathSegment(cleanUserId)}/${safePathSegment(cleanVisualizationId)}/image.jpg`;
         const url = await uploadToR2(key, compressed);
-        return complete(res, requestId, url, null);
+        return complete(res, requestId, url, dataUrl);
       } catch (r2Error: unknown) {
         const message = r2Error instanceof Error ? r2Error.message : 'R2 upload failed';
         console.error('[generate-image][viz-r2]', requestId, message);
       }
     }
 
-    const dataUrl = `data:image/jpeg;base64,${compressed.toString('base64')}`;
     return complete(res, requestId, null, dataUrl);
   } catch (error: unknown) {
     const errorCode = 'IMAGE_GENERATION_FAILED';
