@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { getOpenAIClient } from '../lib/openaiClient.js';
 import { getAdminDb } from '../lib/firebaseAdmin.js';
+import { checkAndIncrement, limitExceededResponse } from '../lib/usageGuard.js';
 
 const R2_ACCOUNT_ID = (process.env.R2_ACCOUNT_ID || '').trim();
 const R2_ACCESS_KEY = (process.env.R2_ACCESS_KEY_ID || '').trim();
@@ -123,6 +124,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const { text, userId, visualizationId } = req.body || {};
+
+    const cleanUserIdForUsage = typeof userId === 'string' ? userId.trim() : '';
+    if (cleanUserIdForUsage) {
+      const usage = await checkAndIncrement(cleanUserIdForUsage, 'audioMinutes');
+      if (!usage.allowed) {
+        return res.status(429).json(limitExceededResponse('audioMinutes', usage));
+      }
+    }
+
     const openai = getOpenAIClient();
 
     const cleanText = String(text || '').replace(/\*\*/g, '').trim();

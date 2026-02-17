@@ -47,8 +47,10 @@ export interface UserProfile {
   location: string;
   avatarUrl?: string; 
   googleId?: string;
-  bio?: string;       // �ڱ�Ұ�
-  gallery?: string[]; // ������ �̹��� URL �迭
+  bio?: string;
+  gallery?: string[];
+  billingPlan?: 'explorer' | 'essential' | 'visionary' | 'master' | null;
+  billingIsActive?: boolean;
 }
 
 export type RepeatFrequency = 

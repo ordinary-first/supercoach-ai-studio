@@ -258,6 +258,8 @@ export const loadProfile = async (userId: string): Promise<UserProfile | null> =
       location: data.location || '',
       bio: data.bio || '',
       gallery: Array.isArray(data.gallery) ? data.gallery : [],
+      billingPlan: data.billingPlan || null,
+      billingIsActive: data.billingIsActive ?? false,
     };
   } catch (error: any) {
     console.error('[Load:Profile] Firestore read failed:', error?.code || error?.message);

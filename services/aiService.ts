@@ -91,6 +91,7 @@ export const sendChatMessage = async (
   goalContext: string,
   todoContext: string,
   activeTab?: string,
+  userId?: string,
 ): Promise<ChatApiResponse> => {
   try {
     const response = await fetch('/api/chat', {
@@ -104,8 +105,13 @@ export const sendChatMessage = async (
         goalContext,
         todoContext,
         activeTab,
+        userId,
       }),
     });
+    if (response.status === 429) {
+      const data = await response.json();
+      throw new Error(data.message || '월간 사용량을 초과했습니다');
+    }
     if (!response.ok) {
       const errorText = await response.text();
       throw new Error(errorText);
@@ -229,17 +235,23 @@ export const generateVisualizationImage = async (
 export const generateSuccessNarrative = async (
   goalContext: string,
   profile: UserProfile | null,
+  userId?: string,
 ): Promise<string> => {
   try {
     const response = await fetch('/api/generate-narrative', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ goalContext, profile }),
+      body: JSON.stringify({ goalContext, profile, userId }),
     });
+    if (response.status === 429) {
+      const data = await response.json();
+      throw new Error(data.message || '월간 사용량을 초과했습니다');
+    }
     if (!response.ok) return '';
     const data = await response.json();
     return data.text || '';
-  } catch {
+  } catch (err) {
+    if (err instanceof Error && err.message.includes('사용량')) throw err;
     return '';
   }
 };

@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getOpenAIClient } from '../lib/openaiClient.js';
+import { checkAndIncrement, limitExceededResponse } from '../lib/usageGuard.js';
 
 const NARRATIVE_SYSTEM_PROMPT = `[역할: 잠재의식 해커 & 현실 창조자]
 당신은 사용자의 뇌가 '상상'과 '현실'을 구분하지 못하게 만드는 최면 전문가이자 미래 설계자입니다.
@@ -43,7 +44,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { goalContext, profile } = req.body || {};
+    const { goalContext, profile, userId } = req.body || {};
+
+    const cleanUserId = typeof userId === 'string' ? userId.trim() : '';
+    if (cleanUserId) {
+      const usage = await checkAndIncrement(cleanUserId, 'narrativeCalls');
+      if (!usage.allowed) {
+        return res.status(429).json(limitExceededResponse('narrativeCalls', usage));
+      }
+    }
+
     const openai = getOpenAIClient();
 
     const userContent = [

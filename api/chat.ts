@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getOpenAIClient } from '../lib/openaiClient.js';
 import { getAdminDb } from '../lib/firebaseAdmin.js';
+import { checkAndIncrement, limitExceededResponse } from '../lib/usageGuard.js';
 
 /* ── 메모리 요약 프롬프트 ── */
 
@@ -244,6 +245,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // 메모리 요약 요청은 별도 핸들러로 분기
     if (body.action) {
       return handleMemoryAction(body, res);
+    }
+
+    const userId = typeof body.userId === 'string' ? body.userId.trim() : '';
+    if (userId) {
+      const usage = await checkAndIncrement(userId, 'chatMessages');
+      if (!usage.allowed) {
+        return res.status(429).json(limitExceededResponse('chatMessages', usage));
+      }
     }
 
     const openai = getOpenAIClient();

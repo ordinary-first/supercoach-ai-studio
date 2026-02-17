@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import sharp from 'sharp';
+import { checkAndIncrement, limitExceededResponse } from '../lib/usageGuard.js';
 
 const R2_ACCOUNT_ID = (process.env.R2_ACCOUNT_ID || '').trim();
 const R2_ACCESS_KEY = (process.env.R2_ACCESS_KEY_ID || '').trim();
@@ -166,6 +167,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const { prompt, profile, videoId, userId, durationSec } = req.body || {};
     const effectiveDurationSec = clampDurationSec(durationSec);
+
+    // 신규 생성만 체크 (폴링 재요청은 스킵)
+    const cleanUserIdForUsage = typeof userId === 'string' ? userId.trim() : '';
+    if (cleanUserIdForUsage && !videoId) {
+      const usage = await checkAndIncrement(cleanUserIdForUsage, 'videoGenerations');
+      if (!usage.allowed) {
+        return res.status(429).json(limitExceededResponse('videoGenerations', usage));
+      }
+    }
     const baseUrl = (process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1').trim();
     const authHeaders = { Authorization: `Bearer ${apiKey}` };
 

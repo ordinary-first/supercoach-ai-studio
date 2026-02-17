@@ -4,6 +4,7 @@ import sharp from 'sharp';
 import { toFile } from 'openai/uploads';
 import { getOpenAIClient } from '../lib/openaiClient.js';
 import { getAdminDb } from '../lib/firebaseAdmin.js';
+import { checkAndIncrement, limitExceededResponse } from '../lib/usageGuard.js';
 
 const R2_ACCOUNT_ID = (process.env.R2_ACCOUNT_ID || '').trim();
 const R2_ACCESS_KEY = (process.env.R2_ACCESS_KEY_ID || '').trim();
@@ -212,6 +213,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const cleanPrompt = String(prompt || '').trim();
     if (!cleanPrompt) {
       return fail(res, requestId, 400, 'EMPTY_PROMPT', 'prompt is required');
+    }
+
+    const cleanUserIdForUsage = typeof userId === 'string' ? userId.trim() : '';
+    if (cleanUserIdForUsage) {
+      const usage = await checkAndIncrement(cleanUserIdForUsage, 'imageCredits');
+      if (!usage.allowed) {
+        return res.status(429).json(limitExceededResponse('imageCredits', usage));
+      }
     }
 
     const openai = getOpenAIClient();

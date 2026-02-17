@@ -79,6 +79,7 @@ const CoachChat: React.FC<CoachChatProps> = ({
         goalCtx,
         todoCtx,
         tabLabels[activeTab],
+        userId || undefined,
       );
 
       const aiText = response.candidates?.[0]?.content?.parts
