@@ -1,4 +1,5 @@
 ﻿import { UserProfile } from '../types';
+import { recoverGenerationResult } from './firebaseService';
 
 export interface ChatApiResponse {
   candidates?: {
@@ -196,6 +197,18 @@ export const generateVisualizationImage = async (
       requestId: toOptionalString(payload.requestId),
     };
   } catch (error: unknown) {
+    if (userId && visualizationId) {
+      await sleep(5000);
+      const recovered = await recoverGenerationResult(String(userId), visualizationId, 'image');
+      if (recovered) {
+        return {
+          status: 'completed',
+          imageUrl: typeof recovered.imageUrl === 'string' ? recovered.imageUrl : undefined,
+          imageDataUrl: typeof recovered.imageDataUrl === 'string' ? recovered.imageDataUrl : undefined,
+          requestId: typeof recovered.requestId === 'string' ? recovered.requestId : undefined,
+        };
+      }
+    }
     const detail = error instanceof Error ? error.message : String(error);
     return {
       status: 'failed',
@@ -287,6 +300,17 @@ export const generateSpeech = async (
       requestId: toOptionalString(payload.requestId),
     };
   } catch (error: unknown) {
+    if (userId && visualizationId) {
+      await sleep(5000);
+      const recovered = await recoverGenerationResult(String(userId), visualizationId, 'audio');
+      if (recovered) {
+        return {
+          status: 'completed',
+          audioUrl: typeof recovered.audioUrl === 'string' ? recovered.audioUrl : undefined,
+          requestId: typeof recovered.requestId === 'string' ? recovered.requestId : undefined,
+        };
+      }
+    }
     const detail = error instanceof Error ? error.message : String(error);
     return {
       status: 'failed',

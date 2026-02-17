@@ -467,3 +467,23 @@ export type SyncStatus = 'cloud' | 'offline';
 export const getSyncStatus = (): SyncStatus => {
   return auth.currentUser ? 'cloud' : 'offline';
 };
+
+export const recoverGenerationResult = async (
+  userId: string,
+  generationId: string,
+  type: 'image' | 'audio',
+): Promise<Record<string, unknown> | null> => {
+  if (!db) return null;
+  try {
+    const docId = type === 'audio' ? `${generationId}_audio` : generationId;
+    const docRef = doc(db, 'users', userId, 'generationResults', docId);
+    const snap = await getDoc(docRef);
+    if (!snap.exists()) return null;
+    const data = snap.data();
+    // 복구 후 임시 데이터 삭제
+    try { await deleteDoc(docRef); } catch { /* ignore */ }
+    return data;
+  } catch {
+    return null;
+  }
+};

@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { getOpenAIClient } from '../lib/openaiClient.js';
+import { getAdminDb } from '../lib/firebaseAdmin.js';
 
 const R2_ACCOUNT_ID = (process.env.R2_ACCOUNT_ID || '').trim();
 const R2_ACCESS_KEY = (process.env.R2_ACCESS_KEY_ID || '').trim();
@@ -77,6 +78,23 @@ const uploadToR2 = async (key: string, body: Buffer): Promise<string> => {
   return `${R2_PUBLIC_URL}/${key}`;
 };
 
+const saveGenerationResult = async (
+  userId: string,
+  generationId: string,
+  audioUrl: string | null,
+  requestId: string,
+): Promise<void> => {
+  try {
+    const db = getAdminDb();
+    await db.doc(`users/${userId}/generationResults/${generationId}_audio`).set({
+      type: 'audio',
+      audioUrl,
+      requestId,
+      createdAt: Date.now(),
+    });
+  } catch { /* best effort */ }
+};
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const requestId = createRequestId();
 
@@ -134,6 +152,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const key = `visualizations/${safePathSegment(cleanUserId)}/${safePathSegment(cleanVisualizationId)}/audio.wav`;
         const wav = pcm16ToWavBuffer(audioBuffer);
         const audioUrl = await uploadToR2(key, wav);
+        await saveGenerationResult(cleanUserId, cleanVisualizationId, audioUrl, requestId);
         return res.status(200).json({
           status: 'completed',
           audioUrl,
@@ -145,6 +164,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
+    if (cleanUserId && cleanVisualizationId) {
+      await saveGenerationResult(cleanUserId, cleanVisualizationId, null, requestId);
+    }
     return res.status(200).json({
       status: 'completed',
       audioData: audioBuffer.toString('base64'),

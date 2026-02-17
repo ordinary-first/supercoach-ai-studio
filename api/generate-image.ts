@@ -3,6 +3,7 @@ import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import sharp from 'sharp';
 import { toFile } from 'openai/uploads';
 import { getOpenAIClient } from '../lib/openaiClient.js';
+import { getAdminDb } from '../lib/firebaseAdmin.js';
 
 const R2_ACCOUNT_ID = (process.env.R2_ACCOUNT_ID || '').trim();
 const R2_ACCESS_KEY = (process.env.R2_ACCESS_KEY_ID || '').trim();
@@ -68,6 +69,25 @@ async function uploadToR2(key: string, buffer: Buffer): Promise<string> {
   }));
   return `${R2_PUBLIC_URL}/${key}`;
 }
+
+const saveGenerationResult = async (
+  userId: string,
+  generationId: string,
+  imageUrl: string | null,
+  imageDataUrl: string | null,
+  requestId: string,
+): Promise<void> => {
+  try {
+    const db = getAdminDb();
+    await db.doc(`users/${userId}/generationResults/${generationId}`).set({
+      type: 'image',
+      imageUrl,
+      imageDataUrl,
+      requestId,
+      createdAt: Date.now(),
+    });
+  } catch { /* best effort */ }
+};
 
 async function compressToBuffer(base64Data: string): Promise<Buffer> {
   const buffer = Buffer.from(base64Data, 'base64');
@@ -248,6 +268,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       try {
         const key = `goals/${safePathSegment(cleanUserId)}/${safePathSegment(cleanNodeId)}.jpg`;
         const url = await uploadToR2(key, compressed);
+        await saveGenerationResult(cleanUserId, cleanVisualizationId || cleanNodeId, url, dataUrl, requestId);
         return complete(res, requestId, url, dataUrl);
       } catch (r2Error: unknown) {
         const message = r2Error instanceof Error ? r2Error.message : 'R2 upload failed';
@@ -264,6 +285,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       try {
         const key = `visualizations/${safePathSegment(cleanUserId)}/${safePathSegment(cleanVisualizationId)}/image.jpg`;
         const url = await uploadToR2(key, compressed);
+        await saveGenerationResult(cleanUserId, cleanVisualizationId, url, dataUrl, requestId);
         return complete(res, requestId, url, dataUrl);
       } catch (r2Error: unknown) {
         const message = r2Error instanceof Error ? r2Error.message : 'R2 upload failed';
@@ -271,6 +293,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
+    if (cleanUserId && cleanVisualizationId) {
+      await saveGenerationResult(cleanUserId, cleanVisualizationId, null, dataUrl, requestId);
+    }
     return complete(res, requestId, null, dataUrl);
   } catch (error: unknown) {
     const errorCode = 'IMAGE_GENERATION_FAILED';
