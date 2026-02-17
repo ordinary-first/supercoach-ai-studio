@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import sharp from 'sharp';
 
 const R2_ACCOUNT_ID = (process.env.R2_ACCOUNT_ID || '').trim();
 const R2_ACCESS_KEY = (process.env.R2_ACCESS_KEY_ID || '').trim();
@@ -67,6 +68,21 @@ function pickVideoUrlFromJob(job: unknown): string | null {
     }
   }
   return null;
+}
+
+async function fetchProfileImageForVideo(
+  avatarUrl: string,
+  width: number,
+  height: number,
+): Promise<Buffer | null> {
+  try {
+    const response = await fetch(avatarUrl);
+    if (!response.ok) return null;
+    const raw = Buffer.from(await response.arrayBuffer());
+    return sharp(raw).resize(width, height, { fit: 'cover' }).jpeg({ quality: 85 }).toBuffer();
+  } catch {
+    return null;
+  }
 }
 
 async function uploadVideoToR2(key: string, buffer: Buffer): Promise<string> {
@@ -274,22 +290,50 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    const name = String(profile?.name || 'A person');
-    const videoPrompt = `Cinematic movie scene of ${name} achieving: ${promptText}. High quality, photorealistic, 4k.`;
+    const personDesc = profile
+      ? `${profile.name}, a ${profile.age}yo person in ${profile.location}`
+      : 'A determined person';
+    const videoPrompt = `Cinematic scene of ${personDesc} living the reality of: "${promptText}". Aspirational, warm atmosphere. Smooth natural movement. Soft cinematic lighting.`;
 
-    const createRes = await fetch(`${baseUrl}/videos`, {
-      method: 'POST',
-      headers: {
-        ...authHeaders,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'sora-2',
-        prompt: videoPrompt,
-        seconds: String(effectiveDurationSec),
-        size: '1280x720',
-      }),
-    });
+    // 프로필 아바타가 있으면 input_reference로 전달 (이미지→비디오)
+    const avatarUrl = typeof profile?.avatarUrl === 'string' ? profile.avatarUrl.trim() : '';
+    const profileImage = avatarUrl
+      ? await fetchProfileImageForVideo(avatarUrl, 1280, 720)
+      : null;
+
+    let createRes: Response;
+    if (profileImage) {
+      const formData = new FormData();
+      formData.append('model', 'sora-2');
+      formData.append('prompt', videoPrompt);
+      formData.append('size', '1280x720');
+      formData.append('seconds', String(effectiveDurationSec));
+      formData.append(
+        'input_reference',
+        new Blob([new Uint8Array(profileImage)], { type: 'image/jpeg' }),
+        'profile.jpg',
+      );
+
+      createRes = await fetch(`${baseUrl}/videos`, {
+        method: 'POST',
+        headers: authHeaders,
+        body: formData,
+      });
+    } else {
+      createRes = await fetch(`${baseUrl}/videos`, {
+        method: 'POST',
+        headers: {
+          ...authHeaders,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'sora-2',
+          prompt: videoPrompt,
+          seconds: String(effectiveDurationSec),
+          size: '1280x720',
+        }),
+      });
+    }
 
     if (!createRes.ok) {
       const upstream = await parseUpstreamError(createRes);
