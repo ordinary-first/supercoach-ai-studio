@@ -2,7 +2,7 @@
   "name": "secret-coach",
   "private": true,
   "version": "1.1.0",
-  "displayVersion": "V02.17r5",
+  "displayVersion": "V02.17r6",
   "type": "module",
   "scripts": {
     "dev": "vite",

@@ -158,7 +158,7 @@ export const generateVisualizationImage = async (
         imagePurpose: 'visualization',
         imageQuality,
       }),
-    }, 1);
+    }, 0);
 
     const payload = await parseJsonSafe<Record<string, unknown>>(response);
     if (!response.ok) {
@@ -251,7 +251,7 @@ export const generateSpeech = async (
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text, userId, visualizationId }),
-    }, 1);
+    }, 0);
 
     const payload = await parseJsonSafe<Record<string, unknown>>(response);
     if (!response.ok) {
@@ -400,7 +400,7 @@ export const generateVideo = async (
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ prompt, profile, userId, durationSec }),
-    }, 1);
+    }, 0);
 
     const createPayload = await parseJsonSafe<Record<string, unknown>>(createResponse);
     if (!createResponse.ok) {

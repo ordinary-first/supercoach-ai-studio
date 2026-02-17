@@ -379,6 +379,13 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
     setIsSaved(false);
     clearMessages();
 
+    let wakeLock: WakeLockSentinel | null = null;
+    try {
+      if ('wakeLock' in navigator) {
+        wakeLock = await navigator.wakeLock.request('screen');
+      }
+    } catch { /* 미지원 브라우저 무시 */ }
+
     const result: VisualizationResult = {
       inputText,
       textStatus: 'idle',
@@ -491,6 +498,9 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
     } finally {
       setIsGenerating(false);
       setGeneratingStep('');
+      if (wakeLock) {
+        try { await wakeLock.release(); } catch { /* ignore */ }
+      }
     }
   };
 
