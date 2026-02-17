@@ -47,8 +47,8 @@ export interface UserProfile {
   location: string;
   avatarUrl?: string; 
   googleId?: string;
-  bio?: string;       // ÀÚ±â¼Ò°³
-  gallery?: string[]; // °¶·¯¸® ÀÌ¹ÌÁö URL ¹è¿­
+  bio?: string;       // ï¿½Ú±ï¿½Ò°ï¿½
+  gallery?: string[]; // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ì¹ï¿½ï¿½ï¿½ URL ï¿½è¿­
 }
 
 export type RepeatFrequency = 
@@ -80,5 +80,43 @@ export interface ToDoItem {
   note?: string;
   priority?: TodoPriority;
   tags?: string[];
+}
+
+// Coach Memory System
+
+export type ActionType =
+  | 'ADD_NODE' | 'UPDATE_NODE' | 'DELETE_NODE' | 'COMPLETE_NODE'
+  | 'ADD_TODO' | 'COMPLETE_TODO' | 'DELETE_TODO' | 'UPDATE_TODO'
+  | 'UPDATE_PROGRESS' | 'UPDATE_PROFILE' | 'VIEW_TAB'
+  | 'CREATE_VISUALIZATION' | 'OPEN_COACH' | 'COACH_CONVERSATION';
+
+export interface ActionLogEntry {
+  id: string;
+  action: ActionType;
+  detail: string;
+  timestamp: number;
+  metadata?: Record<string, unknown>;
+}
+
+export interface ShortTermMemory {
+  summary: string;
+  lastActionTimestamp: number;
+  updatedAt: number;
+}
+
+export interface MidTermMemory {
+  summary: string;
+  updatedAt: number;
+}
+
+export interface LongTermMemory {
+  summary: string;
+  updatedAt: number;
+}
+
+export interface CoachMemoryContext {
+  shortTerm: string | null;
+  midTerm: string | null;
+  longTerm: string | null;
 }
 

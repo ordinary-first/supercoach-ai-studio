@@ -1,4 +1,4 @@
-﻿import { UserProfile } from '../types';
+﻿import { UserProfile, CoachMemoryContext } from '../types';
 import { recoverGenerationResult } from './firebaseService';
 
 export interface ChatApiResponse {
@@ -6,10 +6,6 @@ export interface ChatApiResponse {
     content?: {
       parts?: {
         text?: string;
-        functionCall?: {
-          name: string;
-          args?: Record<string, unknown>;
-        };
       }[];
     };
   }[];
@@ -91,12 +87,24 @@ export const sendChatMessage = async (
   history: { role: string; parts: { text?: string }[] }[],
   newMessage: string,
   profile: UserProfile | null,
+  memory: CoachMemoryContext,
+  goalContext: string,
+  todoContext: string,
+  activeTab?: string,
 ): Promise<ChatApiResponse> => {
   try {
     const response = await fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ history, message: newMessage, profile }),
+      body: JSON.stringify({
+        history,
+        message: newMessage,
+        profile,
+        memory,
+        goalContext,
+        todoContext,
+        activeTab,
+      }),
     });
     if (!response.ok) {
       const errorText = await response.text();

@@ -6,6 +6,11 @@ import { Send, MessageCircle, Sparkles } from 'lucide-react';
 import CloseButton from './CloseButton';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { TabType } from './BottomDock';
+import {
+  useCoachMemory,
+  buildGoalContext,
+  buildTodoContext,
+} from '../hooks/useCoachMemory';
 
 interface CoachChatProps {
   isOpen: boolean;
@@ -13,12 +18,8 @@ interface CoachChatProps {
   selectedNode: GoalNode | null;
   nodes?: GoalNode[];
   userProfile: UserProfile | null;
+  userId: string | null;
   todos: ToDoItem[];
-  onUpdateNode: (nodeId: string, updates: Partial<GoalNode>) => void;
-  onAddSubNode: (parentId: string, text: string) => void;
-  onDeleteNode: (nodeId: string) => void;
-  onUpdateRootNode: (text: string) => void;
-  onManualAddNode: () => void;
   onOpenVisualization: () => void;
   messages: ChatMessage[];
   onMessagesChange: React.Dispatch<React.SetStateAction<ChatMessage[]>>;
@@ -26,12 +27,13 @@ interface CoachChatProps {
 }
 
 const CoachChat: React.FC<CoachChatProps> = ({
-  isOpen, onClose, selectedNode, nodes, userProfile, todos, onUpdateNode, onAddSubNode, onDeleteNode, onUpdateRootNode, onManualAddNode, onOpenVisualization, messages, onMessagesChange, activeTab
+  isOpen, onClose, selectedNode, nodes, userProfile, userId, todos, onOpenVisualization, messages, onMessagesChange, activeTab
 }) => {
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const focusTrapRef = useFocusTrap(isOpen);
+  const memory = useCoachMemory(userId, isOpen, nodes || [], todos);
 
   const tabLabels: Record<TabType, string> = {
     GOALS: '목표 마인드맵',
@@ -51,58 +53,50 @@ const CoachChat: React.FC<CoachChatProps> = ({
 
   const handleSend = async () => {
     if (!inputText.trim()) return;
-    const userMsg: ChatMessage = { id: Date.now().toString(), sender: 'user', text: inputText, timestamp: Date.now() };
+    const userMsg: ChatMessage = {
+      id: Date.now().toString(),
+      sender: 'user',
+      text: inputText,
+      timestamp: Date.now(),
+    };
     onMessagesChange(prev => [...prev, userMsg]);
     setInputText('');
     setIsLoading(true);
 
     try {
-      const history = messages.map(m => ({ role: m.sender === 'user' ? 'user' : 'model', parts: [{ text: m.text }] }));
-      const contextMessage = `[사용자가 현재 '${tabLabels[activeTab]}' 화면을 보고 있습니다]\n${userMsg.text}`;
-      const response = await sendChatMessage(history, contextMessage, userProfile);
+      const history = messages.map(m => ({
+        role: m.sender === 'user' ? 'user' : 'model',
+        parts: [{ text: m.text }],
+      }));
+      const goalCtx = buildGoalContext(nodes || []);
+      const todoCtx = buildTodoContext(todos);
 
-      const parts = response.candidates?.[0]?.content?.parts || [];
-      let aiText = '';
-      const actions: string[] = [];
+      const response = await sendChatMessage(
+        history,
+        userMsg.text,
+        userProfile,
+        memory,
+        goalCtx,
+        todoCtx,
+        tabLabels[activeTab],
+      );
 
-      for (const part of parts) {
-        if (part.text) {
-          aiText += part.text;
-        }
-        if ((part as any).functionCall) {
-          const fc = (part as any).functionCall;
-          try {
-            switch (fc.name) {
-              case 'setRootGoal':
-                if (fc.args?.goalText) {
-                  onUpdateRootNode(fc.args.goalText);
-                  actions.push(`✅ 루트 비전 업데이트: "${fc.args.goalText}"`);
-                }
-                break;
-              case 'createSubGoal':
-                if (fc.args?.goalText) {
-                  const parentId = fc.args.parentId || 'root';
-                  onAddSubNode(parentId, fc.args.goalText);
-                  actions.push(`✅ 새 목표 추가: "${fc.args.goalText}"`);
-                }
-                break;
-            }
-          } catch (err) {
-            console.error('Function call execution error:', err);
-          }
-        }
-      }
-
-      // Add action summary if any function calls were made
-      if (actions.length > 0) {
-        aiText += (aiText ? '\n\n' : '') + '---\n**[마인드맵 업데이트]**\n' + actions.join('\n');
-      }
+      const aiText = response.candidates?.[0]?.content?.parts
+        ?.map(p => p.text)
+        .filter(Boolean)
+        .join('') || '';
 
       if (aiText) {
-        onMessagesChange(prev => [...prev, { id: Date.now().toString(), sender: 'ai', text: aiText, timestamp: Date.now() }]);
+        onMessagesChange(prev => [
+          ...prev,
+          { id: Date.now().toString(), sender: 'ai', text: aiText, timestamp: Date.now() },
+        ]);
       }
-    } catch (e) {
-      onMessagesChange(prev => [...prev, { id: 'err-' + Date.now(), sender: 'ai', text: "시스템 통신 오류가 발생했습니다.", timestamp: Date.now() }]);
+    } catch {
+      onMessagesChange(prev => [
+        ...prev,
+        { id: 'err-' + Date.now(), sender: 'ai', text: '시스템 통신 오류가 발생했습니다.', timestamp: Date.now() },
+      ]);
     } finally {
       setIsLoading(false);
     }

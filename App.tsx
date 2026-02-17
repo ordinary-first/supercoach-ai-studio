@@ -25,6 +25,7 @@ import { useAuth } from './hooks/useAuth';
 import { useAutoSave, getLinkId } from './hooks/useAutoSave';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useToast } from './hooks/useToast';
+import { appendAction } from './services/actionLogService';
 import ToastContainer from './components/ToastContainer';
 import { Settings as SettingsIcon } from 'lucide-react';
 
@@ -292,6 +293,9 @@ const App: React.FC = () => {
     if (selectedNode && selectedNode.id === nodeId) {
         setSelectedNode(prev => prev ? { ...prev, ...updates } : null);
     }
+    const actionType = updates.status === 'COMPLETED' ? 'COMPLETE_NODE' as const : 'UPDATE_NODE' as const;
+    const desc = updates.text ? `"${updates.text}"` : updates.progress !== undefined ? `진행률 ${updates.progress}%` : '노드 업데이트';
+    appendAction(getUserId(), actionType, desc, { nodeId });
   }, [selectedNode]);
 
   const handleUpdateRootNode = useCallback((text: string) => {
@@ -317,6 +321,7 @@ const App: React.FC = () => {
     if (!text) {
         setEditingNodeId(newNodeId);
     }
+    if (text) appendAction(getUserId(), 'ADD_NODE', `"${text}" 추가`, { nodeId: newNodeId, parentId });
   }, [dimensions, nodes, handleUpdateNode]);
 
   // 紐낆떆???대?吏 ?앹꽦 (濡깊봽?덉뒪 硫붾돱?먯꽌 ?몄텧)
@@ -355,6 +360,7 @@ const App: React.FC = () => {
       linkedNodeText: node.text,
     }, ...prev]);
     addToast('Todo added.', 'success');
+    appendAction(getUserId(), 'ADD_TODO', `"${node.text}" 할일 변환`, { nodeId, todoId: Date.now().toString() });
   }, [nodes, addToast]);
 
   const handleInsertNodeImage = useCallback((nodeId: string) => {
@@ -412,6 +418,8 @@ const App: React.FC = () => {
       }));
       setSelectedNode(null);
       setDeleteConfirmNodeId(null);
+      const deletedNode = nodes.find(n => n.id === nodeId);
+      appendAction(getUserId(), 'DELETE_NODE', `"${deletedNode?.text || nodeId}" 삭제`, { nodeId });
   }, [nodes]);
 
   const handleDeleteNode = useCallback((nodeId: string) => {
@@ -462,10 +470,14 @@ const App: React.FC = () => {
       // Replace old with completed, add new active
       return prev.map(t => t.id === id ? completedInstance : t).concat(newActiveInstance);
     });
-  }, []);
+    const todo = todos.find(t => t.id === id);
+    appendAction(getUserId(), 'COMPLETE_TODO', `"${todo?.text || id}" ${todo?.completed ? '미완료' : '완료'}`, { todoId: id });
+  }, [todos]);
 
   const handleTabChange = useCallback((tab: TabType) => {
       setActiveTab(tab);
+      const tabNames: Record<TabType, string> = { GOALS: '목표 마인드맵', CALENDAR: '캘린더', TODO: '할 일', VISUALIZE: '시각화' };
+      appendAction(getUserId(), 'VIEW_TAB', tabNames[tab] || tab, { tab });
   }, []);
 
   // --- Keyboard Shortcuts ---
@@ -543,14 +555,28 @@ const App: React.FC = () => {
       <ToDoList isOpen={activeTab === 'TODO'} onClose={() => setActiveTab('GOALS')} onOpenCalendar={() => setActiveTab('CALENDAR')} todos={todos} onAddToDo={(text) => {
   const trimmed = text.trim().slice(0, 500);
   if (!trimmed) return;
-  setTodos(prev => [{id: Date.now().toString(), text: trimmed, completed: false, createdAt: Date.now()}, ...prev]);
-}} onToggleToDo={handleToggleToDo} onDeleteToDo={(id) => setTodos(prev => prev.filter(t => t.id !== id))} onUpdateToDo={(id, up) => setTodos(prev => prev.map(t => t.id === id ? {...t, ...up} : t))} />
+  const newId = Date.now().toString();
+  setTodos(prev => [{id: newId, text: trimmed, completed: false, createdAt: Date.now()}, ...prev]);
+  appendAction(getUserId(), 'ADD_TODO', `"${trimmed}" 추가`, { todoId: newId });
+}} onToggleToDo={handleToggleToDo} onDeleteToDo={(id) => {
+  const todo = todos.find(t => t.id === id);
+  setTodos(prev => prev.filter(t => t.id !== id));
+  appendAction(getUserId(), 'DELETE_TODO', `"${todo?.text || id}" 삭제`, { todoId: id });
+}} onUpdateToDo={(id, up) => {
+  setTodos(prev => prev.map(t => t.id === id ? {...t, ...up} : t));
+  appendAction(getUserId(), 'UPDATE_TODO', `할일 수정`, { todoId: id });
+}} />
       <CalendarView isOpen={activeTab === 'CALENDAR'} onClose={() => setActiveTab('GOALS')} todos={todos} onToggleToDo={handleToggleToDo} />
-      <CoachChat isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} selectedNode={selectedNode} nodes={nodes} userProfile={userProfile} todos={todos} onUpdateNode={handleUpdateNode} onAddSubNode={handleAddSubNode} onDeleteNode={handleDeleteNode} onUpdateRootNode={handleUpdateRootNode} onManualAddNode={() => handleAddSubNode(selectedNode?.id || 'root')} onOpenVisualization={() => setActiveTab('VISUALIZE')} messages={chatMessages} onMessagesChange={setChatMessages} activeTab={activeTab} />
+      <CoachChat isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} selectedNode={selectedNode} nodes={nodes} userProfile={userProfile} userId={getUserId()} todos={todos} onOpenVisualization={() => setActiveTab('VISUALIZE')} messages={chatMessages} onMessagesChange={setChatMessages} activeTab={activeTab} />
       <VisualizationModal isOpen={activeTab === 'VISUALIZE'} onClose={() => setActiveTab('GOALS')} userProfile={userProfile} nodes={nodes} />
       <ShortcutsPanel isOpen={isShortcutsOpen} onClose={() => setIsShortcutsOpen(false)} />
       <BottomDock activeTab={activeTab} onTabChange={handleTabChange} />
-      <CoachBubble isOpen={isChatOpen} onToggle={() => setIsChatOpen(prev => !prev)} />
+      <CoachBubble isOpen={isChatOpen} onToggle={() => {
+        setIsChatOpen(prev => {
+          if (!prev) appendAction(getUserId(), 'OPEN_COACH', '코치 대화 시작');
+          return !prev;
+        });
+      }} />
       <input
         ref={insertImageInputRef}
         type="file"
@@ -574,6 +600,7 @@ const App: React.FC = () => {
           setUserProfile(p);
           const uid = getUserId();
           if (uid) saveProfile(uid, p).catch(() => addToast('프로필 저장에 실패했습니다', 'error'));
+          appendAction(getUserId(), 'UPDATE_PROFILE', `프로필 업데이트: ${p.name}`);
         }} onLogout={() => { logout(); setUserProfile(null); setActiveTab('GOALS'); }}
       />
 
