@@ -517,3 +517,43 @@ export const recoverGenerationResult = async (
     return null;
   }
 };
+
+/* ── 월간 사용량 조회 ── */
+
+export interface MonthlyUsage {
+  chatMessages: number;
+  narrativeCalls: number;
+  imageCredits: number;
+  audioMinutes: number;
+  videoGenerations: number;
+}
+
+export const loadUsage = async (
+  userId: string,
+): Promise<MonthlyUsage> => {
+  const defaults: MonthlyUsage = {
+    chatMessages: 0,
+    narrativeCalls: 0,
+    imageCredits: 0,
+    audioMinutes: 0,
+    videoGenerations: 0,
+  };
+  if (!db || !userId) return defaults;
+  try {
+    const now = new Date();
+    const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const snap = await getDoc(
+      doc(db, 'users', userId, 'usage', monthKey),
+    );
+    const d = snap.data() || {};
+    return {
+      chatMessages: d.chatMessages ?? 0,
+      narrativeCalls: d.narrativeCalls ?? 0,
+      imageCredits: d.imageCredits ?? 0,
+      audioMinutes: d.audioMinutes ?? 0,
+      videoGenerations: d.videoGenerations ?? 0,
+    };
+  } catch {
+    return defaults;
+  }
+};

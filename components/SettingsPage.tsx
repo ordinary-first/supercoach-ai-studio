@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   AlertTriangle,
   BadgeCheck,
@@ -23,7 +23,7 @@ import {
 import { createPolarCheckout, type PlanTier } from '../services/polarService';
 import type { UserProfile } from '../types';
 import { uploadProfileGalleryImage } from '../services/aiService';
-import { getUserId } from '../services/firebaseService';
+import { getUserId, loadUsage, type MonthlyUsage } from '../services/firebaseService';
 
 const compressImage = (
   file: File,
@@ -149,6 +149,33 @@ const PLANS: { plan: PlanTier; title: string; price: string; features: string[] 
   },
 ];
 
+const PLAN_LIMITS: Record<string, Record<string, number>> = {
+  explorer: {
+    chatMessages: 300, narrativeCalls: 5, imageCredits: 8,
+    audioMinutes: 0, videoGenerations: 0,
+  },
+  essential: {
+    chatMessages: 2500, narrativeCalls: 20, imageCredits: 80,
+    audioMinutes: 30, videoGenerations: 0,
+  },
+  visionary: {
+    chatMessages: 6000, narrativeCalls: 40, imageCredits: 180,
+    audioMinutes: 90, videoGenerations: 4,
+  },
+  master: {
+    chatMessages: 15000, narrativeCalls: 80, imageCredits: 450,
+    audioMinutes: 240, videoGenerations: 12,
+  },
+};
+
+const RESOURCE_LABELS: Record<string, string> = {
+  chatMessages: '코칭 채팅',
+  narrativeCalls: '내러티브',
+  imageCredits: '이미지',
+  audioMinutes: '음성 (분)',
+  videoGenerations: '영상',
+};
+
 const parseAge = (rawAge?: string): number | null => {
   if (!rawAge) return null;
   const parsed = Number(rawAge.trim());
@@ -176,6 +203,12 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
   );
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [isUploadingMedia, setIsUploadingMedia] = useState(false);
+  const [usage, setUsage] = useState<MonthlyUsage | null>(null);
+
+  useEffect(() => {
+    if (!isOpen || !externalCustomerId) return;
+    loadUsage(externalCustomerId).then(setUsage);
+  }, [isOpen, externalCustomerId]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
 
@@ -493,21 +526,74 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
               </div>
             </div>
 
+            {usage && (() => {
+              const planKey = profile?.billingPlan || 'explorer';
+              const limits = PLAN_LIMITS[planKey] || PLAN_LIMITS.explorer;
+              const resources = Object.entries(limits).filter(
+                ([, lim]) => lim > 0,
+              );
+              if (resources.length === 0) return null;
+              return (
+                <div className="px-4 py-3 border-b border-white/10 space-y-2">
+                  <p className="text-[11px] text-gray-400 font-bold uppercase tracking-wider">
+                    이번 달 사용량
+                  </p>
+                  {resources.map(([key, lim]) => {
+                    const cur = (usage as Record<string, number>)[key] ?? 0;
+                    const pct = Math.min((cur / lim) * 100, 100);
+                    const color =
+                      pct >= 100
+                        ? 'bg-red-500'
+                        : pct >= 80
+                          ? 'bg-amber-400'
+                          : 'bg-neon-lime';
+                    return (
+                      <div key={key} className="space-y-1">
+                        <div className="flex justify-between text-[11px]">
+                          <span className="text-gray-400">
+                            {RESOURCE_LABELS[key] || key}
+                          </span>
+                          <span
+                            className={
+                              pct >= 100
+                                ? 'text-red-400'
+                                : pct >= 80
+                                  ? 'text-amber-300'
+                                  : 'text-gray-300'
+                            }
+                          >
+                            {cur} / {lim}
+                          </span>
+                        </div>
+                        <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full ${color} transition-all`}
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+
             <div className="px-4 py-3.5 border-b border-white/10 space-y-2">
               {PLANS.map((item) => {
-                const isExplorer = item.plan === 'explorer';
+                const currentPlan = profile?.billingPlan || 'explorer';
+                const isCurrent = item.plan === currentPlan;
                 const isLoading = loadingPlan === item.plan;
                 return (
                   <div
                     key={item.plan}
-                    className={`rounded-xl border bg-black/30 px-3 py-2.5 ${isExplorer ? 'border-neon-lime/30' : 'border-white/10'}`}
+                    className={`rounded-xl border bg-black/30 px-3 py-2.5 ${isCurrent ? 'border-neon-lime/30' : 'border-white/10'}`}
                   >
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm text-white font-medium">{item.title}</p>
                         <p className="text-[11px] text-gray-400">{item.price}</p>
                       </div>
-                      {isExplorer ? (
+                      {isCurrent ? (
                         <span className="text-[10px] text-neon-lime font-bold border border-neon-lime/30 rounded-full px-2 py-0.5">
                           현재 플랜
                         </span>
