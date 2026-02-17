@@ -6,6 +6,7 @@ import {
   loadGoalData,
   loadTodos,
   loadProfile,
+  ensureCreatedAt,
   testFirestoreConnection,
   getSyncStatus,
   SyncStatus,
@@ -18,6 +19,7 @@ export interface AuthState {
   isDataLoaded: boolean;
   syncStatus: SyncStatus;
   userId: string | null;
+  isTrialExpired: boolean;
 }
 
 export function useAuth(
@@ -88,6 +90,9 @@ export function useAuth(
         setSyncStatus(getSyncStatus());
       });
 
+      // 최초 로그인 시 createdAt 보장
+      await ensureCreatedAt(userId);
+
       try {
         const [goalData, todoData, savedProfile] = await Promise.all([
           loadGoalData(userId),
@@ -117,6 +122,9 @@ export function useAuth(
               age: savedProfile.age,
               location: savedProfile.location,
               gender: savedProfile.gender,
+              billingPlan: savedProfile.billingPlan,
+              billingIsActive: savedProfile.billingIsActive,
+              createdAt: savedProfile.createdAt,
             };
           });
         }
@@ -134,6 +142,17 @@ export function useAuth(
     loadData();
   }, [userProfile, isDataLoaded, onGoalDataLoaded, onTodosLoaded]);
 
+  const TRIAL_DAYS = 3;
+  const isTrialExpired = (() => {
+    if (!userProfile) return false;
+    const plan = userProfile.billingPlan;
+    if (plan === 'essential' || plan === 'visionary' || plan === 'master') return false;
+    if (userProfile.billingIsActive) return false;
+    const created = userProfile.createdAt;
+    if (!created) return false;
+    return Date.now() > created + TRIAL_DAYS * 24 * 60 * 60 * 1000;
+  })();
+
   return {
     userProfile,
     setUserProfile,
@@ -141,5 +160,6 @@ export function useAuth(
     isDataLoaded,
     syncStatus,
     userId: userIdRef.current,
+    isTrialExpired,
   };
 }

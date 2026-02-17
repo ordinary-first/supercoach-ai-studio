@@ -45,6 +45,7 @@ interface UsageResult {
   allowed: boolean;
   current: number;
   limit: number;
+  trialExpired?: boolean;
 }
 
 const getMonthKey = (): string => {
@@ -72,6 +73,15 @@ export async function checkAndIncrement(
     rawPlan === 'essential' || rawPlan === 'visionary' || rawPlan === 'master'
       ? rawPlan
       : 'explorer';
+
+  // 트라이얼 만료 체크 (무료 플랜만)
+  const TRIAL_MS = 3 * 24 * 60 * 60 * 1000;
+  if (plan === 'explorer') {
+    const createdAt = profileSnap.data()?.createdAt;
+    if (createdAt && Date.now() > createdAt + TRIAL_MS) {
+      return { allowed: false, current: 0, limit: 0, trialExpired: true };
+    }
+  }
 
   const limit = PLAN_LIMITS[plan][resource];
   if (limit <= 0) {
@@ -104,6 +114,13 @@ export function limitExceededResponse(
   resource: Resource,
   result: UsageResult,
 ) {
+  if (result.trialExpired) {
+    return {
+      error: 'TRIAL_EXPIRED',
+      resource,
+      message: '무료 체험 기간이 종료되었습니다. 플랜을 업그레이드해 주세요.',
+    };
+  }
   return {
     error: 'LIMIT_EXCEEDED',
     resource,

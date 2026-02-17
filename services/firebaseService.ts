@@ -232,13 +232,26 @@ export const loadChatHistory = async (
 
 export const saveProfile = async (userId: string, profile: UserProfile): Promise<void> => {
   if (!userId) return;
+  const docRef = doc(db, 'users', userId, 'profile', 'main');
+  const existing = await getDoc(docRef);
   const profileData = {
     ...profile,
     gallery: Array.isArray(profile.gallery) ? profile.gallery : [],
     updatedAt: Date.now(),
+    createdAt: existing.data()?.createdAt || profile.createdAt || Date.now(),
   };
-  const docRef = doc(db, 'users', userId, 'profile', 'main');
   await setDoc(docRef, profileData);
+};
+
+export const ensureCreatedAt = async (userId: string): Promise<void> => {
+  if (!db || !userId) return;
+  const docRef = doc(db, 'users', userId, 'profile', 'main');
+  const snap = await getDoc(docRef);
+  if (!snap.exists()) {
+    await setDoc(docRef, { createdAt: Date.now() }, { merge: true });
+  } else if (!snap.data()?.createdAt) {
+    await setDoc(docRef, { createdAt: Date.now() }, { merge: true });
+  }
 };
 
 export const loadProfile = async (userId: string): Promise<UserProfile | null> => {
@@ -260,6 +273,7 @@ export const loadProfile = async (userId: string): Promise<UserProfile | null> =
       gallery: Array.isArray(data.gallery) ? data.gallery : [],
       billingPlan: data.billingPlan || null,
       billingIsActive: data.billingIsActive ?? false,
+      createdAt: data.createdAt || undefined,
     };
   } catch (error: any) {
     console.error('[Load:Profile] Firestore read failed:', error?.code || error?.message);

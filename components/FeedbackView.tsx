@@ -100,10 +100,10 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
       `완료된 목표: ${stats.completedNodes}/${stats.totalNodes}`,
     ].join('\n');
 
-    const text = await generateFeedback(period, userProfile, goalContext, todoContext, statsContext);
+    const text = await generateFeedback(period, userProfile, goalContext, todoContext, statsContext, userId);
     setFeedbackText(text || '피드백을 생성하지 못했습니다. 다시 시도해주세요.');
     setIsLoading(false);
-  }, [nodes, todos, period, userProfile, stats]);
+  }, [nodes, todos, period, userProfile, stats, userId]);
 
   if (!isOpen) return null;
 

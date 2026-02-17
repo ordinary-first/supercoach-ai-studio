@@ -29,7 +29,7 @@ import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useToast } from './hooks/useToast';
 import { appendAction } from './services/actionLogService';
 import ToastContainer from './components/ToastContainer';
-import { Settings as SettingsIcon } from 'lucide-react';
+import { Crown, Settings as SettingsIcon } from 'lucide-react';
 
 // Helper function to calculate the next occurrence date for recurring todos
 const calculateNextDate = (repeat: RepeatFrequency, fromDate: Date): number => {
@@ -169,7 +169,7 @@ const App: React.FC = () => {
   // --- Custom Hooks ---
   const { toasts, addToast, removeToast } = useToast();
 
-  const { userProfile, setUserProfile, isInitializing, isDataLoaded, syncStatus, userId } =
+  const { userProfile, setUserProfile, isInitializing, isDataLoaded, syncStatus, userId, isTrialExpired } =
     useAuth(handleGoalDataLoaded, handleTodosLoaded);
 
   useAutoSave(nodes, links, todos, userProfile, isDataLoaded, userId);
@@ -644,6 +644,32 @@ const App: React.FC = () => {
         }}
         onLogout={() => { logout(); setUserProfile(null); setActiveTab('GOALS'); }}
       />
+
+      {isTrialExpired && !isSettingsPageOpen && (
+        <div className="fixed inset-0 z-[150] bg-black/80 backdrop-blur-sm flex items-center justify-center p-6">
+          <div className="bg-[#0a0f1a] border border-white/10 rounded-2xl p-6 max-w-sm w-full text-center space-y-4">
+            <Crown size={40} className="text-neon-lime mx-auto" />
+            <h2 className="text-xl font-bold text-white">무료 체험이 종료되었습니다</h2>
+            <p className="text-sm text-gray-400 leading-relaxed">
+              3일 무료 체험 기간이 끝났습니다.<br />
+              AI 코칭 기능을 계속 사용하려면<br />
+              플랜을 업그레이드해 주세요.
+            </p>
+            <button
+              onClick={() => setIsSettingsPageOpen(true)}
+              className="w-full py-3 bg-neon-lime text-black font-bold rounded-full hover:bg-white transition-all"
+            >
+              플랜 업그레이드
+            </button>
+            <button
+              onClick={(e) => (e.currentTarget.closest('.fixed') as HTMLElement)?.remove()}
+              className="text-[11px] text-gray-600 hover:text-gray-400 transition-colors"
+            >
+              나중에 하기
+            </button>
+          </div>
+        </div>
+      )}
 
       {deleteConfirmNodeId && (
           <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in">

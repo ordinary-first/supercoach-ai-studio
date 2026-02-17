@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getOpenAIClient } from '../lib/openaiClient.js';
+import { checkAndIncrement, limitExceededResponse } from '../lib/usageGuard.js';
 
 type FeedbackPeriod = 'daily' | 'weekly' | 'monthly';
 
@@ -50,7 +51,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { period, profile, goalContext, todoContext, statsContext } = req.body || {};
+    const { period, profile, goalContext, todoContext, statsContext, userId } = req.body || {};
+
+    const cleanUserId = typeof userId === 'string' ? userId.trim() : '';
+    if (cleanUserId) {
+      const usage = await checkAndIncrement(cleanUserId, 'narrativeCalls');
+      if (!usage.allowed) {
+        return res.status(429).json(limitExceededResponse('narrativeCalls', usage));
+      }
+    }
+
     const safePeriod: FeedbackPeriod =
       period === 'weekly' ? 'weekly' : period === 'monthly' ? 'monthly' : 'daily';
 

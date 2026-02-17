@@ -519,17 +519,23 @@ export const generateFeedback = async (
   goalContext: string,
   todoContext: string,
   statsContext: string,
+  userId?: string | null,
 ): Promise<string> => {
   try {
     const response = await fetch('/api/generate-feedback', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ period, profile, goalContext, todoContext, statsContext }),
+      body: JSON.stringify({ period, profile, goalContext, todoContext, statsContext, userId: userId || undefined }),
     });
+    if (response.status === 429) {
+      const data = await response.json();
+      throw new Error(data.message || '사용량을 초과했습니다');
+    }
     if (!response.ok) return '';
     const data = await response.json();
     return data.text || '';
-  } catch {
+  } catch (err) {
+    if (err instanceof Error && err.message.includes('사용량')) throw err;
     return '';
   }
 };

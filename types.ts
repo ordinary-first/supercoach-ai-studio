@@ -51,6 +51,7 @@ export interface UserProfile {
   gallery?: string[];
   billingPlan?: 'explorer' | 'essential' | 'visionary' | 'master' | null;
   billingIsActive?: boolean;
+  createdAt?: number;
 }
 
 export type RepeatFrequency = 
