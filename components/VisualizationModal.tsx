@@ -501,7 +501,7 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
     }
 
     setIsSaving(true);
-    clearMessages();
+    setInfoMessage('');
 
     try {
       const visualizationId = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
