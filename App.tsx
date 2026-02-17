@@ -574,7 +574,7 @@ const App: React.FC = () => {
          </button>
        </div>
 
-      <ToDoList isOpen={activeTab === 'TODO'} onClose={() => setActiveTab('GOALS')} onOpenCalendar={() => setActiveTab('CALENDAR')} todos={todos} onAddToDo={(text) => {
+      <ToDoList isOpen={activeTab === 'TODO'} onClose={() => setActiveTab('GOALS')} todos={todos} onAddToDo={(text) => {
   const trimmed = text.trim().slice(0, 500);
   if (!trimmed) return;
   const newId = Date.now().toString();

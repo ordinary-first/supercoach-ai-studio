@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
-import { Check, Trash2, Plus, ListTodo, Circle, CheckCircle2, Target, Bell, Calendar, Repeat, Sun, ArrowLeft, ChevronRight, Layout, X } from 'lucide-react';
+import { Check, Trash2, Plus, ListTodo, Circle, CheckCircle2, Target, Bell, Repeat, Sun, ArrowLeft, ChevronRight, Layout, X } from 'lucide-react';
 import { ToDoItem, RepeatFrequency } from '../types';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 
 interface ToDoListProps {
   isOpen: boolean;
   onClose: () => void;
-  onOpenCalendar: () => void; // New Prop
   todos: ToDoItem[];
   onAddToDo: (text: string) => void;
   onToggleToDo: (id: string) => void;
@@ -14,7 +13,7 @@ interface ToDoListProps {
   onUpdateToDo: (id: string, updates: Partial<ToDoItem>) => void;
 }
 
-const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, onOpenCalendar, todos, onAddToDo, onToggleToDo, onDeleteToDo, onUpdateToDo }) => {
+const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, onAddToDo, onToggleToDo, onDeleteToDo, onUpdateToDo }) => {
   const [inputText, setInputText] = useState('');
   const [selectedToDoId, setSelectedToDoId] = useState<string | null>(null);
   const focusTrapRef = useFocusTrap(isOpen);
@@ -89,15 +88,6 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, onOpenCalendar, to
                           {new Date().toLocaleDateString('ko-KR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                       </p>
                   </div>
-              </div>
-              <div className="flex items-center gap-3">
-                  <button 
-                    onClick={onOpenCalendar}
-                    className="p-3 rounded-full bg-white/5 hover:bg-neon-lime hover:text-black transition-all group"
-                    title="캘린더 보기"
-                  >
-                      <Calendar size={24} className="group-hover:scale-110 transition-transform"/>
-                  </button>
               </div>
           </div>
 

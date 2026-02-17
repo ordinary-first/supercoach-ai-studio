@@ -681,9 +681,6 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
                 </div>
 
                 {/* Today button */}
-                <button onClick={goToday} className="text-xs font-bold px-4 py-2 bg-neon-lime/10 text-neon-lime border border-neon-lime/30 rounded-full hover:bg-neon-lime hover:text-black transition-all shadow-[0_0_10px_rgba(204,255,0,0.1)] hover:shadow-[0_0_15px_rgba(204,255,0,0.5)]">
-                    오늘
-                </button>
 
                 {/* View Mode Toggle Pills */}
                 {viewMode !== 'day' && (
