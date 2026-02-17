@@ -122,11 +122,31 @@ const LABELS = {
   },
 };
 
-const PLANS: { plan: PlanTier; title: string; price: string }[] = [
-  { plan: 'explorer', title: 'Explorer', price: 'Free' },
-  { plan: 'essential', title: 'Essential', price: '$9.99/mo' },
-  { plan: 'visionary', title: 'Visionary', price: '$19.99/mo' },
-  { plan: 'master', title: 'Master', price: '$49.99/mo' },
+const PLANS: { plan: PlanTier; title: string; price: string; features: string[] }[] = [
+  {
+    plan: 'explorer',
+    title: 'Explorer',
+    price: 'Free',
+    features: ['코칭 채팅 300회/월', '내러티브 5회/월', '이미지 8장/월'],
+  },
+  {
+    plan: 'essential',
+    title: 'Essential',
+    price: '$9.99/mo',
+    features: ['코칭 채팅 2,500회/월', '내러티브 20회/월', '이미지 80장/월', '음성 TTS 30분/월'],
+  },
+  {
+    plan: 'visionary',
+    title: 'Visionary',
+    price: '$19.99/mo',
+    features: ['코칭 채팅 6,000회/월', '내러티브 40회/월', '이미지 180장 (고품질)/월', '음성 90분/월', '영상 4회/월'],
+  },
+  {
+    plan: 'master',
+    title: 'Master',
+    price: '$49.99/mo',
+    features: ['코칭 채팅 15,000회/월', '내러티브 80회/월', '이미지 450장 (고품질)/월', '음성 240분/월', '영상 12회/월'],
+  },
 ];
 
 const parseAge = (rawAge?: string): number | null => {
@@ -475,29 +495,45 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
 
             <div className="px-4 py-3.5 border-b border-white/10 space-y-2">
               {PLANS.map((item) => {
+                const isExplorer = item.plan === 'explorer';
                 const isLoading = loadingPlan === item.plan;
                 return (
-                  <button
+                  <div
                     key={item.plan}
-                    onClick={() => handleCheckout(item.plan)}
-                    disabled={!isAdult || loadingPlan !== null}
-                    className="w-full flex items-center justify-between rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 text-left hover:border-neon-lime/40 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className={`rounded-xl border bg-black/30 px-3 py-2.5 ${isExplorer ? 'border-neon-lime/30' : 'border-white/10'}`}
                   >
-                    <div>
-                      <p className="text-sm text-white font-medium">{item.title}</p>
-                      <p className="text-[11px] text-gray-400">{item.price}</p>
-                    </div>
-                    <span className="inline-flex items-center gap-1 text-xs text-neon-lime">
-                      {isLoading ? (
-                        <>
-                          <Loader2 size={13} className="animate-spin" />
-                          {labels.redirecting}
-                        </>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-white font-medium">{item.title}</p>
+                        <p className="text-[11px] text-gray-400">{item.price}</p>
+                      </div>
+                      {isExplorer ? (
+                        <span className="text-[10px] text-neon-lime font-bold border border-neon-lime/30 rounded-full px-2 py-0.5">
+                          현재 플랜
+                        </span>
                       ) : (
-                        labels.checkout
+                        <button
+                          onClick={() => handleCheckout(item.plan)}
+                          disabled={!isAdult || loadingPlan !== null}
+                          className="inline-flex items-center gap-1 text-xs text-neon-lime hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {isLoading ? (
+                            <>
+                              <Loader2 size={13} className="animate-spin" />
+                              {labels.redirecting}
+                            </>
+                          ) : (
+                            labels.checkout
+                          )}
+                        </button>
                       )}
-                    </span>
-                  </button>
+                    </div>
+                    <div className="mt-1.5 flex flex-wrap gap-x-2 gap-y-0.5">
+                      {item.features.map((f) => (
+                        <span key={f} className="text-[10px] text-gray-500">{f}</span>
+                      ))}
+                    </div>
+                  </div>
                 );
               })}
               {checkoutError && (
