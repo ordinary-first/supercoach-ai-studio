@@ -131,7 +131,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       `${now}_${Math.random().toString(36).slice(2, 8)}`;
 
     const db = getAdminDb();
-    const targetRef = db.doc(`users/${uid}/data/visualizations/${id}`);
+    const targetRef = db.doc(`users/${uid}/visualizations/${id}`);
     try {
       await targetRef.set({
         ...payload,

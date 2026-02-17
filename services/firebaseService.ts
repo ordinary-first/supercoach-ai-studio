@@ -270,7 +270,7 @@ export const loadUserSettings = async (userId: string): Promise<UserSettings | n
 export const loadVisualizations = async (userId: string): Promise<SavedVisualization[]> => {
   if (!userId) return [];
   try {
-    const baseRef = collection(db, 'users', userId, 'data', 'visualizations');
+    const baseRef = collection(db, 'users', userId, 'visualizations');
     const q = query(baseRef, orderBy('timestamp', 'desc'), limit(100));
     const snap = await getDocs(q);
     return snap.docs.map((d) => {
@@ -369,7 +369,7 @@ export const saveVisualization = async (
     timestamp: now,
     updatedAt: now,
   });
-  const docRef = doc(db, 'users', userId, 'data', 'visualizations', id);
+  const docRef = doc(db, 'users', userId, 'visualizations', id);
   await setDoc(docRef, payload);
 
   return {
@@ -452,13 +452,13 @@ export const updateVisualization = async (
     ...updates,
     updatedAt: Date.now(),
   });
-  const docRef = doc(db, 'users', userId, 'data', 'visualizations', visualizationId);
+  const docRef = doc(db, 'users', userId, 'visualizations', visualizationId);
   await setDoc(docRef, payload, { merge: true });
 };
 
 export const deleteVisualization = async (userId: string, visualizationId: string): Promise<void> => {
   if (!userId || !visualizationId) return;
-  const docRef = doc(db, 'users', userId, 'data', 'visualizations', visualizationId);
+  const docRef = doc(db, 'users', userId, 'visualizations', visualizationId);
   await deleteDoc(docRef);
 };
 

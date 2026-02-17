@@ -1,4 +1,10 @@
 {
+  "functions": {
+    "api/generate-image.ts": { "maxDuration": 60 },
+    "api/generate-speech.ts": { "maxDuration": 60 },
+    "api/generate-video.ts": { "maxDuration": 60 },
+    "api/save-visualization.ts": { "maxDuration": 30 }
+  },
   "redirects": [
     {
       "source": "/(.*)",
