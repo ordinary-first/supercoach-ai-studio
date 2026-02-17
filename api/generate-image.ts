@@ -108,6 +108,24 @@ async function loadImageAsBase64FromUrl(url: string): Promise<string | null> {
   }
 }
 
+async function collectProfileImageBuffers(profile: any): Promise<Buffer[]> {
+  const urls: string[] = [];
+  if (typeof profile?.avatarUrl === 'string' && profile.avatarUrl.trim()) {
+    urls.push(profile.avatarUrl);
+  }
+  if (Array.isArray(profile?.gallery)) {
+    for (const u of profile.gallery) {
+      if (typeof u === 'string' && u.trim()) urls.push(u);
+    }
+  }
+  const buffers: Buffer[] = [];
+  for (const url of urls) {
+    const b64 = await loadImageAsBase64FromUrl(url);
+    if (b64) buffers.push(Buffer.from(b64, 'base64'));
+  }
+  return buffers;
+}
+
 function parseDataUrl(dataUrl: string): { mimeType: string; base64: string } | null {
   const match = String(dataUrl).match(/^data:(image\/\w+);base64,(.+)$/);
   if (!match) return null;
@@ -222,25 +240,41 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let rawBase64: string | null = null;
     let rawImageUrl: string | null = null;
 
-    if (!policy.isNodeImage && Array.isArray(referenceImages) && referenceImages.length > 0) {
+    if (!policy.isNodeImage) {
       const files: any[] = [];
-      for (let i = 0; i < referenceImages.length; i += 1) {
-        const parsed = parseDataUrl(referenceImages[i]);
-        if (!parsed) continue;
-        const buf = Buffer.from(parsed.base64, 'base64');
-        files.push(await toFile(buf, `ref-${i}.png`, { type: parsed.mimeType }));
+
+      // 수동 레퍼런스 이미지 (VisualizationModal에서 업로드)
+      if (Array.isArray(referenceImages)) {
+        for (let i = 0; i < referenceImages.length; i += 1) {
+          const parsed = parseDataUrl(referenceImages[i]);
+          if (!parsed) continue;
+          const buf = Buffer.from(parsed.base64, 'base64');
+          files.push(await toFile(buf, `ref-${i}.png`, { type: parsed.mimeType }));
+        }
       }
 
-      const response: any = await openai.images.edit({
-        model: policy.model,
-        image: files,
-        prompt: `Photorealistic, cinematic image of ${personDesc} embodying: "${cleanPrompt}". Use the provided reference images as visual context (face likeness, objects, style). No text overlay. 8k resolution.`,
-        size: '1024x1024',
-        quality: policy.quality,
-      });
+      // 프로필 이미지 자동 포함 (avatarUrl + gallery)
+      const profileBuffers = await collectProfileImageBuffers(profile);
+      for (let i = 0; i < profileBuffers.length; i += 1) {
+        files.push(await toFile(profileBuffers[i], `profile-${i}.jpg`, { type: 'image/jpeg' }));
+      }
 
-      rawBase64 = response?.data?.[0]?.b64_json || null;
-      rawImageUrl = response?.data?.[0]?.url || null;
+      if (files.length > 0) {
+        const response: any = await openai.images.edit({
+          model: policy.model,
+          image: files,
+          prompt: `Photorealistic, cinematic image of ${personDesc} embodying: "${cleanPrompt}". Match the person's face and appearance from the reference photos. Scene should feel aspirational and warm. Soft cinematic lighting. No text, letters, or watermarks.`,
+          size: '1024x1024',
+          quality: policy.quality,
+        });
+
+        rawBase64 = response?.data?.[0]?.b64_json || null;
+        rawImageUrl = response?.data?.[0]?.url || null;
+      } else {
+        const result = await generateWithPrompt(openai, policy.model, policy.quality, textPrompt);
+        rawBase64 = result.b64;
+        rawImageUrl = result.url;
+      }
     } else {
       const result = await generateWithPrompt(openai, policy.model, policy.quality, textPrompt);
       rawBase64 = result.b64;
