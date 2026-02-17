@@ -17,7 +17,9 @@ import { verifyPolarCheckout } from './services/polarService';
 import {
   logout,
   getUserId,
+  loadChatHistory,
   loadUserSettings,
+  saveChatHistory,
   saveProfile,
   saveUserSettings,
 } from './services/firebaseService';
@@ -188,6 +190,26 @@ const App: React.FC = () => {
     setSelectedNode(null);
     setChatMessages([]);
   }, [userId]);
+
+  // 채팅 히스토리 Firestore 로딩
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+    loadChatHistory(userId).then((saved) => {
+      if (cancelled) return;
+      if (saved.length > 0) setChatMessages(saved);
+    });
+    return () => { cancelled = true; };
+  }, [userId]);
+
+  // 채팅 히스토리 디바운스 자동저장 (2초)
+  useEffect(() => {
+    if (!userId || chatMessages.length === 0) return;
+    const timer = setTimeout(() => {
+      saveChatHistory(userId, chatMessages);
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [chatMessages, userId]);
 
   useEffect(() => {
     document.documentElement.lang = language;

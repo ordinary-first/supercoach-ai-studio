@@ -19,7 +19,7 @@ import {
   query,
   setDoc,
 } from 'firebase/firestore';
-import type { GoalLink, GoalNode, ToDoItem, UserProfile } from '../types';
+import type { ChatMessage, GoalLink, GoalNode, ToDoItem, UserProfile } from '../types';
 
 const isDev = typeof process !== 'undefined' && process.env.NODE_ENV === 'development';
 const log = isDev ? console.log : () => {};
@@ -199,6 +199,34 @@ export const loadTodos = async (userId: string): Promise<ToDoItem[] | null> => {
   } catch (error: any) {
     console.error('[Load:Todos] Firestore read failed:', error?.code || error?.message);
     return null;
+  }
+};
+
+const MAX_CHAT_MESSAGES = 200;
+
+export const saveChatHistory = async (
+  userId: string,
+  messages: ChatMessage[],
+): Promise<void> => {
+  if (!userId) return;
+  const trimmed = messages.slice(-MAX_CHAT_MESSAGES);
+  const docRef = doc(db, 'users', userId, 'data', 'chatHistory');
+  await setDoc(docRef, { messages: trimmed, updatedAt: Date.now() });
+};
+
+export const loadChatHistory = async (
+  userId: string,
+): Promise<ChatMessage[]> => {
+  if (!userId) return [];
+  try {
+    const docRef = doc(db, 'users', userId, 'data', 'chatHistory');
+    const snap = await getDoc(docRef);
+    if (!snap.exists()) return [];
+    const data = snap.data() as any;
+    return Array.isArray(data.messages) ? data.messages : [];
+  } catch (error: any) {
+    console.error('[Load:Chat] Firestore read failed:', error?.code || error?.message);
+    return [];
   }
 };
 
