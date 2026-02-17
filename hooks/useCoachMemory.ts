@@ -15,7 +15,7 @@ import {
   cleanupOldActions,
 } from '../services/actionLogService';
 
-const API_BASE = '/api/coach-memory';
+const API_BASE = '/api/chat';
 
 export const buildGoalContext = (nodes: GoalNode[]): string => {
   if (!nodes.length) return '목표 없음';
