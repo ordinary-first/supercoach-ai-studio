@@ -1,8 +1,8 @@
 
 import React from 'react';
-import { Target, ListTodo, Eye, Calendar, User } from 'lucide-react';
+import { Target, ListTodo, Eye, Calendar, BarChart3 } from 'lucide-react';
 
-export type TabType = 'GOALS' | 'TODO' | 'VISUALIZE' | 'CALENDAR' | 'PROFILE';
+export type TabType = 'GOALS' | 'TODO' | 'VISUALIZE' | 'CALENDAR' | 'FEEDBACK';
 
 interface BottomDockProps {
   activeTab: TabType;
@@ -15,7 +15,7 @@ const BottomDock: React.FC<BottomDockProps> = ({ activeTab, onTabChange }) => {
     { id: 'CALENDAR', label: '일정', icon: <Calendar size={24} /> },
     { id: 'TODO', label: '할 일', icon: <ListTodo size={24} /> },
     { id: 'VISUALIZE', label: '시각화', icon: <Eye size={24} /> },
-    { id: 'PROFILE', label: '프로필', icon: <User size={24} /> },
+    { id: 'FEEDBACK', label: '피드백', icon: <BarChart3 size={24} /> },
   ];
 
   return (

@@ -9,8 +9,8 @@ import BottomDock, { TabType } from './components/BottomDock';
 import VisualizationModal from './components/VisualizationModal';
 import CalendarView from './components/CalendarView';
 import LandingPage from './components/LandingPage';
-import UserProfilePage from './components/UserProfilePage';
 import SettingsPage from './components/SettingsPage';
+import FeedbackView from './components/FeedbackView';
 import { GoalNode, GoalLink, NodeType, NodeStatus, ToDoItem, ChatMessage, RepeatFrequency } from './types';
 import { generateGoalImage, uploadNodeImage } from './services/aiService';
 import { verifyPolarCheckout } from './services/polarService';
@@ -498,7 +498,7 @@ const App: React.FC = () => {
 
   const handleTabChange = useCallback((tab: TabType) => {
       setActiveTab(tab);
-      const tabNames: Record<TabType, string> = { GOALS: '목표 마인드맵', CALENDAR: '캘린더', TODO: '할 일', VISUALIZE: '시각화' };
+      const tabNames: Record<TabType, string> = { GOALS: '목표 마인드맵', CALENDAR: '캘린더', TODO: '할 일', VISUALIZE: '시각화', FEEDBACK: '피드백' };
       appendAction(getUserId(), 'VIEW_TAB', tabNames[tab] || tab, { tab });
   }, []);
 
@@ -617,13 +617,13 @@ const App: React.FC = () => {
         </div>
       )}
 
-      <UserProfilePage
-        isOpen={activeTab === 'PROFILE'} onClose={() => setActiveTab('GOALS')} profile={userProfile} onSave={(p) => {
-          setUserProfile(p);
-          const uid = getUserId();
-          if (uid) saveProfile(uid, p).catch(() => addToast('프로필 저장에 실패했습니다', 'error'));
-          appendAction(getUserId(), 'UPDATE_PROFILE', `프로필 업데이트: ${p.name}`);
-        }} onLogout={() => { logout(); setUserProfile(null); setActiveTab('GOALS'); }}
+      <FeedbackView
+        isOpen={activeTab === 'FEEDBACK'}
+        onClose={() => setActiveTab('GOALS')}
+        nodes={nodes}
+        todos={todos}
+        userProfile={userProfile}
+        userId={userId}
       />
 
       <SettingsPage
@@ -635,6 +635,14 @@ const App: React.FC = () => {
         userEmail={userProfile.email}
         userName={userProfile.name}
         externalCustomerId={userProfile.googleId || userId || undefined}
+        profile={userProfile}
+        onSaveProfile={(p) => {
+          setUserProfile(p);
+          const uid = getUserId();
+          if (uid) saveProfile(uid, p).catch(() => addToast('프로필 저장에 실패했습니다', 'error'));
+          appendAction(getUserId(), 'UPDATE_PROFILE', `프로필 업데이트: ${p.name}`);
+        }}
+        onLogout={() => { logout(); setUserProfile(null); setActiveTab('GOALS'); }}
       />
 
       {deleteConfirmNodeId && (

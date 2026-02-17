@@ -501,6 +501,27 @@ export const generateVideo = async (
   }
 };
 
+export const generateFeedback = async (
+  period: 'daily' | 'weekly' | 'monthly',
+  profile: UserProfile | null,
+  goalContext: string,
+  todoContext: string,
+  statsContext: string,
+): Promise<string> => {
+  try {
+    const response = await fetch('/api/generate-feedback', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ period, profile, goalContext, todoContext, statsContext }),
+    });
+    if (!response.ok) return '';
+    const data = await response.json();
+    return data.text || '';
+  } catch {
+    return '';
+  }
+};
+
 export const uploadNodeImage = async (
   imageDataUrl: string,
   userId?: string | null,
