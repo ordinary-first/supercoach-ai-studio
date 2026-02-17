@@ -401,7 +401,7 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
 
       if (settings.text) {
         setGeneratingStep('텍스트 생성 중...');
-        result.text = await generateSuccessNarrative(fullPrompt, userProfile);
+        result.text = await generateSuccessNarrative(fullPrompt, userProfile, activeUserId);
         result.textStatus = result.text ? 'completed' : 'failed';
       }
 
