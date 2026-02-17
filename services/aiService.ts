@@ -195,11 +195,12 @@ export const generateVisualizationImage = async (
       imageDataUrl,
       requestId: toOptionalString(payload.requestId),
     };
-  } catch {
+  } catch (error: unknown) {
+    const detail = error instanceof Error ? error.message : String(error);
     return {
       status: 'failed',
       errorCode: 'IMAGE_NETWORK_ERROR',
-      errorMessage: '이미지 생성 요청 중 네트워크 오류가 발생했습니다.',
+      errorMessage: `이미지 생성 실패: ${detail}`,
     };
   }
 };
@@ -285,11 +286,12 @@ export const generateSpeech = async (
       audioData,
       requestId: toOptionalString(payload.requestId),
     };
-  } catch {
+  } catch (error: unknown) {
+    const detail = error instanceof Error ? error.message : String(error);
     return {
       status: 'failed',
       errorCode: 'SPEECH_NETWORK_ERROR',
-      errorMessage: '오디오 생성 요청 중 네트워크 오류가 발생했습니다.',
+      errorMessage: `오디오 생성 실패: ${detail}`,
     };
   }
 };
@@ -374,13 +376,14 @@ export const pollVideoStatus = async (
     const result = toVideoResult(payload, durationSec);
     if (!result.videoId) result.videoId = videoId;
     return result;
-  } catch {
+  } catch (error: unknown) {
+    const detail = error instanceof Error ? error.message : String(error);
     return {
       videoId,
       status: 'failed',
       durationSec,
       errorCode: 'VIDEO_POLL_NETWORK_ERROR',
-      errorMessage: '영상 상태 확인 중 네트워크 오류가 발생했습니다.',
+      errorMessage: `영상 상태 확인 실패: ${detail}`,
     };
   }
 };
