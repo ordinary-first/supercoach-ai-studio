@@ -92,10 +92,11 @@ const toErrorMeta = (error: unknown): ErrorMeta => {
 
 const formatErrorMeta = (prefix: string, error?: ErrorMeta): string => {
   if (!error) return prefix;
-  const code = error.code ? `코드: ${error.code}` : '';
-  const requestId = error.requestId ? `요청ID: ${error.requestId}` : '';
-  const details = [code, requestId].filter(Boolean).join(', ');
-  return details ? `${prefix} (${details})` : prefix;
+  const parts: string[] = [];
+  if (error.message) parts.push(error.message);
+  if (error.code) parts.push(`코드: ${error.code}`);
+  if (error.requestId) parts.push(`요청ID: ${error.requestId}`);
+  return parts.length ? `${prefix} [${parts.join(' | ')}]` : prefix;
 };
 
 const sanitizeFirestoreString = (value?: string): string | undefined => {
