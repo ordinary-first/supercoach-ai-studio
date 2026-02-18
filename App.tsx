@@ -190,6 +190,7 @@ const App: React.FC = () => {
     setTodos([]);
     setSelectedNode(null);
     setChatMessages([]);
+    setIsSettingsPageOpen(false);
   }, [userId]);
 
   // 채팅 히스토리 Firestore 로딩
@@ -653,7 +654,7 @@ const App: React.FC = () => {
           if (uid) saveProfile(uid, p).catch(() => addToast('프로필 저장에 실패했습니다', 'error'));
           appendAction(getUserId(), 'UPDATE_PROFILE', `프로필 업데이트: ${p.name}`);
         }}
-        onLogout={() => { logout(); setUserProfile(null); setActiveTab('GOALS'); }}
+        onLogout={() => { logout(); setUserProfile(null); setActiveTab('GOALS'); setIsSettingsPageOpen(false); }}
       />
 
       {isTrialExpired && !isSettingsPageOpen && (
