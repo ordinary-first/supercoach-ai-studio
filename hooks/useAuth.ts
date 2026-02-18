@@ -20,6 +20,8 @@ export interface AuthState {
   syncStatus: SyncStatus;
   userId: string | null;
   isTrialExpired: boolean;
+  isNewUser: boolean;
+  setIsNewUser: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 export function useAuth(
@@ -30,6 +32,7 @@ export function useAuth(
   const [isInitializing, setIsInitializing] = useState(true);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('offline');
+  const [isNewUser, setIsNewUser] = useState(false);
   const userIdRef = useRef<string | null>(null);
   const loadedUserIdRef = useRef<string | null>(null);
   const isLoadingRef = useRef(false);
@@ -111,8 +114,11 @@ export function useAuth(
           onTodosLoaded(todoData);
         }
 
-        // Merge saved profile WITHOUT triggering re-render loop
+        // 온보딩 완료 여부 판단 (source of truth: Firestore onboardingCompleted 필드)
         if (savedProfile) {
+          const needsOnboarding = savedProfile.onboardingCompleted === false;
+          setIsNewUser(needsOnboarding);
+
           setUserProfile(prev => {
             if (!prev) return savedProfile;
             return {
@@ -125,6 +131,7 @@ export function useAuth(
               billingPlan: savedProfile.billingPlan,
               billingIsActive: savedProfile.billingIsActive,
               createdAt: savedProfile.createdAt,
+              onboardingCompleted: savedProfile.onboardingCompleted,
             };
           });
         }
@@ -161,5 +168,7 @@ export function useAuth(
     syncStatus,
     userId: userIdRef.current,
     isTrialExpired,
+    isNewUser,
+    setIsNewUser,
   };
 }

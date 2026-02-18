@@ -52,6 +52,7 @@ export interface UserProfile {
   billingPlan?: 'explorer' | 'essential' | 'visionary' | 'master' | null;
   billingIsActive?: boolean;
   createdAt?: number;
+  onboardingCompleted?: boolean;
 }
 
 export type RepeatFrequency = 

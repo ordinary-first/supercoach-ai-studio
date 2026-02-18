@@ -10,6 +10,7 @@ import VisualizationModal from './components/VisualizationModal';
 import CalendarView from './components/CalendarView';
 import LandingPage from './components/LandingPage';
 import SettingsPage from './components/SettingsPage';
+import OnboardingScreen from './components/OnboardingScreen';
 import FeedbackView from './components/FeedbackView';
 import { GoalNode, GoalLink, NodeType, NodeStatus, ToDoItem, ChatMessage, RepeatFrequency } from './types';
 import { generateGoalImage, uploadNodeImage } from './services/aiService';
@@ -169,7 +170,7 @@ const App: React.FC = () => {
   // --- Custom Hooks ---
   const { toasts, addToast, removeToast } = useToast();
 
-  const { userProfile, setUserProfile, isInitializing, isDataLoaded, syncStatus, userId, isTrialExpired } =
+  const { userProfile, setUserProfile, isInitializing, isDataLoaded, syncStatus, userId, isTrialExpired, isNewUser, setIsNewUser } =
     useAuth(handleGoalDataLoaded, handleTodosLoaded);
 
   useAutoSave(nodes, links, todos, userProfile, isDataLoaded, userId);
@@ -541,6 +542,16 @@ const App: React.FC = () => {
 
   if (!userProfile) {
       return <LandingPage onLoginSuccess={(p) => setUserProfile(p)} />;
+  }
+
+  if (isNewUser) {
+    return (
+      <OnboardingScreen
+        userProfile={userProfile}
+        userId={userId}
+        onComplete={() => setIsNewUser(false)}
+      />
+    );
   }
 
   return (

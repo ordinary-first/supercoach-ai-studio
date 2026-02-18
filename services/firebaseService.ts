@@ -1,6 +1,7 @@
 import { initializeApp, getApp, getApps } from 'firebase/app';
 import {
   GoogleAuthProvider,
+  getAdditionalUserInfo,
   getAuth,
   onAuthStateChanged,
   signInWithPopup,
@@ -61,7 +62,7 @@ export interface UserSettings {
   updatedAt: number;
 }
 
-export const loginWithGoogle = async (): Promise<User | null> => {
+export const loginWithGoogle = async (): Promise<{ user: User; isNewUser: boolean } | null> => {
   try {
     if (auth.currentUser) {
       try {
@@ -71,7 +72,17 @@ export const loginWithGoogle = async (): Promise<User | null> => {
       }
     }
     const result = await signInWithPopup(auth, googleProvider);
-    return result?.user ?? null;
+    if (!result?.user) return null;
+    const isNewUser = getAdditionalUserInfo(result)?.isNewUser ?? false;
+    if (isNewUser && db) {
+      // 신규 유저: onboardingCompleted: false + createdAt 초기화
+      await setDoc(
+        doc(db, 'users', result.user.uid, 'profile', 'main'),
+        { onboardingCompleted: false, createdAt: Date.now() },
+        { merge: true },
+      );
+    }
+    return { user: result.user, isNewUser };
   } catch (error: any) {
     const code = error?.code || '';
     if (code === 'auth/unauthorized-domain') {
@@ -84,6 +95,15 @@ export const loginWithGoogle = async (): Promise<User | null> => {
     console.error('[Auth] Google Login Error:', code, error);
     throw error;
   }
+};
+
+export const completeOnboarding = async (userId: string): Promise<void> => {
+  if (!db || !userId) return;
+  await setDoc(
+    doc(db, 'users', userId, 'profile', 'main'),
+    { onboardingCompleted: true },
+    { merge: true },
+  );
 };
 
 export const logout = async () => {
@@ -274,6 +294,7 @@ export const loadProfile = async (userId: string): Promise<UserProfile | null> =
       billingPlan: data.billingPlan || null,
       billingIsActive: data.billingIsActive ?? false,
       createdAt: data.createdAt || undefined,
+      onboardingCompleted: data.onboardingCompleted ?? true,
     };
   } catch (error: any) {
     console.error('[Load:Profile] Firestore read failed:', error?.code || error?.message);
