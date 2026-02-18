@@ -1,7 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  AlertTriangle,
-  BadgeCheck,
   Calendar,
   Camera,
   ChevronRight,
@@ -80,9 +78,6 @@ const LABELS = {
     account: 'Account',
     notifications: 'Notifications',
     polarPolicyTitle: 'Polar compliance',
-    adultReady: 'Checkout ready (18+)',
-    ageBlocked: 'Checkout blocked: adults only (18+).',
-    ageMissing: 'Add your age in profile to enable checkout.',
     ruleDigitalOnly: 'Digital SaaS only. No physical goods.',
     ruleNoHumanService: 'No consulting or human-delivered service.',
     ruleNoDonation: 'No donations, tips, or pure money transfers.',
@@ -105,9 +100,6 @@ const LABELS = {
     account: '계정',
     notifications: '알림',
     polarPolicyTitle: 'Polar 규정 체크',
-    adultReady: '결제 준비 가능 (18+)',
-    ageBlocked: '결제 차단: 성인(18+)만 이용 가능합니다.',
-    ageMissing: '프로필에 나이를 입력하면 결제를 진행할 수 있습니다.',
     ruleDigitalOnly: '디지털 SaaS만 판매. 물리 상품 금지.',
     ruleNoHumanService: '컨설팅/인적 서비스 결제 금지.',
     ruleNoDonation: '후원/기부/팁 형태 결제 금지.',
@@ -174,13 +166,6 @@ const RESOURCE_LABELS: Record<string, string> = {
   imageCredits: '이미지',
   audioMinutes: '음성 (분)',
   videoGenerations: '영상',
-};
-
-const parseAge = (rawAge?: string): number | null => {
-  if (!rawAge) return null;
-  const parsed = Number(rawAge.trim());
-  if (!Number.isFinite(parsed) || parsed <= 0) return null;
-  return parsed;
 };
 
 const SettingsPage: React.FC<SettingsPageProps> = ({
@@ -265,9 +250,6 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
   if (!isOpen) return null;
 
   const labels = LABELS[language];
-  const age = parseAge(userAge);
-  const hasAge = age !== null;
-  const isAdult = hasAge && age >= 18;
 
   const customerId = (() => {
     if (externalCustomerId && externalCustomerId.trim().length > 0) {
@@ -280,8 +262,6 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
   })();
 
   const handleCheckout = async (plan: PlanTier) => {
-    if (!isAdult) return;
-
     setCheckoutError('');
     setLoadingPlan(plan);
 
@@ -511,21 +491,6 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
               <span className="text-[11px] text-gray-400">{labels.choosePlan}</span>
             </div>
 
-            <div className="px-4 py-3 border-b border-white/10">
-              <div className="flex items-start gap-2 text-xs">
-                {isAdult ? (
-                  <BadgeCheck size={14} className="text-emerald-400 mt-0.5 shrink-0" />
-                ) : (
-                  <AlertTriangle size={14} className="text-amber-400 mt-0.5 shrink-0" />
-                )}
-                <p className="text-gray-300">
-                  {isAdult && labels.adultReady}
-                  {!isAdult && hasAge && labels.ageBlocked}
-                  {!isAdult && !hasAge && labels.ageMissing}
-                </p>
-              </div>
-            </div>
-
             {usage && (() => {
               const planKey = profile?.billingPlan || 'explorer';
               const limits = PLAN_LIMITS[planKey] || PLAN_LIMITS.explorer;
@@ -600,7 +565,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                       ) : (
                         <button
                           onClick={() => handleCheckout(item.plan)}
-                          disabled={!isAdult || loadingPlan !== null}
+                          disabled={loadingPlan !== null}
                           className="inline-flex items-center gap-1 text-xs text-neon-lime hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {isLoading ? (
