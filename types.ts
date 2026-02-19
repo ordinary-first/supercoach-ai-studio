@@ -86,6 +86,20 @@ export interface ToDoItem {
   tags?: string[];
 }
 
+// Review System
+
+export interface Review {
+  id: string;
+  userId: string;
+  userName: string;
+  userAvatarUrl?: string;
+  userRole?: string;
+  rating: number; // 1-5
+  text: string;
+  createdAt: number;
+  approved: boolean;
+}
+
 // Coach Memory System
 
 export type ActionType =

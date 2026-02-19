@@ -20,7 +20,7 @@ import {
   query,
   setDoc,
 } from 'firebase/firestore';
-import type { ChatMessage, GoalLink, GoalNode, ToDoItem, UserProfile } from '../types';
+import type { ChatMessage, GoalLink, GoalNode, Review, ToDoItem, UserProfile } from '../types';
 
 const isDev = typeof process !== 'undefined' && process.env.NODE_ENV === 'development';
 const log = isDev ? console.log : () => {};
@@ -590,5 +590,89 @@ export const loadUsage = async (
     };
   } catch {
     return defaults;
+  }
+};
+
+/* ── 후기(Review) 시스템 ── */
+
+export const saveReviewViaApi = async (
+  review: { rating: number; text: string; userRole?: string },
+): Promise<Review> => {
+  const currentUser = auth.currentUser;
+  if (!currentUser) {
+    throw createApiError('AUTH_REQUIRED', '로그인이 필요합니다.');
+  }
+
+  const token = await currentUser.getIdToken();
+  const response = await fetch('/api/save-review', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      rating: review.rating,
+      text: review.text,
+      userRole: review.userRole,
+    }),
+  });
+
+  const body = await parseApiJson(response);
+  if (!response.ok) {
+    const code = String(body.errorCode || `SAVE_REVIEW_${response.status}`);
+    const message = String(body.errorMessage || '후기 저장에 실패했습니다.');
+    throw createApiError(code, message);
+  }
+
+  return body as unknown as Review;
+};
+
+export const loadPublicReviews = async (): Promise<Review[]> => {
+  try {
+    const baseRef = collection(db, 'reviews');
+    const q = query(baseRef, orderBy('createdAt', 'desc'), limit(20));
+    const snap = await getDocs(q);
+    return snap.docs
+      .map((d) => {
+        const data = d.data() as any;
+        return {
+          id: d.id,
+          userId: data.userId || '',
+          userName: data.userName || '익명',
+          userAvatarUrl: data.userAvatarUrl || undefined,
+          userRole: data.userRole || undefined,
+          rating: Number(data.rating || 5),
+          text: String(data.text || ''),
+          createdAt: Number(data.createdAt || 0),
+          approved: data.approved ?? true,
+        } as Review;
+      })
+      .filter((r) => r.approved && r.text.length > 0);
+  } catch (error: any) {
+    console.error('[Load:Reviews] Firestore read failed:', error?.code || error?.message);
+    return [];
+  }
+};
+
+export const loadMyReview = async (userId: string): Promise<Review | null> => {
+  if (!userId) return null;
+  try {
+    const docRef = doc(db, 'reviews', userId);
+    const snap = await getDoc(docRef);
+    if (!snap.exists()) return null;
+    const data = snap.data() as any;
+    return {
+      id: snap.id,
+      userId: data.userId || userId,
+      userName: data.userName || '익명',
+      userAvatarUrl: data.userAvatarUrl || undefined,
+      userRole: data.userRole || undefined,
+      rating: Number(data.rating || 5),
+      text: String(data.text || ''),
+      createdAt: Number(data.createdAt || 0),
+      approved: data.approved ?? true,
+    };
+  } catch {
+    return null;
   }
 };

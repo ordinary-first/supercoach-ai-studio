@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import type { UserProfile } from '../types';
-import { loginWithGoogle } from '../services/firebaseService';
+import type { Review, UserProfile } from '../types';
+import { loadPublicReviews, loginWithGoogle } from '../services/firebaseService';
+import { Star } from 'lucide-react';
 import {
   AlertTriangle,
   Brain,
@@ -102,6 +103,14 @@ const LandingPage: React.FC<LandingPageProps> = () => {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [showSetupGuide, setShowSetupGuide] = useState(false);
+  const [liveReviews, setLiveReviews] = useState<Review[]>([]);
+
+  // Load real reviews from Firestore on mount
+  useEffect(() => {
+    loadPublicReviews().then((reviews) => {
+      if (reviews.length > 0) setLiveReviews(reviews);
+    }).catch(() => { /* fallback to defaults */ });
+  }, []);
 
   const handleGoogleLogin = async () => {
     setErrorMessage(null);
@@ -435,37 +444,74 @@ const LandingPage: React.FC<LandingPageProps> = () => {
             ))}
           </div>
 
-          {/* Testimonials */}
+          {/* Testimonials — real reviews from Firestore, with fallback */}
           <div className="grid gap-4 md:grid-cols-3">
-            {[
-              {
-                name: '김지원',
-                role: '프리랜서 디자이너',
-                text: '"매일 AI가 생성한 성공 이미지를 보다 보니 정말 실행력이 달라졌어요. 3개월째 루틴 유지 중입니다."',
-              },
-              {
-                name: '이승현',
-                role: '스타트업 대표',
-                text: '"혼자 세운 목표는 항상 흐지부지됐는데, AI 코치가 계속 체크해주니까 포기가 안 됩니다. 가성비 미쳤어요."',
-              },
-              {
-                name: '박민경',
-                role: '직장인 / 부업 준비중',
-                text: '"마인드맵으로 큰 목표를 작은 단위로 쪼개니까 막막함이 사라졌어요. 시각화 기능은 진짜 신세계."',
-              },
-            ].map((t) => (
+            {(liveReviews.length >= 3
+              ? liveReviews.slice(0, 6).map((r) => ({
+                  key: r.id,
+                  name: r.userName,
+                  role: r.userRole || '',
+                  text: r.text,
+                  rating: r.rating,
+                  avatarUrl: r.userAvatarUrl,
+                }))
+              : [
+                  {
+                    key: 'default-1',
+                    name: '김지원',
+                    role: '프리랜서 디자이너',
+                    text: '매일 AI가 생성한 성공 이미지를 보다 보니 정말 실행력이 달라졌어요. 3개월째 루틴 유지 중입니다.',
+                    rating: 5,
+                    avatarUrl: undefined,
+                  },
+                  {
+                    key: 'default-2',
+                    name: '이승현',
+                    role: '스타트업 대표',
+                    text: '혼자 세운 목표는 항상 흐지부지됐는데, AI 코치가 계속 체크해주니까 포기가 안 됩니다. 가성비 미쳤어요.',
+                    rating: 5,
+                    avatarUrl: undefined,
+                  },
+                  {
+                    key: 'default-3',
+                    name: '박민경',
+                    role: '직장인 / 부업 준비중',
+                    text: '마인드맵으로 큰 목표를 작은 단위로 쪼개니까 막막함이 사라졌어요. 시각화 기능은 진짜 신세계.',
+                    rating: 5,
+                    avatarUrl: undefined,
+                  },
+                ]
+            ).map((t) => (
               <div
-                key={t.name}
+                key={t.key}
                 className="bg-white/[0.03] border border-white/5 rounded-2xl p-6 space-y-4"
               >
-                <p className="text-[13px] text-gray-300 leading-relaxed italic">{t.text}</p>
+                {/* Star rating */}
+                <div className="flex items-center gap-0.5">
+                  {[1, 2, 3, 4, 5].map((s) => (
+                    <Star
+                      key={s}
+                      size={12}
+                      className={s <= t.rating ? 'text-neon-lime fill-neon-lime' : 'text-gray-700'}
+                    />
+                  ))}
+                </div>
+                <p className="text-[13px] text-gray-300 leading-relaxed">"{t.text}"</p>
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-neon-lime/30 to-electric-orange/30 flex items-center justify-center text-[10px] font-bold">
-                    {t.name[0]}
-                  </div>
+                  {t.avatarUrl ? (
+                    <img
+                      src={t.avatarUrl}
+                      alt=""
+                      className="w-8 h-8 rounded-full border border-white/10 object-cover"
+                    />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-neon-lime/30 to-electric-orange/30 flex items-center justify-center text-[10px] font-bold">
+                      {t.name[0]}
+                    </div>
+                  )}
                   <div>
                     <p className="text-xs font-bold">{t.name}</p>
-                    <p className="text-[10px] text-gray-600">{t.role}</p>
+                    {t.role && <p className="text-[10px] text-gray-600">{t.role}</p>}
                   </div>
                 </div>
               </div>

@@ -12,6 +12,7 @@ import LandingPage from './components/LandingPage';
 import SettingsPage from './components/SettingsPage';
 import OnboardingScreen from './components/OnboardingScreen';
 import FeedbackView from './components/FeedbackView';
+import ReviewModal from './components/ReviewModal';
 import { GoalNode, GoalLink, NodeType, NodeStatus, ToDoItem, ChatMessage, RepeatFrequency } from './types';
 import { generateGoalImage, uploadNodeImage } from './services/aiService';
 import { verifyPolarCheckout } from './services/polarService';
@@ -143,6 +144,7 @@ const App: React.FC = () => {
   const [language, setLanguage] = useState<AppLanguage>(getInitialLanguage);
   const [isLanguageLoaded, setIsLanguageLoaded] = useState(false);
   const [isSettingsPageOpen, setIsSettingsPageOpen] = useState(false);
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
 
   const [nodes, setNodes] = useState<GoalNode[]>(createInitialGoalNodes);
   const [links, setLinks] = useState<GoalLink[]>([]);
@@ -312,6 +314,8 @@ const App: React.FC = () => {
   }, [activeTab]);
 
   // --- Goal Node Operations ---
+  const reviewPromptShownRef = useRef(false);
+
   const handleUpdateNode = useCallback((nodeId: string, updates: Partial<GoalNode>) => {
     setNodes(prev => prev.map(n => n.id === nodeId ? { ...n, ...updates } : n));
     if (selectedNode && selectedNode.id === nodeId) {
@@ -320,6 +324,18 @@ const App: React.FC = () => {
     const actionType = updates.status === 'COMPLETED' ? 'COMPLETE_NODE' as const : 'UPDATE_NODE' as const;
     const desc = updates.text ? `"${updates.text}"` : updates.progress !== undefined ? `진행률 ${updates.progress}%` : '노드 업데이트';
     appendAction(getUserId(), actionType, desc, { nodeId });
+
+    // Prompt review after completing 3rd goal (once per session)
+    if (updates.status === 'COMPLETED' && !reviewPromptShownRef.current) {
+      setNodes(prev => {
+        const completedCount = prev.filter(n => n.status === 'COMPLETED' || (n.id === nodeId && updates.status === 'COMPLETED')).length;
+        if (completedCount >= 3) {
+          reviewPromptShownRef.current = true;
+          setTimeout(() => setIsReviewModalOpen(true), 1500);
+        }
+        return prev;
+      });
+    }
   }, [selectedNode]);
 
   const handleUpdateRootNode = useCallback((text: string) => {
@@ -655,6 +671,15 @@ const App: React.FC = () => {
           appendAction(getUserId(), 'UPDATE_PROFILE', `프로필 업데이트: ${p.name}`);
         }}
         onLogout={() => { logout(); setUserProfile(null); setActiveTab('GOALS'); setIsSettingsPageOpen(false); }}
+        onOpenReview={() => { setIsSettingsPageOpen(false); setIsReviewModalOpen(true); }}
+      />
+
+      <ReviewModal
+        isOpen={isReviewModalOpen}
+        onClose={() => setIsReviewModalOpen(false)}
+        userProfile={userProfile}
+        userId={userId}
+        onSuccess={() => addToast('후기가 등록되었습니다!', 'success')}
       />
 
       {isTrialExpired && !isSettingsPageOpen && (

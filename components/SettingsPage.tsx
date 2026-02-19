@@ -65,6 +65,7 @@ interface SettingsPageProps {
   profile: UserProfile | null;
   onSaveProfile: (updated: UserProfile) => void;
   onLogout: () => void;
+  onOpenReview?: () => void;
 }
 
 const LABELS = {
@@ -180,6 +181,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
   profile,
   onSaveProfile,
   onLogout,
+  onOpenReview,
 }) => {
   const [loadingPlan, setLoadingPlan] = useState<PlanTier | null>(null);
   const [checkoutError, setCheckoutError] = useState('');
@@ -641,6 +643,22 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
               </div>
             </div>
           </section>
+
+          {/* 후기 작성 */}
+          {onOpenReview && (
+            <section className="rounded-2xl border border-neon-lime/20 bg-neon-lime/[0.03] overflow-hidden">
+              <button
+                onClick={onOpenReview}
+                className="w-full flex items-center justify-between px-4 py-3.5 text-neon-lime hover:bg-neon-lime/10 transition-all"
+              >
+                <div className="flex items-center gap-2">
+                  <Quote size={16} />
+                  <span className="text-sm font-medium">후기 작성하기</span>
+                </div>
+                <ChevronRight size={16} className="text-neon-lime/50" />
+              </button>
+            </section>
+          )}
 
           {/* 로그아웃 */}
           <section className="rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
