@@ -1,17 +1,18 @@
 ﻿
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef, Suspense, lazy } from 'react';
 import MindMap from './components/MindMap';
 import CoachChat from './components/CoachChat';
 import CoachBubble from './components/CoachBubble';
 import ShortcutsPanel from './components/ShortcutsPanel';
 import ToDoList from './components/ToDoList';
 import BottomDock, { TabType } from './components/BottomDock';
-import VisualizationModal from './components/VisualizationModal';
-import CalendarView from './components/CalendarView';
 import LandingPage from './components/LandingPage';
-import SettingsPage from './components/SettingsPage';
-import OnboardingScreen from './components/OnboardingScreen';
-import FeedbackView from './components/FeedbackView';
+
+const VisualizationModal = lazy(() => import('./components/VisualizationModal'));
+const CalendarView = lazy(() => import('./components/CalendarView'));
+const SettingsPage = lazy(() => import('./components/SettingsPage'));
+const OnboardingScreen = lazy(() => import('./components/OnboardingScreen'));
+const FeedbackView = lazy(() => import('./components/FeedbackView'));
 import { GoalNode, GoalLink, NodeType, NodeStatus, ToDoItem, ChatMessage, RepeatFrequency } from './types';
 import { generateGoalImage, uploadNodeImage } from './services/aiService';
 import { verifyPolarCheckout } from './services/polarService';
@@ -547,15 +548,18 @@ const App: React.FC = () => {
 
   if (isNewUser) {
     return (
-      <OnboardingScreen
-        userProfile={userProfile}
-        userId={userId}
-        onComplete={() => setIsNewUser(false)}
-      />
+      <Suspense fallback={<div className="w-screen h-screen bg-deep-space" />}>
+        <OnboardingScreen
+          userProfile={userProfile}
+          userId={userId}
+          onComplete={() => setIsNewUser(false)}
+        />
+      </Suspense>
     );
   }
 
   return (
+    <Suspense fallback={null}>
     <div className="relative w-screen h-screen bg-deep-space text-white font-body overflow-hidden">
       {activeTab === 'GOALS' && (
         <>
@@ -718,6 +722,7 @@ const App: React.FC = () => {
 
       <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
+    </Suspense>
   );
 };
 

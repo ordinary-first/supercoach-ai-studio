@@ -76,7 +76,7 @@ export const saveShortTerm = async (
       doc(db, 'users', userId!, 'coachMemory', 'shortTerm'),
       data,
     );
-  } catch { /* best effort */ }
+  } catch (err) { console.error('[coachMemory] save failed:', err); }
 };
 
 export const saveMidTerm = async (
@@ -93,7 +93,7 @@ export const saveMidTerm = async (
       doc(db, 'users', userId!, 'coachMemory', 'midTerm'),
       data,
     );
-  } catch { /* best effort */ }
+  } catch (err) { console.error('[coachMemory] save failed:', err); }
 };
 
 export const saveLongTerm = async (
@@ -110,7 +110,7 @@ export const saveLongTerm = async (
       doc(db, 'users', userId!, 'coachMemory', 'longTerm'),
       data,
     );
-  } catch { /* best effort */ }
+  } catch (err) { console.error('[coachMemory] save failed:', err); }
 };
 
 export const isMidTermStale = (midTermUpdatedAt: number): boolean =>

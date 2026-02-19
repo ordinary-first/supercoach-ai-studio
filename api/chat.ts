@@ -51,6 +51,7 @@ async function summarizeWithAI(
   const openai = getOpenAIClient();
   const response: any = await openai.responses.create({
     model: 'gpt-4o-mini',
+    temperature: 0.3,
     input: [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userContent },
@@ -262,14 +263,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ? `${COACH_SYSTEM_PROMPT}\n\n---\n\n${contextBlock}`
       : COACH_SYSTEM_PROMPT;
 
+    const MAX_HISTORY_MESSAGES = 20;
+    const historyMessages = mapHistoryToInput(body.history);
+    const trimmedHistory = historyMessages.slice(-MAX_HISTORY_MESSAGES);
+
     const input: EasyInputMessage[] = [
       { role: 'system', content: systemContent },
-      ...mapHistoryToInput(body.history),
+      ...trimmedHistory,
       { role: 'user', content: String(body.message || '') },
     ];
 
     const response = await openai.responses.create({
       model: 'gpt-4o-mini',
+      temperature: 0.7,
       input,
     });
 

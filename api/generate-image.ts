@@ -89,7 +89,7 @@ const saveGenerationResult = async (
       requestId,
       createdAt: Date.now(),
     });
-  } catch { /* best effort */ }
+  } catch (err) { console.error('[generate-image][save-result]', err instanceof Error ? err.message : err); }
 };
 
 async function compressToBuffer(base64Data: string): Promise<Buffer> {

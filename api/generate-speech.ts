@@ -95,7 +95,7 @@ const saveGenerationResult = async (
       requestId,
       createdAt: Date.now(),
     });
-  } catch { /* best effort */ }
+  } catch (err) { console.error('[generate-speech][save-result]', err instanceof Error ? err.message : err); }
 };
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {

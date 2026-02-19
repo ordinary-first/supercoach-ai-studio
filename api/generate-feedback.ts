@@ -79,6 +79,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const response: any = await openai.responses.create({
       model: 'gpt-4o-mini',
+      temperature: 0.6,
       input: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userContent },
