@@ -14,6 +14,7 @@ import {
   getRecentActions,
   cleanupOldActions,
 } from '../services/actionLogService';
+import { getAuthHeaders } from '../services/apiClient';
 
 const API_BASE = '/api/chat';
 
@@ -119,6 +120,7 @@ async function refreshInBackground(
     ]);
 
     let changed = false;
+    const headers = await getAuthHeaders();
 
     // 단기 메모리 갱신
     const latestAction = actions.length > 0
@@ -129,10 +131,9 @@ async function refreshInBackground(
       try {
         const res = await fetch(API_BASE, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers,
           body: JSON.stringify({
             action: 'summarize-short',
-            userId,
             actionLogs: actions,
             goalContext,
             todoContext,
@@ -151,10 +152,9 @@ async function refreshInBackground(
       try {
         const midRes = await fetch(API_BASE, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers,
           body: JSON.stringify({
             action: 'summarize-mid',
-            userId,
             existingMemory: existing,
           }),
         });
@@ -165,10 +165,9 @@ async function refreshInBackground(
 
         const longRes = await fetch(API_BASE, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers,
           body: JSON.stringify({
             action: 'promote-long',
-            userId,
             existingMemory: existing,
           }),
         });

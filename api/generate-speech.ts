@@ -3,6 +3,8 @@ import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { getOpenAIClient } from '../lib/openaiClient.js';
 import { getAdminDb } from '../lib/firebaseAdmin.js';
 import { checkAndIncrement, limitExceededResponse } from '../lib/usageGuard.js';
+import { verifyAuth } from '../lib/apiAuth.js';
+import { setCorsHeaders } from '../lib/apiCors.js';
 
 const R2_ACCOUNT_ID = (process.env.R2_ACCOUNT_ID || '').trim();
 const R2_ACCESS_KEY = (process.env.R2_ACCESS_KEY_ID || '').trim();
@@ -99,10 +101,7 @@ const saveGenerationResult = async (
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const requestId = createRequestId();
 
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (setCorsHeaders(req, res)) return;
 
   if (req.method !== 'POST') {
     return res.status(405).json({
@@ -112,6 +111,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       requestId,
     });
   }
+
+  const authUser = await verifyAuth(req, res);
+  if (!authUser) return;
 
   if (!process.env.OPENAI_API_KEY?.trim()) {
     return res.status(500).json({
@@ -123,14 +125,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { text, userId, visualizationId } = req.body || {};
+    const { text, visualizationId } = req.body || {};
 
-    const cleanUserIdForUsage = typeof userId === 'string' ? userId.trim() : '';
-    if (cleanUserIdForUsage) {
-      const usage = await checkAndIncrement(cleanUserIdForUsage, 'audioMinutes');
-      if (!usage.allowed) {
-        return res.status(429).json(limitExceededResponse('audioMinutes', usage));
-      }
+    const usage = await checkAndIncrement(authUser.uid, 'audioMinutes');
+    if (!usage.allowed) {
+      return res.status(429).json(limitExceededResponse('audioMinutes', usage));
     }
 
     const openai = getOpenAIClient();
@@ -154,15 +153,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const audioBuffer = Buffer.from(await audio.arrayBuffer());
 
-    const cleanUserId = typeof userId === 'string' ? userId.trim() : '';
     const cleanVisualizationId = typeof visualizationId === 'string' ? visualizationId.trim() : '';
 
-    if (R2_PUBLIC_URL && cleanUserId && cleanVisualizationId) {
+    if (R2_PUBLIC_URL && cleanVisualizationId) {
       try {
-        const key = `visualizations/${safePathSegment(cleanUserId)}/${safePathSegment(cleanVisualizationId)}/audio.wav`;
+        const key = `visualizations/${safePathSegment(authUser.uid)}/${safePathSegment(cleanVisualizationId)}/audio.wav`;
         const wav = pcm16ToWavBuffer(audioBuffer);
         const audioUrl = await uploadToR2(key, wav);
-        await saveGenerationResult(cleanUserId, cleanVisualizationId, audioUrl, requestId);
+        await saveGenerationResult(authUser.uid, cleanVisualizationId, audioUrl, requestId);
         return res.status(200).json({
           status: 'completed',
           audioUrl,
@@ -174,8 +172,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    if (cleanUserId && cleanVisualizationId) {
-      await saveGenerationResult(cleanUserId, cleanVisualizationId, null, requestId);
+    if (cleanVisualizationId) {
+      await saveGenerationResult(authUser.uid, cleanVisualizationId, null, requestId);
     }
     return res.status(200).json({
       status: 'completed',

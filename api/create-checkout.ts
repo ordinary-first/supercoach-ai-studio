@@ -1,5 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import type { PlanTier } from '../services/polarService';
+import { verifyAuth } from '../lib/apiAuth.js';
+import { setCorsHeaders } from '../lib/apiCors.js';
 
 type CheckoutBody = {
   plan?: PlanTier;
@@ -41,17 +43,14 @@ const cleanOptional = (value: unknown): string | undefined => {
 };
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
+  if (setCorsHeaders(req, res)) return;
 
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
+
+  const authUser = await verifyAuth(req, res);
+  if (!authUser) return;
 
   const accessToken = trim(process.env.POLAR_ACCESS_TOKEN);
   const successUrl = trim(process.env.POLAR_SUCCESS_URL);
@@ -89,7 +88,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     },
   };
 
-  const externalCustomerId = cleanOptional(body.externalCustomerId);
+  const externalCustomerId = cleanOptional(body.externalCustomerId) || authUser.uid;
   const customerEmail = cleanOptional(body.customerEmail);
   const customerName = cleanOptional(body.customerName);
 

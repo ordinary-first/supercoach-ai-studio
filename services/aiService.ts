@@ -1,5 +1,6 @@
 ﻿import { UserProfile, CoachMemoryContext } from '../types';
 import { recoverGenerationResult } from './firebaseService';
+import { getAuthHeaders } from './apiClient';
 
 export interface ChatApiResponse {
   candidates?: {
@@ -94,9 +95,10 @@ export const sendChatMessage = async (
   userId?: string,
 ): Promise<ChatApiResponse> => {
   try {
+    const headers = await getAuthHeaders();
     const response = await fetch('/api/chat', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({
         history,
         message: newMessage,
@@ -105,7 +107,6 @@ export const sendChatMessage = async (
         goalContext,
         todoContext,
         activeTab,
-        userId,
       }),
     });
     if (response.status === 429) {
@@ -131,14 +132,14 @@ export const generateGoalImage = async (
   nodeId?: string,
 ): Promise<string | undefined> => {
   try {
+    const headers = await getAuthHeaders();
     const response = await fetch('/api/generate-image', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({
         prompt: goalText,
         profile,
         childTexts,
-        userId,
         nodeId,
         imagePurpose: 'node',
       }),
@@ -161,14 +162,14 @@ export const generateVisualizationImage = async (
   visualizationId?: string,
 ): Promise<ImageGenerationResult> => {
   try {
+    const headers = await getAuthHeaders();
     const response = await fetchWithRetry('/api/generate-image', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({
         prompt,
         profile,
         referenceImages,
-        userId,
         visualizationId,
         imagePurpose: 'visualization',
         imageQuality,
@@ -238,10 +239,11 @@ export const generateSuccessNarrative = async (
   userId?: string,
 ): Promise<string> => {
   try {
+    const headers = await getAuthHeaders();
     const response = await fetch('/api/generate-narrative', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ goalContext, profile, userId }),
+      headers,
+      body: JSON.stringify({ goalContext, profile }),
     });
     if (response.status === 429) {
       const data = await response.json();
@@ -280,10 +282,11 @@ export const generateSpeech = async (
   visualizationId?: string,
 ): Promise<AudioGenerationResult> => {
   try {
+    const headers = await getAuthHeaders();
     const response = await fetchWithRetry('/api/generate-speech', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text, userId, visualizationId }),
+      headers,
+      body: JSON.stringify({ text, visualizationId }),
     }, 0);
 
     const payload = await parseJsonSafe<Record<string, unknown>>(response);
@@ -393,10 +396,11 @@ export const pollVideoStatus = async (
   durationSec: number = 4,
 ): Promise<VideoGenerationResult> => {
   try {
+    const headers = await getAuthHeaders();
     const response = await fetchWithRetry('/api/generate-video', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ videoId, userId, durationSec }),
+      headers,
+      body: JSON.stringify({ videoId, durationSec }),
     }, 1);
 
     const payload = await parseJsonSafe<Record<string, unknown>>(response);
@@ -440,10 +444,11 @@ export const generateVideo = async (
   try {
     const userId = profile?.googleId || null;
 
+    const headers = await getAuthHeaders();
     const createResponse = await fetchWithRetry('/api/generate-video', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt, profile, userId, durationSec }),
+      headers,
+      body: JSON.stringify({ prompt, profile, durationSec }),
     }, 0);
 
     const createPayload = await parseJsonSafe<Record<string, unknown>>(createResponse);
@@ -522,10 +527,11 @@ export const generateFeedback = async (
   userId?: string | null,
 ): Promise<string> => {
   try {
+    const headers = await getAuthHeaders();
     const response = await fetch('/api/generate-feedback', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ period, profile, goalContext, todoContext, statsContext, userId: userId || undefined }),
+      headers,
+      body: JSON.stringify({ period, profile, goalContext, todoContext, statsContext }),
     });
     if (response.status === 429) {
       const data = await response.json();
@@ -546,10 +552,11 @@ export const uploadNodeImage = async (
   nodeId?: string,
 ): Promise<string | undefined> => {
   try {
+    const headers = await getAuthHeaders();
     const response = await fetch('/api/upload-node-image', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ imageDataUrl, userId, nodeId }),
+      headers,
+      body: JSON.stringify({ imageDataUrl, nodeId }),
     });
     if (!response.ok) return undefined;
     const data = await response.json();
@@ -565,10 +572,11 @@ export const uploadProfileGalleryImage = async (
   slot: 'avatar' | 'gallery' = 'gallery',
 ): Promise<string | undefined> => {
   try {
+    const headers = await getAuthHeaders();
     const response = await fetch('/api/upload-profile-gallery-image', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ imageDataUrl, userId, slot }),
+      headers,
+      body: JSON.stringify({ imageDataUrl, slot }),
     });
     if (!response.ok) return undefined;
     const data = await response.json();
@@ -587,12 +595,12 @@ export const uploadVisualizationAsset = async (
   payload: { dataUrl?: string; audioData?: string },
 ): Promise<string | undefined> => {
   try {
+    const headers = await getAuthHeaders();
     const response = await fetch('/api/upload-visualization-asset', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({
         assetType,
-        userId,
         visualizationId,
         dataUrl: payload.dataUrl,
         audioData: payload.audioData,

@@ -1,6 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import sharp from 'sharp';
+import { verifyAuth } from '../lib/apiAuth.js';
+import { setCorsHeaders } from '../lib/apiCors.js';
 
 // --- R2 Setup (trim env vars: vercel env add can include trailing newlines) ---
 const R2_ACCOUNT_ID = (process.env.R2_ACCOUNT_ID || '').trim();
@@ -43,17 +45,17 @@ async function uploadToR2(key: string, buffer: Buffer): Promise<string> {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (setCorsHeaders(req, res)) return;
 
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  const authUser = await verifyAuth(req, res);
+  if (!authUser) return;
+
   try {
-    const { imageDataUrl, userId, nodeId } = req.body || {};
+    const { imageDataUrl, nodeId } = req.body || {};
     if (!imageDataUrl) {
       return res.status(400).json({ error: 'imageDataUrl is required' });
     }
@@ -65,9 +67,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const compressed = await compressToBuffer(parsed.base64);
 
-    if (userId && nodeId && R2_PUBLIC_URL) {
+    if (nodeId && R2_PUBLIC_URL) {
       try {
-        const key = `goals/${userId}/${nodeId}.jpg`;
+        const key = `goals/${authUser.uid}/${nodeId}.jpg`;
         const imageUrl = await uploadToR2(key, compressed);
         return res.status(200).json({ imageUrl });
       } catch (r2Err: any) {

@@ -1,6 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import sharp from 'sharp';
+import { verifyAuth } from '../lib/apiAuth.js';
+import { setCorsHeaders } from '../lib/apiCors.js';
 
 const R2_ACCOUNT_ID = (process.env.R2_ACCOUNT_ID || '').trim();
 const R2_ACCESS_KEY = (process.env.R2_ACCESS_KEY_ID || '').trim();
@@ -73,32 +75,31 @@ async function uploadToR2(key: string, body: Buffer, contentType: string): Promi
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (setCorsHeaders(req, res)) return;
 
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  const authUser = await verifyAuth(req, res);
+  if (!authUser) return;
+
   try {
     const {
       assetType,
-      userId,
       visualizationId,
       dataUrl,
       audioData,
     } = req.body || {};
 
-    if (!assetType || !userId) {
-      return res.status(400).json({ error: 'assetType and userId are required' });
+    if (!assetType) {
+      return res.status(400).json({ error: 'assetType is required' });
     }
     if (!R2_PUBLIC_URL) {
       return res.status(500).json({ error: 'R2 public url is not configured' });
     }
 
-    const owner = safePathSegment(String(userId));
+    const owner = safePathSegment(authUser.uid);
     const viz = safePathSegment(String(visualizationId || Date.now()));
 
     if (assetType === 'image') {

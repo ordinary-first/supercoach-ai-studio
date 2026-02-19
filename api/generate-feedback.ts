@@ -1,6 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getOpenAIClient } from '../lib/openaiClient.js';
 import { checkAndIncrement, limitExceededResponse } from '../lib/usageGuard.js';
+import { verifyAuth } from '../lib/apiAuth.js';
+import { setCorsHeaders } from '../lib/apiCors.js';
 
 type FeedbackPeriod = 'daily' | 'weekly' | 'monthly';
 
@@ -37,28 +39,25 @@ const FEEDBACK_SYSTEM_PROMPTS: Record<FeedbackPeriod, string> = {
 };
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (setCorsHeaders(req, res)) return;
 
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
+
+  const authUser = await verifyAuth(req, res);
+  if (!authUser) return;
 
   if (!process.env.OPENAI_API_KEY?.trim()) {
     return res.status(500).json({ error: 'API key not configured' });
   }
 
   try {
-    const { period, profile, goalContext, todoContext, statsContext, userId } = req.body || {};
+    const { period, profile, goalContext, todoContext, statsContext } = req.body || {};
 
-    const cleanUserId = typeof userId === 'string' ? userId.trim() : '';
-    if (cleanUserId) {
-      const usage = await checkAndIncrement(cleanUserId, 'narrativeCalls');
-      if (!usage.allowed) {
-        return res.status(429).json(limitExceededResponse('narrativeCalls', usage));
-      }
+    const usage = await checkAndIncrement(authUser.uid, 'narrativeCalls');
+    if (!usage.allowed) {
+      return res.status(429).json(limitExceededResponse('narrativeCalls', usage));
     }
 
     const safePeriod: FeedbackPeriod =

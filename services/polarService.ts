@@ -1,3 +1,5 @@
+import { getAuthHeaders, getAuthToken } from './apiClient';
+
 export type PlanTier = 'explorer' | 'essential' | 'visionary' | 'master';
 
 interface CreateCheckoutRequest {
@@ -32,9 +34,10 @@ const toMessage = (value: unknown): string => {
 export const createPolarCheckout = async (
   payload: CreateCheckoutRequest
 ): Promise<CreateCheckoutResponse> => {
+  const headers = await getAuthHeaders();
   const response = await fetch('/api/create-checkout', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify(payload),
   });
 
@@ -53,9 +56,12 @@ export const createPolarCheckout = async (
 export const verifyPolarCheckout = async (
   checkoutId: string
 ): Promise<VerifyCheckoutResponse> => {
+  const token = await getAuthToken();
+  const fetchHeaders: Record<string, string> = {};
+  if (token) fetchHeaders['Authorization'] = `Bearer ${token}`;
   const response = await fetch(
     `/api/verify-checkout?checkout_id=${encodeURIComponent(checkoutId)}`,
-    { method: 'GET' }
+    { method: 'GET', headers: fetchHeaders }
   );
 
   const result = (await response.json().catch(() => ({}))) as

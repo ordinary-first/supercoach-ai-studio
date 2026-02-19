@@ -1,6 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import sharp from 'sharp';
+import { verifyAuth } from '../lib/apiAuth.js';
+import { setCorsHeaders } from '../lib/apiCors.js';
 
 const R2_ACCOUNT_ID = (process.env.R2_ACCOUNT_ID || '').trim();
 const R2_ACCESS_KEY = (process.env.R2_ACCESS_KEY_ID || '').trim();
@@ -47,19 +49,19 @@ function safePathSegment(value: string): string {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (setCorsHeaders(req, res)) return;
 
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  const authUser = await verifyAuth(req, res);
+  if (!authUser) return;
+
   try {
-    const { imageDataUrl, userId, slot } = req.body || {};
-    if (!imageDataUrl || !userId) {
-      return res.status(400).json({ error: 'imageDataUrl and userId are required' });
+    const { imageDataUrl, slot } = req.body || {};
+    if (!imageDataUrl) {
+      return res.status(400).json({ error: 'imageDataUrl is required' });
     }
     if (!R2_PUBLIC_URL) {
       return res.status(500).json({ error: 'R2 public url is not configured' });
@@ -72,7 +74,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const compressed = await compressToBuffer(parsed.base64);
     const segment = safePathSegment(String(slot || 'gallery'));
-    const key = `profiles/${safePathSegment(String(userId))}/${segment}_${Date.now()}.jpg`;
+    const key = `profiles/${safePathSegment(authUser.uid)}/${segment}_${Date.now()}.jpg`;
     const imageUrl = await uploadToR2(key, compressed);
 
     return res.status(200).json({ imageUrl, key });

@@ -2,6 +2,8 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getOpenAIClient } from '../lib/openaiClient.js';
 import { getAdminDb } from '../lib/firebaseAdmin.js';
 import { checkAndIncrement, limitExceededResponse } from '../lib/usageGuard.js';
+import { verifyAuth } from '../lib/apiAuth.js';
+import { setCorsHeaders } from '../lib/apiCors.js';
 
 /* ── 메모리 요약 프롬프트 ── */
 
@@ -59,12 +61,13 @@ async function summarizeWithAI(
 
 async function handleMemoryAction(
   body: any,
+  userId: string,
   res: VercelResponse,
 ): Promise<void> {
-  const { action, userId, actionLogs, goalContext, todoContext, existingMemory } = body;
+  const { action, actionLogs, goalContext, todoContext, existingMemory } = body;
 
-  if (!userId || !action) {
-    res.status(400).json({ error: 'userId and action required' });
+  if (!action) {
+    res.status(400).json({ error: 'action required' });
     return;
   }
 
@@ -226,14 +229,14 @@ function buildContextBlock(body: any): string {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (setCorsHeaders(req, res)) return;
 
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
+
+  const authUser = await verifyAuth(req, res);
+  if (!authUser) return;
 
   if (!process.env.OPENAI_API_KEY?.trim()) {
     return res.status(500).json({ error: 'API key not configured' });
@@ -244,15 +247,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // 메모리 요약 요청은 별도 핸들러로 분기
     if (body.action) {
-      return handleMemoryAction(body, res);
+      return handleMemoryAction(body, authUser.uid, res);
     }
 
-    const userId = typeof body.userId === 'string' ? body.userId.trim() : '';
-    if (userId) {
-      const usage = await checkAndIncrement(userId, 'chatMessages');
-      if (!usage.allowed) {
-        return res.status(429).json(limitExceededResponse('chatMessages', usage));
-      }
+    const usage = await checkAndIncrement(authUser.uid, 'chatMessages');
+    if (!usage.allowed) {
+      return res.status(429).json(limitExceededResponse('chatMessages', usage));
     }
 
     const openai = getOpenAIClient();
