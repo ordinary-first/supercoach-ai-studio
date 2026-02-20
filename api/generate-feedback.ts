@@ -53,7 +53,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { period, profile, goalContext, todoContext, statsContext } = req.body || {};
+    const { period, profile, goalContext, todoContext, statsContext, locale } = req.body || {};
 
     const usage = await checkAndIncrement(authUser.uid, 'narrativeCalls');
     if (!usage.allowed) {
@@ -64,7 +64,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       period === 'weekly' ? 'weekly' : period === 'monthly' ? 'monthly' : 'daily';
 
     const openai = getOpenAIClient();
-    const systemPrompt = FEEDBACK_SYSTEM_PROMPTS[safePeriod];
+    const safeLocale = typeof locale === 'string' ? locale : 'ko';
+    const langInstruction = safeLocale === 'en'
+      ? '\n\nIMPORTANT: Respond entirely in English.'
+      : '\n\nIMPORTANT: 반드시 한국어로 응답하세요.';
+    const systemPrompt = FEEDBACK_SYSTEM_PROMPTS[safePeriod] + langInstruction;
 
     const personDesc = profile
       ? `${profile.name || '사용자'}, ${profile.age || '?'}세, ${profile.location || '미지정'}`

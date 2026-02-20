@@ -1,4 +1,5 @@
 ﻿import React, { useEffect, useRef, useCallback, useState } from 'react';
+import { useTranslation } from '../i18n/LanguageContext';
 import MindMapSDK from 'simple-mind-map';
 import Drag from 'simple-mind-map/src/plugins/Drag.js';
 import RainbowLines from 'simple-mind-map/src/plugins/RainbowLines.js';
@@ -220,46 +221,18 @@ const layoutOptions: { mode: LayoutMode; label: string }[] = [
   { mode: 'organizationStructure', label: 'Org' },
 ];
 
-const ACTION_BAR_LABELS = {
-  en: {
-    child: 'Child',
-    sibling: 'Sibling',
-    todo: 'Todo',
-    generate: 'Generate',
-    insert: 'Insert',
-    more: 'More',
-    insertImage: 'Insert image',
-    delete: 'Delete',
-  },
-  ko: {
-    child: '자식',
-    sibling: '형제',
-    todo: '투두',
-    generate: '이미지 생성',
-    insert: '이미지 삽입',
-    more: '더보기',
-    insertImage: '이미지 삽입',
-    delete: '삭제',
-  },
-} as const;
-
 // --- Component ---
 const MindMap: React.FC<MindMapProps> = ({
   nodes, links, language, selectedNodeId, onNodeClick, onEditNode, onUpdateNode, onDeleteNode,
   onReparentNode, onConvertNodeToTask, onGenerateImage, onInsertImage, onAddSubNode,
   width, height, editingNodeId, onEditEnd, imageLoadingNodes
 }) => {
+  const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const mindMapRef = useRef<any>(null);
   const [layout, setLayout] = useState<LayoutMode>('mindMap');
   const [actionBar, setActionBar] = useState<ActionBarState | null>(null);
   const [viewScale, setViewScale] = useState(1);
-  const languageByDom = document.documentElement.lang.toLowerCase().startsWith('ko') ? 'ko' : 'en';
-  const resolvedLanguage: 'en' | 'ko' = (
-    language === 'ko'
-    || languageByDom === 'ko'
-  ) ? 'ko' : 'en';
-  const labels = ACTION_BAR_LABELS[resolvedLanguage];
 
   const getCurrentMindMapScale = useCallback(() => {
     const mindMap = mindMapRef.current;
@@ -655,7 +628,7 @@ const MindMap: React.FC<MindMapProps> = ({
               }}
               className="rounded-full px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/10"
             >
-              {labels.child}
+              {t.mindmap.child}
             </button>
 
             {!isRootActionNode && (
@@ -670,7 +643,7 @@ const MindMap: React.FC<MindMapProps> = ({
                   }}
                   className="rounded-full px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/10"
                 >
-                  {labels.sibling}
+                  {t.mindmap.sibling}
                 </button>
                 <button
                   onClick={() => {
@@ -679,7 +652,7 @@ const MindMap: React.FC<MindMapProps> = ({
                   }}
                   className="rounded-full px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/10"
                 >
-                  {labels.todo}
+                  {t.mindmap.todoConvert}
                 </button>
               </>
             )}
@@ -691,7 +664,7 @@ const MindMap: React.FC<MindMapProps> = ({
               }}
               className="rounded-full px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/10"
             >
-              {labels.generate}
+              {t.mindmap.generateImage}
             </button>
 
             {isRootActionNode ? (
@@ -702,7 +675,7 @@ const MindMap: React.FC<MindMapProps> = ({
                 }}
                 className="rounded-full px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/10"
               >
-                {labels.insert}
+                {t.mindmap.insertImage}
               </button>
             ) : (
               <button
@@ -713,7 +686,7 @@ const MindMap: React.FC<MindMapProps> = ({
                 }}
                 className="rounded-full px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/10"
               >
-                {labels.more}
+                {t.mindmap.more}
               </button>
             )}
           </div>
@@ -727,7 +700,7 @@ const MindMap: React.FC<MindMapProps> = ({
                 }}
                 className="w-full rounded-lg px-3 py-2 text-left text-xs font-semibold text-white hover:bg-white/10"
               >
-                {labels.insertImage}
+                {t.mindmap.insertImage}
               </button>
               <button
                 onClick={() => {
@@ -736,7 +709,7 @@ const MindMap: React.FC<MindMapProps> = ({
                 }}
                 className="mt-1 w-full rounded-lg px-3 py-2 text-left text-xs font-semibold text-red-400 hover:bg-red-500/15"
               >
-                {labels.delete}
+                {t.mindmap.deleteNode}
               </button>
             </div>
           )}

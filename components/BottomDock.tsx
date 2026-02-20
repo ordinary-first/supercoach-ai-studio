@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { Target, ListTodo, Eye, Calendar, BarChart3 } from 'lucide-react';
+import { useTranslation } from '../i18n/LanguageContext';
 
 export type TabType = 'GOALS' | 'TODO' | 'VISUALIZE' | 'CALENDAR' | 'FEEDBACK';
 
@@ -10,12 +11,13 @@ interface BottomDockProps {
 }
 
 const BottomDock: React.FC<BottomDockProps> = ({ activeTab, onTabChange }) => {
+  const { t } = useTranslation();
   const tabs: { id: TabType; label: string; icon: React.ReactNode }[] = [
-    { id: 'GOALS', label: '목표', icon: <Target size={24} /> },
-    { id: 'CALENDAR', label: '일정', icon: <Calendar size={24} /> },
-    { id: 'TODO', label: '할 일', icon: <ListTodo size={24} /> },
-    { id: 'VISUALIZE', label: '시각화', icon: <Eye size={24} /> },
-    { id: 'FEEDBACK', label: '피드백', icon: <BarChart3 size={24} /> },
+    { id: 'GOALS', label: t.nav.goals, icon: <Target size={24} /> },
+    { id: 'CALENDAR', label: t.nav.calendar, icon: <Calendar size={24} /> },
+    { id: 'TODO', label: t.nav.todo, icon: <ListTodo size={24} /> },
+    { id: 'VISUALIZE', label: t.nav.visualize, icon: <Eye size={24} /> },
+    { id: 'FEEDBACK', label: t.nav.feedback, icon: <BarChart3 size={24} /> },
   ];
 
   return (
@@ -24,7 +26,7 @@ const BottomDock: React.FC<BottomDockProps> = ({ activeTab, onTabChange }) => {
         className="flex items-center justify-around gap-1 px-4 py-3 bg-black/80 backdrop-blur-xl border border-white/10 rounded-2xl shadow-[0_0_20px_rgba(0,0,0,0.5)]"
         style={{ marginBottom: 'env(safe-area-inset-bottom)' }}
         role="navigation"
-        aria-label="메인 탐색"
+        aria-label={t.nav.mainNav}
       >
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id;

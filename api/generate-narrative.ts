@@ -46,7 +46,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { goalContext, profile } = req.body || {};
+    const { goalContext, profile, locale } = req.body || {};
 
     const usage = await checkAndIncrement(authUser.uid, 'narrativeCalls');
     if (!usage.allowed) {
@@ -54,6 +54,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const openai = getOpenAIClient();
+
+    const safeLocale = typeof locale === 'string' ? locale : 'ko';
+    const langInstruction = safeLocale === 'en'
+      ? '\n\nIMPORTANT: Respond entirely in English.'
+      : '\n\nIMPORTANT: 반드시 한국어로 응답하세요.';
+    const finalSystemPrompt = NARRATIVE_SYSTEM_PROMPT + langInstruction;
 
     const userContent = [
       `목표:\n${String(goalContext || '')}`,
@@ -64,7 +70,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       model: 'gpt-4o-mini',
       temperature: 1.0,
       input: [
-        { role: 'system', content: NARRATIVE_SYSTEM_PROMPT },
+        { role: 'system', content: finalSystemPrompt },
         { role: 'user', content: userContent },
       ],
     });

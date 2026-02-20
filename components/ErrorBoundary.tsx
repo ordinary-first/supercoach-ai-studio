@@ -1,4 +1,5 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
+import ko from '../i18n/ko';
 
 interface Props {
   children: ReactNode;
@@ -40,7 +41,7 @@ class ErrorBoundary extends Component<Props, State> {
               <span className="text-4xl">⚠</span>
             </div>
             <h1 className="text-2xl font-display font-bold tracking-wider text-white">SYSTEM ERROR</h1>
-            <p className="text-sm text-gray-400">예기치 않은 오류가 발생했습니다. 아래 버튼을 눌러 복구하세요.</p>
+            <p className="text-sm text-gray-400">{ko.error.unexpectedError}</p>
             {this.state.error && (
               <div className="bg-white/5 border border-white/10 rounded-xl p-4 text-left">
                 <p className="text-xs text-red-400 font-mono break-all">{this.state.error.message}</p>
@@ -51,13 +52,13 @@ class ErrorBoundary extends Component<Props, State> {
                 onClick={this.handleReset}
                 className="px-6 py-3 bg-white/5 border border-white/10 rounded-full text-sm font-bold hover:bg-white/10 transition-all"
               >
-                다시 시도
+                {ko.error.retry}
               </button>
               <button
                 onClick={this.handleReload}
                 className="px-6 py-3 bg-neon-lime text-black rounded-full text-sm font-bold hover:shadow-[0_0_20px_rgba(204,255,0,0.3)] transition-all"
               >
-                새로고침
+                {ko.error.refresh}
               </button>
             </div>
           </div>

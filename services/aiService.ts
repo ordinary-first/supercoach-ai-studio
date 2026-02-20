@@ -93,6 +93,7 @@ export const sendChatMessage = async (
   todoContext: string,
   activeTab?: string,
   userId?: string,
+  locale?: string,
 ): Promise<ChatApiResponse> => {
   try {
     const headers = await getAuthHeaders();
@@ -107,6 +108,7 @@ export const sendChatMessage = async (
         goalContext,
         todoContext,
         activeTab,
+        locale,
       }),
     });
     if (response.status === 429) {
@@ -237,13 +239,14 @@ export const generateSuccessNarrative = async (
   goalContext: string,
   profile: UserProfile | null,
   userId?: string,
+  locale?: string,
 ): Promise<string> => {
   try {
     const headers = await getAuthHeaders();
     const response = await fetch('/api/generate-narrative', {
       method: 'POST',
       headers,
-      body: JSON.stringify({ goalContext, profile }),
+      body: JSON.stringify({ goalContext, profile, locale }),
     });
     if (response.status === 429) {
       const data = await response.json();
@@ -525,13 +528,14 @@ export const generateFeedback = async (
   todoContext: string,
   statsContext: string,
   userId?: string | null,
+  locale?: string,
 ): Promise<string> => {
   try {
     const headers = await getAuthHeaders();
     const response = await fetch('/api/generate-feedback', {
       method: 'POST',
       headers,
-      body: JSON.stringify({ period, profile, goalContext, todoContext, statsContext }),
+      body: JSON.stringify({ period, profile, goalContext, todoContext, statsContext, locale }),
     });
     if (response.status === 429) {
       const data = await response.json();

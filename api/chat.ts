@@ -259,9 +259,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const openai = getOpenAIClient();
 
     const contextBlock = buildContextBlock(body);
-    const systemContent = contextBlock
+    const locale = typeof body.locale === 'string' ? body.locale : 'ko';
+    const langInstruction = locale === 'en'
+      ? '\n\nIMPORTANT: Respond entirely in English.'
+      : '\n\nIMPORTANT: 반드시 한국어로 응답하세요.';
+    const baseSystemContent = contextBlock
       ? `${COACH_SYSTEM_PROMPT}\n\n---\n\n${contextBlock}`
       : COACH_SYSTEM_PROMPT;
+    const systemContent = baseSystemContent + langInstruction;
 
     const MAX_HISTORY_MESSAGES = 20;
     const historyMessages = mapHistoryToInput(body.history);

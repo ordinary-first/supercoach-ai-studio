@@ -11,6 +11,7 @@ import {
   buildGoalContext,
   buildTodoContext,
 } from '../hooks/useCoachMemory';
+import { useTranslation } from '../i18n/LanguageContext';
 
 interface CoachChatProps {
   isOpen: boolean;
@@ -29,6 +30,7 @@ interface CoachChatProps {
 const CoachChat: React.FC<CoachChatProps> = ({
   isOpen, onClose, selectedNode, nodes, userProfile, userId, todos, onOpenVisualization, messages, onMessagesChange, activeTab
 }) => {
+  const { t, locale } = useTranslation();
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -36,10 +38,11 @@ const CoachChat: React.FC<CoachChatProps> = ({
   const memory = useCoachMemory(userId, isOpen, nodes || [], todos);
 
   const tabLabels: Record<TabType, string> = {
-    GOALS: '목표 마인드맵',
-    CALENDAR: '일정 캘린더',
-    TODO: '할 일 목록',
-    VISUALIZE: '시각화',
+    GOALS: t.coach.tabGoals,
+    CALENDAR: t.coach.tabCalendar,
+    TODO: t.coach.tabTodo,
+    VISUALIZE: t.coach.tabVisualize,
+    FEEDBACK: t.nav.feedback,
   };
 
   const scrollToBottom = () => {
@@ -80,6 +83,7 @@ const CoachChat: React.FC<CoachChatProps> = ({
         todoCtx,
         tabLabels[activeTab],
         userId || undefined,
+        locale,
       );
 
       const aiText = response.candidates?.[0]?.content?.parts
@@ -96,7 +100,7 @@ const CoachChat: React.FC<CoachChatProps> = ({
     } catch {
       onMessagesChange(prev => [
         ...prev,
-        { id: 'err-' + Date.now(), sender: 'ai', text: '시스템 통신 오류가 발생했습니다.', timestamp: Date.now() },
+        { id: 'err-' + Date.now(), sender: 'ai', text: t.coach.systemError, timestamp: Date.now() },
       ]);
     } finally {
       setIsLoading(false);
@@ -119,9 +123,9 @@ const CoachChat: React.FC<CoachChatProps> = ({
                 <MessageCircle className="text-neon-lime w-5 h-5 md:w-8 md:h-8" />
             </div>
             <div>
-                <h1 className="text-lg md:text-2xl font-display font-bold tracking-wider text-white">AI 코치</h1>
+                <h1 className="text-lg md:text-2xl font-display font-bold tracking-wider text-white">{t.coach.title}</h1>
                 <p className="text-[10px] text-neon-lime/60 font-mono mt-0.5">
-                  {tabLabels[activeTab]} 코칭 중
+                  {tabLabels[activeTab]} {t.coach.coaching}
                 </p>
             </div>
         </div>
@@ -136,8 +140,8 @@ const CoachChat: React.FC<CoachChatProps> = ({
                   <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-4">
                     <Sparkles size={28} className="text-neon-lime animate-pulse" />
                   </div>
-                  <p className="text-sm font-display uppercase tracking-widest mb-1 text-gray-500">입력 대기 중</p>
-                  <p className="text-xs text-gray-600 max-w-xs">목표와 비전에 대한 조언을 요청하세요.</p>
+                  <p className="text-sm font-display uppercase tracking-widest mb-1 text-gray-500">{t.coach.waitingInput}</p>
+                  <p className="text-xs text-gray-600 max-w-xs">{t.coach.askAdvice}</p>
               </div>
           )}
           {messages.map((msg) => (
@@ -183,9 +187,9 @@ const CoachChat: React.FC<CoachChatProps> = ({
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && !e.nativeEvent.isComposing && handleSend()}
-                placeholder="코치에게 질문하세요..."
+                placeholder={t.coach.placeholder}
                 className="w-full bg-transparent border-none py-4 px-6 text-lg text-white placeholder-gray-500 focus:outline-none focus:ring-0"
-                aria-label="코치에게 메시지 보내기"
+                aria-label={t.coach.sendMessage}
               />
               <button
                 onClick={handleSend}

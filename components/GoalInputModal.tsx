@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Check, Zap } from 'lucide-react';
+import { useTranslation } from '../i18n/LanguageContext';
 
 interface GoalInputModalProps {
   isOpen: boolean;
@@ -9,6 +10,7 @@ interface GoalInputModalProps {
 }
 
 const GoalInputModal: React.FC<GoalInputModalProps> = ({ isOpen, onClose, onSubmit, parentName }) => {
+  const { t } = useTranslation();
   const [text, setText] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -65,7 +67,7 @@ const GoalInputModal: React.FC<GoalInputModalProps> = ({ isOpen, onClose, onSubm
               onClick={onClose}
               className="px-4 py-2 text-gray-400 hover:text-white transition-colors mr-2"
             >
-              취소
+              {t.common.cancel}
             </button>
             <button
               type="submit"
