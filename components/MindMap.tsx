@@ -244,6 +244,21 @@ const ACTION_BAR_LABELS = {
 } as const;
 
 // --- Component ---
+const LAYOUT_TOOLTIPS = {
+  ko: {
+    mindMap: '자유로운 방사형 마인드맵',
+    logicalStructure: '위에서 아래로 논리적 구조',
+    logicalStructureLeft: '왼쪽 정렬 논리 구조',
+    organizationStructure: '조직도 형태로 보기',
+  },
+  en: {
+    mindMap: 'Free radial mind map',
+    logicalStructure: 'Top-down logical structure',
+    logicalStructureLeft: 'Left-aligned logical structure',
+    organizationStructure: 'Organization chart view',
+  },
+} as const;
+
 const MindMap: React.FC<MindMapProps> = ({
   nodes, links, language, selectedNodeId, onNodeClick, onEditNode, onUpdateNode, onDeleteNode,
   onReparentNode, onConvertNodeToTask, onGenerateImage, onInsertImage, onAddSubNode,
@@ -254,6 +269,9 @@ const MindMap: React.FC<MindMapProps> = ({
   const [layout, setLayout] = useState<LayoutMode>('mindMap');
   const [actionBar, setActionBar] = useState<ActionBarState | null>(null);
   const [viewScale, setViewScale] = useState(1);
+  const [showLayoutTooltips, setShowLayoutTooltips] = useState(() => {
+    try { return !localStorage.getItem('sc_layout_tooltips_seen'); } catch { return true; }
+  });
   const languageByDom = document.documentElement.lang.toLowerCase().startsWith('ko') ? 'ko' : 'en';
   const resolvedLanguage: 'en' | 'ko' = (
     language === 'ko'
@@ -612,19 +630,35 @@ const MindMap: React.FC<MindMapProps> = ({
 
       {/* Layout Switcher */}
       <div className="absolute top-14 right-3 md:top-16 md:right-4 z-10 flex bg-black/60 backdrop-blur-md border border-white/10 rounded-full px-1 py-0.5 gap-0.5">
-        {layoutOptions.map(opt => (
-          <button
-            key={opt.mode}
-            onClick={() => handleLayoutChange(opt.mode)}
-            className={`px-2 py-1 rounded-full text-[9px] md:text-[10px] font-semibold transition-all duration-200 ${
-              layout === opt.mode
-                ? 'bg-neon-lime text-black shadow-[0_0_8px_rgba(204,255,0,0.5)]'
-                : 'text-gray-400 hover:text-white hover:bg-white/10'
-            }`}
-          >
-            {opt.label}
-          </button>
-        ))}
+        {layoutOptions.map(opt => {
+          const tooltipText = LAYOUT_TOOLTIPS[resolvedLanguage]?.[opt.mode] || '';
+          return (
+            <div key={opt.mode} className="relative">
+              <button
+                onClick={() => {
+                  handleLayoutChange(opt.mode);
+                  if (showLayoutTooltips) {
+                    setShowLayoutTooltips(false);
+                    try { localStorage.setItem('sc_layout_tooltips_seen', '1'); } catch {}
+                  }
+                }}
+                className={`px-2 py-1 rounded-full text-[9px] md:text-[10px] font-semibold transition-all duration-200 ${
+                  layout === opt.mode
+                    ? 'bg-neon-lime text-black shadow-[0_0_8px_rgba(204,255,0,0.5)]'
+                    : 'text-gray-400 hover:text-white hover:bg-white/10'
+                }`}
+              >
+                {opt.label}
+              </button>
+              {showLayoutTooltips && tooltipText && (
+                <div className="absolute top-full right-0 mt-2 whitespace-nowrap bg-[#0d1b30]/95 border border-neon-lime/30 text-[10px] text-gray-300 px-3 py-1.5 rounded-lg shadow-xl pointer-events-none animate-fade-in">
+                  {tooltipText}
+                  <div className="absolute -top-1 right-3 w-2 h-2 bg-[#0d1b30] border-l border-t border-neon-lime/30 rotate-45" />
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {/* Mind Map Container */}

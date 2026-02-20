@@ -12,6 +12,7 @@ import LandingPage from './components/LandingPage';
 import SettingsPage from './components/SettingsPage';
 import OnboardingScreen from './components/OnboardingScreen';
 import FeedbackView from './components/FeedbackView';
+import MindMapOnboarding from './components/MindMapOnboarding';
 import { GoalNode, GoalLink, NodeType, NodeStatus, ToDoItem, ChatMessage, RepeatFrequency } from './types';
 import { generateGoalImage, uploadNodeImage } from './services/aiService';
 import { verifyPolarCheckout } from './services/polarService';
@@ -154,6 +155,9 @@ const App: React.FC = () => {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [imageLoadingNodes, setImageLoadingNodes] = useState<Set<string>>(new Set());
+  const [showMindmapOnboarding, setShowMindmapOnboarding] = useState(() => {
+    try { return !localStorage.getItem('sc_mindmap_onboarding_done'); } catch { return true; }
+  });
   const insertImageInputRef = useRef<HTMLInputElement>(null);
   const insertImageTargetNodeRef = useRef<string | null>(null);
 
@@ -573,6 +577,18 @@ const App: React.FC = () => {
                </button>
            </div>
 
+          {/* Mindmap Onboarding: Ghost Templates + Spotlight + Coach Nudge */}
+          {showMindmapOnboarding && nodes.length <= 1 && (
+            <MindMapOnboarding
+              language={language}
+              onDismiss={() => {
+                setShowMindmapOnboarding(false);
+                try { localStorage.setItem('sc_mindmap_onboarding_done', '1'); } catch {}
+              }}
+              onAddNode={handleAddSubNode}
+              onOpenChat={() => setIsChatOpen(true)}
+            />
+          )}
          </>
        )}
  
