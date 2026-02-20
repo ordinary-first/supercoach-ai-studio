@@ -25,17 +25,9 @@ import type { ChatMessage, GoalLink, GoalNode, ToDoItem, UserProfile } from '../
 const isDev = typeof process !== 'undefined' && process.env.NODE_ENV === 'development';
 const log = isDev ? console.log : () => {};
 
-// Vercel 프리뷰에서 Google 로그인이 작동하도록 authDomain을 현재 호스트로 설정
-const defaultAuthDomain = process.env.FIREBASE_AUTH_DOMAIN;
-const authDomain =
-  typeof window !== 'undefined' &&
-  window.location.hostname.endsWith('.vercel.app')
-    ? window.location.hostname
-    : defaultAuthDomain;
-
 const firebaseConfig = {
   apiKey: process.env.FIREBASE_API_KEY,
-  authDomain,
+  authDomain: process.env.FIREBASE_AUTH_DOMAIN,
   projectId: process.env.FIREBASE_PROJECT_ID,
   storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
   messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID,
