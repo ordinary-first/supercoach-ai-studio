@@ -1,5 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getAdminAuth, getAdminDb } from '../lib/firebaseAdmin.js';
+import { getAdminDb } from '../lib/firebaseAdmin.js';
+import { authenticateRequest } from '../lib/authMiddleware.js';
+import { setCorsHeaders } from '../lib/corsHeaders.js';
 
 type VideoStatus = 'pending' | 'ready' | 'failed';
 
@@ -80,18 +82,10 @@ const sanitizeVisualizationId = (value: unknown): string | null => {
   return cleaned || null;
 };
 
-const parseBearerToken = (headerValue: string | undefined): string | null => {
-  if (!headerValue) return null;
-  const match = headerValue.match(/^Bearer\s+(.+)$/i);
-  return match?.[1]?.trim() || null;
-};
-
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const requestId = createRequestId();
 
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  setCorsHeaders(req, res);
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   if (req.method !== 'POST') {
@@ -102,19 +96,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   }
 
-  try {
-    const token = parseBearerToken(req.headers.authorization);
-    if (!token) {
-      return res.status(401).json({
-        errorCode: 'AUTH_HEADER_MISSING',
-        errorMessage: 'Authorization bearer token is required',
-        requestId,
-      });
-    }
+  const { user, error: authError } = await authenticateRequest(req);
+  if (authError) return res.status(authError.status).json({ ...authError.body, requestId });
+  const uid = user!.uid;
 
-    const adminAuth = getAdminAuth();
-    const decoded = await adminAuth.verifyIdToken(token);
-    const uid = decoded.uid;
+  try {
 
     const payload = sanitizePayload(req.body?.payload);
     if (!payload) {
@@ -148,14 +134,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     return res.status(200).json({ id, savedAt: now, requestId });
-  } catch (error: any) {
-    const code = String(error?.code || '');
-    const isAuthError = code.startsWith('auth/');
-    const status = isAuthError ? 401 : 500;
-    const errorCode = isAuthError ? 'AUTH_INVALID_TOKEN' : 'SAVE_VISUALIZATION_FAILED';
-    const errorMessage = String(error?.message || 'Failed to save visualization');
-
-    console.error('[save-visualization]', requestId, errorCode, errorMessage);
-    return res.status(status).json({ errorCode, errorMessage, requestId });
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('[save-visualization]', requestId, 'SAVE_VISUALIZATION_FAILED', errorMessage);
+    return res.status(500).json({
+      errorCode: 'SAVE_VISUALIZATION_FAILED',
+      errorMessage: 'Failed to save visualization',
+      requestId,
+    });
   }
 }

@@ -1,6 +1,9 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import sharp from 'sharp';
+import { authenticateRequest } from '../lib/authMiddleware.js';
+import { setCorsHeaders } from '../lib/corsHeaders.js';
+import { safePathSegment } from '../lib/safePathSegment.js';
 
 // --- R2 Setup (trim env vars: vercel env add can include trailing newlines) ---
 const R2_ACCOUNT_ID = (process.env.R2_ACCOUNT_ID || '').trim();
@@ -43,17 +46,19 @@ async function uploadToR2(key: string, buffer: Buffer): Promise<string> {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  setCorsHeaders(req, res);
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  const { user, error: authError } = await authenticateRequest(req);
+  if (authError) return res.status(authError.status).json(authError.body);
+  const uid = user!.uid;
+
   try {
-    const { imageDataUrl, userId, nodeId } = req.body || {};
+    const { imageDataUrl, nodeId } = req.body || {};
     if (!imageDataUrl) {
       return res.status(400).json({ error: 'imageDataUrl is required' });
     }
@@ -65,22 +70,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const compressed = await compressToBuffer(parsed.base64);
 
-    if (userId && nodeId && R2_PUBLIC_URL) {
+    if (nodeId && R2_PUBLIC_URL) {
       try {
-        const key = `goals/${userId}/${nodeId}.jpg`;
+        const key = `goals/${safePathSegment(uid)}/${safePathSegment(String(nodeId || ''))}.jpg`;
         const imageUrl = await uploadToR2(key, compressed);
         return res.status(200).json({ imageUrl });
-      } catch (r2Err: any) {
-        console.error('[R2 Upload] Failed:', r2Err?.message);
+      } catch (r2Err: unknown) {
+        console.error('[upload-node-image][r2]', r2Err);
       }
     }
 
     return res.status(200).json({
       imageDataUrl: `data:image/jpeg;base64,${compressed.toString('base64')}`,
     });
-  } catch (error: any) {
-    console.error('Upload Node Image Error:', error);
-    return res.status(500).json({ error: error?.message || 'Internal error' });
+  } catch (error: unknown) {
+    console.error('[upload-node-image]', error);
+    return res.status(500).json({ error: 'Internal server error' });
   }
 }
 

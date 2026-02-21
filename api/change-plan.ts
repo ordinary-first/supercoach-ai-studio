@@ -1,5 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import type { PlanTier } from '../services/polarService';
+import { authenticateRequest } from '../lib/authMiddleware.js';
+import { setCorsHeaders } from '../lib/corsHeaders.js';
+import { verifySubscriptionOwnership } from '../lib/verifySubscriptionOwnership.js';
 
 const trim = (v: string | undefined): string => (v ?? '').trim();
 
@@ -31,14 +34,16 @@ export default async function handler(
   req: VercelRequest,
   res: VercelResponse,
 ) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  setCorsHeaders(req, res);
 
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
+
+  const { user, error: authError } = await authenticateRequest(req);
+  if (authError) return res.status(authError.status).json(authError.body);
+  const uid = user!.uid;
 
   const accessToken = trim(process.env.POLAR_ACCESS_TOKEN);
   if (!accessToken) {
@@ -60,6 +65,11 @@ export default async function handler(
   }
   if (!newPlan) {
     return res.status(400).json({ error: 'Invalid newPlan' });
+  }
+
+  const isOwner = await verifySubscriptionOwnership(uid, subscriptionId);
+  if (!isOwner) {
+    return res.status(403).json({ error: 'Subscription does not belong to this user' });
   }
 
   const productId = trim(process.env[PLAN_TO_ENV_KEY[newPlan]]);

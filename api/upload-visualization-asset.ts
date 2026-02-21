@@ -1,6 +1,9 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import sharp from 'sharp';
+import { authenticateRequest } from '../lib/authMiddleware.js';
+import { setCorsHeaders } from '../lib/corsHeaders.js';
+import { safePathSegment } from '../lib/safePathSegment.js';
 
 const R2_ACCOUNT_ID = (process.env.R2_ACCOUNT_ID || '').trim();
 const R2_ACCESS_KEY = (process.env.R2_ACCESS_KEY_ID || '').trim();
@@ -16,11 +19,6 @@ const r2 = new S3Client({
     secretAccessKey: R2_SECRET_KEY,
   },
 });
-
-function safePathSegment(value: string): string {
-  const cleaned = String(value || '').replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 128);
-  return cleaned || 'unknown';
-}
 
 function parseDataUrl(dataUrl: string): { mimeType: string; base64: string } | null {
   const match = String(dataUrl).match(/^data:([^;]+);base64,(.+)$/);
@@ -73,32 +71,33 @@ async function uploadToR2(key: string, body: Buffer, contentType: string): Promi
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  setCorsHeaders(req, res);
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  const { user, error: authError } = await authenticateRequest(req);
+  if (authError) return res.status(authError.status).json(authError.body);
+  const uid = user!.uid;
+
   try {
     const {
       assetType,
-      userId,
       visualizationId,
       dataUrl,
       audioData,
     } = req.body || {};
 
-    if (!assetType || !userId) {
-      return res.status(400).json({ error: 'assetType and userId are required' });
+    if (!assetType) {
+      return res.status(400).json({ error: 'assetType is required' });
     }
     if (!R2_PUBLIC_URL) {
       return res.status(500).json({ error: 'R2 public url is not configured' });
     }
 
-    const owner = safePathSegment(String(userId));
+    const owner = safePathSegment(uid);
     const viz = safePathSegment(String(visualizationId || Date.now()));
 
     if (assetType === 'image') {
@@ -136,6 +135,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: 'Unsupported assetType' });
   } catch (error: any) {
     console.error('Upload Visualization Asset Error:', error);
-    return res.status(500).json({ error: error?.message || 'Internal error' });
+    return res.status(500).json({ error: 'Internal error' });
   }
 }

@@ -1,6 +1,9 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import sharp from 'sharp';
+import { authenticateRequest } from '../lib/authMiddleware.js';
+import { setCorsHeaders } from '../lib/corsHeaders.js';
+import { safePathSegment } from '../lib/safePathSegment.js';
 
 const R2_ACCOUNT_ID = (process.env.R2_ACCOUNT_ID || '').trim();
 const R2_ACCESS_KEY = (process.env.R2_ACCESS_KEY_ID || '').trim();
@@ -41,25 +44,22 @@ async function uploadToR2(key: string, buffer: Buffer): Promise<string> {
   return `${R2_PUBLIC_URL}/${key}`;
 }
 
-function safePathSegment(value: string): string {
-  const cleaned = String(value || '').replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 128);
-  return cleaned || 'unknown';
-}
-
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  setCorsHeaders(req, res);
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  const { user, error: authError } = await authenticateRequest(req);
+  if (authError) return res.status(authError.status).json(authError.body);
+  const uid = user!.uid;
+
   try {
-    const { imageDataUrl, userId, slot } = req.body || {};
-    if (!imageDataUrl || !userId) {
-      return res.status(400).json({ error: 'imageDataUrl and userId are required' });
+    const { imageDataUrl, slot } = req.body || {};
+    if (!imageDataUrl) {
+      return res.status(400).json({ error: 'imageDataUrl is required' });
     }
     if (!R2_PUBLIC_URL) {
       return res.status(500).json({ error: 'R2 public url is not configured' });
@@ -72,12 +72,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const compressed = await compressToBuffer(parsed.base64);
     const segment = safePathSegment(String(slot || 'gallery'));
-    const key = `profiles/${safePathSegment(String(userId))}/${segment}_${Date.now()}.jpg`;
+    const key = `profiles/${safePathSegment(uid)}/${segment}_${Date.now()}.jpg`;
     const imageUrl = await uploadToR2(key, compressed);
 
     return res.status(200).json({ imageUrl, key });
-  } catch (error: any) {
-    console.error('Upload Profile Gallery Image Error:', error);
-    return res.status(500).json({ error: error?.message || 'Internal error' });
+  } catch (error: unknown) {
+    console.error('[upload-profile-gallery-image]', error);
+    return res.status(500).json({ error: 'Internal server error' });
   }
 }

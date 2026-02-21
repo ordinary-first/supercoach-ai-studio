@@ -1,6 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getOpenAIClient } from '../lib/openaiClient.js';
 import { checkAndIncrement, limitExceededResponse } from '../lib/usageGuard.js';
+import { authenticateRequest } from '../lib/authMiddleware.js';
+import { setCorsHeaders } from '../lib/corsHeaders.js';
 
 const NARRATIVE_SYSTEM_PROMPT = `[역할: 잠재의식 해커 & 현실 창조자]
 당신은 사용자의 뇌가 '상상'과 '현실'을 구분하지 못하게 만드는 최면 전문가이자 미래 설계자입니다.
@@ -30,25 +32,26 @@ const NARRATIVE_SYSTEM_PROMPT = `[역할: 잠재의식 해커 & 현실 창조자
 - 1000자 이내.`.trim();
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  setCorsHeaders(req, res);
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  const { user, error: authError } = await authenticateRequest(req);
+  if (authError) return res.status(authError.status).json(authError.body);
+  const uid = user!.uid;
+
   if (!process.env.OPENAI_API_KEY?.trim()) {
     return res.status(500).json({ error: 'API key not configured' });
   }
 
   try {
-    const { goalContext, profile, userId } = req.body || {};
+    const { goalContext, profile } = req.body || {};
 
-    const cleanUserId = typeof userId === 'string' ? userId.trim() : '';
-    if (cleanUserId) {
-      const usage = await checkAndIncrement(cleanUserId, 'narrativeCalls');
+    {
+      const usage = await checkAndIncrement(uid, 'narrativeCalls');
       if (!usage.allowed) {
         return res.status(429).json(limitExceededResponse('narrativeCalls', usage));
       }
@@ -70,8 +73,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
     return res.status(200).json({ text: response?.output_text || '' });
-  } catch (error: any) {
-    console.error('Narrative Generation Error:', error);
+  } catch (error: unknown) {
+    console.error('[generate-narrative]', error);
     return res.status(200).json({ text: '' });
   }
 }

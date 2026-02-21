@@ -6,6 +6,7 @@ import {
   WebhookVerificationError as StandardWebhookVerificationError,
 } from 'standardwebhooks';
 import { getAdminDb } from '../lib/firebaseAdmin.js';
+import { setCorsHeaders } from '../lib/corsHeaders.js';
 
 const SUPPORTED_EVENTS = new Set([
   'subscription.created',
@@ -261,9 +262,7 @@ const syncBillingState = async (
 };
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  setCorsHeaders(req, res);
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();

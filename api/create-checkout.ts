@@ -1,11 +1,12 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import type { PlanTier } from '../services/polarService';
+import { authenticateRequest } from '../lib/authMiddleware.js';
+import { setCorsHeaders } from '../lib/corsHeaders.js';
 
 type CheckoutBody = {
   plan?: PlanTier;
   customerEmail?: string;
   customerName?: string;
-  externalCustomerId?: string;
 };
 
 const PLAN_TO_ENV_KEY: Record<PlanTier, string> = {
@@ -41,9 +42,7 @@ const cleanOptional = (value: unknown): string | undefined => {
 };
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  setCorsHeaders(req, res);
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
@@ -52,6 +51,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
+
+  const { user, error: authError } = await authenticateRequest(req);
+  if (authError) return res.status(authError.status).json(authError.body);
+  const uid = user!.uid;
 
   const accessToken = trim(process.env.POLAR_ACCESS_TOKEN);
   const successUrl = trim(process.env.POLAR_SUCCESS_URL);
@@ -89,11 +92,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     },
   };
 
-  const externalCustomerId = cleanOptional(body.externalCustomerId);
   const customerEmail = cleanOptional(body.customerEmail);
   const customerName = cleanOptional(body.customerName);
 
-  if (externalCustomerId) payload.external_customer_id = externalCustomerId;
+  payload.external_customer_id = uid;
   if (customerEmail) payload.customer_email = customerEmail;
   if (customerName) payload.customer_name = customerName;
   if (origin) payload.return_url = origin;

@@ -5,6 +5,9 @@ import { toFile } from 'openai/uploads';
 import { getOpenAIClient } from '../lib/openaiClient.js';
 import { getAdminDb } from '../lib/firebaseAdmin.js';
 import { checkAndIncrement, limitExceededResponse } from '../lib/usageGuard.js';
+import { authenticateRequest } from '../lib/authMiddleware.js';
+import { setCorsHeaders } from '../lib/corsHeaders.js';
+import { safePathSegment } from '../lib/safePathSegment.js';
 
 const R2_ACCOUNT_ID = (process.env.R2_ACCOUNT_ID || '').trim();
 const R2_ACCESS_KEY = (process.env.R2_ACCESS_KEY_ID || '').trim();
@@ -23,11 +26,6 @@ const r2 = new S3Client({
 
 const createRequestId = (): string => {
   return `image_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-};
-
-const safePathSegment = (value: unknown): string => {
-  const cleaned = String(value || '').replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 128);
-  return cleaned || 'unknown';
 };
 
 const fail = (
@@ -184,14 +182,16 @@ async function generateWithPrompt(
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const requestId = createRequestId();
 
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  setCorsHeaders(req, res);
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   if (req.method !== 'POST') {
     return fail(res, requestId, 405, 'METHOD_NOT_ALLOWED', 'Method not allowed');
   }
+
+  const { user, error: authError } = await authenticateRequest(req);
+  if (authError) return res.status(authError.status).json(authError.body);
+  const uid = user!.uid;
 
   if (!process.env.OPENAI_API_KEY?.trim()) {
     return fail(res, requestId, 500, 'API_KEY_NOT_CONFIGURED', 'API key not configured');
@@ -203,7 +203,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       profile,
       referenceImages,
       childTexts,
-      userId,
       nodeId,
       visualizationId,
       imagePurpose,
@@ -215,16 +214,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return fail(res, requestId, 400, 'EMPTY_PROMPT', 'prompt is required');
     }
 
-    const cleanUserIdForUsage = typeof userId === 'string' ? userId.trim() : '';
-    if (cleanUserIdForUsage) {
-      const usage = await checkAndIncrement(cleanUserIdForUsage, 'imageCredits');
+    {
+      const usage = await checkAndIncrement(uid, 'imageCredits');
       if (!usage.allowed) {
         return res.status(429).json(limitExceededResponse('imageCredits', usage));
       }
     }
 
     const openai = getOpenAIClient();
-    const cleanUserId = typeof userId === 'string' ? userId.trim() : '';
     const cleanNodeId = typeof nodeId === 'string' ? nodeId.trim() : '';
     const cleanVisualizationId = typeof visualizationId === 'string' ? visualizationId.trim() : '';
     const cleanImagePurpose = typeof imagePurpose === 'string' ? imagePurpose.trim() : '';
@@ -232,7 +229,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const policy = resolveImagePolicy({
       imagePurpose: cleanImagePurpose,
       imageQuality,
-      userId: cleanUserId || undefined,
+      userId: uid,
       nodeId: cleanNodeId || undefined,
     });
 
@@ -307,11 +304,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const compressed = await compressToBuffer(rawBase64);
     const dataUrl = `data:image/jpeg;base64,${compressed.toString('base64')}`;
 
-    if (cleanUserId && cleanNodeId && R2_PUBLIC_URL) {
+    if (uid && cleanNodeId && R2_PUBLIC_URL) {
       try {
-        const key = `goals/${safePathSegment(cleanUserId)}/${safePathSegment(cleanNodeId)}.jpg`;
+        const key = `goals/${safePathSegment(uid)}/${safePathSegment(cleanNodeId)}.jpg`;
         const url = await uploadToR2(key, compressed);
-        await saveGenerationResult(cleanUserId, cleanVisualizationId || cleanNodeId, url, dataUrl, requestId);
+        await saveGenerationResult(uid, cleanVisualizationId || cleanNodeId, url, dataUrl, requestId);
         return complete(res, requestId, url, dataUrl);
       } catch (r2Error: unknown) {
         const message = r2Error instanceof Error ? r2Error.message : 'R2 upload failed';
@@ -321,14 +318,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (
       cleanImagePurpose === 'visualization' &&
-      cleanUserId &&
+      uid &&
       cleanVisualizationId &&
       R2_PUBLIC_URL
     ) {
       try {
-        const key = `visualizations/${safePathSegment(cleanUserId)}/${safePathSegment(cleanVisualizationId)}/image.jpg`;
+        const key = `visualizations/${safePathSegment(uid)}/${safePathSegment(cleanVisualizationId)}/image.jpg`;
         const url = await uploadToR2(key, compressed);
-        await saveGenerationResult(cleanUserId, cleanVisualizationId, url, dataUrl, requestId);
+        await saveGenerationResult(uid, cleanVisualizationId, url, dataUrl, requestId);
         return complete(res, requestId, url, dataUrl);
       } catch (r2Error: unknown) {
         const message = r2Error instanceof Error ? r2Error.message : 'R2 upload failed';
@@ -336,14 +333,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    if (cleanUserId && cleanVisualizationId) {
-      await saveGenerationResult(cleanUserId, cleanVisualizationId, null, dataUrl, requestId);
+    if (uid && cleanVisualizationId) {
+      await saveGenerationResult(uid, cleanVisualizationId, null, dataUrl, requestId);
     }
     return complete(res, requestId, null, dataUrl);
   } catch (error: unknown) {
-    const errorCode = 'IMAGE_GENERATION_FAILED';
-    const errorMessage = error instanceof Error ? error.message : 'Internal error';
-    console.error('[generate-image]', requestId, errorCode, errorMessage);
-    return fail(res, requestId, 500, errorCode, errorMessage);
+    console.error('[generate-image]', requestId, error);
+    return fail(res, requestId, 500, 'IMAGE_GENERATION_FAILED', 'Internal server error');
   }
 }

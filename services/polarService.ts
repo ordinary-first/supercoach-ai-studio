@@ -1,3 +1,5 @@
+import { getAuthHeaders } from './authFetch';
+
 export type PlanTier = 'explorer' | 'essential' | 'visionary' | 'master';
 
 interface CreateCheckoutRequest {
@@ -34,7 +36,7 @@ export const createPolarCheckout = async (
 ): Promise<CreateCheckoutResponse> => {
   const response = await fetch('/api/create-checkout', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: await getAuthHeaders(),
     body: JSON.stringify(payload),
   });
 
@@ -65,7 +67,7 @@ export const syncSubscription = async (
 ): Promise<SyncSubscriptionResponse> => {
   const response = await fetch(
     `/api/sync-subscription?uid=${encodeURIComponent(uid)}`,
-    { method: 'GET' },
+    { method: 'GET', headers: await getAuthHeaders() },
   );
 
   const result = (await response.json().catch(() => ({}))) as
@@ -87,7 +89,7 @@ export const changePlan = async (
 ): Promise<{ success: boolean }> => {
   const response = await fetch('/api/change-plan', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: await getAuthHeaders(),
     body: JSON.stringify({ subscriptionId, newPlan }),
   });
 
@@ -108,7 +110,7 @@ export const cancelSubscription = async (
 ): Promise<{ success: boolean }> => {
   const response = await fetch('/api/cancel-subscription', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: await getAuthHeaders(),
     body: JSON.stringify({ subscriptionId }),
   });
 
@@ -129,7 +131,7 @@ export const verifyPolarCheckout = async (
 ): Promise<VerifyCheckoutResponse> => {
   const response = await fetch(
     `/api/verify-checkout?checkout_id=${encodeURIComponent(checkoutId)}`,
-    { method: 'GET' }
+    { method: 'GET', headers: await getAuthHeaders() }
   );
 
   const result = (await response.json().catch(() => ({}))) as

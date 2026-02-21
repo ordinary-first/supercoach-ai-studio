@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
+import { getAuthHeaders } from '../services/authFetch';
 import type {
   CoachMemoryContext,
   GoalNode,
@@ -129,7 +130,7 @@ async function refreshInBackground(
       try {
         const res = await fetch(API_BASE, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: await getAuthHeaders(),
           body: JSON.stringify({
             action: 'summarize-short',
             userId,
@@ -151,7 +152,7 @@ async function refreshInBackground(
       try {
         const midRes = await fetch(API_BASE, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: await getAuthHeaders(),
           body: JSON.stringify({
             action: 'summarize-mid',
             userId,
@@ -165,7 +166,7 @@ async function refreshInBackground(
 
         const longRes = await fetch(API_BASE, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: await getAuthHeaders(),
           body: JSON.stringify({
             action: 'promote-long',
             userId,

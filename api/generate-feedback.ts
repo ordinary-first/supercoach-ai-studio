@@ -1,6 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getOpenAIClient } from '../lib/openaiClient.js';
 import { checkAndIncrement, limitExceededResponse } from '../lib/usageGuard.js';
+import { authenticateRequest } from '../lib/authMiddleware.js';
+import { setCorsHeaders } from '../lib/corsHeaders.js';
 
 type FeedbackPeriod = 'daily' | 'weekly' | 'monthly';
 
@@ -37,25 +39,26 @@ const FEEDBACK_SYSTEM_PROMPTS: Record<FeedbackPeriod, string> = {
 };
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  setCorsHeaders(req, res);
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  const { user, error: authError } = await authenticateRequest(req);
+  if (authError) return res.status(authError.status).json(authError.body);
+  const uid = user!.uid;
+
   if (!process.env.OPENAI_API_KEY?.trim()) {
     return res.status(500).json({ error: 'API key not configured' });
   }
 
   try {
-    const { period, profile, goalContext, todoContext, statsContext, userId } = req.body || {};
+    const { period, profile, goalContext, todoContext, statsContext } = req.body || {};
 
-    const cleanUserId = typeof userId === 'string' ? userId.trim() : '';
-    if (cleanUserId) {
-      const usage = await checkAndIncrement(cleanUserId, 'narrativeCalls');
+    {
+      const usage = await checkAndIncrement(uid, 'narrativeCalls');
       if (!usage.allowed) {
         return res.status(429).json(limitExceededResponse('narrativeCalls', usage));
       }
@@ -87,8 +90,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
     return res.status(200).json({ text: response?.output_text || '' });
-  } catch (error: any) {
-    console.error('[generate-feedback]', error?.message || error);
+  } catch (error: unknown) {
+    console.error('[generate-feedback]', error);
     return res.status(200).json({ text: '' });
   }
 }

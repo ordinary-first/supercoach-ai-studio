@@ -3,6 +3,9 @@ import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { getOpenAIClient } from '../lib/openaiClient.js';
 import { getAdminDb } from '../lib/firebaseAdmin.js';
 import { checkAndIncrement, limitExceededResponse } from '../lib/usageGuard.js';
+import { authenticateRequest } from '../lib/authMiddleware.js';
+import { setCorsHeaders } from '../lib/corsHeaders.js';
+import { safePathSegment } from '../lib/safePathSegment.js';
 
 const R2_ACCOUNT_ID = (process.env.R2_ACCOUNT_ID || '').trim();
 const R2_ACCESS_KEY = (process.env.R2_ACCESS_KEY_ID || '').trim();
@@ -21,11 +24,6 @@ const r2 = new S3Client({
 
 const createRequestId = (): string => {
   return `speech_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-};
-
-const safePathSegment = (value: unknown): string => {
-  const cleaned = String(value || '').replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 128);
-  return cleaned || 'unknown';
 };
 
 const resolveErrorCode = (error: unknown): string => {
@@ -99,9 +97,7 @@ const saveGenerationResult = async (
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const requestId = createRequestId();
 
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  setCorsHeaders(req, res);
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   if (req.method !== 'POST') {
@@ -113,6 +109,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   }
 
+  const { user, error: authError } = await authenticateRequest(req);
+  if (authError) return res.status(authError.status).json(authError.body);
+  const uid = user!.uid;
+
   if (!process.env.OPENAI_API_KEY?.trim()) {
     return res.status(500).json({
       status: 'failed',
@@ -123,11 +123,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { text, userId, visualizationId } = req.body || {};
+    const { text, visualizationId } = req.body || {};
 
-    const cleanUserIdForUsage = typeof userId === 'string' ? userId.trim() : '';
-    if (cleanUserIdForUsage) {
-      const usage = await checkAndIncrement(cleanUserIdForUsage, 'audioMinutes');
+    {
+      const usage = await checkAndIncrement(uid, 'audioMinutes');
       if (!usage.allowed) {
         return res.status(429).json(limitExceededResponse('audioMinutes', usage));
       }
@@ -154,15 +153,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const audioBuffer = Buffer.from(await audio.arrayBuffer());
 
-    const cleanUserId = typeof userId === 'string' ? userId.trim() : '';
     const cleanVisualizationId = typeof visualizationId === 'string' ? visualizationId.trim() : '';
 
-    if (R2_PUBLIC_URL && cleanUserId && cleanVisualizationId) {
+    if (R2_PUBLIC_URL && cleanVisualizationId) {
       try {
-        const key = `visualizations/${safePathSegment(cleanUserId)}/${safePathSegment(cleanVisualizationId)}/audio.wav`;
+        const key = `visualizations/${safePathSegment(uid)}/${safePathSegment(cleanVisualizationId)}/audio.wav`;
         const wav = pcm16ToWavBuffer(audioBuffer);
         const audioUrl = await uploadToR2(key, wav);
-        await saveGenerationResult(cleanUserId, cleanVisualizationId, audioUrl, requestId);
+        await saveGenerationResult(uid, cleanVisualizationId, audioUrl, requestId);
         return res.status(200).json({
           status: 'completed',
           audioUrl,
@@ -174,8 +172,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    if (cleanUserId && cleanVisualizationId) {
-      await saveGenerationResult(cleanUserId, cleanVisualizationId, null, requestId);
+    if (cleanVisualizationId) {
+      await saveGenerationResult(uid, cleanVisualizationId, null, requestId);
     }
     return res.status(200).json({
       status: 'completed',
@@ -183,14 +181,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       requestId,
     });
   } catch (error: unknown) {
-    const errorCode = resolveErrorCode(error);
-    const errorMessage = resolveErrorMessage(error);
-
-    console.error('[generate-speech]', requestId, errorCode, errorMessage);
+    console.error('[generate-speech]', requestId, error);
     return res.status(502).json({
       status: 'failed',
-      errorCode,
-      errorMessage,
+      errorCode: 'SPEECH_GENERATION_FAILED',
+      errorMessage: 'Internal server error',
       requestId,
     });
   }

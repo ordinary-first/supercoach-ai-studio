@@ -2,6 +2,9 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import sharp from 'sharp';
 import { checkAndIncrement, limitExceededResponse } from '../lib/usageGuard.js';
+import { authenticateRequest } from '../lib/authMiddleware.js';
+import { setCorsHeaders } from '../lib/corsHeaders.js';
+import { safePathSegment } from '../lib/safePathSegment.js';
 
 const R2_ACCOUNT_ID = (process.env.R2_ACCOUNT_ID || '').trim();
 const R2_ACCESS_KEY = (process.env.R2_ACCESS_KEY_ID || '').trim();
@@ -33,11 +36,6 @@ type VideoPayload = {
 const createRequestId = (): string => {
   return `video_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 };
-
-function safePathSegment(value: string): string {
-  const cleaned = String(value || '').replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 128);
-  return cleaned || 'guest';
-}
 
 function clampDurationSec(input: unknown): number {
   const parsed = Number(input);
@@ -142,9 +140,7 @@ function respondVideo(res: VercelResponse, payload: VideoPayload) {
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const requestId = createRequestId();
 
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  setCorsHeaders(req, res);
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   if (req.method !== 'POST') {
@@ -154,6 +150,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       requestId,
     });
   }
+
+  const { user, error: authError } = await authenticateRequest(req);
+  if (authError) return res.status(authError.status).json(authError.body);
+  const uid = user!.uid;
 
   const apiKey = process.env.OPENAI_API_KEY?.trim();
   if (!apiKey) {
@@ -165,13 +165,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { prompt, profile, videoId, userId, durationSec } = req.body || {};
+    const { prompt, profile, videoId, durationSec } = req.body || {};
     const effectiveDurationSec = clampDurationSec(durationSec);
 
     // 신규 생성만 체크 (폴링 재요청은 스킵)
-    const cleanUserIdForUsage = typeof userId === 'string' ? userId.trim() : '';
-    if (cleanUserIdForUsage && !videoId) {
-      const usage = await checkAndIncrement(cleanUserIdForUsage, 'videoGenerations');
+    if (!videoId) {
+      const usage = await checkAndIncrement(uid, 'videoGenerations');
       if (!usage.allowed) {
         return res.status(429).json(limitExceededResponse('videoGenerations', usage));
       }
@@ -262,7 +261,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       if (R2_PUBLIC_URL) {
         try {
-          const owner = safePathSegment(String(userId || profile?.googleId || 'guest'));
+          const owner = safePathSegment(uid);
           const key = `videos/${owner}/${safePathSegment(String(videoId))}.mp4`;
           const uploadedUrl = await uploadVideoToR2(key, videoBuffer);
           return respondVideo(res, {
@@ -382,14 +381,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       status: createdStatus === 'unknown' ? 'queued' : createdStatus,
     });
   } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : 'Video generation failed';
-    console.error('[generate-video]', requestId, errorMessage);
+    console.error('[generate-video]', requestId, error);
     return respondVideo(res, {
       durationSec: 4,
       requestId,
       status: 'failed',
       errorCode: 'VIDEO_GENERATION_EXCEPTION',
-      errorMessage,
+      errorMessage: 'Internal server error',
     });
   }
 }

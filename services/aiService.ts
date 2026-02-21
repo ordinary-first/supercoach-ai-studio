@@ -1,5 +1,14 @@
 ﻿import { UserProfile, CoachMemoryContext } from '../types';
 import { recoverGenerationResult } from './firebaseService';
+import { getAuthHeaders } from './authFetch';
+
+const authHeaders = async (): Promise<Record<string, string>> => {
+  try {
+    return await getAuthHeaders();
+  } catch {
+    return { 'Content-Type': 'application/json' };
+  }
+};
 
 export interface ChatApiResponse {
   candidates?: {
@@ -96,7 +105,7 @@ export const sendChatMessage = async (
   try {
     const response = await fetch('/api/chat', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await authHeaders(),
       body: JSON.stringify({
         history,
         message: newMessage,
@@ -133,7 +142,7 @@ export const generateGoalImage = async (
   try {
     const response = await fetch('/api/generate-image', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await authHeaders(),
       body: JSON.stringify({
         prompt: goalText,
         profile,
@@ -163,7 +172,7 @@ export const generateVisualizationImage = async (
   try {
     const response = await fetchWithRetry('/api/generate-image', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await authHeaders(),
       body: JSON.stringify({
         prompt,
         profile,
@@ -240,7 +249,7 @@ export const generateSuccessNarrative = async (
   try {
     const response = await fetch('/api/generate-narrative', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await authHeaders(),
       body: JSON.stringify({ goalContext, profile, userId }),
     });
     if (response.status === 429) {
@@ -282,7 +291,7 @@ export const generateSpeech = async (
   try {
     const response = await fetchWithRetry('/api/generate-speech', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await authHeaders(),
       body: JSON.stringify({ text, userId, visualizationId }),
     }, 0);
 
@@ -395,7 +404,7 @@ export const pollVideoStatus = async (
   try {
     const response = await fetchWithRetry('/api/generate-video', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await authHeaders(),
       body: JSON.stringify({ videoId, userId, durationSec }),
     }, 1);
 
@@ -442,7 +451,7 @@ export const generateVideo = async (
 
     const createResponse = await fetchWithRetry('/api/generate-video', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await authHeaders(),
       body: JSON.stringify({ prompt, profile, userId, durationSec }),
     }, 0);
 
@@ -524,7 +533,7 @@ export const generateFeedback = async (
   try {
     const response = await fetch('/api/generate-feedback', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await authHeaders(),
       body: JSON.stringify({ period, profile, goalContext, todoContext, statsContext, userId: userId || undefined }),
     });
     if (response.status === 429) {
@@ -548,7 +557,7 @@ export const uploadNodeImage = async (
   try {
     const response = await fetch('/api/upload-node-image', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await authHeaders(),
       body: JSON.stringify({ imageDataUrl, userId, nodeId }),
     });
     if (!response.ok) return undefined;
@@ -567,7 +576,7 @@ export const uploadProfileGalleryImage = async (
   try {
     const response = await fetch('/api/upload-profile-gallery-image', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await authHeaders(),
       body: JSON.stringify({ imageDataUrl, userId, slot }),
     });
     if (!response.ok) return undefined;
@@ -589,7 +598,7 @@ export const uploadVisualizationAsset = async (
   try {
     const response = await fetch('/api/upload-visualization-asset', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await authHeaders(),
       body: JSON.stringify({
         assetType,
         userId,
