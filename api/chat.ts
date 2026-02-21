@@ -2,6 +2,8 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getOpenAIClient } from '../lib/openaiClient.js';
 import { getAdminDb } from '../lib/firebaseAdmin.js';
 import { checkAndIncrement, limitExceededResponse } from '../lib/usageGuard.js';
+import { authenticateRequest } from '../lib/authMiddleware.js';
+import { setCorsHeaders } from '../lib/corsHeaders.js';
 
 /* ── 메모리 요약 프롬프트 ── */
 
@@ -63,11 +65,12 @@ async function summarizeWithAI(
 async function handleMemoryAction(
   body: any,
   res: VercelResponse,
+  uid: string,
 ): Promise<void> {
-  const { action, userId, actionLogs, goalContext, todoContext, existingMemory } = body;
+  const { action, actionLogs, goalContext, todoContext, existingMemory } = body;
 
-  if (!userId || !action) {
-    res.status(400).json({ error: 'userId and action required' });
+  if (!action) {
+    res.status(400).json({ error: 'action required' });
     return;
   }
 
@@ -91,7 +94,7 @@ async function handleMemoryAction(
       ? Math.max(...actionLogs.map((l: any) => l.timestamp || 0))
       : Date.now();
 
-    await db.doc(`users/${userId}/coachMemory/shortTerm`).set({
+    await db.doc(`users/${uid}/coachMemory/shortTerm`).set({
       summary, lastActionTimestamp: lastTimestamp, updatedAt: Date.now(),
     });
 
@@ -106,7 +109,7 @@ async function handleMemoryAction(
     ].join('\n');
 
     const summary = await summarizeWithAI(MID_TERM_PROMPT, userContent);
-    await db.doc(`users/${userId}/coachMemory/midTerm`).set({
+    await db.doc(`users/${uid}/coachMemory/midTerm`).set({
       summary, updatedAt: Date.now(),
     });
 
@@ -121,7 +124,7 @@ async function handleMemoryAction(
     ].join('\n');
 
     const summary = await summarizeWithAI(LONG_TERM_PROMPT, userContent);
-    await db.doc(`users/${userId}/coachMemory/longTerm`).set({
+    await db.doc(`users/${uid}/coachMemory/longTerm`).set({
       summary, updatedAt: Date.now(),
     });
 
@@ -159,21 +162,6 @@ const COACH_SYSTEM_PROMPT = `[최우선 원칙 - 현실의 재배열]
 - 강력한 은유(Hypnotic Metaphor): 단순한 비유가 아닌, 사용자의 감각(시각, 청각, 촉각)을 자극하는 입체적인 묘사를 사용하여 거부할 수 없는 긍정적 상태로 유도하라.
 - 상태 전이(State Transition): "지금의 그 무거운 기분은 잠깐 내려놓고, 당신이 진짜 원하던 모습에 가까워졌을 때 느낄 그 기분을 지금 미리 한번 당겨서 써보면 어떨까요?"
 
-[동적 대화 제어 알고리즘]
-사용자의 입력 상태(감정, 목표 수준)에 따라 코칭 전략을 자동으로 스위칭하라.
-
-상태 A - 감정 안정적이나 목표 실행 60% 이하:
-무조건적 지지를 멈추고 분석적 코치로 태세 전환. 현재 목표가 지속 불가능함을 객관적으로 짚어주고, 당장 실행 가능한 최소 단위로 목표를 강제 분할하여 역제안. (Chunking Down, 피드백 브릿지 75/25 룰)
-
-상태 B - 깊은 좌절 또는 방어기제/변명:
-비판이나 해결책 제시 금지. 사용자의 변명과 현재 감정이 매우 타당하다며 100% 수용. 이후 부정적 행동 이면의 긍정적 의도를 찾아 인정하여 마음의 문을 연다. (페이싱, 6단계 리프레이밍)
-
-상태 C - 페이싱 이후 정체, 행동 미시작:
-온화한 어조를 유지하되 내용은 매우 단호하게 전환(리딩). "하고 싶은 것과 할 수 있는 것은 다르다"며 현실을 직시하게 한 뒤, 1분짜리 대안을 던지며 거절할 수 없게 주도. (리딩, 역제안, 긍정적 거절 화법)
-
-상태 D - 근본적 동기 상실:
-행동이나 기술 조언을 멈추고 정체성 수준으로 대화 격상. 1년 뒤 이미 목표를 달성한 '미래 자아'의 시점을 상상하게 하여 뇌의 신경 회로를 재자극. (논리적 수준 피라미드, Future Pacing)
-
 [톤 앤 매너]
 대화의 포문은 언제나 사용자를 무장 해제시키는 밝고 환대하는 톤으로 열되, 사용자가 자기 파괴적 패턴을 반복할 때는 부드럽지만 절대 타협하지 않는 묵직한 카리스마로 이끌어야 한다. 코치는 사용자의 과거 데이터(기억)를 자연스럽게 언급하여, '당신을 오랫동안 지켜봐 온 내가 당신의 잠재력을 완벽히 믿고 있다'는 깊은 신뢰와 이해를 기저에 깔고 대화하라.
 
@@ -182,10 +170,7 @@ const COACH_SYSTEM_PROMPT = `[최우선 원칙 - 현실의 재배열]
 - 고민 상담/방향 질문 → 3~5문장으로 핵심만
 - 깊은 분석 요청 시에만 → 상세 분석 (최대 7문장)
 - 절대 불필요하게 길게 쓰지 마세요. 친구와 대화하듯 자연스럽게.
-
-[잊지 마라: 영혼의 스타일리스트]
-분석하지 말고 변화(Transformation)시켜라. 사용자가 당신과 대화를 마쳤을 때, '아까 내가 왜 우울했지?'라고 의아해할 정도로 그의 감정 상태를 완전히 전이(State Shift)시켜야 한다.
-당신의 목소리는 부드러움을 입었지만, 그 안에는 현실을 뒤바꾸는 치유자의 강력한 권위가 서려 있어야 한다. 대화가 끝나는 순간, 사용자는 자신이 세상에서 가장 귀하고 특별한 주인공이 된 듯한 '황홀한 각성' 상태로 현실에 복귀해야 한다.`.trim();
+`.trim();
 
 type InputRole = 'user' | 'assistant' | 'system' | 'developer';
 type EasyInputMessage = { role: InputRole; content: string };
@@ -205,7 +190,7 @@ function mapHistoryToInput(history: unknown): EasyInputMessage[] {
     : items;
 }
 
-const CONTEXT_BUDGET = 3000;
+const CONTEXT_BUDGET = 1500;
 
 function buildContextBlock(body: any): string {
   const prioritizedSections: string[] = [];
@@ -260,14 +245,16 @@ function buildContextBlock(body: any): string {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  setCorsHeaders(req, res);
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
+
+  const { user, error: authError } = await authenticateRequest(req);
+  if (authError) return res.status(authError.status).json(authError.body);
+  const uid = user!.uid;
 
   if (!process.env.OPENAI_API_KEY?.trim()) {
     return res.status(500).json({ error: 'API key not configured' });
@@ -278,12 +265,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // 메모리 요약 요청은 별도 핸들러로 분기
     if (body.action) {
-      return handleMemoryAction(body, res);
+      return handleMemoryAction(body, res, uid);
     }
 
-    const userId = typeof body.userId === 'string' ? body.userId.trim() : '';
-    if (userId) {
-      const usage = await checkAndIncrement(userId, 'chatMessages');
+    {
+      const usage = await checkAndIncrement(uid, 'chatMessages');
       if (!usage.allowed) {
         return res.status(429).json(limitExceededResponse('chatMessages', usage));
       }
@@ -293,7 +279,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const contextBlock = buildContextBlock(body);
     const systemContent = contextBlock
-      ? `${COACH_SYSTEM_PROMPT}\n\n---\n\n${contextBlock}`
+      ? `${contextBlock}\n\n---\n\n${COACH_SYSTEM_PROMPT}`
       : COACH_SYSTEM_PROMPT;
 
     const input: EasyInputMessage[] = [
@@ -318,8 +304,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         },
       }],
     });
-  } catch (error: any) {
-    console.error('Chat API Error:', error);
-    return res.status(500).json({ error: error?.message || 'Internal error' });
+  } catch (error: unknown) {
+    console.error('[chat]', error);
+    return res.status(500).json({ error: 'Internal server error' });
   }
 }
