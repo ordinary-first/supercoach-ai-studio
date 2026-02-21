@@ -149,6 +149,7 @@ const App: React.FC = () => {
   const [todos, setTodos] = useState<ToDoItem[]>([]);
   const [selectedNode, setSelectedNode] = useState<GoalNode | null>(null);
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
+  const [trialDismissed, setTrialDismissed] = useState(false);
   const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
   const [deleteConfirmNodeId, setDeleteConfirmNodeId] = useState<string | null>(null);
   const [isChatOpen, setIsChatOpen] = useState(false);
@@ -656,7 +657,7 @@ const App: React.FC = () => {
         onLogout={() => { logout(); setUserProfile(null); setActiveTab('GOALS'); setIsSettingsPageOpen(false); }}
       />
 
-      {isTrialExpired && !isSettingsPageOpen && (
+      {isTrialExpired && !isSettingsPageOpen && !trialDismissed && (
         <div className="fixed inset-0 z-[150] bg-black/80 backdrop-blur-sm flex items-center justify-center p-6">
           <div className="bg-[#0a0f1a] border border-white/10 rounded-2xl p-6 max-w-sm w-full text-center space-y-4">
             <Crown size={40} className="text-neon-lime mx-auto" />
@@ -673,7 +674,7 @@ const App: React.FC = () => {
               플랜 업그레이드
             </button>
             <button
-              onClick={(e) => (e.currentTarget.closest('.fixed') as HTMLElement)?.remove()}
+              onClick={() => setTrialDismissed(true)}
               className="text-[11px] text-gray-600 hover:text-gray-400 transition-colors"
             >
               나중에 하기

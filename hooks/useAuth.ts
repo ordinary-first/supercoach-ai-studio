@@ -39,13 +39,27 @@ export function useAuth(
   const isLoadingRef = useRef(false);
 
   // 1. Auth state listener
+  // 중요: onAuthStateChanged는 토큰 리프레시 시 재발동됨.
+  // 전체 profile을 덮어쓰면 Firestore/Polar에서 로드한 빌링 데이터가 소실됨.
+  // → 기존 프로필이 있으면 auth 필드만 merge.
   useEffect(() => {
-    const unsubscribe = onAuthUpdate((profile) => {
-      setUserProfile(profile);
+    const unsubscribe = onAuthUpdate((authProfile) => {
+      setUserProfile((prev) => {
+        if (!authProfile) return null;
+        if (!prev) return authProfile;
+        // auth 필드만 업데이트, 나머지(빌링 등) 보존
+        return {
+          ...prev,
+          name: authProfile.name || prev.name,
+          email: authProfile.email || prev.email,
+          googleId: authProfile.googleId || prev.googleId,
+          avatarUrl: authProfile.avatarUrl || prev.avatarUrl,
+        };
+      });
       setIsInitializing(false);
 
       // Use uid from the auth callback payload (googleId) to avoid timing races with auth.currentUser.
-      const uid = profile ? (profile as UserProfile).googleId ?? getUserId() : null;
+      const uid = authProfile ? (authProfile as UserProfile).googleId ?? getUserId() : null;
       const prevUid = userIdRef.current;
 
       // Important: data is scoped by uid. If uid changes, force a reload.
