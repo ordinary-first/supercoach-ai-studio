@@ -11,6 +11,7 @@ import {
   getSyncStatus,
   SyncStatus,
 } from '../services/firebaseService';
+import { syncSubscription } from '../services/polarService';
 
 export interface AuthState {
   userProfile: UserProfile | null;
@@ -119,6 +120,29 @@ export function useAuth(
           const needsOnboarding = savedProfile.onboardingCompleted === false;
           setIsNewUser(needsOnboarding);
 
+          let billingPlan = savedProfile.billingPlan;
+          let billingIsActive = savedProfile.billingIsActive;
+          let billingSubscriptionId = savedProfile.billingSubscriptionId;
+          let billingCancelAtPeriodEnd = savedProfile.billingCancelAtPeriodEnd;
+
+          // Firestore에 billing 정보가 없으면 Polar에서 직접 동기화
+          const hasPaidPlan = billingPlan === 'essential'
+            || billingPlan === 'visionary'
+            || billingPlan === 'master';
+          if (!hasPaidPlan) {
+            try {
+              const syncResult = await syncSubscription(userId);
+              if (syncResult.isActive && syncResult.plan) {
+                billingPlan = syncResult.plan;
+                billingIsActive = true;
+                billingSubscriptionId = syncResult.subscriptionId;
+                billingCancelAtPeriodEnd = syncResult.cancelAtPeriodEnd;
+              }
+            } catch {
+              // 동기화 실패는 무시 (네트워크 에러 등)
+            }
+          }
+
           setUserProfile(prev => {
             if (!prev) return savedProfile;
             return {
@@ -128,8 +152,10 @@ export function useAuth(
               age: savedProfile.age,
               location: savedProfile.location,
               gender: savedProfile.gender,
-              billingPlan: savedProfile.billingPlan,
-              billingIsActive: savedProfile.billingIsActive,
+              billingPlan,
+              billingIsActive,
+              billingSubscriptionId,
+              billingCancelAtPeriodEnd,
               createdAt: savedProfile.createdAt,
               onboardingCompleted: savedProfile.onboardingCompleted,
             };

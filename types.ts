@@ -51,6 +51,8 @@ export interface UserProfile {
   gallery?: string[];
   billingPlan?: 'explorer' | 'essential' | 'visionary' | 'master' | null;
   billingIsActive?: boolean;
+  billingSubscriptionId?: string | null;
+  billingCancelAtPeriodEnd?: boolean;
   createdAt?: number;
   onboardingCompleted?: boolean;
 }

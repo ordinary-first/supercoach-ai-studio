@@ -18,7 +18,12 @@ import {
   User,
   X,
 } from 'lucide-react';
-import { createPolarCheckout, type PlanTier } from '../services/polarService';
+import {
+  createPolarCheckout,
+  changePlan,
+  cancelSubscription,
+  type PlanTier,
+} from '../services/polarService';
 import type { UserProfile } from '../types';
 import { uploadProfileGalleryImage } from '../services/aiService';
 import { getUserId, loadUsage, type MonthlyUsage } from '../services/firebaseService';
@@ -183,6 +188,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
 }) => {
   const [loadingPlan, setLoadingPlan] = useState<PlanTier | null>(null);
   const [checkoutError, setCheckoutError] = useState('');
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [formData, setFormData] = useState<UserProfile>(
     profile ? { ...profile, bio: profile.bio || '', gallery: profile.gallery || [] } : { name: '', email: '', age: '', gender: 'Male', location: '', bio: '', gallery: [] }
   );
@@ -261,6 +267,14 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
     return undefined;
   })();
 
+  const isSubscriber = !!(
+    profile?.billingIsActive && profile?.billingSubscriptionId
+  );
+
+  const PLAN_ORDER: Record<string, number> = {
+    explorer: 0, essential: 1, visionary: 2, master: 3,
+  };
+
   const handleCheckout = async (plan: PlanTier) => {
     setCheckoutError('');
     setLoadingPlan(plan);
@@ -278,6 +292,44 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
         error instanceof Error && error.message.trim().length > 0
           ? error.message
           : labels.checkoutFailed;
+      setCheckoutError(message);
+      setLoadingPlan(null);
+    }
+  };
+
+  const handleChangePlan = async (newPlan: PlanTier) => {
+    if (!profile?.billingSubscriptionId) return;
+    setCheckoutError('');
+    setLoadingPlan(newPlan);
+
+    try {
+      await changePlan(profile.billingSubscriptionId, newPlan);
+      // 페이지 새로고침으로 동기화 반영
+      window.location.reload();
+    } catch (error) {
+      const message =
+        error instanceof Error && error.message.trim().length > 0
+          ? error.message
+          : '플랜 변경에 실패했습니다.';
+      setCheckoutError(message);
+      setLoadingPlan(null);
+    }
+  };
+
+  const handleCancelSubscription = async () => {
+    if (!profile?.billingSubscriptionId) return;
+    setCheckoutError('');
+    setShowCancelConfirm(false);
+    setLoadingPlan('explorer');
+
+    try {
+      await cancelSubscription(profile.billingSubscriptionId);
+      window.location.reload();
+    } catch (error) {
+      const message =
+        error instanceof Error && error.message.trim().length > 0
+          ? error.message
+          : '구독 취소에 실패했습니다.';
       setCheckoutError(message);
       setLoadingPlan(null);
     }
@@ -548,6 +600,62 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                 const currentPlan = profile?.billingPlan || 'explorer';
                 const isCurrent = item.plan === currentPlan;
                 const isLoading = loadingPlan === item.plan;
+                const currentOrder = PLAN_ORDER[currentPlan] ?? 0;
+                const itemOrder = PLAN_ORDER[item.plan] ?? 0;
+                const isUpgrade = itemOrder > currentOrder;
+                const isDowngrade = itemOrder < currentOrder;
+
+                const renderAction = () => {
+                  if (isCurrent) {
+                    return (
+                      <span className="text-[10px] text-neon-lime font-bold border border-neon-lime/30 rounded-full px-2 py-0.5">
+                        현재 플랜
+                      </span>
+                    );
+                  }
+
+                  if (isLoading) {
+                    return (
+                      <span className="inline-flex items-center gap-1 text-xs text-gray-400">
+                        <Loader2 size={13} className="animate-spin" />
+                        처리 중...
+                      </span>
+                    );
+                  }
+
+                  // 구독자: 업/다운그레이드 버튼
+                  if (isSubscriber && item.plan !== 'explorer') {
+                    return (
+                      <button
+                        onClick={() => handleChangePlan(item.plan)}
+                        disabled={loadingPlan !== null}
+                        className={`inline-flex items-center gap-1 text-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                          isUpgrade
+                            ? 'text-neon-lime hover:text-white'
+                            : 'text-amber-400 hover:text-amber-200'
+                        }`}
+                      >
+                        {isUpgrade ? '업그레이드' : '다운그레이드'}
+                      </button>
+                    );
+                  }
+
+                  // 비구독자: 결제 시작
+                  if (item.plan !== 'explorer') {
+                    return (
+                      <button
+                        onClick={() => handleCheckout(item.plan)}
+                        disabled={loadingPlan !== null}
+                        className="inline-flex items-center gap-1 text-xs text-neon-lime hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {labels.checkout}
+                      </button>
+                    );
+                  }
+
+                  return null;
+                };
+
                 return (
                   <div
                     key={item.plan}
@@ -558,26 +666,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                         <p className="text-sm text-white font-medium">{item.title}</p>
                         <p className="text-[11px] text-gray-400">{item.price}</p>
                       </div>
-                      {isCurrent ? (
-                        <span className="text-[10px] text-neon-lime font-bold border border-neon-lime/30 rounded-full px-2 py-0.5">
-                          현재 플랜
-                        </span>
-                      ) : (
-                        <button
-                          onClick={() => handleCheckout(item.plan)}
-                          disabled={loadingPlan !== null}
-                          className="inline-flex items-center gap-1 text-xs text-neon-lime hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          {isLoading ? (
-                            <>
-                              <Loader2 size={13} className="animate-spin" />
-                              {labels.redirecting}
-                            </>
-                          ) : (
-                            labels.checkout
-                          )}
-                        </button>
-                      )}
+                      {renderAction()}
                     </div>
                     <div className="mt-1.5 flex flex-wrap gap-x-2 gap-y-0.5">
                       {item.features.map((f) => (
@@ -587,6 +676,39 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                   </div>
                 );
               })}
+
+              {/* 구독 취소 */}
+              {isSubscriber && !showCancelConfirm && (
+                <button
+                  onClick={() => setShowCancelConfirm(true)}
+                  className="w-full text-[11px] text-gray-500 hover:text-red-400 transition-colors pt-2"
+                >
+                  구독 취소
+                </button>
+              )}
+              {isSubscriber && showCancelConfirm && (
+                <div className="rounded-xl border border-red-500/30 bg-red-500/5 p-3 space-y-2">
+                  <p className="text-xs text-gray-300">
+                    현재 결제 기간이 끝나면 구독이 취소됩니다. 계속하시겠습니까?
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setShowCancelConfirm(false)}
+                      className="flex-1 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-xs font-medium transition-all"
+                    >
+                      돌아가기
+                    </button>
+                    <button
+                      onClick={handleCancelSubscription}
+                      disabled={loadingPlan !== null}
+                      className="flex-1 py-2 bg-red-600 hover:bg-red-500 rounded-lg text-xs font-medium transition-all disabled:opacity-50"
+                    >
+                      구독 취소 확인
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {checkoutError && (
                 <p className="text-xs text-red-300 pt-1">{checkoutError}</p>
               )}

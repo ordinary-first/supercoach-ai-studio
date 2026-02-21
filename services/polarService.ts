@@ -50,6 +50,80 @@ export const createPolarCheckout = async (
   return { url: result.url };
 };
 
+// --- Subscription sync & management ---
+
+export interface SyncSubscriptionResponse {
+  synced: boolean;
+  plan: PlanTier | null;
+  isActive: boolean;
+  subscriptionId: string | null;
+  cancelAtPeriodEnd?: boolean;
+}
+
+export const syncSubscription = async (
+  uid: string,
+): Promise<SyncSubscriptionResponse> => {
+  const response = await fetch(
+    `/api/sync-subscription?uid=${encodeURIComponent(uid)}`,
+    { method: 'GET' },
+  );
+
+  const result = (await response.json().catch(() => ({}))) as
+    | SyncSubscriptionResponse
+    | { error?: string };
+
+  if (!response.ok || !('synced' in result)) {
+    throw new Error(
+      toMessage((result as { error?: string }).error),
+    );
+  }
+
+  return result;
+};
+
+export const changePlan = async (
+  subscriptionId: string,
+  newPlan: PlanTier,
+): Promise<{ success: boolean }> => {
+  const response = await fetch('/api/change-plan', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ subscriptionId, newPlan }),
+  });
+
+  const result = (await response.json().catch(() => ({}))) as {
+    success?: boolean;
+    error?: string;
+  };
+
+  if (!response.ok || !result.success) {
+    throw new Error(toMessage(result.error));
+  }
+
+  return { success: true };
+};
+
+export const cancelSubscription = async (
+  subscriptionId: string,
+): Promise<{ success: boolean }> => {
+  const response = await fetch('/api/cancel-subscription', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ subscriptionId }),
+  });
+
+  const result = (await response.json().catch(() => ({}))) as {
+    success?: boolean;
+    error?: string;
+  };
+
+  if (!response.ok || !result.success) {
+    throw new Error(toMessage(result.error));
+  }
+
+  return { success: true };
+};
+
 export const verifyPolarCheckout = async (
   checkoutId: string
 ): Promise<VerifyCheckoutResponse> => {
