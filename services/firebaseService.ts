@@ -293,6 +293,8 @@ export const loadProfile = async (userId: string): Promise<UserProfile | null> =
       gallery: Array.isArray(data.gallery) ? data.gallery : [],
       billingPlan: data.billingPlan || null,
       billingIsActive: data.billingIsActive ?? false,
+      billingSubscriptionId: data.billingSubscriptionId || null,
+      billingCancelAtPeriodEnd: data.billingCancelAtPeriodEnd ?? false,
       createdAt: data.createdAt || undefined,
       onboardingCompleted: data.onboardingCompleted ?? true,
     };
