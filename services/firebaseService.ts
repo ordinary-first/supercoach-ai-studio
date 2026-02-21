@@ -254,13 +254,21 @@ export const saveProfile = async (userId: string, profile: UserProfile): Promise
   if (!userId) return;
   const docRef = doc(db, 'users', userId, 'profile', 'main');
   const existing = await getDoc(docRef);
-  const profileData = {
-    ...profile,
+  const profileData: Record<string, unknown> = {
+    name: profile.name,
+    email: profile.email || null,
+    googleId: profile.googleId,
+    avatarUrl: profile.avatarUrl || null,
+    gender: profile.gender || 'Other',
+    age: profile.age || '',
+    location: profile.location || '',
+    bio: profile.bio || '',
     gallery: Array.isArray(profile.gallery) ? profile.gallery : [],
+    onboardingCompleted: profile.onboardingCompleted ?? true,
     updatedAt: Date.now(),
     createdAt: existing.data()?.createdAt || profile.createdAt || Date.now(),
   };
-  await setDoc(docRef, profileData);
+  await setDoc(docRef, profileData, { merge: true });
 };
 
 export const ensureCreatedAt = async (userId: string): Promise<void> => {

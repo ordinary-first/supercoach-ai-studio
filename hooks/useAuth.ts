@@ -125,22 +125,17 @@ export function useAuth(
           let billingSubscriptionId = savedProfile.billingSubscriptionId;
           let billingCancelAtPeriodEnd = savedProfile.billingCancelAtPeriodEnd;
 
-          // Firestore에 billing 정보가 없으면 Polar에서 직접 동기화
-          const hasPaidPlan = billingPlan === 'essential'
-            || billingPlan === 'visionary'
-            || billingPlan === 'master';
-          if (!hasPaidPlan) {
-            try {
-              const syncResult = await syncSubscription(userId);
-              if (syncResult.isActive && syncResult.plan) {
-                billingPlan = syncResult.plan;
-                billingIsActive = true;
-                billingSubscriptionId = syncResult.subscriptionId;
-                billingCancelAtPeriodEnd = syncResult.cancelAtPeriodEnd;
-              }
-            } catch {
-              // 동기화 실패는 무시 (네트워크 에러 등)
+          // 항상 Polar에서 최신 구독 상태 동기화 (Firestore 캐시 문제 방지)
+          try {
+            const syncResult = await syncSubscription(userId);
+            if (syncResult.isActive && syncResult.plan) {
+              billingPlan = syncResult.plan;
+              billingIsActive = true;
+              billingSubscriptionId = syncResult.subscriptionId;
+              billingCancelAtPeriodEnd = syncResult.cancelAtPeriodEnd;
             }
+          } catch (syncError) {
+            console.error('[Billing] Polar sync failed:', syncError);
           }
 
           setUserProfile(prev => {
