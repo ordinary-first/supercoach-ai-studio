@@ -1,5 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getAdminDb } from '../lib/firebaseAdmin.js';
+import { authenticateRequest } from '../lib/authMiddleware.js';
+import { setCorsHeaders } from '../lib/corsHeaders.js';
 
 type GenericData = Record<string, unknown>;
 
@@ -31,19 +33,16 @@ export default async function handler(
   req: VercelRequest,
   res: VercelResponse,
 ) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  setCorsHeaders(req, res);
 
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const uid = asString(req.query.uid as string);
-  if (!uid) {
-    return res.status(400).json({ error: 'Missing uid parameter' });
-  }
+  const { user, error: authError } = await authenticateRequest(req);
+  if (authError) return res.status(authError.status).json(authError.body);
+  const uid = user!.uid;
 
   const accessToken = trim(process.env.POLAR_ACCESS_TOKEN);
   if (!accessToken) {
@@ -75,9 +74,43 @@ export default async function handler(
       items: GenericData[];
     };
 
-    const activeSub = data.items.find(
+    let activeSub = data.items.find(
       (s) => asString(s.status) === 'active',
     );
+
+    // uid로 구독 못 찾으면 → 이메일로 Polar 고객 조회 fallback
+    // (Firebase uid가 바뀐 경우 대응: 재인증, 프로젝트 변경 등)
+    if (!activeSub && user!.email) {
+      const custUrl = `${baseUrl}/customers/?email=${encodeURIComponent(user!.email)}&limit=1`;
+      const custRes = await fetch(custUrl, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: 'application/json',
+        },
+      });
+      if (custRes.ok) {
+        const custData = (await custRes.json()) as { items: GenericData[] };
+        const customer = custData.items[0];
+        if (customer) {
+          const customerId = asString(customer.id);
+          if (customerId) {
+            const subByCustomerUrl = `${baseUrl}/subscriptions/?customer_id=${encodeURIComponent(customerId)}&active=true&limit=10`;
+            const subRes = await fetch(subByCustomerUrl, {
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+                Accept: 'application/json',
+              },
+            });
+            if (subRes.ok) {
+              const subData = (await subRes.json()) as { items: GenericData[] };
+              activeSub = subData.items.find(
+                (s) => asString(s.status) === 'active',
+              );
+            }
+          }
+        }
+      }
+    }
 
     if (!activeSub) {
       return res.status(200).json({
