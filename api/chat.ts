@@ -6,7 +6,7 @@ import { checkAndIncrement, limitExceededResponse } from '../lib/usageGuard.js';
 /* ── 메모리 요약 프롬프트 ── */
 
 const SHORT_TERM_PROMPT = `당신은 AI 코치의 메모리 관리자입니다.
-최근 사용자 활동 로그와 현재 상태를 바탕으로 코치가 알아야 할 핵심 맥락을 1000자 이내의 마크다운으로 요약하세요.
+최근 사용자 활동 로그와 현재 상태를 바탕으로 코치가 알아야 할 핵심 맥락을 500자 이내의 마크다운으로 요약하세요.
 
 포함할 내용:
 - 최근 달성한 것 (완료된 목표, 할일)
@@ -14,10 +14,11 @@ const SHORT_TERM_PROMPT = `당신은 AI 코치의 메모리 관리자입니다.
 - 진행 중인 작업과 진행률
 - 주목할 행동 패턴 (활발한 영역, 정체된 영역)
 
+중복 정보는 병합하고, 가장 최근 활동 위주로 압축하세요.
 형식: 간결한 마크다운. 불필요한 서론 없이 바로 내용.`;
 
 const MID_TERM_PROMPT = `당신은 AI 코치의 메모리 관리자입니다.
-사용자의 최근 1주간 활동 요약과 이전 중기 기억을 보고 아래를 2000자 이내 마크다운으로 정리하세요.
+사용자의 최근 1주간 활동 요약과 이전 중기 기억을 보고 아래를 800자 이내 마크다운으로 정리하세요.
 
 포함할 내용:
 - 반복되는 행동 패턴 (매일 하는 것, 자주 미루는 것)
@@ -27,10 +28,11 @@ const MID_TERM_PROMPT = `당신은 AI 코치의 메모리 관리자입니다.
 - 사용자의 동기부여 요인
 
 이전 중기 기억이 있으면 병합하되, 오래되거나 덜 중요한 내용은 자연스럽게 탈락시키세요.
+핵심 패턴만 남기고 구체적 사례는 생략하세요.
 형식: 간결한 마크다운. 불필요한 서론 없이 바로 내용.`;
 
 const LONG_TERM_PROMPT = `당신은 AI 코치의 메모리 관리자입니다.
-축적된 관찰을 바탕으로 코치가 영구적으로 기억해야 할 핵심 인사이트를 2000자 이내 마크다운으로 정리하세요.
+축적된 관찰을 바탕으로 코치가 영구적으로 기억해야 할 핵심 인사이트를 800자 이내 마크다운으로 정리하세요.
 
 포함할 내용:
 - 사용자의 핵심 가치관과 인생 방향
@@ -39,7 +41,8 @@ const LONG_TERM_PROMPT = `당신은 AI 코치의 메모리 관리자입니다.
 - 반복되는 장애물과 효과적인 돌파 전략
 - 중요한 성취와 전환점
 
-기존 장기 기억이 있으면 새 인사이트와 병합하되, 2000자 한도 내에서 가장 중요한 것만 유지하세요.
+기존 장기 기억이 있으면 새 인사이트와 병합하되, 800자 한도 내에서 가장 중요한 것만 유지하세요.
+가장 불변하는 인사이트만 유지하세요. 일시적 패턴은 탈락시키세요.
 형식: 간결한 마크다운. 불필요한 서론 없이 바로 내용.`;
 
 async function summarizeWithAI(
@@ -139,7 +142,7 @@ const COACH_SYSTEM_PROMPT = `[Role: Secret Coach - Reality Redefiner]
 대화 맥락에 따라 필요한 요소만 자연스럽게 녹여내세요.
 
 1. 페이싱(Pacing): 상대의 현재 상태를 정확히 읽어냅니다.
-2. 리프레이밍(Reframing): 그 상태를 성장의 신호로 재해석합니다. 비유와 상징(빙산, 궤도, 임계점, 시스템)을 활용합니다.
+2. 리프레이밍(Reframing): 그 상태를 성장의 신호로 재해석합니다. 비유와 상징을 활용합니다.
 3. 데이터 기반 분석: [사용자 맥락]의 실제 데이터를 근거로 피드백합니다.
    - 진행률이 낮은 목표: 난이도 점검, 장애 요소 분석(환경적/심리적), 환경 조절 방안, 액션 플랜
    - 진행률이 높은 목표: 구체적 수치로 인정, 다음 도전 제시
@@ -175,54 +178,64 @@ function mapHistoryToInput(history: unknown): EasyInputMessage[] {
     if (!text) continue;
     items.push({ role, content: String(text) });
   }
-  return items;
+  const MAX_HISTORY = 12;
+  return items.length > MAX_HISTORY
+    ? items.slice(-MAX_HISTORY)
+    : items;
 }
 
-function buildContextBlock(body: any): string {
-  const sections: string[] = [];
+const CONTEXT_BUDGET = 3000;
 
-  // Profile
+function buildContextBlock(body: any): string {
+  const prioritizedSections: string[] = [];
+
+  if (body.activeTab) {
+    prioritizedSections.push(
+      `[현재 화면] 사용자가 '${body.activeTab}' 탭을 보고 있습니다.`,
+    );
+  }
+
+  if (body.todoContext) {
+    prioritizedSections.push(`[오늘의 할일]\n${body.todoContext}`);
+  }
+
+  if (body.goalContext) {
+    prioritizedSections.push(`[현재 목표 트리]\n${body.goalContext}`);
+  }
+
+  const shortTerm = body.memory?.shortTerm;
+  if (shortTerm) {
+    prioritizedSections.push(`[단기 기억 - 최근 활동]\n${shortTerm}`);
+  }
+
+  const midTerm = body.memory?.midTerm;
+  if (midTerm) {
+    prioritizedSections.push(`[중기 기억 - 주간 패턴]\n${midTerm}`);
+  }
+
+  const longTerm = body.memory?.longTerm;
+  if (longTerm) {
+    prioritizedSections.push(`[장기 기억 - 핵심 인사이트]\n${longTerm}`);
+  }
+
   const p = body.profile;
   if (p) {
-    sections.push(
+    prioritizedSections.push(
       `[사용자 프로필]\n이름: ${p.name} | 나이: ${p.age} | 지역: ${p.location}\n자기소개: ${p.bio || '없음'}`,
     );
   }
 
-  // Long-term memory
-  const longTerm = body.memory?.longTerm;
-  if (longTerm) {
-    sections.push(`[장기 기억 - 핵심 인사이트]\n${longTerm}`);
+  const included: string[] = [];
+  let remaining = CONTEXT_BUDGET;
+
+  for (const section of prioritizedSections) {
+    if (section.length <= remaining) {
+      included.push(section);
+      remaining -= section.length;
+    }
   }
 
-  // Mid-term memory
-  const midTerm = body.memory?.midTerm;
-  if (midTerm) {
-    sections.push(`[중기 기억 - 주간 패턴]\n${midTerm}`);
-  }
-
-  // Short-term memory
-  const shortTerm = body.memory?.shortTerm;
-  if (shortTerm) {
-    sections.push(`[단기 기억 - 최근 활동]\n${shortTerm}`);
-  }
-
-  // Goal context
-  if (body.goalContext) {
-    sections.push(`[현재 목표 트리]\n${body.goalContext}`);
-  }
-
-  // Todo context
-  if (body.todoContext) {
-    sections.push(`[오늘의 할일]\n${body.todoContext}`);
-  }
-
-  // Active tab
-  if (body.activeTab) {
-    sections.push(`[현재 화면] 사용자가 '${body.activeTab}' 탭을 보고 있습니다.`);
-  }
-
-  return sections.join('\n\n');
+  return included.join('\n\n');
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
