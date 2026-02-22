@@ -5,6 +5,7 @@ import RainbowLines from 'simple-mind-map/src/plugins/RainbowLines.js';
 import Select from 'simple-mind-map/src/plugins/Select.js';
 import TouchEvent from 'simple-mind-map/src/plugins/TouchEvent.js';
 import { GoalNode, GoalLink, NodeType, NodeStatus } from '../types';
+import { Target, Lightbulb, ArrowRight, ChevronDown, Sparkles } from 'lucide-react';
 import { getLinkId } from '../hooks/useAutoSave';
 
 // Register plugins once
@@ -243,6 +244,60 @@ const ACTION_BAR_LABELS = {
   },
 } as const;
 
+// --- Guidance Content ---
+const GUIDANCE_CONTENT = {
+  en: {
+    emptyTitle: 'Start Your Goal Journey',
+    emptySubtitle: 'Tap on your life vision to begin setting goals',
+    steps: [
+      { icon: '1', text: 'Tap the center node to select it' },
+      { icon: '2', text: 'Press "Child" to add your first goal' },
+      { icon: '3', text: 'Break goals down into smaller sub-goals' },
+    ],
+    smartTitle: 'Set SMART Goals',
+    smartItems: [
+      { letter: 'S', label: 'Specific', desc: 'What exactly do you want to achieve?' },
+      { letter: 'M', label: 'Measurable', desc: 'How will you know when it\'s done?' },
+      { letter: 'A', label: 'Achievable', desc: 'Is this realistically possible?' },
+      { letter: 'R', label: 'Relevant', desc: 'Does this align with your vision?' },
+      { letter: 'T', label: 'Time-bound', desc: 'When will you achieve this by?' },
+    ],
+    tipTitle: 'Quick Tips',
+    tips: [
+      'Double-tap a node to edit its text',
+      'Use "Todo" to turn a goal into an action item',
+      'Ask your AI Coach for goal-setting advice',
+    ],
+    gotIt: 'Got it!',
+    smartCta: 'Try asking your AI Coach for help!',
+  },
+  ko: {
+    emptyTitle: '목표 여정을 시작하세요',
+    emptySubtitle: '인생 비전을 탭하여 목표를 설정해보세요',
+    steps: [
+      { icon: '1', text: '중앙의 비전 노드를 탭하세요' },
+      { icon: '2', text: '"자식" 버튼을 눌러 첫 번째 목표를 추가하세요' },
+      { icon: '3', text: '큰 목표를 작은 하위 목표로 나누세요' },
+    ],
+    smartTitle: 'SMART 목표 설정법',
+    smartItems: [
+      { letter: 'S', label: '구체적', desc: '정확히 무엇을 달성하고 싶나요?' },
+      { letter: 'M', label: '측정 가능', desc: '달성 여부를 어떻게 알 수 있나요?' },
+      { letter: 'A', label: '달성 가능', desc: '현실적으로 가능한 목표인가요?' },
+      { letter: 'R', label: '관련성', desc: '당신의 비전과 연결되나요?' },
+      { letter: 'T', label: '기한 설정', desc: '언제까지 달성할 건가요?' },
+    ],
+    tipTitle: '빠른 팁',
+    tips: [
+      '노드를 두 번 탭하면 텍스트를 편집할 수 있어요',
+      '"투두" 버튼으로 목표를 실행 항목으로 전환하세요',
+      'AI 코치에게 목표 설정 도움을 요청하세요',
+    ],
+    gotIt: '알겠어요!',
+    smartCta: 'AI 코치에게 도움을 요청해보세요!',
+  },
+} as const;
+
 // --- Component ---
 const MindMap: React.FC<MindMapProps> = ({
   nodes, links, language, selectedNodeId, onNodeClick, onEditNode, onUpdateNode, onDeleteNode,
@@ -254,12 +309,19 @@ const MindMap: React.FC<MindMapProps> = ({
   const [layout, setLayout] = useState<LayoutMode>('mindMap');
   const [actionBar, setActionBar] = useState<ActionBarState | null>(null);
   const [viewScale, setViewScale] = useState(1);
+  const [guideDismissed, setGuideDismissed] = useState(false);
+  const [smartExpanded, setSmartExpanded] = useState(false);
   const languageByDom = document.documentElement.lang.toLowerCase().startsWith('ko') ? 'ko' : 'en';
   const resolvedLanguage: 'en' | 'ko' = (
     language === 'ko'
     || languageByDom === 'ko'
   ) ? 'ko' : 'en';
   const labels = ACTION_BAR_LABELS[resolvedLanguage];
+  const guidance = GUIDANCE_CONTENT[resolvedLanguage];
+  const hasSubNodes = nodes.some(n => n.type === NodeType.SUB);
+  const subNodeCount = nodes.filter(n => n.type === NodeType.SUB).length;
+  const showEmptyGuide = !hasSubNodes && !guideDismissed;
+  const showSmartHint = hasSubNodes && subNodeCount <= 3 && !guideDismissed;
 
   const getCurrentMindMapScale = useCallback(() => {
     const mindMap = mindMapRef.current;
@@ -740,6 +802,104 @@ const MindMap: React.FC<MindMapProps> = ({
               </button>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Empty State Guidance Overlay */}
+      {showEmptyGuide && (
+        <div className="absolute inset-0 z-30 pointer-events-none flex flex-col items-center justify-end pb-28 sm:pb-32">
+          {/* Pulsing ring around center */}
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
+            <div className="w-40 h-40 rounded-full border-2 border-neon-lime/30 animate-ping" style={{ animationDuration: '2.5s' }} />
+          </div>
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-[calc(50%-70px)] sm:-translate-y-[calc(50%-80px)] pointer-events-none">
+            <div className="flex flex-col items-center gap-1 animate-bounce" style={{ animationDuration: '2s' }}>
+              <ChevronDown size={20} className="text-neon-lime/70" />
+              <span className="text-[10px] text-neon-lime/60 font-bold tracking-wider">TAP</span>
+            </div>
+          </div>
+
+          {/* Guide Card */}
+          <div className="pointer-events-auto mx-4 max-w-sm w-full">
+            <div className="bg-[#0a1a2f]/95 backdrop-blur-xl border border-neon-lime/20 rounded-2xl p-5 shadow-[0_0_40px_rgba(204,255,0,0.08)]">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-8 h-8 rounded-full bg-neon-lime/10 border border-neon-lime/30 flex items-center justify-center">
+                  <Target size={16} className="text-neon-lime" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white">{guidance.emptyTitle}</h3>
+                  <p className="text-[11px] text-gray-400">{guidance.emptySubtitle}</p>
+                </div>
+              </div>
+
+              <div className="space-y-2 mb-4">
+                {guidance.steps.map((step, i) => (
+                  <div key={i} className="flex items-center gap-3">
+                    <div className="w-6 h-6 rounded-full bg-neon-lime/20 border border-neon-lime/40 flex items-center justify-center shrink-0">
+                      <span className="text-[11px] font-bold text-neon-lime">{step.icon}</span>
+                    </div>
+                    <p className="text-[12px] text-gray-300">{step.text}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* SMART Expandable */}
+              <button
+                onClick={() => setSmartExpanded(!smartExpanded)}
+                className="w-full flex items-center justify-between text-left py-2 px-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all mb-2"
+              >
+                <div className="flex items-center gap-2">
+                  <Lightbulb size={14} className="text-yellow-400" />
+                  <span className="text-[12px] font-semibold text-white">{guidance.smartTitle}</span>
+                </div>
+                <ChevronDown
+                  size={14}
+                  className={`text-gray-400 transition-transform duration-200 ${smartExpanded ? 'rotate-180' : ''}`}
+                />
+              </button>
+              {smartExpanded && (
+                <div className="space-y-1.5 mb-3 pl-1">
+                  {guidance.smartItems.map((item) => (
+                    <div key={item.letter} className="flex items-start gap-2">
+                      <span className="text-[11px] font-black text-neon-lime w-4 shrink-0">{item.letter}</span>
+                      <div>
+                        <span className="text-[11px] font-semibold text-white">{item.label}</span>
+                        <span className="text-[11px] text-gray-400"> — {item.desc}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <button
+                onClick={() => setGuideDismissed(true)}
+                className="w-full py-2.5 bg-neon-lime text-black text-[12px] font-bold rounded-xl hover:bg-white transition-all flex items-center justify-center gap-1.5"
+              >
+                {guidance.gotIt}
+                <ArrowRight size={13} />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SMART Hint - shown after first few nodes */}
+      {showSmartHint && (
+        <div className="absolute bottom-24 left-1/2 -translate-x-1/2 z-20 pointer-events-auto animate-fade-in">
+          <div className="bg-[#0a1a2f]/90 backdrop-blur-xl border border-neon-lime/15 rounded-full px-4 py-2 shadow-lg flex items-center gap-2 max-w-xs">
+            <Sparkles size={13} className="text-neon-lime shrink-0" />
+            <p className="text-[11px] text-gray-300 leading-tight">
+              {resolvedLanguage === 'ko'
+                ? '목표를 더 구체적으로 나눠보세요. 큰 목표 → 중간 목표 → 실행 가능한 작은 목표'
+                : 'Break your goals down further. Big goal → Mid goal → Small actionable steps'}
+            </p>
+            <button
+              onClick={() => setGuideDismissed(true)}
+              className="text-[10px] text-gray-500 hover:text-white shrink-0 ml-1"
+            >
+              ✕
+            </button>
+          </div>
         </div>
       )}
     </div>

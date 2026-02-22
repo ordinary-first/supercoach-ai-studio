@@ -101,6 +101,7 @@ export const sendChatMessage = async (
   todoContext: string,
   activeTab?: string,
   userId?: string,
+  goalCount?: number,
 ): Promise<ChatApiResponse> => {
   try {
     const response = await fetch('/api/chat', {
@@ -115,6 +116,7 @@ export const sendChatMessage = async (
         todoContext,
         activeTab,
         userId,
+        goalCount,
       }),
     });
     if (response.status === 429) {

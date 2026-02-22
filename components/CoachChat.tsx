@@ -40,6 +40,7 @@ const CoachChat: React.FC<CoachChatProps> = ({
     CALENDAR: '일정 캘린더',
     TODO: '할 일 목록',
     VISUALIZE: '시각화',
+    FEEDBACK: '피드백',
   };
 
   const scrollToBottom = () => {
@@ -71,6 +72,7 @@ const CoachChat: React.FC<CoachChatProps> = ({
       const goalCtx = buildGoalContext(nodes || []);
       const todoCtx = buildTodoContext(todos);
 
+      const subGoalCount = (nodes || []).filter(n => n.type !== 'ROOT').length;
       const response = await sendChatMessage(
         history,
         userMsg.text,
@@ -80,6 +82,7 @@ const CoachChat: React.FC<CoachChatProps> = ({
         todoCtx,
         tabLabels[activeTab],
         userId || undefined,
+        subGoalCount,
       );
 
       const aiText = response.candidates?.[0]?.content?.parts
