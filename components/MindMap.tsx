@@ -31,6 +31,11 @@ interface MindMapProps {
   onGenerateImage?: (nodeId: string) => void;
   onInsertImage?: (nodeId: string) => void;
   onAddSubNode: (parentId: string) => void;
+  onDecomposeGoal?: (nodeId: string) => void;
+  previewNodeIds?: string[];
+  confirmedPreviewIds?: string[];
+  onTogglePreviewConfirm?: (nodeId: string) => void;
+  onFinalizePreview?: () => void;
   width: number;
   height: number;
   editingNodeId?: string | null;
@@ -86,6 +91,7 @@ function goalNodesToTree(
   nodes: GoalNode[],
   links: GoalLink[],
   selectedNodeId?: string,
+  confirmedPreviewIds?: string[],
 ): SMMNode | null {
   const root = nodes.find(n => n.type === NodeType.ROOT);
   if (!root) return null;
@@ -112,6 +118,38 @@ function goalNodesToTree(
 
     const statusColor = STATUS_COLORS[goalNode.status] || '#3B82F6';
 
+    const nodeStyle: { borderColor: string; borderWidth: number; borderDasharray?: string; color?: string } = {
+      borderColor: isRoot ? '#CCFF00' : (isSelected ? '#CCFF00' : statusColor),
+      borderWidth: isSelected ? 3 : (isRoot ? 3 : 2),
+    };
+
+    // Preview node styling (반투명 미리보기)
+    if (goalNode.isPreview) {
+      const isConfirmed = confirmedPreviewIds?.includes(goalNode.id);
+      if (isConfirmed) {
+        // 확정된 미리보기 — 밝은 neon-lime border
+        Object.assign(nodeStyle, {
+          borderColor: '#CCFF00',
+          borderWidth: 2,
+          color: '#ffffff',
+        });
+      } else {
+        // 미확정 미리보기 — 반투명 + 점선
+        Object.assign(nodeStyle, {
+          borderColor: 'rgba(204, 255, 0, 0.25)',
+          borderWidth: 1,
+          borderDasharray: '6,3',
+          color: 'rgba(255, 255, 255, 0.5)',
+        });
+      }
+    }
+
+    // Selected node override (after preview so selection still shows)
+    if (isSelected && !goalNode.isPreview) {
+      nodeStyle.borderColor = '#CCFF00';
+      nodeStyle.borderWidth = 3;
+    }
+
     const data: SMMNodeData = {
       text: goalNode.text || '',
       uid: goalNode.id,
@@ -122,8 +160,8 @@ function goalNodesToTree(
       goalProgress: goalNode.progress,
       goalParentId: goalNode.parentId,
       // Bake border color into node data so we never need setStyle()
-      borderColor: isRoot ? '#CCFF00' : (isSelected ? '#CCFF00' : statusColor),
-      borderWidth: isSelected ? 3 : (isRoot ? 3 : 2),
+      borderColor: nodeStyle.borderColor,
+      borderWidth: nodeStyle.borderWidth,
     };
 
     // Add image if available
@@ -231,6 +269,7 @@ const ACTION_BAR_LABELS = {
     more: 'More',
     insertImage: 'Insert image',
     delete: 'Delete',
+    decompose: 'Decompose',
   },
   ko: {
     child: '자식',
@@ -241,6 +280,7 @@ const ACTION_BAR_LABELS = {
     more: '더보기',
     insertImage: '이미지 삽입',
     delete: '삭제',
+    decompose: '분해',
   },
 } as const;
 
@@ -302,6 +342,7 @@ const GUIDANCE_CONTENT = {
 const MindMap: React.FC<MindMapProps> = ({
   nodes, links, language, selectedNodeId, onNodeClick, onEditNode, onUpdateNode, onDeleteNode,
   onReparentNode, onConvertNodeToTask, onGenerateImage, onInsertImage, onAddSubNode,
+  onDecomposeGoal, previewNodeIds, confirmedPreviewIds, onTogglePreviewConfirm, onFinalizePreview,
   width, height, editingNodeId, onEditEnd, imageLoadingNodes
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -397,6 +438,9 @@ const MindMap: React.FC<MindMapProps> = ({
   const onEditNodeRef = useRef(onEditNode);
   const onUpdateNodeRef = useRef(onUpdateNode);
   const onAddSubNodeRef = useRef(onAddSubNode);
+  const onTogglePreviewConfirmRef = useRef(onTogglePreviewConfirm);
+  const onFinalizePreviewRef = useRef(onFinalizePreview);
+  const previewNodeIdsRef = useRef(previewNodeIds);
   const setActionBarRef = useRef(setActionBar);
   const actionBarRef = useRef<ActionBarState | null>(null);
   const lastTapRef = useRef<{ nodeId: string; ts: number }>({
@@ -407,6 +451,9 @@ const MindMap: React.FC<MindMapProps> = ({
   onEditNodeRef.current = onEditNode;
   onUpdateNodeRef.current = onUpdateNode;
   onAddSubNodeRef.current = onAddSubNode;
+  onTogglePreviewConfirmRef.current = onTogglePreviewConfirm;
+  onFinalizePreviewRef.current = onFinalizePreview;
+  previewNodeIdsRef.current = previewNodeIds;
   setActionBarRef.current = setActionBar;
   actionBarRef.current = actionBar;
 
@@ -445,7 +492,7 @@ const MindMap: React.FC<MindMapProps> = ({
   useEffect(() => {
     if (!containerRef.current) return;
 
-    const treeData = goalNodesToTree(nodes, links, selectedNodeId);
+    const treeData = goalNodesToTree(nodes, links, selectedNodeId, confirmedPreviewIds);
     if (!treeData) return;
 
     lastStructureKeyRef.current = computeStructureKey(nodes, links, selectedNodeId);
@@ -532,6 +579,18 @@ const MindMap: React.FC<MindMapProps> = ({
     mindMap.on('node_click', (node: any, e: any) => {
       const goalId = node?.nodeData?.data?.goalId || node?.nodeData?.data?.uid;
       if (!goalId) return;
+
+      // If in preview mode and clicked node is a preview node → toggle confirm
+      const isPreviewMode = previewNodeIdsRef.current && previewNodeIdsRef.current.length > 0;
+      if (isPreviewMode) {
+        if (previewNodeIdsRef.current?.includes(goalId)) {
+          onTogglePreviewConfirmRef.current?.(goalId);
+          return; // Don't show action bar for preview nodes
+        }
+        // Clicking a non-preview node during preview mode → also don't show action bar
+        return;
+      }
+
       const goalNode = nodesRef.current.find(n => n.id === goalId);
       if (goalNode) onNodeClickRef.current(goalNode);
 
@@ -583,7 +642,12 @@ const MindMap: React.FC<MindMapProps> = ({
     });
 
     // Close context menu on background click
-    mindMap.on('draw_click', () => { setActionBarRef.current(null); });
+    mindMap.on('draw_click', () => {
+      if (previewNodeIdsRef.current && previewNodeIdsRef.current.length > 0) {
+        onFinalizePreviewRef.current?.();
+      }
+      setActionBarRef.current(null);
+    });
 
     // --- Event: mindmap-center (from other components) ---
     const handleCenter = (e: Event) => {
@@ -616,12 +680,12 @@ const MindMap: React.FC<MindMapProps> = ({
     if (newKey === lastStructureKeyRef.current) return;
     lastStructureKeyRef.current = newKey;
 
-    const treeData = goalNodesToTree(nodes, links, selectedNodeId);
+    const treeData = goalNodesToTree(nodes, links, selectedNodeId, confirmedPreviewIds);
     if (!treeData) return;
 
     lastSetDataTimeRef.current = Date.now();
     mindMap.setData(treeData);
-  }, [nodes, links, selectedNodeId]);
+  }, [nodes, links, selectedNodeId, confirmedPreviewIds]);
 
   // --- Layout changes ---
   const handleLayoutChange = useCallback((newLayout: LayoutMode) => {
@@ -766,6 +830,16 @@ const MindMap: React.FC<MindMapProps> = ({
                   {labels.todo}
                 </button>
               </>
+            )}
+
+            {!isRootActionNode && (
+              <button
+                onClick={() => { onDecomposeGoal?.(actionBar.nodeId); setActionBar(null); }}
+                className="flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-medium bg-neon-lime/10 text-neon-lime hover:bg-neon-lime/20 transition-colors whitespace-nowrap"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                {labels.decompose}
+              </button>
             )}
 
             <button
@@ -945,6 +1019,8 @@ export default React.memo(MindMap, (prev, next) => {
     prev.links === next.links &&
     prev.language === next.language &&
     prev.selectedNodeId === next.selectedNodeId &&
+    prev.previewNodeIds === next.previewNodeIds &&
+    prev.confirmedPreviewIds === next.confirmedPreviewIds &&
     prev.width === next.width &&
     prev.height === next.height &&
     prev.editingNodeId === next.editingNodeId &&
