@@ -183,10 +183,14 @@ function goalNodesToTree(
 }
 
 /** Compute a structural fingerprint for change detection */
-function computeStructureKey(nodes: GoalNode[], links: GoalLink[], selectedNodeId?: string): string {
+function computeStructureKey(
+  nodes: GoalNode[], links: GoalLink[],
+  selectedNodeId?: string, confirmedPreviewIds?: string[],
+): string {
   return nodes.map(n => `${n.id}:${n.text}:${n.status}:${n.collapsed}:${n.imageUrl || ''}`).join('|')
     + '||' + links.map(l => `${getLinkId(l.source)}-${getLinkId(l.target)}`).join('|')
-    + '||' + (selectedNodeId || '');
+    + '||' + (selectedNodeId || '')
+    + '||' + (confirmedPreviewIds?.join(',') || '');
 }
 
 // --- Dark Theme Config ---
@@ -498,7 +502,7 @@ const MindMap: React.FC<MindMapProps> = ({
     const treeData = goalNodesToTree(nodes, links, selectedNodeId, confirmedPreviewIds);
     if (!treeData) return;
 
-    lastStructureKeyRef.current = computeStructureKey(nodes, links, selectedNodeId);
+    lastStructureKeyRef.current = computeStructureKey(nodes, links, selectedNodeId, confirmedPreviewIds);
 
     const mindMap = new (MindMapSDK as any)({
       el: containerRef.current,
@@ -679,7 +683,7 @@ const MindMap: React.FC<MindMapProps> = ({
     const mindMap = mindMapRef.current;
     if (!mindMap) return;
 
-    const newKey = computeStructureKey(nodes, links, selectedNodeId);
+    const newKey = computeStructureKey(nodes, links, selectedNodeId, confirmedPreviewIds);
     if (newKey === lastStructureKeyRef.current) return;
     lastStructureKeyRef.current = newKey;
 
