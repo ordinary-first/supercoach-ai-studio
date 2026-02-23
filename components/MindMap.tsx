@@ -65,6 +65,9 @@ interface SMMNodeData {
   // Per-node border color baked into data (avoids setStyle infinite loops)
   borderColor?: string;
   borderWidth?: number;
+  borderDasharray?: string;
+  color?: string;
+  fillColor?: string;
   // Image support
   image?: string;
   imageTitle?: string;
@@ -127,19 +130,17 @@ function goalNodesToTree(
     if (goalNode.isPreview) {
       const isConfirmed = confirmedPreviewIds?.includes(goalNode.id);
       if (isConfirmed) {
-        // 확정된 미리보기 — 밝은 neon-lime border
+        // 확정됨 — 밝은 neon-lime 두꺼운 border + 정상 텍스트
         Object.assign(nodeStyle, {
           borderColor: '#CCFF00',
-          borderWidth: 2,
-          color: '#ffffff',
+          borderWidth: 3,
         });
       } else {
-        // 미확정 미리보기 — 반투명 + 점선
+        // 미확정 — 어두운 회색 얇은 border
         Object.assign(nodeStyle, {
-          borderColor: 'rgba(204, 255, 0, 0.25)',
+          borderColor: '#444444',
           borderWidth: 1,
-          borderDasharray: '6,3',
-          color: 'rgba(255, 255, 255, 0.5)',
+          color: 'rgba(255, 255, 255, 0.4)',
         });
       }
     }
@@ -162,6 +163,8 @@ function goalNodesToTree(
       // Bake border color into node data so we never need setStyle()
       borderColor: nodeStyle.borderColor,
       borderWidth: nodeStyle.borderWidth,
+      ...(nodeStyle.borderDasharray && { borderDasharray: nodeStyle.borderDasharray }),
+      ...(nodeStyle.color && { color: nodeStyle.color }),
     };
 
     // Add image if available
