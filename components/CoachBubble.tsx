@@ -8,9 +8,10 @@ interface CoachBubbleProps {
   onToggle: () => void;
   hasUnread?: boolean;
   selectedNode: GoalNode | null;
+  nodes: GoalNode[];
 }
 
-const CoachBubble: React.FC<CoachBubbleProps> = ({ isOpen, onToggle, hasUnread, selectedNode }) => {
+const CoachBubble: React.FC<CoachBubbleProps> = ({ isOpen, onToggle, hasUnread, selectedNode, nodes }) => {
   const [shouldPulse, setShouldPulse] = useState(false);
   const hasInitialPulsed = useRef(false);
 
@@ -22,12 +23,16 @@ const CoachBubble: React.FC<CoachBubbleProps> = ({ isOpen, onToggle, hasUnread, 
     }
   }, []);
 
-  // ROOT 노드 선택 시 pulse
+  // ROOT 또는 1차 노드 선택 시 pulse (2차/3차 제외)
   useEffect(() => {
-    if ((selectedNode?.type === NodeType.ROOT || selectedNode?.type === NodeType.SUB) && !isOpen) {
+    if (!selectedNode || isOpen) return;
+    const isRoot = selectedNode.type === NodeType.ROOT;
+    const isFirstLevel = selectedNode.type === NodeType.SUB
+      && nodes.some(n => n.type === NodeType.ROOT && n.id === selectedNode.parentId);
+    if (isRoot || isFirstLevel) {
       setShouldPulse(true);
     }
-  }, [selectedNode, isOpen]);
+  }, [selectedNode, isOpen, nodes]);
 
   // 3초 후 자동 소멸
   useEffect(() => {

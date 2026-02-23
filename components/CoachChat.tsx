@@ -131,6 +131,7 @@ const CoachChat: React.FC<CoachChatProps> = ({
 
   const handleSend = async () => {
     if (!inputText.trim()) return;
+    setShowTopicCards(false);
     const userMsg: ChatMessage = {
       id: Date.now().toString(),
       sender: 'user',

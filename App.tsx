@@ -626,6 +626,7 @@ const App: React.FC = () => {
           });
         }}
         selectedNode={selectedNode}
+        nodes={nodes}
       />
       <input
         ref={insertImageInputRef}
