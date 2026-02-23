@@ -13,7 +13,7 @@ import SettingsPage from './components/SettingsPage';
 import OnboardingScreen from './components/OnboardingScreen';
 import FeedbackView from './components/FeedbackView';
 import { GoalNode, GoalLink, NodeType, NodeStatus, ToDoItem, ChatMessage, RepeatFrequency } from './types';
-import { generateGoalImage, uploadNodeImage } from './services/aiService';
+import { generateGoalImage, uploadNodeImage, decomposeGoal } from './services/aiService';
 import { verifyPolarCheckout } from './services/polarService';
 import {
   logout,
@@ -155,6 +155,9 @@ const App: React.FC = () => {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [imageLoadingNodes, setImageLoadingNodes] = useState<Set<string>>(new Set());
+  const [decomposingNodeId, setDecomposingNodeId] = useState<string | null>(null);
+  const [previewNodeIds, setPreviewNodeIds] = useState<string[]>([]);
+  const [confirmedPreviewIds, setConfirmedPreviewIds] = useState<string[]>([]);
   const insertImageInputRef = useRef<HTMLInputElement>(null);
   const insertImageTargetNodeRef = useRef<string | null>(null);
 
@@ -393,6 +396,88 @@ const App: React.FC = () => {
     insertImageInputRef.current?.click();
   }, []);
 
+  // 목표 분해 — AI가 하위 목표 제안
+  const handleDecomposeGoal = useCallback(async (nodeId: string) => {
+    const node = nodes.find(n => n.id === nodeId);
+    if (!node) return;
+
+    setDecomposingNodeId(nodeId);
+    try {
+      const childTexts = nodes
+        .filter(n => n.parentId === nodeId && n.text)
+        .map(n => n.text);
+
+      const suggestions = await decomposeGoal(node.text, childTexts, getUserId());
+      if (!suggestions.length) {
+        addToast('목표 분해에 실패했습니다', 'warning');
+        return;
+      }
+
+      const now = Date.now();
+      const parentNode = nodes.find(n => n.id === nodeId);
+      const baseX = parentNode?.x ?? dimensions.width / 2;
+      const baseY = parentNode?.y ?? dimensions.height / 2;
+
+      // 부모 노드가 접혀있으면 펼치기
+      if (parentNode?.collapsed) handleUpdateNode(nodeId, { collapsed: false });
+
+      const newNodes: GoalNode[] = suggestions.map((text, i) => ({
+        id: `${now}_${i}`,
+        text,
+        type: NodeType.SUB,
+        status: NodeStatus.PENDING,
+        progress: 0,
+        parentId: nodeId,
+        isPreview: true,
+        x: baseX + (Math.random() - 0.5) * 100,
+        y: baseY + (Math.random() - 0.5) * 100,
+        collapsed: false,
+      }));
+
+      const newLinks: GoalLink[] = newNodes.map(n => ({ source: nodeId, target: n.id }));
+
+      setNodes(prev => [...prev, ...newNodes]);
+      setLinks(prev => [...prev, ...newLinks]);
+      setPreviewNodeIds(newNodes.map(n => n.id));
+      setConfirmedPreviewIds([]);
+    } catch {
+      addToast('목표 분해 중 오류가 발생했습니다', 'warning');
+    } finally {
+      setDecomposingNodeId(null);
+    }
+  }, [nodes, dimensions, handleUpdateNode, addToast]);
+
+  // 미리보기 노드 확정 토글
+  const handleTogglePreviewConfirm = useCallback((nodeId: string) => {
+    setConfirmedPreviewIds(prev =>
+      prev.includes(nodeId) ? prev.filter(id => id !== nodeId) : [...prev, nodeId]
+    );
+  }, []);
+
+  // 빈 공간 클릭 → 미리보기 종료 (선택된 것만 확정, 나머지 삭제)
+  const handleFinalizePreview = useCallback(() => {
+    setNodes(prev => prev
+      .map(n => confirmedPreviewIds.includes(n.id) ? { ...n, isPreview: undefined } : n)
+      .filter(n => !previewNodeIds.includes(n.id) || confirmedPreviewIds.includes(n.id))
+    );
+    setLinks(prev => prev.filter(l => {
+      const targetId = typeof l.target === 'string' ? l.target : l.target.id;
+      return !previewNodeIds.includes(targetId) || confirmedPreviewIds.includes(targetId);
+    }));
+
+    const confirmedCount = confirmedPreviewIds.length;
+    if (confirmedCount > 0) {
+      addToast(`${confirmedCount}개 하위 목표가 추가되었습니다`, 'success');
+      confirmedPreviewIds.forEach(id => {
+        const node = nodes.find(n => n.id === id);
+        if (node) appendAction(getUserId(), 'ADD_NODE', `"${node.text}" AI 분해 추가`, { nodeId: id, parentId: node.parentId });
+      });
+    }
+
+    setPreviewNodeIds([]);
+    setConfirmedPreviewIds([]);
+  }, [previewNodeIds, confirmedPreviewIds, nodes, addToast]);
+
   const handleInsertNodeImageFileChange = useCallback(async (
     e: React.ChangeEvent<HTMLInputElement>,
   ) => {
@@ -561,7 +646,7 @@ const App: React.FC = () => {
       {activeTab === 'GOALS' && (
         <>
           <MindMap
-            nodes={visibleNodes} links={visibleLinks} language={language} selectedNodeId={selectedNode?.id} onNodeClick={setSelectedNode} onEditNode={(nodeId) => setEditingNodeId(nodeId)} onUpdateNode={handleUpdateNode} onDeleteNode={handleDeleteNode} onReparentNode={handleReparentNode} onAddSubNode={handleAddSubNode} onGenerateImage={handleGenerateNodeImage} onInsertImage={handleInsertNodeImage} onConvertNodeToTask={handleConvertNodeToTodo} editingNodeId={editingNodeId} onEditEnd={() => setEditingNodeId(null)} width={dimensions.width} height={dimensions.height} imageLoadingNodes={imageLoadingNodes}
+            nodes={visibleNodes} links={visibleLinks} language={language} selectedNodeId={selectedNode?.id} onNodeClick={setSelectedNode} onEditNode={(nodeId) => setEditingNodeId(nodeId)} onUpdateNode={handleUpdateNode} onDeleteNode={handleDeleteNode} onReparentNode={handleReparentNode} onAddSubNode={handleAddSubNode} onGenerateImage={handleGenerateNodeImage} onInsertImage={handleInsertNodeImage} onConvertNodeToTask={handleConvertNodeToTodo} onDecomposeGoal={handleDecomposeGoal} previewNodeIds={previewNodeIds} confirmedPreviewIds={confirmedPreviewIds} onTogglePreviewConfirm={handleTogglePreviewConfirm} onFinalizePreview={handleFinalizePreview} editingNodeId={editingNodeId} onEditEnd={() => setEditingNodeId(null)} width={dimensions.width} height={dimensions.height} imageLoadingNodes={imageLoadingNodes}
           />
 
            <div className="absolute top-[64px] left-3 md:top-[72px] md:left-6 z-50">

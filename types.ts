@@ -19,6 +19,7 @@ export interface GoalNode {
   parentId?: string;
   imageUrl?: string;
   collapsed?: boolean;
+  isPreview?: boolean;
   x?: number;
   y?: number;
   vx?: number;
