@@ -31,6 +31,7 @@ import { useToast } from './hooks/useToast';
 import { appendAction } from './services/actionLogService';
 import ToastContainer from './components/ToastContainer';
 import { Crown, Settings as SettingsIcon } from 'lucide-react';
+import { CoachingTopicDef } from './constants/coachingTopics';
 
 // Helper function to calculate the next occurrence date for recurring todos
 const calculateNextDate = (repeat: RepeatFrequency, fromDate: Date): number => {
@@ -153,6 +154,7 @@ const App: React.FC = () => {
   const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
   const [deleteConfirmNodeId, setDeleteConfirmNodeId] = useState<string | null>(null);
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [coachTopic, setCoachTopic] = useState<CoachingTopicDef | null>(null);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [imageLoadingNodes, setImageLoadingNodes] = useState<Set<string>>(new Set());
   const insertImageInputRef = useRef<HTMLInputElement>(null);
@@ -505,6 +507,12 @@ const App: React.FC = () => {
       appendAction(getUserId(), 'VIEW_TAB', tabNames[tab] || tab, { tab });
   }, []);
 
+  const handleCoachTopicSelect = useCallback((topic: CoachingTopicDef) => {
+    setCoachTopic(topic);
+    setIsChatOpen(true);
+    appendAction(getUserId(), 'OPEN_COACH', `코칭 토픽: ${topic.label}`);
+  }, []);
+
   // --- Keyboard Shortcuts ---
   useKeyboardShortcuts(
     selectedNode,
@@ -601,16 +609,39 @@ const App: React.FC = () => {
   appendAction(getUserId(), 'UPDATE_TODO', `할일 수정`, { todoId: id });
 }} />
       <CalendarView isOpen={activeTab === 'CALENDAR'} onClose={() => setActiveTab('GOALS')} todos={todos} onToggleToDo={handleToggleToDo} />
-      <CoachChat isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} selectedNode={selectedNode} nodes={nodes} userProfile={userProfile} userId={getUserId()} todos={todos} onOpenVisualization={() => setActiveTab('VISUALIZE')} messages={chatMessages} onMessagesChange={setChatMessages} activeTab={activeTab} />
+      <CoachChat
+        isOpen={isChatOpen}
+        onClose={() => {
+          setIsChatOpen(false);
+          setCoachTopic(null);
+        }}
+        selectedNode={selectedNode}
+        nodes={nodes}
+        userProfile={userProfile}
+        userId={getUserId()}
+        todos={todos}
+        onOpenVisualization={() => setActiveTab('VISUALIZE')}
+        messages={chatMessages}
+        onMessagesChange={setChatMessages}
+        activeTab={activeTab}
+        coachTopic={coachTopic}
+        onClearTopic={() => setCoachTopic(null)}
+      />
       <VisualizationModal isOpen={activeTab === 'VISUALIZE'} onClose={() => setActiveTab('GOALS')} userProfile={userProfile} nodes={nodes} />
       <ShortcutsPanel isOpen={isShortcutsOpen} onClose={() => setIsShortcutsOpen(false)} />
       <BottomDock activeTab={activeTab} onTabChange={handleTabChange} />
-      <CoachBubble isOpen={isChatOpen} onToggle={() => {
-        setIsChatOpen(prev => {
-          if (!prev) appendAction(getUserId(), 'OPEN_COACH', '코치 대화 시작');
-          return !prev;
-        });
-      }} />
+      <CoachBubble
+        isOpen={isChatOpen}
+        onToggle={() => {
+          setIsChatOpen(prev => {
+            if (!prev) appendAction(getUserId(), 'OPEN_COACH', '코치 대화 시작');
+            return !prev;
+          });
+        }}
+        nodes={nodes}
+        activeTab={activeTab}
+        onSelectTopic={handleCoachTopicSelect}
+      />
       <input
         ref={insertImageInputRef}
         type="file"

@@ -6,6 +6,7 @@ import { Send, MessageCircle, Sparkles } from 'lucide-react';
 import CloseButton from './CloseButton';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { TabType } from './BottomDock';
+import { CoachingTopicDef } from '../constants/coachingTopics';
 import {
   useCoachMemory,
   buildGoalContext,
@@ -24,10 +25,12 @@ interface CoachChatProps {
   messages: ChatMessage[];
   onMessagesChange: React.Dispatch<React.SetStateAction<ChatMessage[]>>;
   activeTab: TabType;
+  coachTopic?: CoachingTopicDef | null;
+  onClearTopic?: () => void;
 }
 
 const CoachChat: React.FC<CoachChatProps> = ({
-  isOpen, onClose, selectedNode, nodes, userProfile, userId, todos, onOpenVisualization, messages, onMessagesChange, activeTab
+  isOpen, onClose, selectedNode, nodes, userProfile, userId, todos, onOpenVisualization, messages, onMessagesChange, activeTab, coachTopic, onClearTopic
 }) => {
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -51,6 +54,61 @@ const CoachChat: React.FC<CoachChatProps> = ({
   useEffect(() => {
     scrollToBottom();
   }, [messages, isLoading]);
+
+  // 코칭 토픽 선택 시 AI 첫 메시지 자동 전송
+  useEffect(() => {
+    if (!isOpen || !coachTopic?.topicDirective || messages.length > 0 || isLoading) return;
+
+    let cancelled = false;
+    setIsLoading(true);
+
+    (async () => {
+      try {
+        const goalCtx = buildGoalContext(nodes || []);
+        const todoCtx = buildTodoContext(todos);
+        const subGoalCount = (nodes || []).filter(n => n.type !== 'ROOT').length;
+
+        const response = await sendChatMessage(
+          [],
+          '',
+          userProfile,
+          memory,
+          goalCtx,
+          todoCtx,
+          tabLabels[activeTab],
+          userId || undefined,
+          subGoalCount,
+          coachTopic.topicDirective!,
+        );
+
+        if (cancelled) return;
+
+        const aiText = response.candidates?.[0]?.content?.parts
+          ?.map(p => p.text)
+          .filter(Boolean)
+          .join('') || '';
+
+        if (aiText) {
+          onMessagesChange([
+            { id: Date.now().toString(), sender: 'ai', text: aiText, timestamp: Date.now() },
+          ]);
+        }
+      } catch {
+        if (!cancelled) {
+          onMessagesChange([
+            { id: 'err-' + Date.now(), sender: 'ai', text: '코칭 시작 중 오류가 발생했습니다.', timestamp: Date.now() },
+          ]);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+          onClearTopic?.();
+        }
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [isOpen, coachTopic]);
 
   const handleSend = async () => {
     if (!inputText.trim()) return;

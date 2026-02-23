@@ -211,6 +211,10 @@ const CONTEXT_BUDGET = 1500;
 function buildContextBlock(body: any): string {
   const prioritizedSections: string[] = [];
 
+  if (body.topicDirective) {
+    prioritizedSections.push(body.topicDirective);
+  }
+
   if (body.activeTab) {
     prioritizedSections.push(
       `[현재 화면] 사용자가 '${body.activeTab}' 탭을 보고 있습니다.`,
@@ -311,10 +315,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ? `${contextBlock}\n\n---\n\n${COACH_SYSTEM_PROMPT}`
       : COACH_SYSTEM_PROMPT;
 
+    const userMessage = body.message?.trim()
+      ? String(body.message)
+      : body.topicDirective
+        ? '코칭을 시작해주세요.'
+        : '';
+
     const input: EasyInputMessage[] = [
       { role: 'system', content: systemContent },
       ...mapHistoryToInput(body.history),
-      { role: 'user', content: String(body.message || '') },
+      { role: 'user', content: userMessage },
     ];
 
     const response = await openai.responses.create({
