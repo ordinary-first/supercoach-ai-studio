@@ -8,7 +8,7 @@ import ToDoList from './components/ToDoList';
 import BottomDock, { TabType } from './components/BottomDock';
 import VisualizationModal from './components/VisualizationModal';
 import CalendarView from './components/CalendarView';
-import LandingPage from './components/LandingPage';
+import MarketingLandingPage from './components/landing/MarketingLandingPage';
 import SettingsPage from './components/SettingsPage';
 import OnboardingScreen from './components/OnboardingScreen';
 import FeedbackView from './components/FeedbackView';
@@ -543,7 +543,7 @@ const App: React.FC = () => {
   }
 
   if (!userProfile) {
-      return <LandingPage onLoginSuccess={(p) => setUserProfile(p)} />;
+      return <MarketingLandingPage onLoginSuccess={(p) => setUserProfile(p)} />;
   }
 
   if (isNewUser) {
