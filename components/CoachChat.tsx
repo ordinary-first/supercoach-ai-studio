@@ -190,7 +190,7 @@ const CoachChat: React.FC<CoachChatProps> = ({
 
       {/* Ambient Background */}
       <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-neon-lime/5 rounded-full blur-[120px] pointer-events-none"></div>
-      <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-electric-orange/5 rounded-full blur-[120px] pointer-events-none"></div>
+      <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-emerald-700/5 rounded-full blur-[120px] pointer-events-none"></div>
 
       {/* Header */}
       <div className="h-14 md:h-20 border-b border-white/10 flex items-center justify-between px-4 md:px-8 bg-black/20 backdrop-blur-md shrink-0 z-10">
@@ -215,7 +215,7 @@ const CoachChat: React.FC<CoachChatProps> = ({
             <div key={msg.id} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
               <div className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
                 msg.sender === 'user'
-                  ? 'bg-electric-orange text-white rounded-tr-sm'
+                  ? 'bg-emerald-700 text-white rounded-tr-sm'
                   : 'bg-white/5 text-gray-100 rounded-tl-sm border border-white/10 shadow-xl backdrop-blur-sm'
               }`}>
                 <span className="whitespace-pre-wrap">
