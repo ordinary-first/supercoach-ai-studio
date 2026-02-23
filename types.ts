@@ -126,5 +126,4 @@ export interface CoachMemoryContext {
   longTerm: string | null;
 }
 
-export type CoachingTopicId = 'meaning-seeking-goals' | 'discover-identity' | 'free-chat';
 

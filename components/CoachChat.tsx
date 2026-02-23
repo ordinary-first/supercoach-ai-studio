@@ -6,7 +6,7 @@ import { Send, MessageCircle, Sparkles } from 'lucide-react';
 import CloseButton from './CloseButton';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { TabType } from './BottomDock';
-import { CoachingTopicDef, getAvailableTopics } from '../constants/coachingTopics';
+import { CoachingQuestion, getCoachingQuestions } from '../constants/coachingTopics';
 import {
   useCoachMemory,
   buildGoalContext,
@@ -32,7 +32,7 @@ const CoachChat: React.FC<CoachChatProps> = ({
 }) => {
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedTopic, setSelectedTopic] = useState<CoachingTopicDef | null>(null);
+  const [selectedTopic, setSelectedTopic] = useState<CoachingQuestion | null>(null);
   const [showTopicCards, setShowTopicCards] = useState(true);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const focusTrapRef = useFocusTrap(isOpen);
@@ -110,12 +110,11 @@ const CoachChat: React.FC<CoachChatProps> = ({
     return () => { cancelled = true; };
   }, [isOpen, selectedTopic]);
 
-  const handleTopicSelect = (topic: CoachingTopicDef) => {
+  const handleTopicSelect = (topic: CoachingQuestion) => {
     setShowTopicCards(false);
     if (topic.topicDirective) {
       setSelectedTopic(topic);
     }
-    // free-chat: just hide cards, user types directly
   };
 
   const handleSend = async () => {
@@ -200,29 +199,29 @@ const CoachChat: React.FC<CoachChatProps> = ({
       {/* Chat Messages */}
       <div ref={messagesContainerRef} className="flex-1 overflow-y-auto px-4 lg:px-0 scrollbar-hide relative z-10">
         <div className="max-w-2xl mx-auto py-4 space-y-3">
-          {messages.length === 0 && !isLoading && (
-            activeTab === 'GOALS' && showTopicCards ? (
+          {messages.length === 0 && !isLoading && (() => {
+            const questions = getCoachingQuestions(selectedNode, nodes || []);
+            return questions.length > 0 && showTopicCards ? (
               <div className="flex justify-start">
                 <div className="max-w-[85%] rounded-2xl rounded-tl-sm bg-white/5 border border-white/10 shadow-xl backdrop-blur-sm px-5 py-4">
                   <p className="text-sm text-gray-100 leading-relaxed mb-4">
-                    안녕하세요! 목표 설정을 도와드릴게요.<br/>
-                    아래에서 관심 있는 주제를 선택해주세요!
+                    안녕하세요! 아래 질문 중 궁금한 것을 선택해보세요 🙂
                   </p>
                   <div className="space-y-2">
-                    {getAvailableTopics(nodes || []).map((topic) => (
+                    {questions.map((q) => (
                       <button
-                        key={topic.id}
-                        onClick={() => handleTopicSelect(topic)}
+                        key={q.id}
+                        onClick={() => handleTopicSelect(q)}
                         className="w-full text-left px-4 py-3 rounded-xl bg-white/5 border border-white/10 hover:border-neon-lime/40 hover:bg-neon-lime/5 transition-all duration-200 group"
                       >
                         <div className="flex items-center gap-3">
-                          <span className="text-lg">{topic.icon}</span>
+                          <span className="text-lg">{q.icon}</span>
                           <div>
                             <p className="text-sm font-medium text-white group-hover:text-neon-lime transition-colors">
-                              {topic.label}
+                              {q.question}
                             </p>
                             <p className="text-xs text-gray-500 mt-0.5">
-                              {topic.description}
+                              {q.summary}
                             </p>
                           </div>
                         </div>
@@ -239,8 +238,8 @@ const CoachChat: React.FC<CoachChatProps> = ({
                 <p className="text-sm font-display uppercase tracking-widest mb-1 text-gray-500">입력 대기 중</p>
                 <p className="text-xs text-gray-600 max-w-xs">목표와 비전에 대한 조언을 요청하세요.</p>
               </div>
-            )
-          )}
+            );
+          })()}
           {messages.map((msg) => (
             <div key={msg.id} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
               <div className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
