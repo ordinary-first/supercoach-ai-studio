@@ -635,21 +635,43 @@ const MindMap: React.FC<MindMapProps> = ({
   }, [width, height]);
 
   // --- Trigger text editing when editingNodeId is set ---
+  // setData() 후 라이브러리 내부 렌더가 비동기이므로, 노드가 나타날 때까지 폴링
   useEffect(() => {
     if (!editingNodeId || !mindMapRef.current) return;
     const mindMap = mindMapRef.current;
-    const allNodes = mindMap.renderer?.root
-      ? getAllRenderedNodes(mindMap.renderer.root)
-      : [];
-    const target = allNodes.find(
-      (n: any) => n.nodeData?.data?.goalId === editingNodeId || n.nodeData?.data?.uid === editingNodeId
-    );
-    if (target) {
-      mindMap.execCommand('SET_NODE_ACTIVE', target, true);
-      setTimeout(() => {
-        mindMap.renderer?.textEdit?.show?.({ node: target, isInserting: true });
-      }, 50);
-    }
+    let attempts = 0;
+    const maxAttempts = 20; // 20 × 50ms = 최대 1초
+    let cancelled = false;
+
+    const tryActivateEdit = () => {
+      if (cancelled) return;
+      const allNodes = mindMap.renderer?.root
+        ? getAllRenderedNodes(mindMap.renderer.root)
+        : [];
+      const target = allNodes.find(
+        (n: any) =>
+          n.nodeData?.data?.goalId === editingNodeId ||
+          n.nodeData?.data?.uid === editingNodeId
+      );
+      if (target) {
+        mindMap.execCommand('SET_NODE_ACTIVE', target, true);
+        setTimeout(() => {
+          if (!cancelled) {
+            mindMap.renderer?.textEdit?.show?.({
+              node: target,
+              isInserting: true,
+            });
+          }
+        }, 50);
+      } else if (attempts < maxAttempts) {
+        attempts++;
+        setTimeout(tryActivateEdit, 50);
+      }
+    };
+
+    tryActivateEdit();
+
+    return () => { cancelled = true; };
   }, [editingNodeId]);
 
   const actionNode = actionBar
