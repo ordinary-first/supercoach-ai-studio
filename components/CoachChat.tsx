@@ -57,12 +57,13 @@ const CoachChat: React.FC<CoachChatProps> = ({
     scrollToBottom();
   }, [messages, isLoading]);
 
-  // 채팅 열릴 때 질문 상태 리셋
+  // 채팅 열릴 때 질문 상태 리셋 + 스크롤
   useEffect(() => {
     if (isOpen) {
       setShowTopicCards(true);
       setSelectedTopic(null);
       setQuestionPage(0);
+      requestAnimationFrame(() => scrollToBottom());
     }
   }, [isOpen]);
 
@@ -100,13 +101,13 @@ const CoachChat: React.FC<CoachChatProps> = ({
           .join('') || '';
 
         if (aiText) {
-          onMessagesChange([
+          onMessagesChange(prev => [...prev,
             { id: Date.now().toString(), sender: 'ai', text: aiText, timestamp: Date.now() },
           ]);
         }
       } catch {
         if (!cancelled) {
-          onMessagesChange([
+          onMessagesChange(prev => [...prev,
             { id: 'err-' + Date.now(), sender: 'ai', text: '코칭 시작 중 오류가 발생했습니다.', timestamp: Date.now() },
           ]);
         }
