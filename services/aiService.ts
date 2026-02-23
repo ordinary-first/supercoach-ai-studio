@@ -102,6 +102,7 @@ export const sendChatMessage = async (
   activeTab?: string,
   userId?: string,
   goalCount?: number,
+  topicDirective?: string,
 ): Promise<ChatApiResponse> => {
   try {
     const response = await fetch('/api/chat', {
@@ -117,6 +118,7 @@ export const sendChatMessage = async (
         activeTab,
         userId,
         goalCount,
+        topicDirective,
       }),
     });
     if (response.status === 429) {

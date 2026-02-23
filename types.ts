@@ -126,3 +126,4 @@ export interface CoachMemoryContext {
   longTerm: string | null;
 }
 
+

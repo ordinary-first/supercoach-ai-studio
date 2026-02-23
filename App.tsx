@@ -601,16 +601,33 @@ const App: React.FC = () => {
   appendAction(getUserId(), 'UPDATE_TODO', `할일 수정`, { todoId: id });
 }} />
       <CalendarView isOpen={activeTab === 'CALENDAR'} onClose={() => setActiveTab('GOALS')} todos={todos} onToggleToDo={handleToggleToDo} />
-      <CoachChat isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} selectedNode={selectedNode} nodes={nodes} userProfile={userProfile} userId={getUserId()} todos={todos} onOpenVisualization={() => setActiveTab('VISUALIZE')} messages={chatMessages} onMessagesChange={setChatMessages} activeTab={activeTab} />
+      <CoachChat
+        isOpen={isChatOpen}
+        onClose={() => setIsChatOpen(false)}
+        selectedNode={selectedNode}
+        nodes={nodes}
+        userProfile={userProfile}
+        userId={getUserId()}
+        todos={todos}
+        onOpenVisualization={() => setActiveTab('VISUALIZE')}
+        messages={chatMessages}
+        onMessagesChange={setChatMessages}
+        activeTab={activeTab}
+      />
       <VisualizationModal isOpen={activeTab === 'VISUALIZE'} onClose={() => setActiveTab('GOALS')} userProfile={userProfile} nodes={nodes} />
       <ShortcutsPanel isOpen={isShortcutsOpen} onClose={() => setIsShortcutsOpen(false)} />
       <BottomDock activeTab={activeTab} onTabChange={handleTabChange} />
-      <CoachBubble isOpen={isChatOpen} onToggle={() => {
-        setIsChatOpen(prev => {
-          if (!prev) appendAction(getUserId(), 'OPEN_COACH', '코치 대화 시작');
-          return !prev;
-        });
-      }} />
+      <CoachBubble
+        isOpen={isChatOpen}
+        onToggle={() => {
+          setIsChatOpen(prev => {
+            if (!prev) appendAction(getUserId(), 'OPEN_COACH', '코치 대화 시작');
+            return !prev;
+          });
+        }}
+        selectedNode={selectedNode}
+        nodes={nodes}
+      />
       <input
         ref={insertImageInputRef}
         type="file"
