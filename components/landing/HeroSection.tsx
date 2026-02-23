@@ -124,7 +124,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onCTAClick }) => {
             animation: 'fadeIn 0.8s ease-out 0.4s both',
           }}
         >
-          Structure + AI Coach + Visualization — 목표 달성의 3가지 열쇠를 하나의 앱에서
+          구조화 + AI 코치 + 시각화 — 목표 달성의 3가지 열쇠를 하나의 앱에서
         </p>
 
         {/* Primary CTA */}
@@ -150,7 +150,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onCTAClick }) => {
                 '0 0 0 0 rgba(204,255,0,0)';
             }}
           >
-            Start Free
+            무료로 시작하기
           </button>
 
           {/* Pulsing indicator */}
@@ -163,7 +163,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onCTAClick }) => {
               className="text-xs text-gray-400"
               style={{ fontFamily: 'Inter, sans-serif' }}
             >
-              3일간 무료 체험 (인원 한정)
+              베타 기간 무료 체험 · 집중 케어 인원 한정
             </span>
           </div>
         </div>

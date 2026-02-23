@@ -56,7 +56,7 @@ export const StickyNav: React.FC<StickyNavProps> = ({ onCTAClick }) => {
           fontFamily: 'Inter, sans-serif',
         }}
       >
-        무료 체험 확인
+        무료 시작
       </button>
     </nav>
   );

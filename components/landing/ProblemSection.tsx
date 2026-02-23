@@ -13,19 +13,19 @@ const PROBLEMS: ProblemCard[] = [
     icon: <MessageCircleOff size={32} color="#FF4D00" />,
     title: '피드백 부재',
     description:
-      '혼자서는 무엇이 잘못됐는지 모릅니다. 방향 없는 노력은 시간 낭비입니다.',
+      '새벽에 세운 계획, 퇴근 후엔 이미 흐릿합니다. 누가 "지금 이거부터 해"라고 말해주는 사람이 없으니까요.',
   },
   {
     icon: <LayoutPanelLeft size={32} color="#FF4D00" />,
     title: '구조 부재',
     description:
-      '머릿속에만 있는 목표는 증발합니다. 체계 없는 의지력은 3일을 못 버팁니다.',
+      '"올해는 다르겠지" — 매년 같은 다짐, 같은 결과. 목표가 머릿속에만 있으면 3일이면 사라집니다.',
   },
   {
     icon: <BatteryLow size={32} color="#FF4D00" />,
     title: '동기 소멸',
     description:
-      '시작의 열정은 72시간이면 사라집니다. 그리고 다시 제자리로 돌아옵니다.',
+      '작심삼일은 의지력의 문제가 아닙니다. 뇌가 원래 그렇게 설계되어 있습니다. 시스템 없이는 누구나 돌아옵니다.',
   },
 ];
 

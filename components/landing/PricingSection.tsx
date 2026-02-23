@@ -10,6 +10,7 @@ interface PlanConfig {
   id: string;
   name: string;
   price: string;
+  originalPrice?: string;
   priceSub: string;
   features: string[];
   cta: string;
@@ -32,6 +33,7 @@ const PLANS: PlanConfig[] = [
     id: 'essential',
     name: 'Essential',
     price: '$9.99',
+    originalPrice: '$19.99',
     priceSub: '/월',
     features: [
       'AI 코치 2,500회',
@@ -44,6 +46,7 @@ const PLANS: PlanConfig[] = [
     id: 'visionary',
     name: 'Visionary',
     price: '$19.99',
+    originalPrice: '$39.99',
     priceSub: '/월',
     features: [
       'AI 코치 6,000회',
@@ -58,6 +61,7 @@ const PLANS: PlanConfig[] = [
     id: 'master',
     name: 'Master',
     price: '$49.99',
+    originalPrice: '$99.99',
     priceSub: '/월',
     features: [
       'AI 코치 15,000회',
@@ -108,9 +112,22 @@ const PlanCard: React.FC<{ plan: PlanConfig; onSelect: (id: string) => void; del
       </p>
 
       {/* Price */}
-      <div className="mb-4">
-        <span className={`text-4xl font-bold ${priceColor}`}>{plan.price}</span>
-        <span className="text-gray-400 text-sm ml-1">{plan.priceSub}</span>
+      <div className="mb-4 flex flex-col items-start">
+        {plan.originalPrice && (
+          <span className="text-gray-500 line-through text-sm">{plan.originalPrice}{plan.priceSub}</span>
+        )}
+        <div className="flex items-baseline gap-1">
+          <span className={`text-4xl font-bold ${priceColor}`}>{plan.price}</span>
+          <span className="text-gray-400 text-sm">{plan.priceSub}</span>
+        </div>
+        {plan.originalPrice && (
+          <span
+            className="text-xs mt-1 px-2 py-0.5 rounded-full"
+            style={{ backgroundColor: 'rgba(204,255,0,0.15)', color: '#CCFF00' }}
+          >
+            베타 특가
+          </span>
+        )}
       </div>
 
       {/* Divider */}
@@ -157,6 +174,16 @@ export const PricingSection: React.FC<PricingSectionProps> = ({ onPlanSelect }) 
           </h2>
           <p className="text-gray-400 text-lg">
             3일 무료 체험으로 시작 · 언제든 해지 가능
+          </p>
+        </div>
+
+        {/* Anchoring */}
+        <div className="text-center mb-8">
+          <p className="text-gray-500 text-sm" style={{ fontFamily: 'Inter, sans-serif' }}>
+            전문 라이프 코칭 비용: <span className="line-through">월 200~300만원</span>
+          </p>
+          <p className="text-lg font-semibold mt-1" style={{ fontFamily: 'Inter, sans-serif', color: '#CCFF00' }}>
+            Secret Coach: AI가 24시간 밀착 관리 — 베타 특가
           </p>
         </div>
 

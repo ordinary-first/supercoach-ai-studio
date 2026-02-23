@@ -34,13 +34,13 @@ export const FinalCTA: React.FC<FinalCTAProps> = ({ onCTAClick }) => {
             className="text-3xl md:text-5xl font-bold text-white"
             style={{ fontFamily: 'Inter, sans-serif' }}
           >
-            지금 시작하지 않으면
+            1년 후에도 같은 자리에 서 있을 건가요?
           </h2>
           <h2
             className="text-3xl md:text-5xl font-bold"
             style={{ fontFamily: 'Inter, sans-serif', color: '#CCFF00' }}
           >
-            내일도 같은 자리입니다
+            지금이 가장 빠른 시작입니다
           </h2>
         </div>
 
@@ -49,7 +49,7 @@ export const FinalCTA: React.FC<FinalCTAProps> = ({ onCTAClick }) => {
           className="text-gray-400 text-sm md:text-base max-w-sm"
           style={{ fontFamily: 'Inter, sans-serif' }}
         >
-          매일 0.1%의 성장이 1년 뒤 44%의 차이를 만듭니다
+          매일 0.1%씩 성장하면, 1년 뒤 44% 더 나은 당신이 됩니다.
         </p>
 
         {/* CTA Button */}

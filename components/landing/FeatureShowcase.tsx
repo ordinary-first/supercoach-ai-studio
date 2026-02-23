@@ -11,33 +11,33 @@ interface FeatureCard {
 const FEATURES: FeatureCard[] = [
   {
     icon: <GitBranch size={24} style={{ color: '#CCFF00' }} />,
-    title: 'Goal Mind Map',
-    desc: '4가지 레이아웃으로 목표를 시각화. AI 이미지 생성과 진행도 추적.',
+    title: '목표를 눈에 보이게',
+    desc: '머릿속 막연한 꿈을 4가지 레이아웃으로 구조화. AI가 목표별 이미지까지 생성합니다.',
   },
   {
     icon: <Brain size={24} style={{ color: '#CCFF00' }} />,
-    title: 'AI Coach with Memory',
-    desc: '단기·중기·장기 3단 기억 시스템. 당신의 여정을 기억하는 코치.',
+    title: '나만 아는 코치',
+    desc: '대화할수록 당신을 깊이 이해하는 AI. 3단 기억으로 맥락을 잊지 않습니다.',
   },
   {
     icon: <Sparkles size={24} style={{ color: '#CCFF00' }} />,
-    title: 'Visualization Studio',
-    desc: '텍스트 + 이미지 + 음성 + 영상. 4중 감각으로 성공을 체험.',
+    title: '성공을 미리 체험',
+    desc: '텍스트·이미지·음성·영상으로 당신의 성공한 미래를 직접 보고 듣습니다.',
   },
   {
     icon: <Calendar size={24} style={{ color: '#CCFF00' }} />,
-    title: 'Mission Calendar',
-    desc: '트로피, 잠긴 미션, 진행 바. 게이미피케이션으로 습관 형성.',
+    title: '매일이 미션',
+    desc: '게임처럼 미션을 클리어하고 트로피를 모으세요. 습관이 자동으로 형성됩니다.',
   },
   {
     icon: <ListTodo size={24} style={{ color: '#CCFF00' }} />,
-    title: 'Smart Todo',
-    desc: '목표 노드에 연결된 할 일. 반복 스케줄과 My Day 기능.',
+    title: '목표에 연결된 할 일',
+    desc: '할 일이 목표와 직접 연결됩니다. "이걸 왜 하는지" 항상 보이니 동기가 유지됩니다.',
   },
   {
     icon: <BarChart3 size={24} style={{ color: '#CCFF00' }} />,
-    title: 'AI Feedback Reports',
-    desc: '일간/주간/월간 AI 분석 리포트. 데이터 기반 코칭.',
+    title: '데이터로 보는 성장',
+    desc: '일·주·월 단위 AI 분석으로 "어디서 막히는지" 정확히 짚어줍니다.',
   },
 ];
 
