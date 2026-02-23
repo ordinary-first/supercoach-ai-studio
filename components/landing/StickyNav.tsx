@@ -27,15 +27,15 @@ export const StickyNav: React.FC<StickyNavProps> = ({ onCTAClick }) => {
       ].join(' ')}
     >
       {/* Logo */}
-      <div className="flex items-center gap-0.5 select-none">
+      <div className="flex items-center gap-0.5 select-none min-w-0">
         <span
-          className="text-white text-xl md:text-2xl tracking-widest uppercase"
+          className="text-white text-base md:text-2xl tracking-wider md:tracking-widest uppercase"
           style={{ fontFamily: 'Orbitron, sans-serif' }}
         >
           SECRET
         </span>
         <span
-          className="text-xl md:text-2xl tracking-widest uppercase italic font-bold"
+          className="text-base md:text-2xl tracking-wider md:tracking-widest uppercase italic font-bold"
           style={{ fontFamily: 'Orbitron, sans-serif', color: '#CCFF00' }}
         >
           COACH
@@ -46,8 +46,8 @@ export const StickyNav: React.FC<StickyNavProps> = ({ onCTAClick }) => {
       <button
         onClick={onCTAClick}
         className={[
-          'px-4 py-2 rounded-full text-xs md:text-sm font-semibold uppercase tracking-widest',
-          'border transition-all duration-200',
+          'px-3 py-1.5 md:px-4 md:py-2 rounded-full text-[10px] md:text-sm font-semibold uppercase tracking-wider md:tracking-widest',
+          'border transition-all duration-200 whitespace-nowrap shrink-0',
           'hover:bg-[#CCFF00] hover:text-black hover:scale-105',
         ].join(' ')}
         style={{
@@ -56,7 +56,7 @@ export const StickyNav: React.FC<StickyNavProps> = ({ onCTAClick }) => {
           fontFamily: 'Inter, sans-serif',
         }}
       >
-        무료 체험 TO 확인
+        무료 체험 확인
       </button>
     </nav>
   );

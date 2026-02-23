@@ -83,31 +83,12 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onCTAClick }) => {
       />
 
       {/* Content */}
-      <div className="relative z-10 flex flex-col items-center text-center px-6 max-w-4xl mx-auto gap-6">
-
-        {/* Logo */}
-        <div
-          className="flex items-center gap-0.5 select-none"
-          style={{ animation: 'fadeIn 0.8s ease-out both' }}
-        >
-          <span
-            className="text-6xl md:text-8xl tracking-widest uppercase text-white"
-            style={{ fontFamily: 'Orbitron, sans-serif' }}
-          >
-            SECRET
-          </span>
-          <span
-            className="text-6xl md:text-8xl tracking-widest uppercase italic font-bold"
-            style={{ fontFamily: 'Orbitron, sans-serif', color: '#CCFF00' }}
-          >
-            COACH
-          </span>
-        </div>
+      <div className="relative z-10 flex flex-col items-center text-center px-5 max-w-4xl mx-auto gap-5 md:gap-6">
 
         {/* Sub-label */}
         <div
           className="flex items-center gap-2 text-gray-500 text-xs uppercase tracking-widest"
-          style={{ animation: 'fadeIn 0.8s ease-out 0.15s both' }}
+          style={{ animation: 'fadeIn 0.8s ease-out 0.1s both' }}
         >
           <ShieldCheck size={14} className="text-gray-500" />
           <span style={{ fontFamily: 'Inter, sans-serif' }}>
@@ -115,19 +96,19 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onCTAClick }) => {
           </span>
         </div>
 
-        {/* Headline */}
+        {/* Headline — primary visual element */}
         <div
-          className="flex flex-col gap-1"
-          style={{ animation: 'fadeIn 0.8s ease-out 0.3s both' }}
+          className="flex flex-col gap-2"
+          style={{ animation: 'fadeIn 0.8s ease-out 0.25s both' }}
         >
           <p
-            className="text-2xl md:text-4xl text-white font-light"
+            className="text-xl sm:text-2xl md:text-4xl text-white/70 font-light"
             style={{ fontFamily: 'Inter, sans-serif' }}
           >
             잠깐의 동기부여가 아닌
           </p>
           <p
-            className="text-2xl md:text-4xl font-bold"
+            className="text-2xl sm:text-3xl md:text-5xl font-bold leading-tight"
             style={{ fontFamily: 'Inter, sans-serif' }}
           >
             <span style={{ color: '#CCFF00' }}>과학적</span>
@@ -137,19 +118,19 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onCTAClick }) => {
 
         {/* Sub description */}
         <p
-          className="text-sm text-gray-400 max-w-md"
+          className="text-xs sm:text-sm text-gray-400 max-w-xs sm:max-w-md px-2"
           style={{
             fontFamily: 'Inter, sans-serif',
-            animation: 'fadeIn 0.8s ease-out 0.45s both',
+            animation: 'fadeIn 0.8s ease-out 0.4s both',
           }}
         >
-          Structure + AI Coach + Visualization — 목표 달성의 3가지 열쇠
+          Structure + AI Coach + Visualization — 목표 달성의 3가지 열쇠를 하나의 앱에서
         </p>
 
         {/* Primary CTA */}
         <div
           className="flex flex-col items-center gap-3 mt-2"
-          style={{ animation: 'fadeIn 0.8s ease-out 0.6s both' }}
+          style={{ animation: 'fadeIn 0.8s ease-out 0.55s both' }}
         >
           <button
             onClick={onCTAClick}
