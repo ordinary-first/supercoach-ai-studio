@@ -34,6 +34,8 @@ const CoachChat: React.FC<CoachChatProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [selectedTopic, setSelectedTopic] = useState<CoachingQuestion | null>(null);
   const [showTopicCards, setShowTopicCards] = useState(true);
+  const [questionPage, setQuestionPage] = useState(0);
+  const QUESTIONS_PER_PAGE = 3;
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const focusTrapRef = useFocusTrap(isOpen);
   const memory = useCoachMemory(userId, isOpen, nodes || [], todos);
@@ -55,9 +57,18 @@ const CoachChat: React.FC<CoachChatProps> = ({
     scrollToBottom();
   }, [messages, isLoading]);
 
+  // 채팅 열릴 때 질문 상태 리셋
+  useEffect(() => {
+    if (isOpen) {
+      setShowTopicCards(true);
+      setSelectedTopic(null);
+      setQuestionPage(0);
+    }
+  }, [isOpen]);
+
   // 코칭 토픽 선택 시 AI 첫 메시지 자동 전송
   useEffect(() => {
-    if (!isOpen || !selectedTopic?.topicDirective || messages.length > 0 || isLoading) return;
+    if (!isOpen || !selectedTopic?.topicDirective || isLoading) return;
 
     let cancelled = false;
     setIsLoading(true);
@@ -199,47 +210,6 @@ const CoachChat: React.FC<CoachChatProps> = ({
       {/* Chat Messages */}
       <div ref={messagesContainerRef} className="flex-1 overflow-y-auto px-4 lg:px-0 scrollbar-hide relative z-10">
         <div className="max-w-2xl mx-auto py-4 space-y-3">
-          {messages.length === 0 && !isLoading && (() => {
-            const questions = getCoachingQuestions(selectedNode, nodes || []);
-            return questions.length > 0 && showTopicCards ? (
-              <div className="flex justify-start">
-                <div className="max-w-[85%] rounded-2xl rounded-tl-sm bg-white/5 border border-white/10 shadow-xl backdrop-blur-sm px-5 py-4">
-                  <p className="text-sm text-gray-100 leading-relaxed mb-4">
-                    안녕하세요! 아래 질문 중 궁금한 것을 선택해보세요 🙂
-                  </p>
-                  <div className="space-y-2">
-                    {questions.map((q) => (
-                      <button
-                        key={q.id}
-                        onClick={() => handleTopicSelect(q)}
-                        className="w-full text-left px-4 py-3 rounded-xl bg-white/5 border border-white/10 hover:border-neon-lime/40 hover:bg-neon-lime/5 transition-all duration-200 group"
-                      >
-                        <div className="flex items-center gap-3">
-                          <span className="text-lg">{q.icon}</span>
-                          <div>
-                            <p className="text-sm font-medium text-white group-hover:text-neon-lime transition-colors">
-                              {q.question}
-                            </p>
-                            <p className="text-xs text-gray-500 mt-0.5">
-                              {q.summary}
-                            </p>
-                          </div>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="h-[60vh] flex flex-col items-center justify-center text-center px-4">
-                <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-4">
-                  <Sparkles size={28} className="text-neon-lime animate-pulse" />
-                </div>
-                <p className="text-sm font-display uppercase tracking-widest mb-1 text-gray-500">입력 대기 중</p>
-                <p className="text-xs text-gray-600 max-w-xs">목표와 비전에 대한 조언을 요청하세요.</p>
-              </div>
-            );
-          })()}
           {messages.map((msg) => (
             <div key={msg.id} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
               <div className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
@@ -268,6 +238,77 @@ const CoachChat: React.FC<CoachChatProps> = ({
               </div>
             </div>
           )}
+
+          {/* 질문 카드 — 대화 아래에 AI 말풍선 형태로 */}
+          {(() => {
+            const questions = getCoachingQuestions(selectedNode, nodes || []);
+            if (!showTopicCards || questions.length === 0) return null;
+            const totalPages = Math.ceil(questions.length / QUESTIONS_PER_PAGE);
+            const pageQuestions = questions.slice(
+              questionPage * QUESTIONS_PER_PAGE,
+              (questionPage + 1) * QUESTIONS_PER_PAGE
+            );
+            return (
+              <div className="flex justify-start">
+                <div className="max-w-[85%] rounded-2xl rounded-tl-sm bg-white/5 border border-white/10 shadow-xl backdrop-blur-sm px-5 py-4">
+                  <p className="text-sm text-gray-100 leading-relaxed mb-3">
+                    궁금한 질문을 선택해보세요 🙂
+                  </p>
+                  <div className="space-y-2">
+                    {pageQuestions.map((q) => (
+                      <button
+                        key={q.id}
+                        onClick={() => handleTopicSelect(q)}
+                        className="w-full text-left px-4 py-3 rounded-xl bg-white/5 border border-white/10 hover:border-neon-lime/40 hover:bg-neon-lime/5 transition-all duration-200 group"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="text-lg">{q.icon}</span>
+                          <div>
+                            <p className="text-sm font-medium text-white group-hover:text-neon-lime transition-colors">
+                              {q.question}
+                            </p>
+                            <p className="text-xs text-gray-500 mt-0.5">
+                              {q.summary}
+                            </p>
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                  {totalPages > 1 && (
+                    <div className="flex justify-center gap-1.5 mt-3">
+                      {Array.from({ length: totalPages }).map((_, i) => (
+                        <button
+                          key={i}
+                          onClick={() => setQuestionPage(i)}
+                          className={`w-2 h-2 rounded-full transition-all ${
+                            i === questionPage
+                              ? 'bg-neon-lime shadow-[0_0_4px_#CCFF00]'
+                              : 'bg-white/20 hover:bg-white/40'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* 빈 상태 — 메시지 없고 질문도 없을 때만 */}
+          {messages.length === 0 && !isLoading && (() => {
+            const questions = getCoachingQuestions(selectedNode, nodes || []);
+            if (showTopicCards && questions.length > 0) return null;
+            return (
+              <div className="h-[60vh] flex flex-col items-center justify-center text-center px-4">
+                <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-4">
+                  <Sparkles size={28} className="text-neon-lime animate-pulse" />
+                </div>
+                <p className="text-sm font-display uppercase tracking-widest mb-1 text-gray-500">입력 대기 중</p>
+                <p className="text-xs text-gray-600 max-w-xs">목표와 비전에 대한 조언을 요청하세요.</p>
+              </div>
+            );
+          })()}
 
         </div>
       </div>

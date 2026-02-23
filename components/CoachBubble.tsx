@@ -24,7 +24,7 @@ const CoachBubble: React.FC<CoachBubbleProps> = ({ isOpen, onToggle, hasUnread, 
 
   // ROOT 노드 선택 시 pulse
   useEffect(() => {
-    if (selectedNode?.type === NodeType.ROOT && !isOpen) {
+    if ((selectedNode?.type === NodeType.ROOT || selectedNode?.type === NodeType.SUB) && !isOpen) {
       setShouldPulse(true);
     }
   }, [selectedNode, isOpen]);

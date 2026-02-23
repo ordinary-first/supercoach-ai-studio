@@ -149,7 +149,7 @@ export function getCoachingQuestions(
     return SITUATION_1_QUESTIONS;
   }
 
-  if (selectedNode.type === NodeType.ROOT) {
+  if (selectedNode.type === NodeType.ROOT || selectedNode.type === NodeType.SUB) {
     return SITUATION_2_QUESTIONS;
   }
 
