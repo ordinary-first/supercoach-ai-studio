@@ -124,7 +124,7 @@ const GOALS_LOCKED_VIEWPORT_CONTENT =
 const createInitialGoalNodes = (): GoalNode[] => [
   {
     id: 'root',
-    text: '나의 인생 비전',
+    text: '',
     type: NodeType.ROOT,
     status: NodeStatus.PENDING,
     progress: 0,
