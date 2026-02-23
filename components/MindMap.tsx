@@ -638,10 +638,10 @@ const MindMap: React.FC<MindMapProps> = ({
             uid: `ghost-${i}`,
             goalId: `ghost-${i}`,
             isGhost: true,
-            fillColor: '#0f234060',
-            color: '#ffffff44',
-            borderColor: '#CCFF0030',
-            borderWidth: 1,
+            fillColor: '#0f2340',
+            color: '#ffffffbb',
+            borderColor: '#CCFF0088',
+            borderWidth: 2,
           },
           children: [],
         });
@@ -660,11 +660,11 @@ const MindMap: React.FC<MindMapProps> = ({
             const nodeIns = getRenderedNodeByGoalId(`ghost-${i}`);
             if (nodeIns?.group?.node) {
               const el = nodeIns.group.node as HTMLElement;
-              el.style.opacity = '0.4';
+              el.style.opacity = '0.65';
               el.style.transition = 'opacity 0.2s ease';
               el.style.cursor = 'pointer';
-              el.onmouseenter = () => { el.style.opacity = '0.7'; };
-              el.onmouseleave = () => { el.style.opacity = '0.4'; };
+              el.onmouseenter = () => { el.style.opacity = '1'; };
+              el.onmouseleave = () => { el.style.opacity = '0.65'; };
             }
           });
         }, 300);
