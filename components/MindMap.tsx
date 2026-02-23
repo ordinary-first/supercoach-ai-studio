@@ -63,6 +63,10 @@ interface SMMNodeData {
   image?: string;
   imageTitle?: string;
   imageSize?: { width: number; height: number };
+  // Ghost template nodes (Phase 2 onboarding)
+  isGhost?: boolean;
+  fillColor?: string;
+  color?: string;
 }
 
 interface SMMNode {
@@ -258,18 +262,27 @@ const MindMap: React.FC<MindMapProps> = ({
   const [templatesSkipped, setTemplatesSkipped] = useState(false);
   const [tooltipDismissed, setTooltipDismissed] = useState(false);
 
+  // --- Onboarding: Ghost templates ---
+  const GHOST_TEMPLATES = [
+    '나는 매달 100만원의 부수입이 생겼다',
+    '나는 슬림하고 탄탄한 몸을 가졌다',
+    '나는 누구에게나 호감을 주는 유머감각을 가졌다',
+  ];
+  const [usedGhosts, setUsedGhosts] = useState<Set<number>>(new Set());
+
   // --- Onboarding Phase Computation ---
   type OnboardingPhase = 'identity' | 'templates' | 'tooltips' | 'done';
 
   const rootNode = nodes.find(n => n.type === NodeType.ROOT);
   const rootText = rootNode?.text || '';
   const isRootDefault = rootText === '' || rootText === '나의 인생 비전';
-  const hasChildren = nodes.some(n => n.type === NodeType.SUB);
+  const childCount = nodes.filter(n => n.type === NodeType.SUB).length;
+  const allGhostsUsed = usedGhosts.size >= GHOST_TEMPLATES.length;
 
   const onboardingPhase: OnboardingPhase =
-    isRootDefault && !hasChildren && !identitySkipped ? 'identity' :
-    !hasChildren && !templatesSkipped ? 'templates' :
-    (hasChildren || templatesSkipped) && !tooltipDismissed ? 'tooltips' :
+    isRootDefault && childCount === 0 && !identitySkipped ? 'identity' :
+    !templatesSkipped && !allGhostsUsed && childCount <= usedGhosts.size ? 'templates' :
+    (childCount > 0 || templatesSkipped) && !tooltipDismissed ? 'tooltips' :
     'done';
 
   const languageByDom = document.documentElement.lang.toLowerCase().startsWith('ko') ? 'ko' : 'en';
@@ -359,12 +372,14 @@ const MindMap: React.FC<MindMapProps> = ({
     nodeId: '',
     ts: 0,
   });
+  const setUsedGhostsRef = useRef(setUsedGhosts);
   onNodeClickRef.current = onNodeClick;
   onEditNodeRef.current = onEditNode;
   onUpdateNodeRef.current = onUpdateNode;
   onAddSubNodeRef.current = onAddSubNode;
   setActionBarRef.current = setActionBar;
   actionBarRef.current = actionBar;
+  setUsedGhostsRef.current = setUsedGhosts;
 
   // --- Onboarding: Root node position tracking ---
   const [rootNodeCenter, setRootNodeCenter] = useState<{x: number; y: number} | null>(null);
@@ -387,14 +402,6 @@ const MindMap: React.FC<MindMapProps> = ({
     const timer = setTimeout(() => setTooltipDismissed(true), 5000);
     return () => clearTimeout(timer);
   }, [onboardingPhase]);
-
-  // --- Onboarding: Ghost templates ---
-  const GHOST_TEMPLATES = [
-    '나는 매달 100만원의 부수입이 생겼다',
-    '나는 슬림하고 탄탄한 몸을 가졌다',
-    '나는 누구에게나 호감을 주는 유머감각을 가졌다',
-  ];
-  const [usedGhosts, setUsedGhosts] = useState<Set<number>>(new Set());
 
   // Block native page pinch/gesture handling inside the map container.
   // simple-mind-map's touch plugin still receives touch events and handles map zoom.
@@ -465,7 +472,7 @@ const MindMap: React.FC<MindMapProps> = ({
       // This avoids Chinese placeholder text and allows immediate text editing via editingNodeId.
       customQuickCreateChildBtnClick: (nodeIns: any) => {
         const goalId = nodeIns?.nodeData?.data?.goalId || nodeIns?.nodeData?.data?.uid;
-        if (!goalId) return;
+        if (!goalId || goalId.startsWith('ghost-')) return;
         onAddSubNodeRef.current?.(goalId);
       },
       expandBtnStyle: {
@@ -518,6 +525,17 @@ const MindMap: React.FC<MindMapProps> = ({
     mindMap.on('node_click', (node: any, e: any) => {
       const goalId = node?.nodeData?.data?.goalId || node?.nodeData?.data?.uid;
       if (!goalId) return;
+
+      // Ghost node interception
+      if (goalId.startsWith('ghost-')) {
+        const idx = parseInt(goalId.split('-')[1]);
+        if (!isNaN(idx) && GHOST_TEMPLATES[idx]) {
+          onAddSubNodeRef.current('root', GHOST_TEMPLATES[idx]);
+          setUsedGhostsRef.current(prev => new Set(prev).add(idx));
+        }
+        return;
+      }
+
       const goalNode = nodesRef.current.find(n => n.id === goalId);
       if (goalNode) onNodeClickRef.current(goalNode);
 
@@ -555,6 +573,7 @@ const MindMap: React.FC<MindMapProps> = ({
       // Walk the tree and check for text differences
       const syncTextChanges = (smmNode: SMMNode) => {
         const goalId = smmNode.data?.goalId || smmNode.data?.uid;
+        if (goalId?.startsWith('ghost-')) return;
         if (goalId) {
           const current = nodesRef.current.find(n => n.id === goalId);
           if (current && smmNode.data.text !== current.text) {
@@ -593,21 +612,65 @@ const MindMap: React.FC<MindMapProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Init once
 
-  // --- Sync data from React ??simple-mind-map when props change ---
+  // --- Sync data from React -> simple-mind-map when props change ---
   useEffect(() => {
     const mindMap = mindMapRef.current;
     if (!mindMap) return;
 
-    const newKey = computeStructureKey(nodes, links, selectedNodeId);
+    const baseKey = computeStructureKey(nodes, links, selectedNodeId);
+    const ghostSuffix = onboardingPhase === 'templates'
+      ? `|ghosts:${GHOST_TEMPLATES.length - usedGhosts.size}`
+      : '';
+    const newKey = baseKey + ghostSuffix;
     if (newKey === lastStructureKeyRef.current) return;
     lastStructureKeyRef.current = newKey;
 
     const treeData = goalNodesToTree(nodes, links, selectedNodeId);
     if (!treeData) return;
 
+    // Inject ghost nodes for Phase 2
+    if (onboardingPhase === 'templates') {
+      GHOST_TEMPLATES.forEach((text, i) => {
+        if (usedGhosts.has(i)) return;
+        treeData.children.push({
+          data: {
+            text,
+            uid: `ghost-${i}`,
+            goalId: `ghost-${i}`,
+            isGhost: true,
+            fillColor: '#0f2340',
+            color: '#ffffffbb',
+            borderColor: '#CCFF0088',
+            borderWidth: 2,
+          },
+          children: [],
+        });
+      });
+    }
+
     lastSetDataTimeRef.current = Date.now();
     mindMap.setData(treeData);
-  }, [nodes, links, selectedNodeId]);
+
+    // CSS-based ghost styling fallback (in case SDK doesn't honor alpha colors)
+    if (onboardingPhase === 'templates') {
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          GHOST_TEMPLATES.forEach((_, i) => {
+            if (usedGhosts.has(i)) return;
+            const nodeIns = getRenderedNodeByGoalId(`ghost-${i}`);
+            if (nodeIns?.group?.node) {
+              const el = nodeIns.group.node as HTMLElement;
+              el.style.opacity = '0.65';
+              el.style.transition = 'opacity 0.2s ease';
+              el.style.cursor = 'pointer';
+              el.onmouseenter = () => { el.style.opacity = '1'; };
+              el.onmouseleave = () => { el.style.opacity = '0.65'; };
+            }
+          });
+        }, 300);
+      });
+    }
+  }, [nodes, links, selectedNodeId, onboardingPhase, usedGhosts, getRenderedNodeByGoalId]);
 
   // --- Layout changes ---
   const handleLayoutChange = useCallback((newLayout: LayoutMode) => {
@@ -886,82 +949,14 @@ const MindMap: React.FC<MindMapProps> = ({
         </>
       )}
 
-      {/* Phase 2: Ghost Templates */}
-      {onboardingPhase === 'templates' && rootNodeCenter && (
-        <>
-          {/* Ghost node 1 - left */}
-          {!usedGhosts.has(0) && (
-            <button
-              onClick={() => {
-                onAddSubNode('root', GHOST_TEMPLATES[0]);
-                setUsedGhosts(prev => new Set(prev).add(0));
-              }}
-              className="absolute z-30 group"
-              style={{ left: rootNodeCenter.x - 180, top: rootNodeCenter.y - 20, transform: 'translate(-50%, -50%)' }}
-            >
-              {/* Dashed connection line */}
-              <svg className="absolute pointer-events-none" style={{ left: '100%', top: '50%', width: 60, height: 2 }}>
-                <line x1="0" y1="1" x2="60" y2="1" stroke="#CCFF0033" strokeWidth="1" strokeDasharray="4 3" />
-              </svg>
-              <div className="bg-white/5 border border-dashed border-neon-lime/20 rounded-xl px-3 py-2 max-w-[160px] backdrop-blur-sm group-hover:bg-white/10 group-hover:border-neon-lime/40 transition-all">
-                <p className="text-white/40 text-[11px] leading-snug group-hover:text-white/70 transition-colors">{GHOST_TEMPLATES[0]}</p>
-              </div>
-            </button>
-          )}
-
-          {/* Ghost node 2 - right top */}
-          {!usedGhosts.has(1) && (
-            <button
-              onClick={() => {
-                onAddSubNode('root', GHOST_TEMPLATES[1]);
-                setUsedGhosts(prev => new Set(prev).add(1));
-              }}
-              className="absolute z-30 group"
-              style={{ left: rootNodeCenter.x + 180, top: rootNodeCenter.y - 50, transform: 'translate(-50%, -50%)' }}
-            >
-              <svg className="absolute pointer-events-none" style={{ right: '100%', top: '50%', width: 60, height: 2 }}>
-                <line x1="0" y1="1" x2="60" y2="1" stroke="#CCFF0033" strokeWidth="1" strokeDasharray="4 3" />
-              </svg>
-              <div className="bg-white/5 border border-dashed border-neon-lime/20 rounded-xl px-3 py-2 max-w-[160px] backdrop-blur-sm group-hover:bg-white/10 group-hover:border-neon-lime/40 transition-all">
-                <p className="text-white/40 text-[11px] leading-snug group-hover:text-white/70 transition-colors">{GHOST_TEMPLATES[1]}</p>
-              </div>
-            </button>
-          )}
-
-          {/* Ghost node 3 - right bottom */}
-          {!usedGhosts.has(2) && (
-            <button
-              onClick={() => {
-                onAddSubNode('root', GHOST_TEMPLATES[2]);
-                setUsedGhosts(prev => new Set(prev).add(2));
-              }}
-              className="absolute z-30 group"
-              style={{ left: rootNodeCenter.x + 180, top: rootNodeCenter.y + 50, transform: 'translate(-50%, -50%)' }}
-            >
-              <svg className="absolute pointer-events-none" style={{ right: '100%', top: '50%', width: 60, height: 2 }}>
-                <line x1="0" y1="1" x2="60" y2="1" stroke="#CCFF0033" strokeWidth="1" strokeDasharray="4 3" />
-              </svg>
-              <div className="bg-white/5 border border-dashed border-neon-lime/20 rounded-xl px-3 py-2 max-w-[160px] backdrop-blur-sm group-hover:bg-white/10 group-hover:border-neon-lime/40 transition-all">
-                <p className="text-white/40 text-[11px] leading-snug group-hover:text-white/70 transition-colors">{GHOST_TEMPLATES[2]}</p>
-              </div>
-            </button>
-          )}
-
-          {/* Hint text at bottom */}
-          <div className="absolute bottom-14 left-1/2 -translate-x-1/2 z-30 pointer-events-none">
-            <p className="text-gray-500 text-[11px] text-center">
-              눌러서 내 목표로 만들기 · 또는 직접 자식 노드 추가
-            </p>
-          </div>
-
-          {/* Skip button */}
-          <button
-            onClick={() => setTemplatesSkipped(true)}
-            className="absolute bottom-6 right-4 z-40 text-gray-500 text-xs hover:text-gray-300 transition-colors"
-          >
-            건너뛰기 →
-          </button>
-        </>
+      {/* Phase 2: Ghost Templates (rendered by SDK, skip button only) */}
+      {onboardingPhase === 'templates' && (
+        <button
+          onClick={() => setTemplatesSkipped(true)}
+          className="absolute bottom-6 right-4 z-40 text-gray-500 text-xs hover:text-gray-300 transition-colors"
+        >
+          건너뛰기 →
+        </button>
       )}
 
       {/* Phase 3: Contextual Tooltip */}
