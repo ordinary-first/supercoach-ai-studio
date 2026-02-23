@@ -6,7 +6,7 @@ import { Send, MessageCircle, Sparkles } from 'lucide-react';
 import CloseButton from './CloseButton';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { TabType } from './BottomDock';
-import { CoachingTopicDef } from '../constants/coachingTopics';
+import { CoachingTopicDef, getAvailableTopics } from '../constants/coachingTopics';
 import {
   useCoachMemory,
   buildGoalContext,
@@ -25,15 +25,15 @@ interface CoachChatProps {
   messages: ChatMessage[];
   onMessagesChange: React.Dispatch<React.SetStateAction<ChatMessage[]>>;
   activeTab: TabType;
-  coachTopic?: CoachingTopicDef | null;
-  onClearTopic?: () => void;
 }
 
 const CoachChat: React.FC<CoachChatProps> = ({
-  isOpen, onClose, selectedNode, nodes, userProfile, userId, todos, onOpenVisualization, messages, onMessagesChange, activeTab, coachTopic, onClearTopic
+  isOpen, onClose, selectedNode, nodes, userProfile, userId, todos, onOpenVisualization, messages, onMessagesChange, activeTab
 }) => {
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedTopic, setSelectedTopic] = useState<CoachingTopicDef | null>(null);
+  const [showTopicCards, setShowTopicCards] = useState(true);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const focusTrapRef = useFocusTrap(isOpen);
   const memory = useCoachMemory(userId, isOpen, nodes || [], todos);
@@ -57,7 +57,7 @@ const CoachChat: React.FC<CoachChatProps> = ({
 
   // 코칭 토픽 선택 시 AI 첫 메시지 자동 전송
   useEffect(() => {
-    if (!isOpen || !coachTopic?.topicDirective || messages.length > 0 || isLoading) return;
+    if (!isOpen || !selectedTopic?.topicDirective || messages.length > 0 || isLoading) return;
 
     let cancelled = false;
     setIsLoading(true);
@@ -78,7 +78,7 @@ const CoachChat: React.FC<CoachChatProps> = ({
           tabLabels[activeTab],
           userId || undefined,
           subGoalCount,
-          coachTopic.topicDirective!,
+          selectedTopic.topicDirective!,
         );
 
         if (cancelled) return;
@@ -102,13 +102,21 @@ const CoachChat: React.FC<CoachChatProps> = ({
       } finally {
         if (!cancelled) {
           setIsLoading(false);
-          onClearTopic?.();
+          setSelectedTopic(null);
         }
       }
     })();
 
     return () => { cancelled = true; };
-  }, [isOpen, coachTopic]);
+  }, [isOpen, selectedTopic]);
+
+  const handleTopicSelect = (topic: CoachingTopicDef) => {
+    setShowTopicCards(false);
+    if (topic.topicDirective) {
+      setSelectedTopic(topic);
+    }
+    // free-chat: just hide cards, user types directly
+  };
 
   const handleSend = async () => {
     if (!inputText.trim()) return;
@@ -192,14 +200,46 @@ const CoachChat: React.FC<CoachChatProps> = ({
       {/* Chat Messages */}
       <div ref={messagesContainerRef} className="flex-1 overflow-y-auto px-4 lg:px-0 scrollbar-hide relative z-10">
         <div className="max-w-2xl mx-auto py-4 space-y-3">
-          {messages.length === 0 && (
-              <div className="h-[60vh] flex flex-col items-center justify-center text-center px-4">
-                  <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-4">
-                    <Sparkles size={28} className="text-neon-lime animate-pulse" />
+          {messages.length === 0 && !isLoading && (
+            activeTab === 'GOALS' && showTopicCards ? (
+              <div className="flex justify-start">
+                <div className="max-w-[85%] rounded-2xl rounded-tl-sm bg-white/5 border border-white/10 shadow-xl backdrop-blur-sm px-5 py-4">
+                  <p className="text-sm text-gray-100 leading-relaxed mb-4">
+                    안녕하세요! 목표 설정을 도와드릴게요.<br/>
+                    아래에서 관심 있는 주제를 선택해주세요!
+                  </p>
+                  <div className="space-y-2">
+                    {getAvailableTopics(nodes || []).map((topic) => (
+                      <button
+                        key={topic.id}
+                        onClick={() => handleTopicSelect(topic)}
+                        className="w-full text-left px-4 py-3 rounded-xl bg-white/5 border border-white/10 hover:border-neon-lime/40 hover:bg-neon-lime/5 transition-all duration-200 group"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="text-lg">{topic.icon}</span>
+                          <div>
+                            <p className="text-sm font-medium text-white group-hover:text-neon-lime transition-colors">
+                              {topic.label}
+                            </p>
+                            <p className="text-xs text-gray-500 mt-0.5">
+                              {topic.description}
+                            </p>
+                          </div>
+                        </div>
+                      </button>
+                    ))}
                   </div>
-                  <p className="text-sm font-display uppercase tracking-widest mb-1 text-gray-500">입력 대기 중</p>
-                  <p className="text-xs text-gray-600 max-w-xs">목표와 비전에 대한 조언을 요청하세요.</p>
+                </div>
               </div>
+            ) : (
+              <div className="h-[60vh] flex flex-col items-center justify-center text-center px-4">
+                <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-4">
+                  <Sparkles size={28} className="text-neon-lime animate-pulse" />
+                </div>
+                <p className="text-sm font-display uppercase tracking-widest mb-1 text-gray-500">입력 대기 중</p>
+                <p className="text-xs text-gray-600 max-w-xs">목표와 비전에 대한 조언을 요청하세요.</p>
+              </div>
+            )
           )}
           {messages.map((msg) => (
             <div key={msg.id} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>

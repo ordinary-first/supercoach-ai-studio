@@ -31,7 +31,6 @@ import { useToast } from './hooks/useToast';
 import { appendAction } from './services/actionLogService';
 import ToastContainer from './components/ToastContainer';
 import { Crown, Settings as SettingsIcon } from 'lucide-react';
-import { CoachingTopicDef } from './constants/coachingTopics';
 
 // Helper function to calculate the next occurrence date for recurring todos
 const calculateNextDate = (repeat: RepeatFrequency, fromDate: Date): number => {
@@ -154,7 +153,6 @@ const App: React.FC = () => {
   const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
   const [deleteConfirmNodeId, setDeleteConfirmNodeId] = useState<string | null>(null);
   const [isChatOpen, setIsChatOpen] = useState(false);
-  const [coachTopic, setCoachTopic] = useState<CoachingTopicDef | null>(null);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [imageLoadingNodes, setImageLoadingNodes] = useState<Set<string>>(new Set());
   const insertImageInputRef = useRef<HTMLInputElement>(null);
@@ -507,12 +505,6 @@ const App: React.FC = () => {
       appendAction(getUserId(), 'VIEW_TAB', tabNames[tab] || tab, { tab });
   }, []);
 
-  const handleCoachTopicSelect = useCallback((topic: CoachingTopicDef) => {
-    setCoachTopic(topic);
-    setIsChatOpen(true);
-    appendAction(getUserId(), 'OPEN_COACH', `코칭 토픽: ${topic.label}`);
-  }, []);
-
   // --- Keyboard Shortcuts ---
   useKeyboardShortcuts(
     selectedNode,
@@ -611,10 +603,7 @@ const App: React.FC = () => {
       <CalendarView isOpen={activeTab === 'CALENDAR'} onClose={() => setActiveTab('GOALS')} todos={todos} onToggleToDo={handleToggleToDo} />
       <CoachChat
         isOpen={isChatOpen}
-        onClose={() => {
-          setIsChatOpen(false);
-          setCoachTopic(null);
-        }}
+        onClose={() => setIsChatOpen(false)}
         selectedNode={selectedNode}
         nodes={nodes}
         userProfile={userProfile}
@@ -624,8 +613,6 @@ const App: React.FC = () => {
         messages={chatMessages}
         onMessagesChange={setChatMessages}
         activeTab={activeTab}
-        coachTopic={coachTopic}
-        onClearTopic={() => setCoachTopic(null)}
       />
       <VisualizationModal isOpen={activeTab === 'VISUALIZE'} onClose={() => setActiveTab('GOALS')} userProfile={userProfile} nodes={nodes} />
       <ShortcutsPanel isOpen={isShortcutsOpen} onClose={() => setIsShortcutsOpen(false)} />
@@ -638,9 +625,6 @@ const App: React.FC = () => {
             return !prev;
           });
         }}
-        nodes={nodes}
-        activeTab={activeTab}
-        onSelectTopic={handleCoachTopicSelect}
       />
       <input
         ref={insertImageInputRef}
