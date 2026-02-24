@@ -203,7 +203,9 @@ export const loadGoalData = async (
 
 export const saveTodos = async (userId: string, todos: ToDoItem[]): Promise<void> => {
   if (!userId) return;
-  const payload = { items: todos, updatedAt: Date.now() };
+  // Firestore rejects undefined values — strip via JSON round-trip
+  const cleanItems = JSON.parse(JSON.stringify(todos));
+  const payload = { items: cleanItems, updatedAt: Date.now() };
   const docRef = doc(db, 'users', userId, 'data', 'todos');
   await setDoc(docRef, payload);
 };
