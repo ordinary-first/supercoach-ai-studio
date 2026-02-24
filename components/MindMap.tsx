@@ -288,12 +288,63 @@ const DARK_THEME_CONFIG = {
 
 const LIGHT_THEME_CONFIG = {
   backgroundColor: '#F8FAFC',
-  lineColor: '#CBD5E1',
-  generalizationLineColor: '#94A3B8',
-  root: { fillColor: '#FFFFFF', fontColor: '#0F172A', borderColor: '#E2E8F0', borderWidth: 2, fontSize: 18, fontWeight: 'bold' },
-  second: { fillColor: '#F1F5F9', fontColor: '#1E293B', borderColor: '#CBD5E1', borderWidth: 1, fontSize: 14, fontWeight: 'normal' },
-  third: { fillColor: '#F8FAFC', fontColor: '#334155', borderColor: '#E2E8F0', borderWidth: 1, fontSize: 12, fontWeight: 'normal' },
-  node: { fillColor: '#FFFFFF', fontColor: '#475569', borderColor: '#E2E8F0', borderWidth: 1, fontSize: 12, fontWeight: 'normal' },
+  lineColor: '#94A3B8',
+  lineWidth: 2,
+  lineDasharray: 'none',
+  lineStyle: 'curve' as const,
+  generalizationLineColor: '#64748B',
+  root: {
+    fillColor: '#FFFFFF',
+    color: '#0F172A',
+    borderColor: '#4D7C0F',
+    borderWidth: 3,
+    borderRadius: 24,
+    fontSize: 18,
+    fontWeight: 'bold',
+    fontFamily: 'Inter, system-ui, sans-serif',
+    shape: 'roundedRectangle',
+    paddingX: 30,
+    paddingY: 20,
+  },
+  second: {
+    fillColor: '#F1F5F9',
+    color: '#1E293B',
+    borderColor: '#64748B',
+    borderWidth: 2,
+    borderRadius: 12,
+    fontSize: 14,
+    fontWeight: '600',
+    fontFamily: 'Inter, system-ui, sans-serif',
+    shape: 'roundedRectangle',
+    marginX: 80,
+    marginY: 30,
+    paddingX: 20,
+    paddingY: 12,
+  },
+  node: {
+    fillColor: '#FFFFFF',
+    color: '#334155',
+    borderColor: '#94A3B8',
+    borderWidth: 1,
+    borderRadius: 8,
+    fontSize: 13,
+    fontWeight: '500',
+    fontFamily: 'Inter, system-ui, sans-serif',
+    shape: 'roundedRectangle',
+    marginX: 60,
+    marginY: 20,
+    paddingX: 16,
+    paddingY: 10,
+  },
+  generalization: {
+    fillColor: '#F1F5F9',
+    color: '#475569',
+    borderColor: '#94A3B8',
+    borderWidth: 1,
+    borderRadius: 6,
+    fontSize: 12,
+    fontFamily: 'Inter, system-ui, sans-serif',
+  },
 };
 
 const RAINBOW_COLORS = [
@@ -348,7 +399,8 @@ const MindMap: React.FC<MindMapProps> = ({
   const [identitySkipped, setIdentitySkipped] = useState(false);
   const [templatesSkipped, setTemplatesSkipped] = useState(false);
   const [tooltipDismissed, setTooltipDismissed] = useState(false);
-  const currentThemeConfig = useThemeStore((s) => s.resolved === 'light' ? LIGHT_THEME_CONFIG : null);
+  const currentThemeConfig = useThemeStore((s) => s.resolved === 'light' ? LIGHT_THEME_CONFIG : DARK_THEME_CONFIG);
+  const isLight = useThemeStore((s) => s.resolved === 'light');
 
   // --- Onboarding: Ghost templates ---
   const GHOST_TEMPLATES = [
@@ -542,7 +594,7 @@ const MindMap: React.FC<MindMapProps> = ({
       data: treeData,
       layout: layout,
       theme: 'default',
-      themeConfig: DARK_THEME_CONFIG,
+      themeConfig: currentThemeConfig,
       rainbowLinesConfig: {
         open: true,
         colorsList: RAINBOW_COLORS,
@@ -570,10 +622,10 @@ const MindMap: React.FC<MindMapProps> = ({
         onAddSubNodeRef.current?.(goalId);
       },
       expandBtnStyle: {
-        color: 'var(--accent)',
-        fill: 'var(--bg-base)',
+        color: isLight ? '#4D7C0F' : '#CCFF00',
+        fill: isLight ? '#F8FAFC' : '#050B14',
         fontSize: 12,
-        strokeColor: 'var(--accent)',
+        strokeColor: isLight ? '#4D7C0F' : '#CCFF00',
       },
       fit: true,
       enableNodeTransitionMove: true,
@@ -797,11 +849,7 @@ const MindMap: React.FC<MindMapProps> = ({
   useEffect(() => {
     const mindMap = mindMapRef.current;
     if (!mindMap) return;
-    if (currentThemeConfig) {
-      mindMap.setThemeConfig(currentThemeConfig);
-    } else {
-      mindMap.setThemeConfig({});
-    }
+    mindMap.setThemeConfig(currentThemeConfig);
   }, [currentThemeConfig]);
 
   // --- Trigger text editing when editingNodeId is set ---
