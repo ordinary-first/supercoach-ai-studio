@@ -21,7 +21,7 @@ const BottomDock: React.FC<BottomDockProps> = ({ activeTab, onTabChange }) => {
   return (
     <div className="fixed bottom-6 md:bottom-8 left-1/2 transform -translate-x-1/2 z-[55] w-full max-w-sm px-4">
       <div
-        className="flex items-center justify-around gap-1 px-4 py-3 bg-black/80 backdrop-blur-xl border border-white/10 rounded-2xl shadow-[0_0_20px_rgba(0,0,0,0.5)]"
+        className="flex items-center justify-around gap-1 px-4 py-3 bg-th-elevated backdrop-blur-xl border border-th-border rounded-2xl shadow-[0_0_20px_rgba(0,0,0,0.5)]"
         style={{ marginBottom: 'env(safe-area-inset-bottom)' }}
         role="navigation"
         aria-label="메인 탐색"
@@ -34,8 +34,8 @@ const BottomDock: React.FC<BottomDockProps> = ({ activeTab, onTabChange }) => {
               onClick={() => onTabChange(tab.id)}
               className={`relative group flex flex-col items-center justify-center w-14 h-14 rounded-xl transition-all duration-300 ${
                 isActive
-                  ? 'bg-white/10 text-neon-lime shadow-[0_0_15px_rgba(204,255,0,0.2)] scale-110 -translate-y-2'
-                  : 'text-gray-400 hover:text-white hover:bg-white/5'
+                  ? 'bg-th-surface-hover text-th-accent shadow-[0_0_15px_var(--shadow-glow)] scale-110 -translate-y-2'
+                  : 'text-th-text-secondary hover:text-th-text hover:bg-th-surface'
               }`}
               aria-label={tab.label}
               aria-current={isActive ? 'page' : undefined}
@@ -48,7 +48,7 @@ const BottomDock: React.FC<BottomDockProps> = ({ activeTab, onTabChange }) => {
               </span>
 
               {isActive && (
-                <div className="absolute -bottom-1 w-1 h-1 bg-neon-lime rounded-full shadow-[0_0_5px_#CCFF00]"></div>
+                <div className="absolute -bottom-1 w-1 h-1 bg-th-accent rounded-full shadow-[0_0_5px_var(--accent)]"></div>
               )}
             </button>
           );

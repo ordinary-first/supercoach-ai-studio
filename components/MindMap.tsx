@@ -6,6 +6,7 @@ import Select from 'simple-mind-map/src/plugins/Select.js';
 import TouchEvent from 'simple-mind-map/src/plugins/TouchEvent.js';
 import { GoalNode, GoalLink, NodeType, NodeStatus } from '../types';
 import { getLinkId } from '../hooks/useAutoSave';
+import { useThemeStore } from '../stores/useThemeStore';
 
 // Register plugins once
 MindMapSDK.usePlugin(Drag);
@@ -208,6 +209,66 @@ const DARK_THEME_CONFIG = {
   },
 };
 
+const LIGHT_THEME_CONFIG = {
+  backgroundColor: '#F8FAFC',
+  lineColor: 'rgba(77, 124, 15, 0.4)',
+  lineWidth: 2,
+  lineDasharray: 'none',
+  lineStyle: 'curve' as const,
+  root: {
+    fillColor: '#FFFFFF',
+    color: '#0F172A',
+    borderColor: '#4D7C0F',
+    borderWidth: 3,
+    borderRadius: 24,
+    fontSize: 18,
+    fontWeight: 'bold',
+    fontFamily: 'Inter, system-ui, sans-serif',
+    shape: 'roundedRectangle',
+    paddingX: 30,
+    paddingY: 20,
+  },
+  second: {
+    fillColor: '#F8FAFC',
+    color: '#1E293B',
+    borderColor: '#3B82F6',
+    borderWidth: 2,
+    borderRadius: 12,
+    fontSize: 14,
+    fontWeight: '600',
+    fontFamily: 'Inter, system-ui, sans-serif',
+    shape: 'roundedRectangle',
+    marginX: 80,
+    marginY: 30,
+    paddingX: 20,
+    paddingY: 12,
+  },
+  node: {
+    fillColor: '#FFFFFF',
+    color: '#334155',
+    borderColor: '#CBD5E1',
+    borderWidth: 1,
+    borderRadius: 8,
+    fontSize: 13,
+    fontWeight: '500',
+    fontFamily: 'Inter, system-ui, sans-serif',
+    shape: 'roundedRectangle',
+    marginX: 60,
+    marginY: 20,
+    paddingX: 16,
+    paddingY: 10,
+  },
+  generalization: {
+    fillColor: '#F1F5F9',
+    color: '#64748B',
+    borderColor: '#E2E8F0',
+    borderWidth: 1,
+    borderRadius: 6,
+    fontSize: 12,
+    fontFamily: 'Inter, system-ui, sans-serif',
+  },
+};
+
 const RAINBOW_COLORS = [
   '#CCFF00', '#00D4FF', '#FF6B6B', '#A78BFA',
   '#34D399', '#FBBF24', '#F472B6', '#60A5FA',
@@ -254,6 +315,8 @@ const MindMap: React.FC<MindMapProps> = ({
   const [layout, setLayout] = useState<LayoutMode>('mindMap');
   const [actionBar, setActionBar] = useState<ActionBarState | null>(null);
   const [viewScale, setViewScale] = useState(1);
+  const themeResolved = useThemeStore((s) => s.resolved);
+  const currentThemeConfig = themeResolved === 'dark' ? DARK_THEME_CONFIG : LIGHT_THEME_CONFIG;
   const languageByDom = document.documentElement.lang.toLowerCase().startsWith('ko') ? 'ko' : 'en';
   const resolvedLanguage: 'en' | 'ko' = (
     language === 'ko'
@@ -393,7 +456,7 @@ const MindMap: React.FC<MindMapProps> = ({
       data: treeData,
       layout: layout,
       theme: 'default',
-      themeConfig: DARK_THEME_CONFIG,
+      themeConfig: currentThemeConfig,
       rainbowLinesConfig: {
         open: true,
         colorsList: RAINBOW_COLORS,
@@ -421,10 +484,10 @@ const MindMap: React.FC<MindMapProps> = ({
         onAddSubNodeRef.current?.(goalId);
       },
       expandBtnStyle: {
-        color: '#CCFF00',
-        fill: '#0a1a2f',
+        color: 'var(--accent)',
+        fill: 'var(--bg-base)',
         fontSize: 12,
-        strokeColor: '#CCFF0088',
+        strokeColor: 'var(--accent)',
       },
       fit: true,
       enableNodeTransitionMove: true,
@@ -572,6 +635,19 @@ const MindMap: React.FC<MindMapProps> = ({
     mindMapRef.current?.resize();
   }, [width, height]);
 
+  // --- Theme change ---
+  useEffect(() => {
+    if (!mindMapRef.current) return;
+    const config = themeResolved === 'dark' ? DARK_THEME_CONFIG : LIGHT_THEME_CONFIG;
+    try {
+      mindMapRef.current.setThemeConfig(config);
+    } catch {
+      // If setThemeConfig not available, update background at minimum
+      const el = mindMapRef.current.el;
+      if (el) el.style.backgroundColor = config.backgroundColor;
+    }
+  }, [themeResolved]);
+
   // --- Trigger text editing when editingNodeId is set ---
   useEffect(() => {
     if (!editingNodeId || !mindMapRef.current) return;
@@ -596,30 +672,30 @@ const MindMap: React.FC<MindMapProps> = ({
   const isRootActionNode = actionNode?.type === NodeType.ROOT;
 
   return (
-    <div className="w-full h-full bg-deep-space relative overflow-hidden">
+    <div className="w-full h-full bg-th-base relative overflow-hidden">
       {/* Header */}
       <div className="absolute top-3 left-3 z-10 pointer-events-none select-none max-w-[calc(100%-72px)]">
         <div className="flex items-baseline gap-2 flex-wrap">
-          <h1 className="text-lg sm:text-xl md:text-2xl font-display text-white tracking-[0.22em] md:tracking-widest leading-none drop-shadow-[0_0_10px_rgba(204,255,0,0.5)]">
+          <h1 className="text-lg sm:text-xl md:text-2xl font-display text-th-text tracking-[0.22em] md:tracking-widest leading-none drop-shadow-[0_0_10px_var(--shadow-glow)]">
             SECRET COACH
           </h1>
-          <span className="text-neon-lime text-[10px] md:text-xs font-mono tracking-wide">
+          <span className="text-th-accent text-[10px] md:text-xs font-mono tracking-wide">
             {__APP_VERSION__}
           </span>
         </div>
-        <p className="text-gray-400 text-[10px] md:text-xs font-body">Neural Interface Active</p>
+        <p className="text-th-text-secondary text-[10px] md:text-xs font-body">Neural Interface Active</p>
       </div>
 
       {/* Layout Switcher */}
-      <div className="absolute top-14 right-3 md:top-16 md:right-4 z-10 flex bg-black/60 backdrop-blur-md border border-white/10 rounded-full px-1 py-0.5 gap-0.5">
+      <div className="absolute top-14 right-3 md:top-16 md:right-4 z-10 flex bg-th-elevated backdrop-blur-md border border-th-border rounded-full px-1 py-0.5 gap-0.5">
         {layoutOptions.map(opt => (
           <button
             key={opt.mode}
             onClick={() => handleLayoutChange(opt.mode)}
             className={`px-2 py-1 rounded-full text-[9px] md:text-[10px] font-semibold transition-all duration-200 ${
               layout === opt.mode
-                ? 'bg-neon-lime text-black shadow-[0_0_8px_rgba(204,255,0,0.5)]'
-                : 'text-gray-400 hover:text-white hover:bg-white/10'
+                ? 'bg-th-accent text-th-text-inverse shadow-[0_0_8px_var(--shadow-glow)]'
+                : 'text-th-text-secondary hover:text-th-text hover:bg-th-surface-hover'
             }`}
           >
             {opt.label}
@@ -647,13 +723,13 @@ const MindMap: React.FC<MindMapProps> = ({
             transformOrigin: 'top center',
           }}
         >
-          <div className="flex items-center gap-1 rounded-full border border-white/15 bg-[#0d1b30]/95 p-1 shadow-2xl backdrop-blur-md">
+          <div className="flex items-center gap-1 rounded-full border border-th-border bg-th-elevated p-1 shadow-2xl backdrop-blur-md">
             <button
               onClick={() => {
                 onAddSubNode(actionBar.nodeId);
                 setActionBar(null);
               }}
-              className="rounded-full px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/10"
+              className="rounded-full px-3 py-1.5 text-xs font-semibold text-th-text hover:bg-th-surface-hover"
             >
               {labels.child}
             </button>
@@ -668,7 +744,7 @@ const MindMap: React.FC<MindMapProps> = ({
                     }
                     setActionBar(null);
                   }}
-                  className="rounded-full px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/10"
+                  className="rounded-full px-3 py-1.5 text-xs font-semibold text-th-text hover:bg-th-surface-hover"
                 >
                   {labels.sibling}
                 </button>
@@ -677,7 +753,7 @@ const MindMap: React.FC<MindMapProps> = ({
                     onConvertNodeToTask?.(actionBar.nodeId);
                     setActionBar(null);
                   }}
-                  className="rounded-full px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/10"
+                  className="rounded-full px-3 py-1.5 text-xs font-semibold text-th-text hover:bg-th-surface-hover"
                 >
                   {labels.todo}
                 </button>
@@ -689,7 +765,7 @@ const MindMap: React.FC<MindMapProps> = ({
                 onGenerateImage?.(actionBar.nodeId);
                 setActionBar(null);
               }}
-              className="rounded-full px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/10"
+              className="rounded-full px-3 py-1.5 text-xs font-semibold text-th-text hover:bg-th-surface-hover"
             >
               {labels.generate}
             </button>
@@ -700,7 +776,7 @@ const MindMap: React.FC<MindMapProps> = ({
                   onInsertImage?.(actionBar.nodeId);
                   setActionBar(null);
                 }}
-                className="rounded-full px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/10"
+                className="rounded-full px-3 py-1.5 text-xs font-semibold text-th-text hover:bg-th-surface-hover"
               >
                 {labels.insert}
               </button>
@@ -711,7 +787,7 @@ const MindMap: React.FC<MindMapProps> = ({
                     prev ? { ...prev, isMoreOpen: !prev.isMoreOpen } : prev
                   ));
                 }}
-                className="rounded-full px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/10"
+                className="rounded-full px-3 py-1.5 text-xs font-semibold text-th-text hover:bg-th-surface-hover"
               >
                 {labels.more}
               </button>
@@ -719,13 +795,13 @@ const MindMap: React.FC<MindMapProps> = ({
           </div>
 
           {!isRootActionNode && actionBar.isMoreOpen && (
-            <div className="mt-2 min-w-[150px] rounded-xl border border-white/15 bg-[#0d1b30]/95 p-1 shadow-2xl backdrop-blur-md">
+            <div className="mt-2 min-w-[150px] rounded-xl border border-th-border bg-th-elevated p-1 shadow-2xl backdrop-blur-md">
               <button
                 onClick={() => {
                   onInsertImage?.(actionBar.nodeId);
                   setActionBar(null);
                 }}
-                className="w-full rounded-lg px-3 py-2 text-left text-xs font-semibold text-white hover:bg-white/10"
+                className="w-full rounded-lg px-3 py-2 text-left text-xs font-semibold text-th-text hover:bg-th-surface-hover"
               >
                 {labels.insertImage}
               </button>

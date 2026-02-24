@@ -34,7 +34,7 @@ const ToastContainer: React.FC<ToastContainerProps> = ({ toasts, onRemove }) => 
             }`}>
               {style.icon}
             </span>
-            <p className="text-xs text-gray-200 leading-relaxed">{toast.message}</p>
+            <p className="text-xs text-th-text leading-relaxed">{toast.message}</p>
           </div>
         );
       })}

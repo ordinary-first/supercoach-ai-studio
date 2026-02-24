@@ -155,7 +155,7 @@ const toStatusClass = (status: string): string => {
   if (status === 'completed' || status === 'ready') return 'bg-green-500/15 text-green-300 border-green-500/20';
   if (status === 'failed') return 'bg-red-500/15 text-red-300 border-red-500/20';
   if (status === 'pending') return 'bg-yellow-500/15 text-yellow-200 border-yellow-500/20';
-  return 'bg-white/5 text-gray-400 border-white/10';
+  return 'bg-th-surface text-th-text-secondary border-th-border';
 };
 
 const VisualizationModal: React.FC<VisualizationModalProps> = ({
@@ -644,15 +644,15 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
 
   const hasAudio = Boolean(currentResult?.audioData || currentResult?.audioUrl);
   return (
-    <div ref={focusTrapRef} className="fixed inset-0 z-50 bg-deep-space flex flex-col">
-      <header className="h-14 md:h-20 px-4 md:px-6 border-b border-white/5 flex items-center justify-between">
+    <div ref={focusTrapRef} className="fixed inset-0 z-50 bg-th-base flex flex-col">
+      <header className="h-14 md:h-20 px-4 md:px-6 border-b border-th-border-subtle flex items-center justify-between">
         {viewMode === 'result' ? (
-          <button onClick={() => setViewMode('create')} className="p-2 rounded-full bg-white/5">
+          <button onClick={() => setViewMode('create')} className="p-2 rounded-full bg-th-surface">
             <ArrowLeft size={18} />
           </button>
         ) : (
-          <div className="flex items-center gap-2 text-white">
-            <Sparkles size={18} className="text-neon-lime" />
+          <div className="flex items-center gap-2 text-th-text">
+            <Sparkles size={18} className="text-th-accent" />
             <span className="font-bold">시각화 스튜디오</span>
           </div>
         )}
@@ -660,13 +660,13 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
           <button
             onClick={handleSave}
             disabled={isSaved || isSaving}
-            className="px-3 py-1.5 rounded-full text-sm bg-neon-lime text-black disabled:opacity-60"
+            className="px-3 py-1.5 rounded-full text-sm bg-th-accent text-th-text-inverse disabled:opacity-60"
           >
             <Save size={14} className="inline mr-1" />
             {isSaving ? '저장 중...' : isSaved ? '저장 완료' : '저장'}
           </button>
         ) : (
-          <button onClick={onClose} className="p-2 rounded-full bg-white/5">
+          <button onClick={onClose} className="p-2 rounded-full bg-th-surface">
             <X size={18} />
           </button>
         )}
@@ -680,7 +680,7 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
             </div>
           )}
           {infoMessage && (
-            <div className="rounded-xl border border-neon-lime/30 bg-neon-lime/10 p-3 text-sm text-neon-lime">
+            <div className="rounded-xl border border-th-accent-border bg-th-accent-muted p-3 text-sm text-th-accent">
               {infoMessage}
             </div>
           )}
@@ -692,12 +692,12 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
                 onChange={(event) => setInputText(event.target.value)}
                 placeholder="원하는 장면이나 감정을 구체적으로 입력해 주세요."
                 rows={4}
-                className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-sm"
+                className="w-full bg-th-surface border border-th-border rounded-xl p-4 text-sm"
               />
 
               <div className="grid grid-cols-3 gap-2">
                 {[0, 1, 2].map((index) => (
-                  <div key={index} className="relative aspect-square rounded-xl border border-white/10 overflow-hidden">
+                  <div key={index} className="relative aspect-square rounded-xl border border-th-border overflow-hidden">
                     {referenceImages[index] ? (
                       <>
                         <img src={referenceImages[index]} alt={`참고 이미지 ${index + 1}`} className="w-full h-full object-cover" />
@@ -713,7 +713,7 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
                     ) : (
                       <button
                         onClick={() => fileInputRefs.current[index]?.click()}
-                        className="w-full h-full flex flex-col items-center justify-center text-gray-500"
+                        className="w-full h-full flex flex-col items-center justify-center text-th-text-tertiary"
                       >
                         <ImagePlus size={20} />
                         <span className="text-xs mt-1">추가</span>
@@ -743,7 +743,7 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
                     key={key}
                     onClick={() => setSettings((prev) => ({ ...prev, [key]: !prev[key] }))}
                     className={`px-3 py-2 rounded-full text-xs flex items-center gap-1 ${
-                      settings[key] ? 'bg-neon-lime text-black' : 'bg-white/5 text-gray-300'
+                      settings[key] ? 'bg-th-accent text-th-text-inverse' : 'bg-th-surface text-th-text-secondary'
                     }`}
                   >
                     <Icon size={14} />
@@ -757,7 +757,7 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
                   <button
                     onClick={() => setVisualImageQuality('medium')}
                     className={`px-3 py-1 rounded-full text-xs ${
-                      visualImageQuality === 'medium' ? 'bg-neon-lime text-black' : 'bg-white/5'
+                      visualImageQuality === 'medium' ? 'bg-th-accent text-th-text-inverse' : 'bg-th-surface'
                     }`}
                   >
                     Medium
@@ -765,7 +765,7 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
                   <button
                     onClick={() => setVisualImageQuality('high')}
                     className={`px-3 py-1 rounded-full text-xs ${
-                      visualImageQuality === 'high' ? 'bg-neon-lime text-black' : 'bg-white/5'
+                      visualImageQuality === 'high' ? 'bg-th-accent text-th-text-inverse' : 'bg-th-surface'
                     }`}
                   >
                     High
@@ -776,7 +776,7 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
               <button
                 onClick={handleGenerate}
                 disabled={isGenerating}
-                className="w-full py-3 rounded-full bg-neon-lime text-black font-bold disabled:opacity-50"
+                className="w-full py-3 rounded-full bg-th-accent text-th-text-inverse font-bold disabled:opacity-50"
               >
                 {isGenerating ? (
                   <span className="inline-flex items-center gap-2">
@@ -812,20 +812,20 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
                           if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
                         }}
                       >
-                        <div className="aspect-[4/3] rounded-xl border border-white/10 overflow-hidden">
+                        <div className="aspect-[4/3] rounded-xl border border-th-border overflow-hidden">
                           {item.imageUrl ? (
                             <img src={item.imageUrl} alt="saved visualization" className="w-full h-full object-cover" />
                           ) : (
-                            <div className="w-full h-full bg-white/5" />
+                            <div className="w-full h-full bg-th-surface" />
                           )}
                         </div>
                         <p className="text-xs mt-1 truncate">{item.inputText || item.text || 'Visualization'}</p>
-                        <div className="flex items-center gap-1 text-[10px] text-gray-500 mt-0.5">
+                        <div className="flex items-center gap-1 text-[10px] text-th-text-tertiary mt-0.5">
                           <Clock size={10} />
                           <span>{new Date(item.timestamp).toLocaleDateString()}</span>
                         </div>
                         {item.videoStatus === 'pending' && (
-                          <span className="absolute top-1 left-1 text-[10px] px-1 py-0.5 rounded bg-black/70 text-neon-lime">
+                          <span className="absolute top-1 left-1 text-[10px] px-1 py-0.5 rounded bg-black/70 text-th-accent">
                             영상 대기
                           </span>
                         )}
@@ -853,7 +853,7 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
                 <span className={`px-2 py-1 text-xs rounded border ${toStatusClass(currentResult?.videoStatus || 'idle')}`}>영상: {currentResult?.videoStatus || 'idle'}</span>
               </div>
 
-              <div className="rounded-2xl border border-white/10 overflow-hidden bg-black">
+              <div className="rounded-2xl border border-th-border overflow-hidden bg-th-base">
                 {currentResult?.videoUrl ? (
                   <video src={currentResult.videoUrl} controls autoPlay loop muted playsInline className="w-full aspect-video object-cover" />
                 ) : currentResult?.imageUrl ? (
@@ -869,13 +869,13 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
                     className="w-full aspect-video object-cover"
                   />
                 ) : (
-                  <div className="aspect-video flex items-center justify-center text-gray-600">
+                  <div className="aspect-video flex items-center justify-center text-th-text-muted">
                     <ImageIcon size={36} />
                   </div>
                 )}
               </div>
               {currentResult?.videoUrl && currentResult?.imageUrl && (
-                <div className="rounded-2xl border border-white/10 overflow-hidden bg-black/40">
+                <div className="rounded-2xl border border-th-border overflow-hidden bg-th-header">
                   <img
                     src={currentResult.imageUrl}
                     alt="생성 이미지"
@@ -891,12 +891,12 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
               )}
 
               {currentResult?.videoStatus === 'pending' && currentResult.videoId && (
-                <div className="p-3 rounded-xl border border-white/10 bg-white/5 flex items-center justify-between gap-3">
+                <div className="p-3 rounded-xl border border-th-border bg-th-surface flex items-center justify-between gap-3">
                   <span className="text-sm">영상 생성 대기 중입니다.</span>
                   <button
                     onClick={() => void refreshPendingVideo(currentResult)}
                     disabled={isCheckingPendingVideo}
-                    className="px-3 py-1 rounded-full text-xs bg-neon-lime text-black disabled:opacity-50"
+                    className="px-3 py-1 rounded-full text-xs bg-th-accent text-th-text-inverse disabled:opacity-50"
                   >
                     {isCheckingPendingVideo ? '확인 중...' : '지금 확인'}
                   </button>
@@ -904,13 +904,13 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
               )}
 
               {currentResult?.text && (
-                <div className="p-4 rounded-xl border-l-2 border-neon-lime bg-white/5 whitespace-pre-wrap">
+                <div className="p-4 rounded-xl border-l-2 border-th-accent-border bg-th-surface whitespace-pre-wrap">
                   {currentResult.text}
                 </div>
               )}
 
               {hasAudio && (
-                <div className="p-4 rounded-xl border border-white/10 bg-white/5 flex items-center justify-between">
+                <div className="p-4 rounded-xl border border-th-border bg-th-surface flex items-center justify-between">
                   <div className="text-sm">오디오 재생</div>
                   <div className="flex items-center gap-2">
                     <button
@@ -920,7 +920,7 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
                         if (sourceNodeRef.current) sourceNodeRef.current.loop = nextLoop;
                         if (htmlAudioRef.current) htmlAudioRef.current.loop = nextLoop;
                       }}
-                      className={`p-2 rounded-full ${isLooping ? 'bg-neon-lime text-black' : 'bg-white/10'}`}
+                      className={`p-2 rounded-full ${isLooping ? 'bg-th-accent text-th-text-inverse' : 'bg-th-surface-hover'}`}
                     >
                       <Repeat size={16} />
                     </button>

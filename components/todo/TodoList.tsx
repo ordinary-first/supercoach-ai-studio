@@ -65,9 +65,9 @@ const TodoList: React.FC<TodoListProps> = ({
   const getSectionColor = (key: DateSection) => {
     switch (key) {
       case 'overdue': return 'text-red-400 border-red-400/20';
-      case 'today': return 'text-neon-lime border-neon-lime/20';
+      case 'today': return 'text-th-accent border-th-accent-border';
       case 'tomorrow': return 'text-blue-400 border-blue-400/20';
-      default: return 'text-gray-400 border-white/10';
+      default: return 'text-th-text-secondary border-th-border';
     }
   };
 
@@ -80,15 +80,15 @@ const TodoList: React.FC<TodoListProps> = ({
           <div key={key} className="space-y-3">
             {/* Section Header */}
             <div className="flex items-center gap-3">
-              <div className={`flex items-center gap-2 px-3 py-1 rounded-lg border ${getSectionColor(key)} bg-black/40 backdrop-blur-sm`}>
+              <div className={`flex items-center gap-2 px-3 py-1 rounded-lg border ${getSectionColor(key)} bg-th-header backdrop-blur-sm`}>
                 <span className="text-xs font-display font-bold tracking-widest">
                   {title}
                 </span>
-                <span className="text-xs bg-white/10 px-1.5 py-0.5 rounded-full font-mono">
+                <span className="text-xs bg-th-surface-hover px-1.5 py-0.5 rounded-full font-mono">
                   {count}
                 </span>
               </div>
-              <div className="flex-1 h-px bg-gradient-to-r from-white/10 to-transparent" />
+              <div className="flex-1 h-px bg-gradient-to-r from-th-border to-transparent" />
             </div>
 
             {/* Todos in Section */}

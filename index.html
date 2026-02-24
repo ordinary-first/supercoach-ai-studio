@@ -1,6 +1,6 @@
 
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
@@ -14,6 +14,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
     <script>
       tailwind.config = {
+        darkMode: 'class',
         theme: {
           extend: {
             colors: {
@@ -21,6 +22,26 @@
               'neon-lime': '#CCFF00',
               'electric-orange': '#FF4D00',
               'glass': 'rgba(255, 255, 255, 0.05)',
+              'th-base': 'var(--bg-base)',
+              'th-surface': 'var(--bg-surface)',
+              'th-surface-hover': 'var(--bg-surface-hover)',
+              'th-elevated': 'var(--bg-elevated)',
+              'th-overlay': 'var(--bg-overlay)',
+              'th-card': 'var(--bg-card)',
+              'th-input': 'var(--bg-input)',
+              'th-header': 'var(--bg-header)',
+              'th-text': 'var(--text-primary)',
+              'th-text-secondary': 'var(--text-secondary)',
+              'th-text-tertiary': 'var(--text-tertiary)',
+              'th-text-muted': 'var(--text-muted)',
+              'th-text-inverse': 'var(--text-inverse)',
+              'th-accent': 'var(--accent)',
+              'th-accent-hover': 'var(--accent-hover)',
+              'th-accent-muted': 'var(--accent-muted)',
+              'th-accent-border': 'var(--accent-border)',
+              'th-border': 'var(--border)',
+              'th-border-subtle': 'var(--border-subtle)',
+              'th-border-strong': 'var(--border-strong)',
             },
             fontFamily: {
               display: ['Orbitron', 'sans-serif'],
@@ -36,8 +57,8 @@
             },
             keyframes: {
               'pulse-glow': {
-                '0%, 100%': { opacity: 1, boxShadow: '0 0 10px #CCFF00' },
-                '50%': { opacity: .5, boxShadow: '0 0 20px #CCFF00' },
+                '0%, 100%': { opacity: 1, boxShadow: '0 0 10px var(--accent)' },
+                '50%': { opacity: .5, boxShadow: '0 0 20px var(--accent)' },
               },
               'float': {
                 '0%, 100%': { transform: 'translateY(0)' },
@@ -72,10 +93,57 @@
         --sar: env(safe-area-inset-right);
         --sab: env(safe-area-inset-bottom);
         --sal: env(safe-area-inset-left);
+
+        --bg-base: #050B14;
+        --bg-surface: rgba(255,255,255,0.05);
+        --bg-surface-hover: rgba(255,255,255,0.10);
+        --bg-elevated: rgba(0,0,0,0.80);
+        --bg-overlay: rgba(0,0,0,0.60);
+        --bg-card: rgba(255,255,255,0.05);
+        --bg-input: rgba(0,0,0,0.80);
+        --bg-header: rgba(0,0,0,0.20);
+        --text-primary: #ffffff;
+        --text-secondary: #9ca3af;
+        --text-tertiary: #6b7280;
+        --text-muted: #4b5563;
+        --text-inverse: #000000;
+        --accent: #CCFF00;
+        --accent-hover: #b8e600;
+        --accent-muted: rgba(204,255,0,0.10);
+        --accent-border: rgba(204,255,0,0.30);
+        --border: rgba(255,255,255,0.10);
+        --border-subtle: rgba(255,255,255,0.05);
+        --border-strong: rgba(255,255,255,0.20);
+        --shadow-glow: rgba(204,255,0,0.3);
+        --shadow-card: none;
+      }
+      .light {
+        --bg-base: #F8FAFC;
+        --bg-surface: #FFFFFF;
+        --bg-surface-hover: #F1F5F9;
+        --bg-elevated: #FFFFFF;
+        --bg-overlay: rgba(0,0,0,0.30);
+        --bg-card: #FFFFFF;
+        --bg-input: #FFFFFF;
+        --bg-header: rgba(255,255,255,0.80);
+        --text-primary: #0F172A;
+        --text-secondary: #475569;
+        --text-tertiary: #64748B;
+        --text-muted: #94A3B8;
+        --text-inverse: #FFFFFF;
+        --accent: #4D7C0F;
+        --accent-hover: #365314;
+        --accent-muted: rgba(77,124,15,0.10);
+        --accent-border: rgba(77,124,15,0.30);
+        --border: #E2E8F0;
+        --border-subtle: #F1F5F9;
+        --border-strong: #CBD5E1;
+        --shadow-glow: rgba(77,124,15,0.3);
+        --shadow-card: 0 1px 3px rgba(0,0,0,0.08);
       }
       body {
-        background-color: #050B14;
-        color: white;
+        background-color: var(--bg-base);
+        color: var(--text-primary);
         overflow: hidden;
         /* Mobile touch optimization */
         -webkit-tap-highlight-color: transparent;

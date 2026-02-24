@@ -9,6 +9,7 @@ import {
   Loader2,
   LogOut,
   MapPin,
+  Monitor,
   Plus,
   Quote,
   Save,
@@ -18,6 +19,7 @@ import {
   User,
   X,
 } from 'lucide-react';
+import { useThemeStore } from '../stores/useThemeStore';
 import {
   createPolarCheckout,
   changePlan,
@@ -76,6 +78,10 @@ const LABELS = {
   en: {
     title: 'Settings',
     language: 'Language',
+    theme: 'Theme',
+    themeSystem: 'System',
+    themeLight: 'Light',
+    themeDark: 'Dark',
     subscription: 'Subscription',
     choosePlan: 'Choose your plan',
     checkout: 'Start checkout',
@@ -98,6 +104,10 @@ const LABELS = {
   ko: {
     title: '설정',
     language: '언어',
+    theme: '테마',
+    themeSystem: '시스템',
+    themeLight: '라이트',
+    themeDark: '다크',
     subscription: '구독',
     choosePlan: '플랜 선택',
     checkout: '결제 시작',
@@ -186,6 +196,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
   onSaveProfile,
   onLogout,
 }) => {
+  const { preference: themePref, setTheme } = useThemeStore();
   const [loadingPlan, setLoadingPlan] = useState<PlanTier | null>(null);
   const [checkoutError, setCheckoutError] = useState('');
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
@@ -336,18 +347,18 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[120] bg-deep-space text-white">
-      <div className="h-14 md:h-16 border-b border-white/10 bg-black/30 backdrop-blur-md px-4 md:px-6 flex items-center justify-between">
+    <div className="fixed inset-0 z-[120] bg-th-base text-th-text">
+      <div className="h-14 md:h-16 border-b border-th-border bg-th-header backdrop-blur-md px-4 md:px-6 flex items-center justify-between">
         <button
           onClick={onClose}
-          className="w-9 h-9 rounded-full bg-white/5 hover:bg-white/10 transition-all flex items-center justify-center text-gray-300"
+          className="w-9 h-9 rounded-full bg-th-surface hover:bg-th-surface-hover transition-all flex items-center justify-center text-th-text-secondary"
           aria-label="Close settings"
         >
           <X size={18} />
         </button>
 
         <div className="flex items-center gap-2">
-          <Settings size={16} className="text-neon-lime" />
+          <Settings size={16} className="text-th-accent" />
           <h1 className="text-sm md:text-base font-semibold tracking-wide">
             {labels.title}
           </h1>
@@ -360,15 +371,15 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
         <div className="max-w-xl mx-auto space-y-4">
           {/* 프로필 섹션 */}
           {profile && (
-            <section className="rounded-2xl border border-white/10 bg-white/5 p-4 space-y-5">
+            <section className="rounded-2xl border border-th-border bg-th-surface p-4 space-y-5">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-[11px] uppercase tracking-wider text-gray-400">
-                  <User size={14} className="text-neon-lime" />
+                <div className="flex items-center gap-2 text-[11px] uppercase tracking-wider text-th-text-secondary">
+                  <User size={14} className="text-th-accent" />
                   <span>프로필</span>
                 </div>
                 <button
                   onClick={() => onSaveProfile(formData)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-neon-lime text-black font-bold rounded-full hover:bg-white transition-all text-[11px]"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-th-accent text-th-text-inverse font-bold rounded-full hover:bg-white transition-all text-[11px]"
                 >
                   <Save size={12} /> 저장
                 </button>
@@ -376,18 +387,18 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
 
               <div className="flex items-center gap-4">
                 <div className="relative shrink-0">
-                  <div className="w-16 h-16 rounded-full bg-white/5 border border-white/10 overflow-hidden">
+                  <div className="w-16 h-16 rounded-full bg-th-surface border border-th-border overflow-hidden">
                     {hasAvatar ? (
                       <img src={formData.avatarUrl} className="w-full h-full object-cover" alt="avatar" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
-                        <User size={28} className="text-gray-500" />
+                        <User size={28} className="text-th-text-tertiary" />
                       </div>
                     )}
                   </div>
                   <button
                     onClick={() => fileInputRef.current?.click()}
-                    className="absolute -bottom-1 -right-1 p-1.5 bg-neon-lime text-black rounded-full shadow-lg hover:scale-110 transition-all"
+                    className="absolute -bottom-1 -right-1 p-1.5 bg-th-accent text-th-text-inverse rounded-full shadow-lg hover:scale-110 transition-all"
                     disabled={isUploadingMedia}
                   >
                     <Camera size={12} />
@@ -405,52 +416,52 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                     type="text"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="bg-transparent text-lg font-bold text-white w-full focus:outline-none border-b border-transparent focus:border-neon-lime/30 pb-1 transition-colors"
+                    className="bg-transparent text-lg font-bold text-th-text w-full focus:outline-none border-b border-transparent focus:border-th-accent-border pb-1 transition-colors"
                     placeholder="이름을 입력하세요"
                   />
-                  <p className="text-[10px] text-gray-500 mt-1">{formData.email}</p>
+                  <p className="text-[10px] text-th-text-tertiary mt-1">{formData.email}</p>
                 </div>
               </div>
 
-              <div className="bg-black/20 rounded-xl border border-white/5 divide-y divide-white/5 overflow-hidden">
+              <div className="bg-th-header rounded-xl border border-th-border-subtle divide-y divide-th-border-subtle overflow-hidden">
                 <div className="flex items-center gap-3 p-3">
-                  <Calendar size={16} className="text-gray-500 shrink-0" />
+                  <Calendar size={16} className="text-th-text-tertiary shrink-0" />
                   <div className="flex-1">
-                    <p className="text-[10px] text-gray-500 font-bold">나이</p>
+                    <p className="text-[10px] text-th-text-tertiary font-bold">나이</p>
                     <input
                       type="number"
                       value={formData.age}
                       onChange={(e) => setFormData({ ...formData, age: e.target.value })}
-                      className="bg-transparent text-white text-sm w-full focus:outline-none mt-0.5"
+                      className="bg-transparent text-th-text text-sm w-full focus:outline-none mt-0.5"
                       placeholder="나이를 입력하세요"
                     />
                   </div>
                 </div>
                 <div className="flex items-center gap-3 p-3">
-                  <User size={16} className="text-gray-500 shrink-0" />
+                  <User size={16} className="text-th-text-tertiary shrink-0" />
                   <div className="flex-1">
-                    <p className="text-[10px] text-gray-500 font-bold">성별</p>
+                    <p className="text-[10px] text-th-text-tertiary font-bold">성별</p>
                     <select
                       value={formData.gender}
                       onChange={(e) => setFormData({ ...formData, gender: e.target.value as any })}
-                      className="bg-transparent text-white text-sm w-full focus:outline-none mt-0.5 appearance-none"
+                      className="bg-transparent text-th-text text-sm w-full focus:outline-none mt-0.5 appearance-none"
                     >
-                      <option value="Male" className="bg-deep-space">남성</option>
-                      <option value="Female" className="bg-deep-space">여성</option>
-                      <option value="Other" className="bg-deep-space">기타</option>
+                      <option value="Male" className="bg-th-card">남성</option>
+                      <option value="Female" className="bg-th-card">여성</option>
+                      <option value="Other" className="bg-th-card">기타</option>
                     </select>
                   </div>
-                  <ChevronRight size={14} className="text-gray-600" />
+                  <ChevronRight size={14} className="text-th-text-muted" />
                 </div>
                 <div className="flex items-center gap-3 p-3">
-                  <MapPin size={16} className="text-gray-500 shrink-0" />
+                  <MapPin size={16} className="text-th-text-tertiary shrink-0" />
                   <div className="flex-1">
-                    <p className="text-[10px] text-gray-500 font-bold">위치</p>
+                    <p className="text-[10px] text-th-text-tertiary font-bold">위치</p>
                     <input
                       type="text"
                       value={formData.location}
                       onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                      className="bg-transparent text-white text-sm w-full focus:outline-none mt-0.5"
+                      className="bg-transparent text-th-text text-sm w-full focus:outline-none mt-0.5"
                       placeholder="도시를 입력하세요"
                     />
                   </div>
@@ -458,29 +469,29 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
               </div>
 
               <div className="space-y-2">
-                <div className="flex items-center gap-2 text-gray-400 text-[11px] font-bold">
-                  <Quote size={12} className="text-neon-lime" />
+                <div className="flex items-center gap-2 text-th-text-secondary text-[11px] font-bold">
+                  <Quote size={12} className="text-th-accent" />
                   자기소개
                 </div>
                 <textarea
                   value={formData.bio}
                   onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
                   placeholder="관심사와 목표를 적어주세요."
-                  className="w-full h-24 bg-black/20 border border-white/5 rounded-xl p-3 text-sm text-gray-200 leading-relaxed focus:outline-none focus:border-neon-lime/30 transition-all resize-none"
+                  className="w-full h-24 bg-th-header border border-th-border-subtle rounded-xl p-3 text-sm text-th-text leading-relaxed focus:outline-none focus:border-th-accent-border transition-all resize-none"
                 />
               </div>
 
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
-                  <div className="flex items-center gap-2 text-gray-400 text-[11px] font-bold">
-                    <ImageIcon size={12} className="text-neon-lime" />
+                  <div className="flex items-center gap-2 text-th-text-secondary text-[11px] font-bold">
+                    <ImageIcon size={12} className="text-th-accent" />
                     포토 갤러리
                   </div>
-                  <span className="text-[10px] text-gray-600">{formData.gallery?.length || 0} / 6</span>
+                  <span className="text-[10px] text-th-text-muted">{formData.gallery?.length || 0} / 6</span>
                 </div>
                 <div className="grid grid-cols-3 gap-2">
                   {formData.gallery?.map((img, idx) => (
-                    <div key={idx} className="relative aspect-square group rounded-xl overflow-hidden border border-white/10">
+                    <div key={idx} className="relative aspect-square group rounded-xl overflow-hidden border border-th-border">
                       <img src={img} className="w-full h-full object-cover" alt={`gallery-${idx}`} />
                       <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                         <button
@@ -496,7 +507,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                     <button
                       onClick={() => galleryInputRef.current?.click()}
                       disabled={isUploadingMedia}
-                      className="aspect-square border border-dashed border-white/10 rounded-xl flex flex-col items-center justify-center gap-1 text-gray-500 hover:border-neon-lime/50 hover:text-neon-lime transition-all disabled:opacity-60"
+                      className="aspect-square border border-dashed border-th-border rounded-xl flex flex-col items-center justify-center gap-1 text-th-text-tertiary hover:border-th-accent hover:text-th-accent transition-all disabled:opacity-60"
                     >
                       <Plus size={18} />
                       <span className="text-[9px] font-bold">
@@ -517,9 +528,9 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
             </section>
           )}
 
-          <section className="rounded-2xl border border-white/10 bg-white/5 p-4">
-            <div className="flex items-center gap-2 text-[11px] uppercase tracking-wider text-gray-400 mb-3">
-              <Globe size={14} className="text-neon-lime" />
+          <section className="rounded-2xl border border-th-border bg-th-surface p-4">
+            <div className="flex items-center gap-2 text-[11px] uppercase tracking-wider text-th-text-secondary mb-3">
+              <Globe size={14} className="text-th-accent" />
               <span>{labels.language}</span>
             </div>
             <select
@@ -527,20 +538,42 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
               onChange={(event) =>
                 onLanguageChange(event.target.value as LanguageOption)
               }
-              className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-neon-lime"
+              className="w-full bg-th-elevated border border-th-border rounded-xl px-3 py-2.5 text-sm text-th-text outline-none focus:border-th-accent"
             >
               <option value="en">English</option>
               <option value="ko">한국어</option>
             </select>
           </section>
 
-          <section className="rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
-            <div className="w-full flex items-center justify-between px-4 py-3.5 border-b border-white/10">
+          <section className="rounded-2xl border border-th-border bg-th-surface p-4">
+            <div className="flex items-center gap-2 text-[11px] uppercase tracking-wider text-th-text-secondary mb-3">
+              <Monitor size={14} className="text-th-accent" />
+              <span>{labels.theme}</span>
+            </div>
+            <div className="flex gap-2">
+              {(['system', 'light', 'dark'] as const).map((opt) => (
+                <button
+                  key={opt}
+                  onClick={() => setTheme(opt)}
+                  className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all border ${
+                    themePref === opt
+                      ? 'bg-th-accent text-th-text-inverse border-th-accent'
+                      : 'bg-th-surface border-th-border text-th-text-secondary hover:bg-th-surface-hover'
+                  }`}
+                >
+                  {opt === 'system' ? labels.themeSystem : opt === 'light' ? labels.themeLight : labels.themeDark}
+                </button>
+              ))}
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-th-border bg-th-surface overflow-hidden">
+            <div className="w-full flex items-center justify-between px-4 py-3.5 border-b border-th-border">
               <div className="flex items-center gap-2">
-                <Crown size={16} className="text-neon-lime" />
+                <Crown size={16} className="text-th-accent" />
                 <span className="text-sm">{labels.subscription}</span>
               </div>
-              <span className="text-[11px] text-gray-400">{labels.choosePlan}</span>
+              <span className="text-[11px] text-th-text-secondary">{labels.choosePlan}</span>
             </div>
 
             {usage && (() => {
@@ -551,8 +584,8 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
               );
               if (resources.length === 0) return null;
               return (
-                <div className="px-4 py-3 border-b border-white/10 space-y-2">
-                  <p className="text-[11px] text-gray-400 font-bold uppercase tracking-wider">
+                <div className="px-4 py-3 border-b border-th-border space-y-2">
+                  <p className="text-[11px] text-th-text-secondary font-bold uppercase tracking-wider">
                     이번 달 사용량
                   </p>
                   {resources.map(([key, lim]) => {
@@ -563,11 +596,11 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                         ? 'bg-red-500'
                         : pct >= 80
                           ? 'bg-amber-400'
-                          : 'bg-neon-lime';
+                          : 'bg-th-accent';
                     return (
                       <div key={key} className="space-y-1">
                         <div className="flex justify-between text-[11px]">
-                          <span className="text-gray-400">
+                          <span className="text-th-text-secondary">
                             {RESOURCE_LABELS[key] || key}
                           </span>
                           <span
@@ -576,13 +609,13 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                                 ? 'text-red-400'
                                 : pct >= 80
                                   ? 'text-amber-300'
-                                  : 'text-gray-300'
+                                  : 'text-th-text'
                             }
                           >
                             {cur} / {lim}
                           </span>
                         </div>
-                        <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+                        <div className="h-1.5 bg-th-surface rounded-full overflow-hidden">
                           <div
                             className={`h-full rounded-full ${color} transition-all`}
                             style={{ width: `${pct}%` }}
@@ -595,7 +628,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
               );
             })()}
 
-            <div className="px-4 py-3.5 border-b border-white/10 space-y-2">
+            <div className="px-4 py-3.5 border-b border-th-border space-y-2">
               {PLANS.map((item) => {
                 const currentPlan = profile?.billingPlan || 'explorer';
                 const isCurrent = item.plan === currentPlan;
@@ -608,7 +641,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                 const renderAction = () => {
                   if (isCurrent) {
                     return (
-                      <span className="text-[10px] text-neon-lime font-bold border border-neon-lime/30 rounded-full px-2 py-0.5">
+                      <span className="text-[10px] text-th-accent font-bold border border-th-accent-border rounded-full px-2 py-0.5">
                         현재 플랜
                       </span>
                     );
@@ -616,7 +649,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
 
                   if (isLoading) {
                     return (
-                      <span className="inline-flex items-center gap-1 text-xs text-gray-400">
+                      <span className="inline-flex items-center gap-1 text-xs text-th-text-secondary">
                         <Loader2 size={13} className="animate-spin" />
                         처리 중...
                       </span>
@@ -631,7 +664,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                         disabled={loadingPlan !== null}
                         className={`inline-flex items-center gap-1 text-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                           isUpgrade
-                            ? 'text-neon-lime hover:text-white'
+                            ? 'text-th-accent hover:text-th-text'
                             : 'text-amber-400 hover:text-amber-200'
                         }`}
                       >
@@ -646,7 +679,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                       <button
                         onClick={() => handleCheckout(item.plan)}
                         disabled={loadingPlan !== null}
-                        className="inline-flex items-center gap-1 text-xs text-neon-lime hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="inline-flex items-center gap-1 text-xs text-th-accent hover:text-th-text transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {labels.checkout}
                       </button>
@@ -659,18 +692,18 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                 return (
                   <div
                     key={item.plan}
-                    className={`rounded-xl border bg-black/30 px-3 py-2.5 ${isCurrent ? 'border-neon-lime/30' : 'border-white/10'}`}
+                    className={`rounded-xl border bg-th-header px-3 py-2.5 ${isCurrent ? 'border-th-accent-border' : 'border-th-border'}`}
                   >
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm text-white font-medium">{item.title}</p>
-                        <p className="text-[11px] text-gray-400">{item.price}</p>
+                        <p className="text-sm text-th-text font-medium">{item.title}</p>
+                        <p className="text-[11px] text-th-text-secondary">{item.price}</p>
                       </div>
                       {renderAction()}
                     </div>
                     <div className="mt-1.5 flex flex-wrap gap-x-2 gap-y-0.5">
                       {item.features.map((f) => (
-                        <span key={f} className="text-[10px] text-gray-500">{f}</span>
+                        <span key={f} className="text-[10px] text-th-text-tertiary">{f}</span>
                       ))}
                     </div>
                   </div>
@@ -681,20 +714,20 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
               {isSubscriber && !showCancelConfirm && (
                 <button
                   onClick={() => setShowCancelConfirm(true)}
-                  className="w-full text-[11px] text-gray-500 hover:text-red-400 transition-colors pt-2"
+                  className="w-full text-[11px] text-th-text-tertiary hover:text-red-400 transition-colors pt-2"
                 >
                   구독 취소
                 </button>
               )}
               {isSubscriber && showCancelConfirm && (
                 <div className="rounded-xl border border-red-500/30 bg-red-500/5 p-3 space-y-2">
-                  <p className="text-xs text-gray-300">
+                  <p className="text-xs text-th-text">
                     현재 결제 기간이 끝나면 구독이 취소됩니다. 계속하시겠습니까?
                   </p>
                   <div className="flex gap-2">
                     <button
                       onClick={() => setShowCancelConfirm(false)}
-                      className="flex-1 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-xs font-medium transition-all"
+                      className="flex-1 py-2 bg-th-surface hover:bg-th-surface-hover rounded-lg text-xs font-medium transition-all"
                     >
                       돌아가기
                     </button>
@@ -715,11 +748,11 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
             </div>
 
             <div className="px-4 py-3.5">
-              <div className="flex items-center gap-2 text-xs text-gray-300 mb-2">
-                <ShieldCheck size={14} className="text-neon-lime" />
+              <div className="flex items-center gap-2 text-xs text-th-text mb-2">
+                <ShieldCheck size={14} className="text-th-accent" />
                 <span>{labels.polarPolicyTitle}</span>
               </div>
-              <ul className="space-y-1.5 text-[12px] text-gray-400">
+              <ul className="space-y-1.5 text-[12px] text-th-text-secondary">
                 <li>{labels.ruleDigitalOnly}</li>
                 <li>{labels.ruleNoHumanService}</li>
                 <li>{labels.ruleNoDonation}</li>
@@ -727,12 +760,12 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
               </ul>
             </div>
 
-            <div className="px-4 py-3.5 border-t border-white/10">
-              <div className="flex items-center gap-2 text-xs text-gray-300 mb-2">
-                <ShieldCheck size={14} className="text-neon-lime" />
+            <div className="px-4 py-3.5 border-t border-th-border">
+              <div className="flex items-center gap-2 text-xs text-th-text mb-2">
+                <ShieldCheck size={14} className="text-th-accent" />
                 <span>{labels.legalTitle}</span>
               </div>
-              <p className="text-[11px] text-gray-400 leading-relaxed">
+              <p className="text-[11px] text-th-text-secondary leading-relaxed">
                 {labels.legalHint}
               </p>
               <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
@@ -740,7 +773,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                   href="/terms"
                   target="_blank"
                   rel="noreferrer"
-                  className="rounded-full border border-white/10 bg-black/30 px-3 py-1 text-neon-lime hover:border-neon-lime/40"
+                  className="rounded-full border border-th-border bg-th-header px-3 py-1 text-th-accent hover:border-th-accent-border"
                 >
                   {labels.terms}
                 </a>
@@ -748,7 +781,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                   href="/privacy"
                   target="_blank"
                   rel="noreferrer"
-                  className="rounded-full border border-white/10 bg-black/30 px-3 py-1 text-neon-lime hover:border-neon-lime/40"
+                  className="rounded-full border border-th-border bg-th-header px-3 py-1 text-th-accent hover:border-th-accent-border"
                 >
                   {labels.privacy}
                 </a>
@@ -756,7 +789,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                   href="/refund"
                   target="_blank"
                   rel="noreferrer"
-                  className="rounded-full border border-white/10 bg-black/30 px-3 py-1 text-neon-lime hover:border-neon-lime/40"
+                  className="rounded-full border border-th-border bg-th-header px-3 py-1 text-th-accent hover:border-th-accent-border"
                 >
                   {labels.refund}
                 </a>
@@ -765,14 +798,14 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
           </section>
 
           {/* 로그아웃 */}
-          <section className="rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
+          <section className="rounded-2xl border border-th-border bg-th-surface overflow-hidden">
             {showLogoutConfirm ? (
               <div className="p-4 space-y-3">
-                <p className="text-sm text-gray-300">로그아웃 하시겠습니까?</p>
+                <p className="text-sm text-th-text">로그아웃 하시겠습니까?</p>
                 <div className="flex gap-2">
                   <button
                     onClick={() => setShowLogoutConfirm(false)}
-                    className="flex-1 py-2.5 bg-white/5 hover:bg-white/10 rounded-xl text-sm font-medium transition-all"
+                    className="flex-1 py-2.5 bg-th-surface hover:bg-th-surface-hover rounded-xl text-sm font-medium transition-all"
                   >
                     취소
                   </button>
@@ -787,7 +820,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
             ) : (
               <button
                 onClick={() => setShowLogoutConfirm(true)}
-                className="w-full flex items-center justify-center gap-2 px-4 py-3.5 text-gray-500 hover:text-red-400 hover:bg-red-500/5 transition-all"
+                className="w-full flex items-center justify-center gap-2 px-4 py-3.5 text-th-text-tertiary hover:text-red-400 hover:bg-red-500/5 transition-all"
               >
                 <LogOut size={16} />
                 <span className="text-sm">로그아웃</span>
