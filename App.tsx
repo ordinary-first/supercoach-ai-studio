@@ -723,7 +723,7 @@ const App: React.FC = () => {
   const trimmed = text.trim().slice(0, 500);
   if (!trimmed) return;
   const newId = Date.now().toString();
-  setTodos(prev => [{id: newId, text: trimmed, completed: false, createdAt: Date.now(), listId}, ...prev]);
+  setTodos(prev => [{id: newId, text: trimmed, completed: false, createdAt: Date.now(), ...(listId ? { listId } : {})}, ...prev]);
   appendAction(getUserId(), 'ADD_TODO', `"${trimmed}" 추가`, { todoId: newId });
 }} onToggleToDo={handleToggleToDo} onDeleteToDo={(id) => {
   const todo = todos.find(t => t.id === id);

@@ -29,6 +29,8 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
 
   const [searchQuery, setSearchQuery] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isInputVisible, setIsInputVisible] = useState(false);
+  const inputRef = React.useRef<HTMLInputElement>(null);
   const [showCreateList, setShowCreateList] = useState(false);
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const [editingListId, setEditingListId] = useState<string | null>(null);
@@ -200,132 +202,129 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
       <div className="flex-1 flex flex-col min-w-0 relative z-10">
           
           {/* Header */}
-          <div className="h-14 md:h-20 border-b border-white/10 flex items-center justify-between px-4 md:px-8 bg-black/20 backdrop-blur-md shrink-0">
-              <div className="flex items-center gap-4">
-                  <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="md:hidden p-2 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-colors">
-                    <Menu size={20} />
+          <div className="h-11 md:h-12 border-b border-white/10 flex items-center justify-between px-3 md:px-6 bg-black/20 backdrop-blur-md shrink-0">
+              <div className="flex items-center gap-2.5">
+                  <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="md:hidden p-1.5 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-colors">
+                    <Menu size={18} />
                   </button>
-                  <div className={`p-2 md:p-3 rounded-lg md:rounded-xl ${activeListId === 'myDay' ? 'bg-yellow-400/10' : activeListId === 'important' ? 'bg-red-400/10' : activeListId === 'planned' ? 'bg-blue-400/10' : 'bg-neon-lime/10'}`}>
+                  <div className={`p-1.5 rounded-lg ${activeListId === 'myDay' ? 'bg-yellow-400/10' : activeListId === 'important' ? 'bg-red-400/10' : activeListId === 'planned' ? 'bg-blue-400/10' : 'bg-neon-lime/10'}`}>
                     <span className={activeListInfo.color}>{activeListInfo.icon}</span>
                   </div>
                   <div>
-                      <h1 className="text-lg md:text-2xl font-display font-bold tracking-wider text-white">{searchQuery ? '검색 결과' : activeListInfo.name}</h1>
-                      <p className="text-[10px] md:text-sm text-gray-400 font-mono mt-0.5 hidden md:block">
-                          {searchQuery ? `"${searchQuery}" · ${sortedTodos.length}개 결과` : new Date().toLocaleDateString('ko-KR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-                      </p>
+                      <h1 className="text-base md:text-lg font-display font-bold tracking-wider text-white">{searchQuery ? '검색 결과' : activeListInfo.name}</h1>
                   </div>
               </div>
           </div>
 
           {/* List Content */}
-          <div className="flex-1 overflow-y-auto p-4 lg:p-8 scrollbar-hide">
-              <div className="max-w-4xl mx-auto space-y-3">
-                  {sortedTodos.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center py-20 text-gray-600 space-y-6">
-                          <div className="w-24 h-24 rounded-full bg-white/5 flex items-center justify-center">
-                              <Target size={48} className="opacity-30" />
+          <div className="flex-1 overflow-y-auto px-0 pt-1 scrollbar-hide">
+              <div className="max-w-4xl mx-auto">
+                  {sortedTodos.length === 0 && !isInputVisible ? (
+                      <div className="flex flex-col items-center justify-center py-12 text-gray-600 space-y-4">
+                          <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center">
+                              <Target size={32} className="opacity-30" />
                           </div>
                           <div className="text-center">
-                            <p className="text-xl font-bold text-gray-500">할 일이 없습니다</p>
-                            <p className="text-sm mt-2">오늘의 승리를 위한 첫 번째 작업을 추가해보세요.</p>
+                            <p className="text-base font-bold text-gray-500">할 일이 없습니다</p>
+                            <p className="text-xs mt-1 text-gray-600">+ 버튼을 눌러 작업을 추가하세요</p>
                           </div>
                       </div>
                   ) : (
                       sortedTodos.map(todo => (
-                          <div 
+                          <div
                             key={todo.id}
                             onClick={() => setSelectedToDoId(todo.id)}
-                            className={`group flex items-center gap-4 p-4 rounded-2xl border cursor-pointer transition-all duration-200 ${
+                            className={`group flex items-center gap-2.5 py-2.5 px-3 border-b cursor-pointer transition-all duration-150 ${
                                 selectedToDoId === todo.id
-                                    ? 'bg-white/10 border-neon-lime shadow-[0_0_15px_rgba(204,255,0,0.1)]'
-                                    : (todo.completed 
-                                        ? 'bg-white/5 border-transparent opacity-50' 
-                                        : 'bg-white/5 border-white/5 hover:bg-white/10 hover:border-white/20')
+                                    ? 'bg-white/10 border-white/10'
+                                    : (todo.completed
+                                        ? 'border-white/5 opacity-50'
+                                        : 'border-white/5 hover:bg-white/5')
                             }`}
                           >
-                              <button 
+                              <button
                                 onClick={(e) => { e.stopPropagation(); onToggleToDo(todo.id); }}
-                                className={`transition-colors flex-shrink-0 p-1 rounded-full hover:bg-white/10 ${todo.completed ? 'text-neon-lime' : 'text-gray-500 hover:text-neon-lime'}`}
+                                className={`transition-colors flex-shrink-0 ${todo.completed ? 'text-neon-lime' : 'text-gray-500 hover:text-neon-lime'}`}
                               >
-                                  {todo.completed ? <CheckCircle2 size={24} /> : <Circle size={24} />}
+                                  {todo.completed ? <CheckCircle2 size={20} /> : <Circle size={20} />}
                               </button>
 
                               <div className="flex-1 min-w-0">
-                                  <p className={`text-lg truncate ${todo.completed ? 'line-through text-gray-500' : 'text-white'}`}>
+                                  <p className={`text-sm truncate ${todo.completed ? 'line-through text-gray-500' : 'text-white'}`}>
                                       {todo.text}
                                   </p>
-                                  <div className="flex flex-wrap gap-3 mt-1.5">
-                                      {todo.isMyDay && (
-                                          <div className="flex items-center gap-1 text-xs text-yellow-400 bg-yellow-400/10 px-2 py-0.5 rounded-full">
-                                              <Sun size={12} />
-                                              <span>오늘</span>
-                                          </div>
-                                      )}
-                                      {todo.dueDate && (
-                                          <div className={`flex items-center gap-1 text-xs px-2 py-0.5 rounded-full ${todo.dueDate < Date.now() && !todo.completed ? 'text-red-400 bg-red-400/10' : 'text-gray-400 bg-white/5'}`}>
-                                              <Calendar size={12} />
-                                              <span>{formatDate(todo.dueDate)}</span>
-                                          </div>
-                                      )}
-                                      {todo.repeat && (
-                                          <div className="flex items-center gap-1 text-xs text-blue-400 bg-blue-400/10 px-2 py-0.5 rounded-full">
-                                              <Repeat size={12} />
-                                              <span className="capitalize">{getRepeatLabel(todo.repeat)}</span>
-                                          </div>
-                                      )}
-                                      {todo.linkedNodeText && (
-                                          <div className="flex items-center gap-1 text-xs text-electric-orange/80 bg-electric-orange/10 px-2 py-0.5 rounded-full">
-                                              <Target size={12} />
-                                              <span className="truncate max-w-[150px]">{todo.linkedNodeText}</span>
-                                          </div>
-                                      )}
-                                  </div>
+                                  {(todo.isMyDay || todo.dueDate || todo.repeat || todo.linkedNodeText) && (
+                                    <div className="flex flex-wrap gap-1.5 mt-0.5">
+                                        {todo.isMyDay && (
+                                            <span className="flex items-center gap-0.5 text-[10px] text-yellow-400">
+                                                <Sun size={10} /> 오늘 할 일
+                                            </span>
+                                        )}
+                                        {todo.dueDate && (
+                                            <span className={`flex items-center gap-0.5 text-[10px] ${todo.dueDate < Date.now() && !todo.completed ? 'text-red-400' : 'text-gray-500'}`}>
+                                                <Calendar size={10} /> {formatDate(todo.dueDate)}
+                                            </span>
+                                        )}
+                                        {todo.repeat && (
+                                            <span className="flex items-center gap-0.5 text-[10px] text-blue-400">
+                                                <Repeat size={10} /> {getRepeatLabel(todo.repeat)}
+                                            </span>
+                                        )}
+                                        {todo.linkedNodeText && (
+                                            <span className="flex items-center gap-0.5 text-[10px] text-electric-orange/80">
+                                                <Target size={10} /> {todo.linkedNodeText}
+                                            </span>
+                                        )}
+                                    </div>
+                                  )}
                               </div>
                               <button
                                 onClick={(e) => { e.stopPropagation(); onDeleteToDo(todo.id); }}
-                                className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 p-2 rounded-full hover:bg-red-500/20 text-gray-500 hover:text-red-400"
+                                className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 p-1 rounded hover:bg-red-500/20 text-gray-500 hover:text-red-400"
                                 title="삭제"
                               >
-                                  <Trash2 size={18} />
+                                  <Trash2 size={14} />
                               </button>
-                              <ChevronRight size={20} className={`text-gray-600 transition-transform ${selectedToDoId === todo.id ? 'translate-x-1 text-neon-lime' : ''}`} />
+                              <ChevronRight size={16} className={`text-gray-600 flex-shrink-0 transition-transform ${selectedToDoId === todo.id ? 'translate-x-0.5 text-neon-lime' : ''}`} />
                           </div>
                       ))
                   )}
-                  {/* Bottom padding for floating input */}
-                  <div className="h-48"></div>
-              </div>
-          </div>
 
-          {/* Floating Input Area */}
-          <div className="absolute bottom-[120px] left-0 right-0 px-4 flex justify-center z-20 pointer-events-none">
-              <div className="w-full max-w-4xl pointer-events-auto">
-                <form onSubmit={handleSubmit} className="relative group">
-                    <div className="absolute inset-0 bg-neon-lime/20 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                    <div className="relative flex items-center bg-black/80 backdrop-blur-xl border border-white/20 rounded-full shadow-2xl overflow-hidden transition-colors hover:border-neon-lime/50">
-                        <div className="pl-6 text-neon-lime">
-                            <Plus size={24} />
-                        </div>
+                  {/* Inline Input (shown when FAB is tapped) */}
+                  {isInputVisible && (
+                    <form onSubmit={(e) => { handleSubmit(e); if (!inputText.trim()) { setIsInputVisible(false); } }} className="flex items-center gap-2.5 py-2.5 px-3 border-b border-white/10 bg-white/5">
+                        <Plus size={20} className="text-neon-lime flex-shrink-0" />
                         <input
+                            ref={inputRef}
                             type="text"
                             value={inputText}
                             onChange={(e) => setInputText(e.target.value)}
-                            placeholder="새로운 작업을 입력하고 Enter를 누르세요..."
-                            className="w-full bg-transparent border-none py-4 px-4 text-lg text-white placeholder-gray-500 focus:outline-none focus:ring-0"
+                            onKeyDown={(e) => { if (e.key === 'Escape') { setIsInputVisible(false); setInputText(''); } }}
+                            placeholder="새 작업 추가..."
+                            className="flex-1 bg-transparent text-sm text-white placeholder-gray-500 focus:outline-none"
                             aria-label="새 할 일 입력"
+                            autoFocus
                         />
-                        <button
-                            type="submit"
-                            disabled={!inputText.trim()}
-                            className="mr-2 px-6 py-2 bg-white/10 hover:bg-neon-lime hover:text-black rounded-full text-sm font-bold transition-all disabled:opacity-0 disabled:scale-95"
-                            aria-label="할 일 추가"
-                        >
-                            추가
+                        <button type="button" onClick={() => { setIsInputVisible(false); setInputText(''); }} className="text-gray-500 hover:text-white p-0.5">
+                          <X size={16} />
                         </button>
-                    </div>
-                </form>
+                    </form>
+                  )}
+
+                  <div className="h-20"></div>
               </div>
           </div>
+
+          {/* FAB Button */}
+          {!isInputVisible && (
+            <button
+              onClick={() => { setIsInputVisible(true); setTimeout(() => inputRef.current?.focus(), 50); }}
+              className="absolute bottom-20 right-4 md:bottom-6 md:right-6 z-20 w-12 h-12 rounded-full bg-neon-lime text-black flex items-center justify-center shadow-lg shadow-neon-lime/30 hover:scale-110 active:scale-95 transition-transform"
+              aria-label="새 할 일 추가"
+            >
+              <Plus size={24} strokeWidth={2.5} />
+            </button>
+          )}
       </div>
 
       {/* === RIGHT DETAIL AREA (SIDEBAR) === */}
