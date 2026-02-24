@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { UserProfile, GoalNode, GoalLink, ToDoItem } from '../types';
+import { UserProfile, GoalNode, GoalLink, ToDoItem, TodoList, TodoGroup } from '../types';
 import {
   onAuthUpdate,
   getUserId,
   loadGoalData,
   loadTodos,
+  loadTodoLists,
   loadProfile,
   ensureCreatedAt,
   testFirestoreConnection,
@@ -28,6 +29,7 @@ export interface AuthState {
 export function useAuth(
   onGoalDataLoaded: (nodes: GoalNode[], links: GoalLink[]) => void,
   onTodosLoaded: (todos: ToDoItem[]) => void,
+  onTodoListsLoaded: (lists: TodoList[], groups: TodoGroup[]) => void,
 ): AuthState {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
@@ -112,9 +114,10 @@ export function useAuth(
       await ensureCreatedAt(userId);
 
       try {
-        const [goalData, todoData, savedProfile] = await Promise.all([
+        const [goalData, todoData, todoListsData, savedProfile] = await Promise.all([
           loadGoalData(userId),
           loadTodos(userId),
+          loadTodoLists(userId),
           loadProfile(userId),
         ]);
 
@@ -127,6 +130,10 @@ export function useAuth(
 
         if (todoData && todoData.length > 0) {
           onTodosLoaded(todoData);
+        }
+
+        if (todoListsData) {
+          onTodoListsLoaded(todoListsData.lists, todoListsData.groups);
         }
 
         // 온보딩 완료 여부 판단 (source of truth: Firestore onboardingCompleted 필드)
@@ -182,7 +189,7 @@ export function useAuth(
     };
 
     loadData();
-  }, [userProfile, isDataLoaded, onGoalDataLoaded, onTodosLoaded]);
+  }, [userProfile, isDataLoaded, onGoalDataLoaded, onTodosLoaded, onTodoListsLoaded]);
 
   const TRIAL_DAYS = 3;
   const isTrialExpired = (() => {

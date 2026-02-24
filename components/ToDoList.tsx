@@ -1,33 +1,132 @@
-import React, { useState } from 'react';
-import { Check, Trash2, Plus, ListTodo, Circle, CheckCircle2, Target, Bell, Repeat, Sun, ArrowLeft, ChevronRight, Layout, X, Calendar } from 'lucide-react';
-import { ToDoItem, RepeatFrequency } from '../types';
+import React, { useState, useMemo } from 'react';
+import { Check, Trash2, Plus, ListTodo, Circle, CheckCircle2, Target, Bell, Repeat, Sun, ArrowLeft, ChevronRight, Layout, X, Calendar, Star, CalendarDays, Home, Menu } from 'lucide-react';
+import { ToDoItem, TodoList, TodoGroup, SmartListId, RepeatFrequency } from '../types';
 import { useFocusTrap } from '../hooks/useFocusTrap';
+import TodoSidebar from './todo/TodoSidebar';
+import CreateListModal from './todo/CreateListModal';
+import CreateGroupModal from './todo/CreateGroupModal';
 
 interface ToDoListProps {
   isOpen: boolean;
   onClose: () => void;
   todos: ToDoItem[];
-  onAddToDo: (text: string) => void;
+  todoLists: TodoList[];
+  todoGroups: TodoGroup[];
+  activeListId: string;
+  onActiveListChange: (id: string) => void;
+  onTodoListsChange: React.Dispatch<React.SetStateAction<TodoList[]>>;
+  onTodoGroupsChange: React.Dispatch<React.SetStateAction<TodoGroup[]>>;
+  onAddToDo: (text: string, listId?: string) => void;
   onToggleToDo: (id: string) => void;
   onDeleteToDo: (id: string) => void;
   onUpdateToDo: (id: string, updates: Partial<ToDoItem>) => void;
 }
 
-const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, onAddToDo, onToggleToDo, onDeleteToDo, onUpdateToDo }) => {
+const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, todoGroups, activeListId, onActiveListChange, onTodoListsChange, onTodoGroupsChange, onAddToDo, onToggleToDo, onDeleteToDo, onUpdateToDo }) => {
   const [inputText, setInputText] = useState('');
   const [selectedToDoId, setSelectedToDoId] = useState<string | null>(null);
   const focusTrapRef = useFocusTrap(isOpen);
 
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [showCreateList, setShowCreateList] = useState(false);
+  const [showCreateGroup, setShowCreateGroup] = useState(false);
+  const [editingListId, setEditingListId] = useState<string | null>(null);
+  const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
+
+  // Smart list definitions
+  const SMART_LIST_META: Record<SmartListId, { name: string; icon: React.ReactNode; color: string }> = {
+    myDay: { name: '오늘 할 일', icon: <Sun size={20} />, color: 'text-yellow-400' },
+    important: { name: '중요', icon: <Star size={20} />, color: 'text-red-400' },
+    planned: { name: '계획된 일정', icon: <CalendarDays size={20} />, color: 'text-blue-400' },
+    tasks: { name: '작업', icon: <Home size={20} />, color: 'text-th-accent' },
+  };
+
+  // Filter todos based on active list or search
+  const filteredTodos = useMemo(() => {
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      return todos.filter(t =>
+        t.text.toLowerCase().includes(q) ||
+        (t.note?.toLowerCase().includes(q)) ||
+        (t.tags?.some(tag => tag.toLowerCase().includes(q)))
+      );
+    }
+    switch (activeListId) {
+      case 'myDay': return todos.filter(t => !!t.isMyDay);
+      case 'important': return todos.filter(t => t.priority === 'high');
+      case 'planned': return todos.filter(t => t.dueDate != null);
+      case 'tasks': return todos.filter(t => !t.listId || t.listId === 'tasks');
+      default: return todos.filter(t => t.listId === activeListId);
+    }
+  }, [todos, activeListId, searchQuery]);
+
+  // Get active list display info
+  const activeListInfo = useMemo(() => {
+    const smart = SMART_LIST_META[activeListId as SmartListId];
+    if (smart) return smart;
+    const customList = todoLists.find(l => l.id === activeListId);
+    if (customList) return { name: customList.name, icon: <ListTodo size={20} />, color: `text-[${customList.color || '#CCFF00'}]` };
+    return { name: '작업', icon: <Home size={20} />, color: 'text-th-accent' };
+  }, [activeListId, todoLists]);
+
+  // CRUD handlers
+  const handleCreateList = (name: string, color: string, groupId?: string) => {
+    const newList: TodoList = { id: `list_${Date.now()}`, name, color, groupId, sortOrder: todoLists.length, createdAt: Date.now() };
+    onTodoListsChange(prev => [...prev, newList]);
+  };
+
+  const handleCreateGroup = (name: string) => {
+    const newGroup: TodoGroup = { id: `grp_${Date.now()}`, name, isCollapsed: false, sortOrder: todoGroups.length, createdAt: Date.now() };
+    onTodoGroupsChange(prev => [...prev, newGroup]);
+  };
+
+  const handleDeleteList = (id: string) => {
+    onTodoListsChange(prev => prev.filter(l => l.id !== id));
+    if (activeListId === id) onActiveListChange('tasks');
+  };
+
+  const handleDeleteGroup = (id: string) => {
+    onTodoGroupsChange(prev => prev.filter(g => g.id !== id));
+    onTodoListsChange(prev => prev.map(l => l.groupId === id ? { ...l, groupId: undefined } : l));
+  };
+
+  const handleRenameList = (id: string) => { setEditingListId(id); setShowCreateList(true); };
+  const handleRenameGroup = (id: string) => { setEditingGroupId(id); setShowCreateGroup(true); };
+
+  const handleSaveRenamedList = (name: string, color: string, groupId?: string) => {
+    if (editingListId) {
+      onTodoListsChange(prev => prev.map(l => l.id === editingListId ? { ...l, name, color, groupId } : l));
+      setEditingListId(null);
+    } else {
+      handleCreateList(name, color, groupId);
+    }
+  };
+
+  const handleSaveRenamedGroup = (name: string) => {
+    if (editingGroupId) {
+      onTodoGroupsChange(prev => prev.map(g => g.id === editingGroupId ? { ...g, name } : g));
+      setEditingGroupId(null);
+    } else {
+      handleCreateGroup(name);
+    }
+  };
+
+  const handleToggleGroupCollapse = (id: string) => {
+    onTodoGroupsChange(prev => prev.map(g => g.id === id ? { ...g, isCollapsed: !g.isCollapsed } : g));
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (inputText.trim()) {
-      onAddToDo(inputText);
+      const listId = (['myDay', 'important', 'planned', 'tasks'] as string[]).includes(activeListId) ? undefined : activeListId;
+      onAddToDo(inputText, listId);
       setInputText('');
     }
   };
 
   // Sort: MyDay first, then Incomplete first, then by creation date
-  const sortedTodos = [...todos].sort((a, b) => {
+  const sortedTodos = [...filteredTodos].sort((a, b) => {
       if (a.completed === b.completed) {
           if (a.isMyDay === b.isMyDay) return b.createdAt - a.createdAt;
           return a.isMyDay ? -1 : 1;
@@ -68,24 +167,51 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, onAddToDo, 
 
   return (
     <div ref={focusTrapRef} className="fixed inset-0 z-50 bg-th-base flex flex-row overflow-hidden text-th-text font-body">
-      
+
       {/* Ambient Background */}
       <div className="absolute top-[-20%] right-[-10%] w-[50%] h-[50%] bg-blue-900/20 rounded-full blur-[120px] pointer-events-none"></div>
       <div className="absolute bottom-[-20%] left-[-10%] w-[50%] h-[50%] bg-purple-900/20 rounded-full blur-[120px] pointer-events-none"></div>
 
+      {/* === SIDEBAR NAVIGATION === */}
+      {/* Mobile overlay */}
+      {isSidebarOpen && (
+        <div className="fixed inset-0 bg-th-overlay z-30 md:hidden" onClick={() => setIsSidebarOpen(false)} />
+      )}
+      <div className={`fixed inset-y-0 left-0 w-[260px] z-40 md:relative md:z-10 transform transition-transform duration-300 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
+        <TodoSidebar
+          todos={todos}
+          lists={todoLists}
+          groups={todoGroups}
+          activeListId={activeListId}
+          searchQuery={searchQuery}
+          onSelectList={(id) => { onActiveListChange(id); setIsSidebarOpen(false); }}
+          onSearchChange={setSearchQuery}
+          onCreateList={() => { setEditingListId(null); setShowCreateList(true); }}
+          onCreateGroup={() => { setEditingGroupId(null); setShowCreateGroup(true); }}
+          onDeleteList={handleDeleteList}
+          onDeleteGroup={handleDeleteGroup}
+          onRenameList={handleRenameList}
+          onRenameGroup={handleRenameGroup}
+          onToggleGroupCollapse={handleToggleGroupCollapse}
+        />
+      </div>
+
       {/* === LEFT MAIN AREA (LIST) === */}
       <div className="flex-1 flex flex-col min-w-0 relative z-10">
-          
+
           {/* Header */}
           <div className="h-14 md:h-20 border-b border-th-border flex items-center justify-between px-4 md:px-8 bg-th-header backdrop-blur-md shrink-0">
               <div className="flex items-center gap-4">
-                  <div className="p-2 md:p-3 bg-th-accent-muted rounded-lg md:rounded-xl">
-                    <ListTodo className="text-th-accent w-5 h-5 md:w-8 md:h-8" />
+                  <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="md:hidden p-2 rounded-lg hover:bg-th-surface-hover text-th-text-secondary hover:text-th-text transition-colors">
+                    <Menu size={20} />
+                  </button>
+                  <div className={`p-2 md:p-3 rounded-lg md:rounded-xl ${activeListId === 'myDay' ? 'bg-yellow-400/10' : activeListId === 'important' ? 'bg-red-400/10' : activeListId === 'planned' ? 'bg-blue-400/10' : 'bg-th-accent-muted'}`}>
+                    <span className={activeListInfo.color}>{activeListInfo.icon}</span>
                   </div>
                   <div>
-                      <h1 className="text-lg md:text-2xl font-display font-bold tracking-wider text-th-text">할 일</h1>
+                      <h1 className="text-lg md:text-2xl font-display font-bold tracking-wider text-th-text">{searchQuery ? '검색 결과' : activeListInfo.name}</h1>
                       <p className="text-[10px] md:text-sm text-th-text-secondary font-mono mt-0.5 hidden md:block">
-                          {new Date().toLocaleDateString('ko-KR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                          {searchQuery ? `"${searchQuery}" · ${sortedTodos.length}개 결과` : new Date().toLocaleDateString('ko-KR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                       </p>
                   </div>
               </div>
@@ -106,18 +232,18 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, onAddToDo, 
                       </div>
                   ) : (
                       sortedTodos.map(todo => (
-                          <div 
+                          <div
                             key={todo.id}
                             onClick={() => setSelectedToDoId(todo.id)}
                             className={`group flex items-center gap-4 p-4 rounded-2xl border cursor-pointer transition-all duration-200 ${
                                 selectedToDoId === todo.id
-                                    ? 'bg-th-surface-hover border-th-accent shadow-[0_0_15px_var(--shadow-glow)]'
+                                    ? 'bg-th-surface-hover border-th-accent-border shadow-[var(--shadow-glow)]'
                                     : (todo.completed
                                         ? 'bg-th-surface border-transparent opacity-50'
-                                        : 'bg-th-surface border-th-border-subtle hover:bg-th-surface-hover hover:border-th-border-strong')
+                                        : 'bg-th-surface border-th-border hover:bg-th-surface-hover hover:border-th-border')
                             }`}
                           >
-                              <button 
+                              <button
                                 onClick={(e) => { e.stopPropagation(); onToggleToDo(todo.id); }}
                                 className={`transition-colors flex-shrink-0 p-1 rounded-full hover:bg-th-surface-hover ${todo.completed ? 'text-th-accent' : 'text-th-text-tertiary hover:text-th-accent'}`}
                               >
@@ -176,7 +302,7 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, onAddToDo, 
               <div className="w-full max-w-4xl pointer-events-auto">
                 <form onSubmit={handleSubmit} className="relative group">
                     <div className="absolute inset-0 bg-th-accent-muted blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                    <div className="relative flex items-center bg-th-elevated backdrop-blur-xl border border-th-border-strong rounded-full shadow-2xl overflow-hidden transition-colors hover:border-th-accent-border">
+                    <div className="relative flex items-center bg-th-elevated backdrop-blur-xl border border-th-border rounded-full shadow-2xl overflow-hidden transition-colors hover:border-th-accent-border">
                         <div className="pl-6 text-th-accent">
                             <Plus size={24} />
                         </div>
@@ -185,7 +311,7 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, onAddToDo, 
                             value={inputText}
                             onChange={(e) => setInputText(e.target.value)}
                             placeholder="새로운 작업을 입력하고 Enter를 누르세요..."
-                            className="w-full bg-transparent border-none py-4 px-4 text-lg text-th-text placeholder-gray-500 focus:outline-none focus:ring-0"
+                            className="w-full bg-transparent border-none py-4 px-4 text-lg text-th-text placeholder-th-text-tertiary focus:outline-none focus:ring-0"
                             aria-label="새 할 일 입력"
                         />
                         <button
@@ -210,7 +336,7 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, onAddToDo, 
           />
       )}
       <div
-        className={`fixed inset-y-0 right-0 w-full md:w-[450px] bg-th-card/95 backdrop-blur-2xl border-l border-th-border shadow-[-20px_0_50px_var(--shadow-ambient,rgba(0,0,0,0.5))] z-20 transform transition-transform duration-300 ease-out flex flex-col ${selectedToDoId ? 'translate-x-0' : 'translate-x-full'}`}
+        className={`fixed inset-y-0 right-0 w-full md:w-[450px] bg-th-base/95 backdrop-blur-2xl border-l border-th-border shadow-[-20px_0_50px_rgba(0,0,0,0.5)] z-20 transform transition-transform duration-300 ease-out flex flex-col ${selectedToDoId ? 'translate-x-0' : 'translate-x-full'}`}
       >
           {selectedToDo ? (
               <>
@@ -232,14 +358,14 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, onAddToDo, 
                   {/* Detail Body */}
                   <div className="flex-1 overflow-y-auto p-6 space-y-6">
                       {/* Title Edit */}
-                      <div className="bg-th-surface rounded-2xl p-4 flex items-start gap-4 ring-1 ring-th-border-subtle focus-within:ring-th-accent-border transition-all">
-                          <button 
+                      <div className="bg-th-surface rounded-2xl p-4 flex items-start gap-4 ring-1 ring-th-border focus-within:ring-th-accent-border transition-all">
+                          <button
                             onClick={() => onToggleToDo(selectedToDo.id)}
                             className={`mt-1.5 transition-colors flex-shrink-0 ${selectedToDo.completed ? 'text-th-accent' : 'text-th-text-tertiary hover:text-th-text'}`}
                           >
                               {selectedToDo.completed ? <CheckCircle2 size={26} /> : <Circle size={26} />}
                           </button>
-                          <textarea 
+                          <textarea
                               value={selectedToDo.text}
                               onChange={(e) => onUpdateToDo(selectedToDo.id, { text: e.target.value })}
                               className="bg-transparent text-xl font-bold text-th-text w-full focus:outline-none resize-none h-auto min-h-[3rem]"
@@ -249,8 +375,8 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, onAddToDo, 
 
                       {/* Action Toggles */}
                       <div className="space-y-3">
-                        <div 
-                            className={`p-4 rounded-xl flex items-center gap-4 cursor-pointer transition-all border ${selectedToDo.isMyDay ? 'bg-yellow-400/10 border-yellow-400/30 text-yellow-400' : 'bg-th-surface border-th-border-subtle text-th-text-secondary hover:bg-th-surface-hover'}`}
+                        <div
+                            className={`p-4 rounded-xl flex items-center gap-4 cursor-pointer transition-all border ${selectedToDo.isMyDay ? 'bg-yellow-400/10 border-yellow-400/30 text-yellow-400' : 'bg-th-surface border-th-border text-th-text-secondary hover:bg-th-surface-hover'}`}
                             onClick={() => onUpdateToDo(selectedToDo.id, { isMyDay: !selectedToDo.isMyDay })}
                         >
                             <Sun size={20} />
@@ -260,17 +386,17 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, onAddToDo, 
                       </div>
 
                       {/* Metadata Group */}
-                      <div className="bg-th-surface rounded-2xl overflow-hidden border border-th-border-subtle divide-y divide-th-border-subtle">
-                          
+                      <div className="bg-th-surface rounded-2xl overflow-hidden border border-th-border divide-y divide-th-border">
+
                           {/* Reminder */}
                           <div className="p-4 flex items-center gap-4 hover:bg-th-surface relative group transition-colors">
                               <Bell size={20} className={selectedToDo.reminder ? 'text-electric-orange' : 'text-th-text-tertiary'} />
                               <div className="flex-1">
-                                  <p className="text-sm font-medium text-th-text">미리 알림</p>
+                                  <p className="text-sm font-medium text-gray-200">미리 알림</p>
                                   {selectedToDo.reminder && <p className="text-xs text-electric-orange mt-0.5">{formatDate(selectedToDo.reminder)} {formatTime(selectedToDo.reminder)}</p>}
                               </div>
-                              <input 
-                                type="datetime-local" 
+                              <input
+                                type="datetime-local"
                                 className="absolute inset-0 opacity-0 cursor-pointer"
                                 onChange={(e) => {
                                     const date = new Date(e.target.value);
@@ -284,11 +410,11 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, onAddToDo, 
                           <div className="p-4 flex items-center gap-4 hover:bg-th-surface relative group transition-colors">
                               <Calendar size={20} className={selectedToDo.dueDate ? 'text-th-accent' : 'text-th-text-tertiary'} />
                               <div className="flex-1">
-                                  <p className="text-sm font-medium text-th-text">기한 설정</p>
+                                  <p className="text-sm font-medium text-gray-200">기한 설정</p>
                                   {selectedToDo.dueDate && <p className="text-xs text-th-accent mt-0.5">{formatDate(selectedToDo.dueDate)}</p>}
                               </div>
-                              <input 
-                                type="date" 
+                              <input
+                                type="date"
                                 className="absolute inset-0 opacity-0 cursor-pointer"
                                 onChange={(e) => {
                                     const date = new Date(e.target.value);
@@ -302,11 +428,11 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, onAddToDo, 
                           <div className="p-4 flex items-center gap-4 hover:bg-th-surface relative group transition-colors">
                               <Repeat size={20} className={selectedToDo.repeat ? 'text-blue-400' : 'text-th-text-tertiary'} />
                               <div className="flex-1">
-                                  <p className="text-sm font-medium text-th-text">반복</p>
+                                  <p className="text-sm font-medium text-gray-200">반복</p>
                                   {selectedToDo.repeat && <p className="text-xs text-blue-400 capitalize mt-0.5">{getRepeatLabel(selectedToDo.repeat)}</p>}
                               </div>
-                              <select 
-                                value={selectedToDo.repeat || ''} 
+                              <select
+                                value={selectedToDo.repeat || ''}
                                 onChange={(e) => onUpdateToDo(selectedToDo.id, { repeat: e.target.value as RepeatFrequency || null })}
                                 className="absolute inset-0 opacity-0 cursor-pointer bg-th-base text-th-text"
                               >
@@ -326,15 +452,15 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, onAddToDo, 
                       </div>
 
                       {/* Notes */}
-                      <div className="bg-th-surface rounded-2xl p-4 h-48 ring-1 ring-th-border-subtle focus-within:ring-th-accent-border transition-all flex flex-col">
+                      <div className="bg-th-surface rounded-2xl p-4 h-48 ring-1 ring-th-border focus-within:ring-th-accent-border transition-all flex flex-col">
                           <textarea
                               placeholder="메모 추가..."
                               value={selectedToDo.note || ''}
                               onChange={(e) => onUpdateToDo(selectedToDo.id, { note: e.target.value })}
-                              className="w-full h-full bg-transparent text-sm text-th-text-secondary resize-none focus:outline-none placeholder-gray-600"
+                              className="w-full h-full bg-transparent text-sm text-gray-300 resize-none focus:outline-none placeholder-th-text-muted"
                           />
                       </div>
-                      
+
                       <div className="text-xs text-th-text-muted text-center font-mono">
                           CREATED: {new Date(selectedToDo.createdAt).toLocaleString()}
                       </div>
@@ -345,7 +471,7 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, onAddToDo, 
                       <div className="text-xs text-th-text-tertiary">
                           ID: {selectedToDo.id.slice(-6)}
                       </div>
-                      <button 
+                      <button
                         onClick={() => { onDeleteToDo(selectedToDo.id); setSelectedToDoId(null); }}
                         className="text-th-text-secondary hover:text-red-500 transition-colors flex items-center gap-2 hover:bg-red-500/10 px-3 py-2 rounded-lg"
                       >
@@ -360,6 +486,23 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, onAddToDo, 
               </div>
           )}
       </div>
+
+      {/* Modals */}
+      <CreateListModal
+        isOpen={showCreateList}
+        onClose={() => { setShowCreateList(false); setEditingListId(null); }}
+        onSave={handleSaveRenamedList}
+        groups={todoGroups}
+        initialName={editingListId ? todoLists.find(l => l.id === editingListId)?.name : ''}
+        initialColor={editingListId ? todoLists.find(l => l.id === editingListId)?.color : '#CCFF00'}
+        initialGroupId={editingListId ? todoLists.find(l => l.id === editingListId)?.groupId : undefined}
+      />
+      <CreateGroupModal
+        isOpen={showCreateGroup}
+        onClose={() => { setShowCreateGroup(false); setEditingGroupId(null); }}
+        onSave={handleSaveRenamedGroup}
+        initialName={editingGroupId ? todoGroups.find(g => g.id === editingGroupId)?.name : ''}
+      />
     </div>
   );
 };

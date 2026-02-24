@@ -6,6 +6,7 @@ import { Send, MessageCircle, Sparkles } from 'lucide-react';
 import CloseButton from './CloseButton';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { TabType } from './BottomDock';
+import { CoachingQuestion, getCoachingQuestions } from '../constants/coachingTopics';
 import {
   useCoachMemory,
   buildGoalContext,
@@ -31,6 +32,10 @@ const CoachChat: React.FC<CoachChatProps> = ({
 }) => {
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedTopic, setSelectedTopic] = useState<CoachingQuestion | null>(null);
+  const [showTopicCards, setShowTopicCards] = useState(true);
+  const [questionPage, setQuestionPage] = useState(0);
+  const QUESTIONS_PER_PAGE = 3;
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const focusTrapRef = useFocusTrap(isOpen);
   const memory = useCoachMemory(userId, isOpen, nodes || [], todos);
@@ -40,6 +45,7 @@ const CoachChat: React.FC<CoachChatProps> = ({
     CALENDAR: '일정 캘린더',
     TODO: '할 일 목록',
     VISUALIZE: '시각화',
+    FEEDBACK: '피드백',
   };
 
   const scrollToBottom = () => {
@@ -51,8 +57,81 @@ const CoachChat: React.FC<CoachChatProps> = ({
     scrollToBottom();
   }, [messages, isLoading]);
 
+  // 채팅 열릴 때 질문 상태 리셋 + 스크롤
+  useEffect(() => {
+    if (isOpen) {
+      setShowTopicCards(true);
+      setSelectedTopic(null);
+      setQuestionPage(0);
+      requestAnimationFrame(() => scrollToBottom());
+    }
+  }, [isOpen]);
+
+  // 코칭 토픽 선택 시 AI 첫 메시지 자동 전송
+  useEffect(() => {
+    if (!isOpen || !selectedTopic?.topicDirective || isLoading) return;
+
+    let cancelled = false;
+    setIsLoading(true);
+
+    (async () => {
+      try {
+        const goalCtx = buildGoalContext(nodes || []);
+        const todoCtx = buildTodoContext(todos);
+        const subGoalCount = (nodes || []).filter(n => n.type !== 'ROOT').length;
+
+        const response = await sendChatMessage(
+          [],
+          '',
+          userProfile,
+          memory,
+          goalCtx,
+          todoCtx,
+          tabLabels[activeTab],
+          userId || undefined,
+          subGoalCount,
+          selectedTopic.topicDirective!,
+        );
+
+        if (cancelled) return;
+
+        const aiText = response.candidates?.[0]?.content?.parts
+          ?.map(p => p.text)
+          .filter(Boolean)
+          .join('') || '';
+
+        if (aiText) {
+          onMessagesChange(prev => [...prev,
+            { id: Date.now().toString(), sender: 'ai', text: aiText, timestamp: Date.now() },
+          ]);
+        }
+      } catch {
+        if (!cancelled) {
+          onMessagesChange(prev => [...prev,
+            { id: 'err-' + Date.now(), sender: 'ai', text: '코칭 시작 중 오류가 발생했습니다.', timestamp: Date.now() },
+          ]);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+          setSelectedTopic(null);
+        }
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [isOpen, selectedTopic]);
+
+  const handleTopicSelect = (topic: CoachingQuestion) => {
+    setShowTopicCards(false);
+    if (topic.topicDirective) {
+      setSelectedTopic(topic);
+    }
+  };
+
   const handleSend = async () => {
     if (!inputText.trim()) return;
+    setShowTopicCards(false);
     const userMsg: ChatMessage = {
       id: Date.now().toString(),
       sender: 'user',
@@ -71,6 +150,7 @@ const CoachChat: React.FC<CoachChatProps> = ({
       const goalCtx = buildGoalContext(nodes || []);
       const todoCtx = buildTodoContext(todos);
 
+      const subGoalCount = (nodes || []).filter(n => n.type !== 'ROOT').length;
       const response = await sendChatMessage(
         history,
         userMsg.text,
@@ -80,6 +160,7 @@ const CoachChat: React.FC<CoachChatProps> = ({
         todoCtx,
         tabLabels[activeTab],
         userId || undefined,
+        subGoalCount,
       );
 
       const aiText = response.candidates?.[0]?.content?.parts
@@ -110,7 +191,7 @@ const CoachChat: React.FC<CoachChatProps> = ({
 
       {/* Ambient Background */}
       <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-th-accent-muted rounded-full blur-[120px] pointer-events-none"></div>
-      <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-electric-orange/5 rounded-full blur-[120px] pointer-events-none"></div>
+      <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-emerald-700/5 rounded-full blur-[120px] pointer-events-none"></div>
 
       {/* Header */}
       <div className="h-14 md:h-20 border-b border-th-border flex items-center justify-between px-4 md:px-8 bg-th-header backdrop-blur-md shrink-0 z-10">
@@ -120,7 +201,7 @@ const CoachChat: React.FC<CoachChatProps> = ({
             </div>
             <div>
                 <h1 className="text-lg md:text-2xl font-display font-bold tracking-wider text-th-text">AI 코치</h1>
-                <p className="text-[10px] text-th-accent/60 font-mono mt-0.5">
+                <p className="text-[10px] text-neon-lime/60 font-mono mt-0.5">
                   {tabLabels[activeTab]} 코칭 중
                 </p>
             </div>
@@ -131,21 +212,12 @@ const CoachChat: React.FC<CoachChatProps> = ({
       {/* Chat Messages */}
       <div ref={messagesContainerRef} className="flex-1 overflow-y-auto px-4 lg:px-0 scrollbar-hide relative z-10">
         <div className="max-w-2xl mx-auto py-4 space-y-3">
-          {messages.length === 0 && (
-              <div className="h-[60vh] flex flex-col items-center justify-center text-center px-4">
-                  <div className="w-16 h-16 rounded-full bg-th-surface flex items-center justify-center mb-4">
-                    <Sparkles size={28} className="text-th-accent animate-pulse" />
-                  </div>
-                  <p className="text-sm font-display uppercase tracking-widest mb-1 text-th-text-tertiary">입력 대기 중</p>
-                  <p className="text-xs text-th-text-muted max-w-xs">목표와 비전에 대한 조언을 요청하세요.</p>
-              </div>
-          )}
           {messages.map((msg) => (
             <div key={msg.id} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
               <div className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
                 msg.sender === 'user'
-                  ? 'bg-electric-orange text-white rounded-tr-sm'
-                  : 'bg-th-surface text-th-text rounded-tl-sm border border-th-border shadow-xl backdrop-blur-sm'
+                  ? 'bg-emerald-700 text-white rounded-tr-sm'
+                  : 'bg-th-surface text-gray-100 rounded-tl-sm border border-th-border shadow-xl backdrop-blur-sm'
               }`}>
                 <span className="whitespace-pre-wrap">
                   {msg.text.split(/(\*\*[^*]+\*\*)/).map((segment, i) =>
@@ -169,6 +241,77 @@ const CoachChat: React.FC<CoachChatProps> = ({
             </div>
           )}
 
+          {/* 질문 카드 — 대화 아래에 AI 말풍선 형태로 */}
+          {(() => {
+            const questions = getCoachingQuestions(selectedNode, nodes || []);
+            if (!showTopicCards || questions.length === 0) return null;
+            const totalPages = Math.ceil(questions.length / QUESTIONS_PER_PAGE);
+            const pageQuestions = questions.slice(
+              questionPage * QUESTIONS_PER_PAGE,
+              (questionPage + 1) * QUESTIONS_PER_PAGE
+            );
+            return (
+              <div className="flex justify-start">
+                <div className="max-w-[85%] rounded-2xl rounded-tl-sm bg-th-surface border border-th-border shadow-xl backdrop-blur-sm px-5 py-4">
+                  <p className="text-sm text-gray-100 leading-relaxed mb-3">
+                    궁금한 질문을 선택해보세요 🙂
+                  </p>
+                  <div className="space-y-2">
+                    {pageQuestions.map((q) => (
+                      <button
+                        key={q.id}
+                        onClick={() => handleTopicSelect(q)}
+                        className="w-full text-left px-4 py-3 rounded-xl bg-th-surface border border-th-border hover:border-th-accent-border hover:bg-th-accent-muted transition-all duration-200 group"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="text-lg">{q.icon}</span>
+                          <div>
+                            <p className="text-sm font-medium text-th-text group-hover:text-th-accent transition-colors">
+                              {q.question}
+                            </p>
+                            <p className="text-xs text-th-text-tertiary mt-0.5">
+                              {q.summary}
+                            </p>
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                  {totalPages > 1 && (
+                    <div className="flex justify-center gap-1.5 mt-3">
+                      {Array.from({ length: totalPages }).map((_, i) => (
+                        <button
+                          key={i}
+                          onClick={() => setQuestionPage(i)}
+                          className={`w-2 h-2 rounded-full transition-all ${
+                            i === questionPage
+                              ? 'bg-th-accent shadow-[0_0_4px_var(--shadow-glow)]'
+                              : 'bg-th-border hover:bg-th-surface-hover'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* 빈 상태 — 메시지 없고 질문도 없을 때만 */}
+          {messages.length === 0 && !isLoading && (() => {
+            const questions = getCoachingQuestions(selectedNode, nodes || []);
+            if (showTopicCards && questions.length > 0) return null;
+            return (
+              <div className="h-[60vh] flex flex-col items-center justify-center text-center px-4">
+                <div className="w-16 h-16 rounded-full bg-th-surface flex items-center justify-center mb-4">
+                  <Sparkles size={28} className="text-th-accent animate-pulse" />
+                </div>
+                <p className="text-sm font-display uppercase tracking-widest mb-1 text-th-text-tertiary">입력 대기 중</p>
+                <p className="text-xs text-th-text-muted max-w-xs">목표와 비전에 대한 조언을 요청하세요.</p>
+              </div>
+            );
+          })()}
+
         </div>
       </div>
 
@@ -176,15 +319,15 @@ const CoachChat: React.FC<CoachChatProps> = ({
       <div className="shrink-0 px-4 pb-[max(8px,env(safe-area-inset-bottom))] pt-2 flex justify-center z-20">
         <div className="w-full max-w-2xl">
           <div className="relative group">
-            <div className="absolute inset-0 bg-th-accent-muted blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-            <div className="relative flex items-center bg-th-elevated backdrop-blur-xl border border-th-border-strong rounded-full shadow-2xl overflow-hidden transition-colors hover:border-th-accent-border">
+            <div className="absolute inset-0 bg-th-accent/20 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+            <div className="relative flex items-center bg-th-elevated backdrop-blur-xl border border-th-border rounded-full shadow-2xl overflow-hidden transition-colors hover:border-th-accent-border">
               <input
                 type="text"
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && !e.nativeEvent.isComposing && handleSend()}
                 placeholder="코치에게 질문하세요..."
-                className="w-full bg-transparent border-none py-4 px-6 text-lg text-th-text placeholder-gray-500 focus:outline-none focus:ring-0"
+                className="w-full bg-transparent border-none py-4 px-6 text-lg text-th-text placeholder-th-text-tertiary focus:outline-none focus:ring-0"
                 aria-label="코치에게 메시지 보내기"
               />
               <button

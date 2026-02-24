@@ -6,9 +6,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
     <meta name="theme-color" content="#050B14" />
+    <meta name="description" content="Secret Coach — 과학적 AI 밀착 관리 시스템. 목표를 구조화하고, AI 코치가 달성까지 함께합니다." />
+    <meta property="og:title" content="Secret Coach — AI Goal Achievement System" />
+    <meta property="og:description" content="Structure + AI Coach + Visualization. 목표 달성의 3가지 열쇠를 하나의 앱에서." />
+    <meta property="og:type" content="website" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <title>Secret Coach</title>
+    <title>Secret Coach — AI Goal Achievement System</title>
     <link rel="manifest" href="manifest.json" />
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
@@ -54,6 +58,9 @@
               'slide-up': 'slide-up 0.3s ease-out',
               'shake': 'shake 0.4s ease-in-out',
               'ghost-appear': 'ghost-appear 0.5s ease-out both',
+              'float-slow': 'float-slow 6s ease-in-out infinite',
+              'glow-pulse-slow': 'glow-pulse-slow 4s ease-in-out infinite',
+              'gradient-shift': 'gradient-shift 8s ease infinite',
             },
             keyframes: {
               'pulse-glow': {
@@ -81,87 +88,28 @@
               'ghost-appear': {
                 '0%': { opacity: 0, transform: 'translate(-50%, -50%) scale(0.7)' },
                 '100%': { opacity: 1, transform: 'translate(-50%, -50%) scale(1)' },
+              },
+              'float-slow': {
+                '0%, 100%': { transform: 'translateY(0)' },
+                '50%': { transform: 'translateY(-20px)' },
+              },
+              'glow-pulse-slow': {
+                '0%, 100%': { opacity: '0.3' },
+                '50%': { opacity: '0.8' },
+              },
+              'gradient-shift': {
+                '0%, 100%': { backgroundPosition: '0% 50%' },
+                '50%': { backgroundPosition: '100% 50%' },
               }
             }
           },
         },
       }
     </script>
+    <!-- Theme CSS variables loaded via theme.css (imported in index.tsx for Vite compatibility) -->
     <style>
-      :root {
-        --sat: env(safe-area-inset-top);
-        --sar: env(safe-area-inset-right);
-        --sab: env(safe-area-inset-bottom);
-        --sal: env(safe-area-inset-left);
-
-        --bg-base: #050B14;
-        --bg-surface: rgba(255,255,255,0.05);
-        --bg-surface-hover: rgba(255,255,255,0.10);
-        --bg-elevated: rgba(0,0,0,0.80);
-        --bg-overlay: rgba(0,0,0,0.60);
-        --bg-card: rgba(255,255,255,0.05);
-        --bg-input: rgba(0,0,0,0.80);
-        --bg-header: rgba(0,0,0,0.20);
-        --text-primary: #ffffff;
-        --text-secondary: #9ca3af;
-        --text-tertiary: #6b7280;
-        --text-muted: #4b5563;
-        --text-inverse: #000000;
-        --accent: #CCFF00;
-        --accent-hover: #b8e600;
-        --accent-muted: rgba(204,255,0,0.10);
-        --accent-border: rgba(204,255,0,0.30);
-        --border: rgba(255,255,255,0.10);
-        --border-subtle: rgba(255,255,255,0.05);
-        --border-strong: rgba(255,255,255,0.20);
-        --shadow-glow: rgba(204,255,0,0.3);
-        --shadow-card: none;
-      }
-      .light {
-        --bg-base: #F8FAFC;
-        --bg-surface: #FFFFFF;
-        --bg-surface-hover: #F1F5F9;
-        --bg-elevated: #FFFFFF;
-        --bg-overlay: rgba(0,0,0,0.30);
-        --bg-card: #FFFFFF;
-        --bg-input: #FFFFFF;
-        --bg-header: rgba(255,255,255,0.80);
-        --text-primary: #0F172A;
-        --text-secondary: #475569;
-        --text-tertiary: #64748B;
-        --text-muted: #94A3B8;
-        --text-inverse: #FFFFFF;
-        --accent: #4D7C0F;
-        --accent-hover: #365314;
-        --accent-muted: rgba(77,124,15,0.10);
-        --accent-border: rgba(77,124,15,0.30);
-        --border: #E2E8F0;
-        --border-subtle: #F1F5F9;
-        --border-strong: #CBD5E1;
-        --shadow-glow: rgba(77,124,15,0.3);
-        --shadow-card: 0 1px 3px rgba(0,0,0,0.08);
-      }
-      body {
-        background-color: var(--bg-base);
-        color: var(--text-primary);
-        overflow: hidden;
-        /* Mobile touch optimization */
-        -webkit-tap-highlight-color: transparent;
-        user-select: none;
-      }
-      .scrollbar-hide::-webkit-scrollbar {
-          display: none;
-      }
-      .scrollbar-hide {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-      }
-      /* Prevent scrolling on mobile */
-      html, body {
-        position: fixed;
-        width: 100%;
-        height: 100%;
-      }
+      .scrollbar-hide::-webkit-scrollbar { display: none; }
+      .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
   <body>

@@ -1,18 +1,45 @@
 ﻿import React, { useEffect, useRef, useCallback, useState } from 'react';
+import { Sparkles } from 'lucide-react';
 import MindMapSDK from 'simple-mind-map';
+import { useThemeStore } from '../stores/useThemeStore';
 import Drag from 'simple-mind-map/src/plugins/Drag.js';
 import RainbowLines from 'simple-mind-map/src/plugins/RainbowLines.js';
 import Select from 'simple-mind-map/src/plugins/Select.js';
 import TouchEvent from 'simple-mind-map/src/plugins/TouchEvent.js';
 import { GoalNode, GoalLink, NodeType, NodeStatus } from '../types';
 import { getLinkId } from '../hooks/useAutoSave';
-import { useThemeStore } from '../stores/useThemeStore';
 
 // Register plugins once
 MindMapSDK.usePlugin(Drag);
 MindMapSDK.usePlugin(RainbowLines);
 MindMapSDK.usePlugin(Select);
 MindMapSDK.usePlugin(TouchEvent);
+
+// --- Node Action SVG Icons ---
+const AddChildIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5">
+    <circle cx="5" cy="4" r="2.5" />
+    <circle cx="13" cy="13" r="2.5" />
+    <path d="M5 6.5V9h4.5V13" strokeLinecap="round" />
+  </svg>
+);
+
+const AddSiblingIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5">
+    <circle cx="5" cy="13" r="2.5" />
+    <circle cx="13" cy="13" r="2.5" />
+    <circle cx="9" cy="4" r="2.5" />
+    <path d="M9 6.5V9M5 10.5V9h8v1.5" strokeLinecap="round" />
+  </svg>
+);
+
+const AddParentIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5">
+    <circle cx="9" cy="4" r="2.5" strokeDasharray="3 2" />
+    <circle cx="9" cy="14" r="2.5" />
+    <path d="M9 6.5V11.5" strokeLinecap="round" />
+  </svg>
+);
 
 // --- Types ---
 type LayoutMode = 'mindMap' | 'logicalStructure' | 'logicalStructureLeft' | 'organizationStructure';
@@ -30,7 +57,13 @@ interface MindMapProps {
   onConvertNodeToTask?: (nodeId: string) => void;
   onGenerateImage?: (nodeId: string) => void;
   onInsertImage?: (nodeId: string) => void;
-  onAddSubNode: (parentId: string) => void;
+  onAddSubNode: (parentId: string, text?: string) => void;
+  onAddParentNode?: (nodeId: string) => void;
+  onDecomposeGoal?: (nodeId: string) => void;
+  previewNodeIds?: string[];
+  confirmedPreviewIds?: string[];
+  onTogglePreviewConfirm?: (nodeId: string) => void;
+  onFinalizePreview?: () => void;
   width: number;
   height: number;
   editingNodeId?: string | null;
@@ -60,10 +93,17 @@ interface SMMNodeData {
   // Per-node border color baked into data (avoids setStyle infinite loops)
   borderColor?: string;
   borderWidth?: number;
+  borderDasharray?: string;
+  color?: string;
+  fillColor?: string;
   // Image support
   image?: string;
   imageTitle?: string;
   imageSize?: { width: number; height: number };
+  // Ghost template nodes (Phase 2 onboarding)
+  isGhost?: boolean;
+  fillColor?: string;
+  color?: string;
 }
 
 interface SMMNode {
@@ -86,6 +126,7 @@ function goalNodesToTree(
   nodes: GoalNode[],
   links: GoalLink[],
   selectedNodeId?: string,
+  confirmedPreviewIds?: string[],
 ): SMMNode | null {
   const root = nodes.find(n => n.type === NodeType.ROOT);
   if (!root) return null;
@@ -112,8 +153,38 @@ function goalNodesToTree(
 
     const statusColor = STATUS_COLORS[goalNode.status] || '#3B82F6';
 
+    const nodeStyle: { borderColor: string; borderWidth: number; borderDasharray?: string; color?: string } = {
+      borderColor: isRoot ? '#CCFF00' : (isSelected ? '#CCFF00' : statusColor),
+      borderWidth: isSelected ? 3 : (isRoot ? 3 : 2),
+    };
+
+    // Preview node styling (반투명 미리보기)
+    if (goalNode.isPreview) {
+      const isConfirmed = confirmedPreviewIds?.includes(goalNode.id);
+      if (isConfirmed) {
+        // 확정됨 — 밝은 neon-lime 두꺼운 border + 정상 텍스트
+        Object.assign(nodeStyle, {
+          borderColor: '#CCFF00',
+          borderWidth: 3,
+        });
+      } else {
+        // 미확정 — 어두운 회색 얇은 border
+        Object.assign(nodeStyle, {
+          borderColor: '#444444',
+          borderWidth: 1,
+          color: 'rgba(255, 255, 255, 0.4)',
+        });
+      }
+    }
+
+    // Selected node override (after preview so selection still shows)
+    if (isSelected && !goalNode.isPreview) {
+      nodeStyle.borderColor = '#CCFF00';
+      nodeStyle.borderWidth = 3;
+    }
+
     const data: SMMNodeData = {
-      text: goalNode.text || '',
+      text: goalNode.text || '나의 인생 비전',
       uid: goalNode.id,
       expand: !goalNode.collapsed,
       goalId: goalNode.id,
@@ -122,8 +193,10 @@ function goalNodesToTree(
       goalProgress: goalNode.progress,
       goalParentId: goalNode.parentId,
       // Bake border color into node data so we never need setStyle()
-      borderColor: isRoot ? '#CCFF00' : (isSelected ? '#CCFF00' : statusColor),
-      borderWidth: isSelected ? 3 : (isRoot ? 3 : 2),
+      borderColor: nodeStyle.borderColor,
+      borderWidth: nodeStyle.borderWidth,
+      ...(nodeStyle.borderDasharray && { borderDasharray: nodeStyle.borderDasharray }),
+      ...(nodeStyle.color && { color: nodeStyle.color }),
     };
 
     // Add image if available
@@ -142,10 +215,14 @@ function goalNodesToTree(
 }
 
 /** Compute a structural fingerprint for change detection */
-function computeStructureKey(nodes: GoalNode[], links: GoalLink[], selectedNodeId?: string): string {
+function computeStructureKey(
+  nodes: GoalNode[], links: GoalLink[],
+  selectedNodeId?: string, confirmedPreviewIds?: string[],
+): string {
   return nodes.map(n => `${n.id}:${n.text}:${n.status}:${n.collapsed}:${n.imageUrl || ''}`).join('|')
     + '||' + links.map(l => `${getLinkId(l.source)}-${getLinkId(l.target)}`).join('|')
-    + '||' + (selectedNodeId || '');
+    + '||' + (selectedNodeId || '')
+    + '||' + (confirmedPreviewIds?.join(',') || '');
 }
 
 // --- Dark Theme Config ---
@@ -211,62 +288,12 @@ const DARK_THEME_CONFIG = {
 
 const LIGHT_THEME_CONFIG = {
   backgroundColor: '#F8FAFC',
-  lineColor: 'rgba(77, 124, 15, 0.4)',
-  lineWidth: 2,
-  lineDasharray: 'none',
-  lineStyle: 'curve' as const,
-  root: {
-    fillColor: '#FFFFFF',
-    color: '#0F172A',
-    borderColor: '#4D7C0F',
-    borderWidth: 3,
-    borderRadius: 24,
-    fontSize: 18,
-    fontWeight: 'bold',
-    fontFamily: 'Inter, system-ui, sans-serif',
-    shape: 'roundedRectangle',
-    paddingX: 30,
-    paddingY: 20,
-  },
-  second: {
-    fillColor: '#F8FAFC',
-    color: '#1E293B',
-    borderColor: '#3B82F6',
-    borderWidth: 2,
-    borderRadius: 12,
-    fontSize: 14,
-    fontWeight: '600',
-    fontFamily: 'Inter, system-ui, sans-serif',
-    shape: 'roundedRectangle',
-    marginX: 80,
-    marginY: 30,
-    paddingX: 20,
-    paddingY: 12,
-  },
-  node: {
-    fillColor: '#FFFFFF',
-    color: '#334155',
-    borderColor: '#CBD5E1',
-    borderWidth: 1,
-    borderRadius: 8,
-    fontSize: 13,
-    fontWeight: '500',
-    fontFamily: 'Inter, system-ui, sans-serif',
-    shape: 'roundedRectangle',
-    marginX: 60,
-    marginY: 20,
-    paddingX: 16,
-    paddingY: 10,
-  },
-  generalization: {
-    fillColor: '#F1F5F9',
-    color: '#64748B',
-    borderColor: '#E2E8F0',
-    borderWidth: 1,
-    borderRadius: 6,
-    fontSize: 12,
-    fontFamily: 'Inter, system-ui, sans-serif',
-  },
+  lineColor: '#CBD5E1',
+  generalizationLineColor: '#94A3B8',
+  root: { fillColor: '#FFFFFF', fontColor: '#0F172A', borderColor: '#E2E8F0', borderWidth: 2, fontSize: 18, fontWeight: 'bold' },
+  second: { fillColor: '#F1F5F9', fontColor: '#1E293B', borderColor: '#CBD5E1', borderWidth: 1, fontSize: 14, fontWeight: 'normal' },
+  third: { fillColor: '#F8FAFC', fontColor: '#334155', borderColor: '#E2E8F0', borderWidth: 1, fontSize: 12, fontWeight: 'normal' },
+  node: { fillColor: '#FFFFFF', fontColor: '#475569', borderColor: '#E2E8F0', borderWidth: 1, fontSize: 12, fontWeight: 'normal' },
 };
 
 const RAINBOW_COLORS = [
@@ -275,10 +302,10 @@ const RAINBOW_COLORS = [
 ];
 
 const layoutOptions: { mode: LayoutMode; label: string }[] = [
-  { mode: 'mindMap', label: 'Mind' },
-  { mode: 'logicalStructure', label: 'Logical' },
-  { mode: 'logicalStructureLeft', label: 'Logical Left' },
-  { mode: 'organizationStructure', label: 'Org' },
+  { mode: 'mindMap', label: '마인드' },
+  { mode: 'logicalStructure', label: '논리' },
+  { mode: 'logicalStructureLeft', label: '논리(좌)' },
+  { mode: 'organizationStructure', label: '조직도' },
 ];
 
 const ACTION_BAR_LABELS = {
@@ -291,6 +318,7 @@ const ACTION_BAR_LABELS = {
     more: 'More',
     insertImage: 'Insert image',
     delete: 'Delete',
+    decompose: 'Decompose',
   },
   ko: {
     child: '자식',
@@ -301,13 +329,15 @@ const ACTION_BAR_LABELS = {
     more: '더보기',
     insertImage: '이미지 삽입',
     delete: '삭제',
+    decompose: '분해',
   },
 } as const;
 
 // --- Component ---
 const MindMap: React.FC<MindMapProps> = ({
   nodes, links, language, selectedNodeId, onNodeClick, onEditNode, onUpdateNode, onDeleteNode,
-  onReparentNode, onConvertNodeToTask, onGenerateImage, onInsertImage, onAddSubNode,
+  onReparentNode, onConvertNodeToTask, onGenerateImage, onInsertImage, onAddSubNode, onAddParentNode,
+  onDecomposeGoal, previewNodeIds, confirmedPreviewIds, onTogglePreviewConfirm, onFinalizePreview,
   width, height, editingNodeId, onEditEnd, imageLoadingNodes
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -315,8 +345,34 @@ const MindMap: React.FC<MindMapProps> = ({
   const [layout, setLayout] = useState<LayoutMode>('mindMap');
   const [actionBar, setActionBar] = useState<ActionBarState | null>(null);
   const [viewScale, setViewScale] = useState(1);
-  const themeResolved = useThemeStore((s) => s.resolved);
-  const currentThemeConfig = themeResolved === 'dark' ? DARK_THEME_CONFIG : LIGHT_THEME_CONFIG;
+  const [identitySkipped, setIdentitySkipped] = useState(false);
+  const [templatesSkipped, setTemplatesSkipped] = useState(false);
+  const [tooltipDismissed, setTooltipDismissed] = useState(false);
+  const currentThemeConfig = useThemeStore((s) => s.resolved === 'light' ? LIGHT_THEME_CONFIG : null);
+
+  // --- Onboarding: Ghost templates ---
+  const GHOST_TEMPLATES = [
+    '나는 매달 100만원의 부수입이 생겼다',
+    '나는 슬림하고 탄탄한 몸을 가졌다',
+    '나는 누구에게나 호감을 주는 유머감각을 가졌다',
+  ];
+  const [usedGhosts, setUsedGhosts] = useState<Set<number>>(new Set());
+
+  // --- Onboarding Phase Computation ---
+  type OnboardingPhase = 'identity' | 'templates' | 'tooltips' | 'done';
+
+  const rootNode = nodes.find(n => n.type === NodeType.ROOT);
+  const rootText = rootNode?.text || '';
+  const isRootDefault = rootText === '' || rootText === '나의 인생 비전';
+  const childCount = nodes.filter(n => n.type === NodeType.SUB).length;
+  const allGhostsUsed = usedGhosts.size >= GHOST_TEMPLATES.length;
+
+  const onboardingPhase: OnboardingPhase =
+    isRootDefault && childCount === 0 && !identitySkipped ? 'identity' :
+    !templatesSkipped && !allGhostsUsed && childCount <= usedGhosts.size ? 'templates' :
+    (childCount > 0 || templatesSkipped) && !tooltipDismissed ? 'tooltips' :
+    'done';
+
   const languageByDom = document.documentElement.lang.toLowerCase().startsWith('ko') ? 'ko' : 'en';
   const resolvedLanguage: 'en' | 'ko' = (
     language === 'ko'
@@ -398,18 +454,48 @@ const MindMap: React.FC<MindMapProps> = ({
   const onEditNodeRef = useRef(onEditNode);
   const onUpdateNodeRef = useRef(onUpdateNode);
   const onAddSubNodeRef = useRef(onAddSubNode);
+  const onTogglePreviewConfirmRef = useRef(onTogglePreviewConfirm);
+  const onFinalizePreviewRef = useRef(onFinalizePreview);
+  const previewNodeIdsRef = useRef(previewNodeIds);
   const setActionBarRef = useRef(setActionBar);
   const actionBarRef = useRef<ActionBarState | null>(null);
   const lastTapRef = useRef<{ nodeId: string; ts: number }>({
     nodeId: '',
     ts: 0,
   });
+  const setUsedGhostsRef = useRef(setUsedGhosts);
   onNodeClickRef.current = onNodeClick;
   onEditNodeRef.current = onEditNode;
   onUpdateNodeRef.current = onUpdateNode;
   onAddSubNodeRef.current = onAddSubNode;
+  onTogglePreviewConfirmRef.current = onTogglePreviewConfirm;
+  onFinalizePreviewRef.current = onFinalizePreview;
+  previewNodeIdsRef.current = previewNodeIds;
   setActionBarRef.current = setActionBar;
   actionBarRef.current = actionBar;
+  setUsedGhostsRef.current = setUsedGhosts;
+
+  // --- Onboarding: Root node position tracking ---
+  const [rootNodeCenter, setRootNodeCenter] = useState<{x: number; y: number} | null>(null);
+
+  useEffect(() => {
+    if (onboardingPhase === 'done') return;
+    const timer = setTimeout(() => {
+      const renderedRoot = getRenderedNodeByGoalId('root');
+      if (!renderedRoot || typeof renderedRoot.getRectInSvg !== 'function') return;
+      const rect = renderedRoot.getRectInSvg();
+      if (!rect) return;
+      setRootNodeCenter({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [nodes, onboardingPhase, getRenderedNodeByGoalId]);
+
+  // --- Onboarding: Phase 3 auto-dismiss ---
+  useEffect(() => {
+    if (onboardingPhase !== 'tooltips') return;
+    const timer = setTimeout(() => setTooltipDismissed(true), 5000);
+    return () => clearTimeout(timer);
+  }, [onboardingPhase]);
 
   // Block native page pinch/gesture handling inside the map container.
   // simple-mind-map's touch plugin still receives touch events and handles map zoom.
@@ -446,17 +532,17 @@ const MindMap: React.FC<MindMapProps> = ({
   useEffect(() => {
     if (!containerRef.current) return;
 
-    const treeData = goalNodesToTree(nodes, links, selectedNodeId);
+    const treeData = goalNodesToTree(nodes, links, selectedNodeId, confirmedPreviewIds);
     if (!treeData) return;
 
-    lastStructureKeyRef.current = computeStructureKey(nodes, links, selectedNodeId);
+    lastStructureKeyRef.current = computeStructureKey(nodes, links, selectedNodeId, confirmedPreviewIds);
 
     const mindMap = new (MindMapSDK as any)({
       el: containerRef.current,
       data: treeData,
       layout: layout,
       theme: 'default',
-      themeConfig: currentThemeConfig,
+      themeConfig: DARK_THEME_CONFIG,
       rainbowLinesConfig: {
         open: true,
         colorsList: RAINBOW_COLORS,
@@ -480,7 +566,7 @@ const MindMap: React.FC<MindMapProps> = ({
       // This avoids Chinese placeholder text and allows immediate text editing via editingNodeId.
       customQuickCreateChildBtnClick: (nodeIns: any) => {
         const goalId = nodeIns?.nodeData?.data?.goalId || nodeIns?.nodeData?.data?.uid;
-        if (!goalId) return;
+        if (!goalId || goalId.startsWith('ghost-')) return;
         onAddSubNodeRef.current?.(goalId);
       },
       expandBtnStyle: {
@@ -533,6 +619,28 @@ const MindMap: React.FC<MindMapProps> = ({
     mindMap.on('node_click', (node: any, e: any) => {
       const goalId = node?.nodeData?.data?.goalId || node?.nodeData?.data?.uid;
       if (!goalId) return;
+
+      // Ghost node interception
+      if (goalId.startsWith('ghost-')) {
+        const idx = parseInt(goalId.split('-')[1]);
+        if (!isNaN(idx) && GHOST_TEMPLATES[idx]) {
+          onAddSubNodeRef.current('root', GHOST_TEMPLATES[idx]);
+          setUsedGhostsRef.current(prev => new Set(prev).add(idx));
+        }
+        return;
+      }
+
+      // If in preview mode and clicked node is a preview node → toggle confirm
+      const isPreviewMode = previewNodeIdsRef.current && previewNodeIdsRef.current.length > 0;
+      if (isPreviewMode) {
+        if (previewNodeIdsRef.current?.includes(goalId)) {
+          onTogglePreviewConfirmRef.current?.(goalId);
+          return; // Don't show action bar for preview nodes
+        }
+        // Clicking a non-preview node during preview mode → also don't show action bar
+        return;
+      }
+
       const goalNode = nodesRef.current.find(n => n.id === goalId);
       if (goalNode) onNodeClickRef.current(goalNode);
 
@@ -570,6 +678,7 @@ const MindMap: React.FC<MindMapProps> = ({
       // Walk the tree and check for text differences
       const syncTextChanges = (smmNode: SMMNode) => {
         const goalId = smmNode.data?.goalId || smmNode.data?.uid;
+        if (goalId?.startsWith('ghost-')) return;
         if (goalId) {
           const current = nodesRef.current.find(n => n.id === goalId);
           if (current && smmNode.data.text !== current.text) {
@@ -584,7 +693,12 @@ const MindMap: React.FC<MindMapProps> = ({
     });
 
     // Close context menu on background click
-    mindMap.on('draw_click', () => { setActionBarRef.current(null); });
+    mindMap.on('draw_click', () => {
+      if (previewNodeIdsRef.current && previewNodeIdsRef.current.length > 0) {
+        onFinalizePreviewRef.current?.();
+      }
+      setActionBarRef.current(null);
+    });
 
     // --- Event: mindmap-center (from other components) ---
     const handleCenter = (e: Event) => {
@@ -608,21 +722,65 @@ const MindMap: React.FC<MindMapProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Init once
 
-  // --- Sync data from React ??simple-mind-map when props change ---
+  // --- Sync data from React -> simple-mind-map when props change ---
   useEffect(() => {
     const mindMap = mindMapRef.current;
     if (!mindMap) return;
 
-    const newKey = computeStructureKey(nodes, links, selectedNodeId);
+    const baseKey = computeStructureKey(nodes, links, selectedNodeId, confirmedPreviewIds);
+    const ghostSuffix = onboardingPhase === 'templates'
+      ? `|ghosts:${GHOST_TEMPLATES.length - usedGhosts.size}`
+      : '';
+    const newKey = baseKey + ghostSuffix;
     if (newKey === lastStructureKeyRef.current) return;
     lastStructureKeyRef.current = newKey;
 
-    const treeData = goalNodesToTree(nodes, links, selectedNodeId);
+    const treeData = goalNodesToTree(nodes, links, selectedNodeId, confirmedPreviewIds);
     if (!treeData) return;
+
+    // Inject ghost nodes for Phase 2
+    if (onboardingPhase === 'templates') {
+      GHOST_TEMPLATES.forEach((text, i) => {
+        if (usedGhosts.has(i)) return;
+        treeData.children.push({
+          data: {
+            text,
+            uid: `ghost-${i}`,
+            goalId: `ghost-${i}`,
+            isGhost: true,
+            fillColor: '#0f2340',
+            color: '#ffffffbb',
+            borderColor: '#CCFF0088',
+            borderWidth: 2,
+          },
+          children: [],
+        });
+      });
+    }
 
     lastSetDataTimeRef.current = Date.now();
     mindMap.setData(treeData);
-  }, [nodes, links, selectedNodeId]);
+
+    // CSS-based ghost styling fallback (in case SDK doesn't honor alpha colors)
+    if (onboardingPhase === 'templates') {
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          GHOST_TEMPLATES.forEach((_, i) => {
+            if (usedGhosts.has(i)) return;
+            const nodeIns = getRenderedNodeByGoalId(`ghost-${i}`);
+            if (nodeIns?.group?.node) {
+              const el = nodeIns.group.node as HTMLElement;
+              el.style.opacity = '0.65';
+              el.style.transition = 'opacity 0.2s ease';
+              el.style.cursor = 'pointer';
+              el.onmouseenter = () => { el.style.opacity = '1'; };
+              el.onmouseleave = () => { el.style.opacity = '0.65'; };
+            }
+          });
+        }, 300);
+      });
+    }
+  }, [nodes, links, selectedNodeId, confirmedPreviewIds, onboardingPhase, usedGhosts, getRenderedNodeByGoalId]);
 
   // --- Layout changes ---
   const handleLayoutChange = useCallback((newLayout: LayoutMode) => {
@@ -635,35 +793,55 @@ const MindMap: React.FC<MindMapProps> = ({
     mindMapRef.current?.resize();
   }, [width, height]);
 
-  // --- Theme change ---
+  // --- Runtime theme switching ---
   useEffect(() => {
-    if (!mindMapRef.current) return;
-    const config = themeResolved === 'dark' ? DARK_THEME_CONFIG : LIGHT_THEME_CONFIG;
-    try {
-      mindMapRef.current.setThemeConfig(config);
-    } catch {
-      // If setThemeConfig not available, update background at minimum
-      const el = mindMapRef.current.el;
-      if (el) el.style.backgroundColor = config.backgroundColor;
+    const mindMap = mindMapRef.current;
+    if (!mindMap) return;
+    if (currentThemeConfig) {
+      mindMap.setThemeConfig(currentThemeConfig);
+    } else {
+      mindMap.setThemeConfig({});
     }
-  }, [themeResolved]);
+  }, [currentThemeConfig]);
 
   // --- Trigger text editing when editingNodeId is set ---
+  // setData() 후 라이브러리 내부 렌더가 비동기이므로, 노드가 나타날 때까지 폴링
   useEffect(() => {
     if (!editingNodeId || !mindMapRef.current) return;
     const mindMap = mindMapRef.current;
-    const allNodes = mindMap.renderer?.root
-      ? getAllRenderedNodes(mindMap.renderer.root)
-      : [];
-    const target = allNodes.find(
-      (n: any) => n.nodeData?.data?.goalId === editingNodeId || n.nodeData?.data?.uid === editingNodeId
-    );
-    if (target) {
-      mindMap.execCommand('SET_NODE_ACTIVE', target, true);
-      setTimeout(() => {
-        mindMap.renderer?.textEdit?.show?.({ node: target, isInserting: true });
-      }, 50);
-    }
+    let attempts = 0;
+    const maxAttempts = 20; // 20 × 50ms = 최대 1초
+    let cancelled = false;
+
+    const tryActivateEdit = () => {
+      if (cancelled) return;
+      const allNodes = mindMap.renderer?.root
+        ? getAllRenderedNodes(mindMap.renderer.root)
+        : [];
+      const target = allNodes.find(
+        (n: any) =>
+          n.nodeData?.data?.goalId === editingNodeId ||
+          n.nodeData?.data?.uid === editingNodeId
+      );
+      if (target) {
+        mindMap.execCommand('SET_NODE_ACTIVE', target, true);
+        setTimeout(() => {
+          if (!cancelled) {
+            mindMap.renderer?.textEdit?.show?.({
+              node: target,
+              isInserting: true,
+            });
+          }
+        }, 50);
+      } else if (attempts < maxAttempts) {
+        attempts++;
+        setTimeout(tryActivateEdit, 50);
+      }
+    };
+
+    tryActivateEdit();
+
+    return () => { cancelled = true; };
   }, [editingNodeId]);
 
   const actionNode = actionBar
@@ -673,10 +851,17 @@ const MindMap: React.FC<MindMapProps> = ({
 
   return (
     <div className="w-full h-full bg-th-base relative overflow-hidden">
+      <style>{`
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in-up { animation: fadeInUp 0.6s ease-out forwards; }
+      `}</style>
+
       {/* Header */}
       <div className="absolute top-3 left-3 z-10 pointer-events-none select-none max-w-[calc(100%-72px)]">
         <div className="flex items-baseline gap-2 flex-wrap">
-          <h1 className="text-lg sm:text-xl md:text-2xl font-display text-th-text tracking-[0.22em] md:tracking-widest leading-none drop-shadow-[0_0_10px_var(--shadow-glow)]">
+          <h1 className="text-lg sm:text-xl md:text-2xl font-display text-th-text tracking-[0.22em] md:tracking-widest leading-none drop-shadow-[0_0_10px_rgba(204,255,0,0.5)]">
             SECRET COACH
           </h1>
           <span className="text-th-accent text-[10px] md:text-xs font-mono tracking-wide">
@@ -687,7 +872,7 @@ const MindMap: React.FC<MindMapProps> = ({
       </div>
 
       {/* Layout Switcher */}
-      <div className="absolute top-14 right-3 md:top-16 md:right-4 z-10 flex bg-th-elevated backdrop-blur-md border border-th-border rounded-full px-1 py-0.5 gap-0.5">
+      <div className="absolute top-14 right-3 md:top-16 md:right-4 z-10 flex bg-th-overlay backdrop-blur-md border border-th-border rounded-full px-1 py-0.5 gap-0.5">
         {layoutOptions.map(opt => (
           <button
             key={opt.mode}
@@ -723,15 +908,16 @@ const MindMap: React.FC<MindMapProps> = ({
             transformOrigin: 'top center',
           }}
         >
-          <div className="flex items-center gap-1 rounded-full border border-th-border bg-th-elevated p-1 shadow-2xl backdrop-blur-md">
+          <div className="flex items-center gap-1 rounded-full border border-th-border bg-th-elevated/95 p-1 shadow-2xl backdrop-blur-md">
             <button
               onClick={() => {
                 onAddSubNode(actionBar.nodeId);
                 setActionBar(null);
               }}
-              className="rounded-full px-3 py-1.5 text-xs font-semibold text-th-text hover:bg-th-surface-hover"
+              className="rounded-full p-2 text-th-text-secondary hover:text-th-text hover:bg-th-surface-hover transition-colors"
+              title="자식 노드 추가"
             >
-              {labels.child}
+              <AddChildIcon />
             </button>
 
             {!isRootActionNode && (
@@ -744,9 +930,20 @@ const MindMap: React.FC<MindMapProps> = ({
                     }
                     setActionBar(null);
                   }}
-                  className="rounded-full px-3 py-1.5 text-xs font-semibold text-th-text hover:bg-th-surface-hover"
+                  className="rounded-full p-2 text-th-text-secondary hover:text-th-text hover:bg-th-surface-hover transition-colors"
+                  title="형제 노드 추가"
                 >
-                  {labels.sibling}
+                  <AddSiblingIcon />
+                </button>
+                <button
+                  onClick={() => {
+                    onAddParentNode?.(actionBar.nodeId);
+                    setActionBar(null);
+                  }}
+                  className="rounded-full p-2 text-th-text-secondary hover:text-th-text hover:bg-th-surface-hover transition-colors"
+                  title="부모 노드 추가"
+                >
+                  <AddParentIcon />
                 </button>
                 <button
                   onClick={() => {
@@ -758,6 +955,16 @@ const MindMap: React.FC<MindMapProps> = ({
                   {labels.todo}
                 </button>
               </>
+            )}
+
+            {!isRootActionNode && (
+              <button
+                onClick={() => { onDecomposeGoal?.(actionBar.nodeId); setActionBar(null); }}
+                className="flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-medium bg-th-accent/10 text-th-accent hover:bg-th-accent/20 transition-colors whitespace-nowrap"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                {labels.decompose}
+              </button>
             )}
 
             <button
@@ -795,7 +1002,7 @@ const MindMap: React.FC<MindMapProps> = ({
           </div>
 
           {!isRootActionNode && actionBar.isMoreOpen && (
-            <div className="mt-2 min-w-[150px] rounded-xl border border-th-border bg-th-elevated p-1 shadow-2xl backdrop-blur-md">
+            <div className="mt-2 min-w-[150px] rounded-xl border border-th-border bg-th-elevated/95 p-1 shadow-2xl backdrop-blur-md">
               <button
                 onClick={() => {
                   onInsertImage?.(actionBar.nodeId);
@@ -818,6 +1025,105 @@ const MindMap: React.FC<MindMapProps> = ({
           )}
         </div>
       )}
+
+      {/* Phase 1: Identity Node Awakening */}
+      {onboardingPhase === 'identity' && (
+        <>
+          {/* Dim overlay with radial cutout for root node */}
+          <div
+            className="absolute inset-0 z-30 pointer-events-none"
+            style={{
+              background: rootNodeCenter
+                ? `radial-gradient(ellipse 180px 120px at ${rootNodeCenter.x}px ${rootNodeCenter.y}px, transparent 0%, rgba(0,0,0,0.7) 100%)`
+                : 'rgba(0,0,0,0.7)',
+            }}
+          />
+
+          {/* "정체성 노드" label above root node */}
+          {rootNodeCenter && (
+            <div
+              className="absolute z-40 pointer-events-none"
+              style={{ left: rootNodeCenter.x, top: rootNodeCenter.y - 70, transform: 'translate(-50%, 0)' }}
+            >
+              <span className="text-[10px] text-th-text-secondary uppercase tracking-[0.2em] font-mono">
+                정체성 노드
+              </span>
+            </div>
+          )}
+
+          {/* Placeholder text on root node */}
+          {rootNodeCenter && (
+            <div
+              className="absolute z-40 pointer-events-none"
+              style={{ left: rootNodeCenter.x, top: rootNodeCenter.y, transform: 'translate(-50%, -50%)' }}
+            >
+              <span className="text-th-text/30 text-sm font-body whitespace-nowrap">
+                나는 ~ 한 사람이다
+              </span>
+            </div>
+          )}
+
+          {/* Popup message below root node */}
+          {rootNodeCenter && (
+            <div
+              className="absolute z-40 pointer-events-none"
+              style={{ left: rootNodeCenter.x, top: rootNodeCenter.y + 60, transform: 'translate(-50%, 0)' }}
+            >
+              <div className="bg-th-elevated/95 border border-th-border rounded-2xl px-4 py-3 max-w-[260px] backdrop-blur-md shadow-2xl">
+                <p className="text-th-text text-xs leading-relaxed text-center">
+                  당신이 원하는 궁극적인 모습을 여기에 적어보세요.
+                  <br />
+                  <span className="text-th-accent/80 font-semibold">모든 변화는 여기서 시작됩니다.</span>
+                </p>
+                <div className="mt-2 flex justify-center">
+                  <span className="text-[10px] text-th-text-tertiary animate-pulse">더블탭으로 수정</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Skip button */}
+          <button
+            onClick={() => setIdentitySkipped(true)}
+            className="absolute bottom-6 right-4 z-40 text-th-text-tertiary text-xs hover:text-th-text-secondary transition-colors"
+          >
+            건너뛰기 →
+          </button>
+        </>
+      )}
+
+      {/* Phase 2: Ghost Templates (rendered by SDK, skip button only) */}
+      {onboardingPhase === 'templates' && (
+        <button
+          onClick={() => setTemplatesSkipped(true)}
+          className="absolute bottom-6 right-4 z-40 text-th-text-tertiary text-xs hover:text-th-text-secondary transition-colors"
+        >
+          건너뛰기 →
+        </button>
+      )}
+
+      {/* Phase 3: Contextual Tooltip */}
+      {onboardingPhase === 'tooltips' && (
+        <div
+          onClick={() => setTooltipDismissed(true)}
+          className="absolute bottom-20 left-1/2 -translate-x-1/2 z-30 animate-fade-in cursor-pointer"
+        >
+          <div className="bg-th-elevated/95 border border-th-border rounded-2xl px-5 py-3 backdrop-blur-md shadow-2xl">
+            <div className="flex items-center gap-4 text-th-text-secondary text-xs">
+              <div className="flex items-center gap-1.5">
+                <span className="text-th-accent">◉</span>
+                <span>더블탭: 이름 수정</span>
+              </div>
+              <div className="w-px h-4 bg-th-border" />
+              <div className="flex items-center gap-1.5">
+                <span className="text-th-accent">◎</span>
+                <span>탭: 하위 목표 추가</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };
@@ -839,6 +1145,8 @@ export default React.memo(MindMap, (prev, next) => {
     prev.links === next.links &&
     prev.language === next.language &&
     prev.selectedNodeId === next.selectedNodeId &&
+    prev.previewNodeIds === next.previewNodeIds &&
+    prev.confirmedPreviewIds === next.confirmedPreviewIds &&
     prev.width === next.width &&
     prev.height === next.height &&
     prev.editingNodeId === next.editingNodeId &&

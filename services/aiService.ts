@@ -101,6 +101,8 @@ export const sendChatMessage = async (
   todoContext: string,
   activeTab?: string,
   userId?: string,
+  goalCount?: number,
+  topicDirective?: string,
 ): Promise<ChatApiResponse> => {
   try {
     const response = await fetch('/api/chat', {
@@ -115,6 +117,8 @@ export const sendChatMessage = async (
         todoContext,
         activeTab,
         userId,
+        goalCount,
+        topicDirective,
       }),
     });
     if (response.status === 429) {
@@ -612,5 +616,28 @@ export const uploadVisualizationAsset = async (
     return data.assetUrl || undefined;
   } catch {
     return undefined;
+  }
+};
+
+/* ── 목표 분해 ── */
+
+export const decomposeGoal = async (
+  parentText: string,
+  childTexts: string[],
+  userId?: string | null,
+): Promise<string[]> => {
+  try {
+    const headers = await authHeaders();
+    const response = await fetchWithRetry('/api/decompose-goal', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ parentText, childTexts, userId }),
+    });
+
+    if (!response.ok) return [];
+    const data = await parseJsonSafe<{ suggestions?: string[] }>(response);
+    return Array.isArray(data.suggestions) ? data.suggestions : [];
+  } catch {
+    return [];
   }
 };

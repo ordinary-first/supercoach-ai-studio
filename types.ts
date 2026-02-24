@@ -19,6 +19,7 @@ export interface GoalNode {
   parentId?: string;
   imageUrl?: string;
   collapsed?: boolean;
+  isPreview?: boolean;
   x?: number;
   y?: number;
   vx?: number;
@@ -71,6 +72,26 @@ export type RepeatFrequency =
 
 export type TodoPriority = 'low' | 'medium' | 'high';
 
+export type SmartListId = 'myDay' | 'important' | 'planned' | 'tasks';
+
+export interface TodoList {
+  id: string;
+  name: string;
+  icon?: string;
+  color?: string;
+  groupId?: string;
+  sortOrder: number;
+  createdAt: number;
+}
+
+export interface TodoGroup {
+  id: string;
+  name: string;
+  isCollapsed: boolean;
+  sortOrder: number;
+  createdAt: number;
+}
+
 export interface ToDoItem {
   id: string;
   text: string;
@@ -86,6 +107,7 @@ export interface ToDoItem {
   note?: string;
   priority?: TodoPriority;
   tags?: string[];
+  listId?: string;
 }
 
 // Coach Memory System
@@ -125,4 +147,5 @@ export interface CoachMemoryContext {
   midTerm: string | null;
   longTerm: string | null;
 }
+
 

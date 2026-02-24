@@ -1,5 +1,6 @@
 ﻿
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import MindMap from './components/MindMap';
 import CoachChat from './components/CoachChat';
 import CoachBubble from './components/CoachBubble';
@@ -8,12 +9,12 @@ import ToDoList from './components/ToDoList';
 import BottomDock, { TabType } from './components/BottomDock';
 import VisualizationModal from './components/VisualizationModal';
 import CalendarView from './components/CalendarView';
-import LandingPage from './components/LandingPage';
+import MarketingLandingPage from './components/landing/MarketingLandingPage';
 import SettingsPage from './components/SettingsPage';
 import OnboardingScreen from './components/OnboardingScreen';
 import FeedbackView from './components/FeedbackView';
-import { GoalNode, GoalLink, NodeType, NodeStatus, ToDoItem, ChatMessage, RepeatFrequency } from './types';
-import { generateGoalImage, uploadNodeImage } from './services/aiService';
+import { GoalNode, GoalLink, NodeType, NodeStatus, ToDoItem, ChatMessage, RepeatFrequency, UserProfile, ActionLogEntry, TodoList, TodoGroup, SmartListId } from './types';
+import { generateGoalImage, uploadNodeImage, decomposeGoal } from './services/aiService';
 import { verifyPolarCheckout } from './services/polarService';
 import {
   logout,
@@ -28,10 +29,10 @@ import { useAuth } from './hooks/useAuth';
 import { useAutoSave, getLinkId } from './hooks/useAutoSave';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useToast } from './hooks/useToast';
+import { useThemeStore, useSystemThemeListener } from './stores/useThemeStore';
 import { appendAction } from './services/actionLogService';
 import ToastContainer from './components/ToastContainer';
 import { Crown, Settings as SettingsIcon } from 'lucide-react';
-import { useThemeStore, useSystemThemeListener } from './stores/useThemeStore';
 
 // Helper function to calculate the next occurrence date for recurring todos
 const calculateNextDate = (repeat: RepeatFrequency, fromDate: Date): number => {
@@ -125,7 +126,7 @@ const GOALS_LOCKED_VIEWPORT_CONTENT =
 const createInitialGoalNodes = (): GoalNode[] => [
   {
     id: 'root',
-    text: '나의 인생 비전',
+    text: '',
     type: NodeType.ROOT,
     status: NodeStatus.PENDING,
     progress: 0,
@@ -139,12 +140,9 @@ const getInitialLanguage = (): AppLanguage => {
 };
 
 const App: React.FC = () => {
-  const themeResolved = useThemeStore((s) => s.resolved);
-
-  useEffect(() => useSystemThemeListener(useThemeStore), []);
-
   const [dimensions, setDimensions] = useState({ width: window.innerWidth, height: window.innerHeight });
   const [activeTab, setActiveTab] = useState<TabType>('GOALS');
+  const [calendarViewMode, setCalendarViewMode] = useState<'month' | 'week' | 'list'>('month');
   const [language, setLanguage] = useState<AppLanguage>(getInitialLanguage);
   const [isLanguageLoaded, setIsLanguageLoaded] = useState(false);
   const [isSettingsPageOpen, setIsSettingsPageOpen] = useState(false);
@@ -152,6 +150,9 @@ const App: React.FC = () => {
   const [nodes, setNodes] = useState<GoalNode[]>(createInitialGoalNodes);
   const [links, setLinks] = useState<GoalLink[]>([]);
   const [todos, setTodos] = useState<ToDoItem[]>([]);
+  const [todoLists, setTodoLists] = useState<TodoList[]>([]);
+  const [todoGroups, setTodoGroups] = useState<TodoGroup[]>([]);
+  const [activeListId, setActiveListId] = useState<string | SmartListId>('myDay');
   const [selectedNode, setSelectedNode] = useState<GoalNode | null>(null);
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
   const [trialDismissed, setTrialDismissed] = useState(false);
@@ -160,6 +161,9 @@ const App: React.FC = () => {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [imageLoadingNodes, setImageLoadingNodes] = useState<Set<string>>(new Set());
+  const [decomposingNodeId, setDecomposingNodeId] = useState<string | null>(null);
+  const [previewNodeIds, setPreviewNodeIds] = useState<string[]>([]);
+  const [confirmedPreviewIds, setConfirmedPreviewIds] = useState<string[]>([]);
   const insertImageInputRef = useRef<HTMLInputElement>(null);
   const insertImageTargetNodeRef = useRef<string | null>(null);
 
@@ -173,13 +177,22 @@ const App: React.FC = () => {
     setTodos(loadedTodos);
   }, []);
 
+  const handleTodoListsLoaded = useCallback((lists: TodoList[], groups: TodoGroup[]) => {
+    setTodoLists(lists);
+    setTodoGroups(groups);
+  }, []);
+
+  // --- Theme ---
+  const themeResolved = useThemeStore((s) => s.resolved);
+  useEffect(() => useSystemThemeListener(useThemeStore), []);
+
   // --- Custom Hooks ---
   const { toasts, addToast, removeToast } = useToast();
 
   const { userProfile, setUserProfile, isInitializing, isDataLoaded, syncStatus, userId, isTrialExpired, isNewUser, setIsNewUser } =
-    useAuth(handleGoalDataLoaded, handleTodosLoaded);
+    useAuth(handleGoalDataLoaded, handleTodosLoaded, handleTodoListsLoaded);
 
-  useAutoSave(nodes, links, todos, userProfile, isDataLoaded, userId);
+  useAutoSave(nodes, links, todos, todoLists, todoGroups, userProfile, isDataLoaded, userId);
 
   // Prevent cross-account data bleed: reset in-memory state when the uid changes.
   const prevUserIdRef = useRef<string | null | undefined>(undefined);
@@ -354,6 +367,41 @@ const App: React.FC = () => {
     if (text) appendAction(getUserId(), 'ADD_NODE', `"${text}" 추가`, { nodeId: newNodeId, parentId });
   }, [dimensions, nodes, handleUpdateNode]);
 
+  const handleAddParentNode = useCallback((nodeId: string) => {
+    const node = nodes.find(n => n.id === nodeId);
+    if (!node || node.type === NodeType.ROOT) return;
+
+    const newNodeId = Date.now().toString();
+    const oldParentId = node.parentId;
+
+    const newNode: GoalNode = {
+      id: newNodeId, text: '', type: NodeType.SUB,
+      status: NodeStatus.PENDING, progress: 0,
+      parentId: oldParentId,
+      x: (node.x ?? 0) + (Math.random() - 0.5) * 50,
+      y: (node.y ?? 0) - 60,
+      collapsed: false,
+    };
+
+    setNodes(prev => prev
+      .map(n => n.id === nodeId ? { ...n, parentId: newNodeId } : n)
+      .concat(newNode)
+    );
+    setLinks(prev => prev
+      .map(l => {
+        const targetId = typeof l.target === 'string' ? l.target : l.target.id;
+        if (targetId === nodeId && oldParentId) {
+          const sourceId = typeof l.source === 'string' ? l.source : l.source.id;
+          if (sourceId === oldParentId) return { source: oldParentId, target: newNodeId };
+        }
+        return l;
+      })
+      .concat({ source: newNodeId, target: nodeId })
+    );
+    setSelectedNode(newNode);
+    setEditingNodeId(newNodeId);
+  }, [nodes]);
+
   // 紐낆떆???대?吏 ?앹꽦 (濡깊봽?덉뒪 硫붾돱?먯꽌 ?몄텧)
   const handleGenerateNodeImage = useCallback(async (nodeId: string) => {
     const node = nodes.find(n => n.id === nodeId);
@@ -397,6 +445,88 @@ const App: React.FC = () => {
     insertImageTargetNodeRef.current = nodeId;
     insertImageInputRef.current?.click();
   }, []);
+
+  // 목표 분해 — AI가 하위 목표 제안
+  const handleDecomposeGoal = useCallback(async (nodeId: string) => {
+    const node = nodes.find(n => n.id === nodeId);
+    if (!node) return;
+
+    setDecomposingNodeId(nodeId);
+    try {
+      const childTexts = nodes
+        .filter(n => n.parentId === nodeId && n.text)
+        .map(n => n.text);
+
+      const suggestions = await decomposeGoal(node.text, childTexts, getUserId());
+      if (!suggestions.length) {
+        addToast('목표 분해에 실패했습니다', 'warning');
+        return;
+      }
+
+      const now = Date.now();
+      const parentNode = nodes.find(n => n.id === nodeId);
+      const baseX = parentNode?.x ?? dimensions.width / 2;
+      const baseY = parentNode?.y ?? dimensions.height / 2;
+
+      // 부모 노드가 접혀있으면 펼치기
+      if (parentNode?.collapsed) handleUpdateNode(nodeId, { collapsed: false });
+
+      const newNodes: GoalNode[] = suggestions.map((text, i) => ({
+        id: `${now}_${i}`,
+        text,
+        type: NodeType.SUB,
+        status: NodeStatus.PENDING,
+        progress: 0,
+        parentId: nodeId,
+        isPreview: true,
+        x: baseX + (Math.random() - 0.5) * 100,
+        y: baseY + (Math.random() - 0.5) * 100,
+        collapsed: false,
+      }));
+
+      const newLinks: GoalLink[] = newNodes.map(n => ({ source: nodeId, target: n.id }));
+
+      setNodes(prev => [...prev, ...newNodes]);
+      setLinks(prev => [...prev, ...newLinks]);
+      setPreviewNodeIds(newNodes.map(n => n.id));
+      setConfirmedPreviewIds([]);
+    } catch {
+      addToast('목표 분해 중 오류가 발생했습니다', 'warning');
+    } finally {
+      setDecomposingNodeId(null);
+    }
+  }, [nodes, dimensions, handleUpdateNode, addToast]);
+
+  // 미리보기 노드 확정 토글
+  const handleTogglePreviewConfirm = useCallback((nodeId: string) => {
+    setConfirmedPreviewIds(prev =>
+      prev.includes(nodeId) ? prev.filter(id => id !== nodeId) : [...prev, nodeId]
+    );
+  }, []);
+
+  // 빈 공간 클릭 → 미리보기 종료 (선택된 것만 확정, 나머지 삭제)
+  const handleFinalizePreview = useCallback(() => {
+    setNodes(prev => prev
+      .map(n => confirmedPreviewIds.includes(n.id) ? { ...n, isPreview: undefined } : n)
+      .filter(n => !previewNodeIds.includes(n.id) || confirmedPreviewIds.includes(n.id))
+    );
+    setLinks(prev => prev.filter(l => {
+      const targetId = typeof l.target === 'string' ? l.target : l.target.id;
+      return !previewNodeIds.includes(targetId) || confirmedPreviewIds.includes(targetId);
+    }));
+
+    const confirmedCount = confirmedPreviewIds.length;
+    if (confirmedCount > 0) {
+      addToast(`${confirmedCount}개 하위 목표가 추가되었습니다`, 'success');
+      confirmedPreviewIds.forEach(id => {
+        const node = nodes.find(n => n.id === id);
+        if (node) appendAction(getUserId(), 'ADD_NODE', `"${node.text}" AI 분해 추가`, { nodeId: id, parentId: node.parentId });
+      });
+    }
+
+    setPreviewNodeIds([]);
+    setConfirmedPreviewIds([]);
+  }, [previewNodeIds, confirmedPreviewIds, nodes, addToast]);
 
   const handleInsertNodeImageFileChange = useCallback(async (
     e: React.ChangeEvent<HTMLInputElement>,
@@ -548,7 +678,7 @@ const App: React.FC = () => {
   }
 
   if (!userProfile) {
-      return <LandingPage onLoginSuccess={(p) => setUserProfile(p)} />;
+      return <MarketingLandingPage onLoginSuccess={(p) => setUserProfile(p)} />;
   }
 
   if (isNewUser) {
@@ -566,7 +696,7 @@ const App: React.FC = () => {
       {activeTab === 'GOALS' && (
         <>
           <MindMap
-            nodes={visibleNodes} links={visibleLinks} language={language} selectedNodeId={selectedNode?.id} onNodeClick={setSelectedNode} onEditNode={(nodeId) => setEditingNodeId(nodeId)} onUpdateNode={handleUpdateNode} onDeleteNode={handleDeleteNode} onReparentNode={handleReparentNode} onAddSubNode={handleAddSubNode} onGenerateImage={handleGenerateNodeImage} onInsertImage={handleInsertNodeImage} onConvertNodeToTask={handleConvertNodeToTodo} editingNodeId={editingNodeId} onEditEnd={() => setEditingNodeId(null)} width={dimensions.width} height={dimensions.height} imageLoadingNodes={imageLoadingNodes}
+            nodes={visibleNodes} links={visibleLinks} language={language} selectedNodeId={selectedNode?.id} onNodeClick={setSelectedNode} onEditNode={(nodeId) => setEditingNodeId(nodeId)} onUpdateNode={handleUpdateNode} onDeleteNode={handleDeleteNode} onReparentNode={handleReparentNode} onAddSubNode={handleAddSubNode} onAddParentNode={handleAddParentNode} onGenerateImage={handleGenerateNodeImage} onInsertImage={handleInsertNodeImage} onConvertNodeToTask={handleConvertNodeToTodo} onDecomposeGoal={handleDecomposeGoal} previewNodeIds={previewNodeIds} confirmedPreviewIds={confirmedPreviewIds} onTogglePreviewConfirm={handleTogglePreviewConfirm} onFinalizePreview={handleFinalizePreview} editingNodeId={editingNodeId} onEditEnd={() => setEditingNodeId(null)} width={dimensions.width} height={dimensions.height} imageLoadingNodes={imageLoadingNodes}
           />
 
            <div className="absolute top-[64px] left-3 md:top-[72px] md:left-6 z-50">
@@ -574,7 +704,7 @@ const App: React.FC = () => {
                  onClick={() => setIsShortcutsOpen(prev => !prev)}
                  className="flex items-center gap-2 bg-th-header backdrop-blur-md border border-th-border px-3 py-1.5 md:px-4 md:py-2 rounded-full text-[10px] font-bold tracking-widest text-th-accent hover:bg-th-accent hover:text-th-text-inverse transition-all"
                >
-                   <span className="bg-th-accent-muted px-1.5 py-0.5 rounded text-[8px] border border-th-accent-border">K</span>
+                   <span className="bg-th-accent/20 px-1.5 py-0.5 rounded text-[8px] border border-th-accent-border">K</span>
                    단축키
                </button>
            </div>
@@ -591,11 +721,15 @@ const App: React.FC = () => {
          </button>
        </div>
 
-      <ToDoList isOpen={activeTab === 'TODO'} onClose={() => setActiveTab('GOALS')} todos={todos} onAddToDo={(text) => {
+      <ToDoList isOpen={activeTab === 'TODO'} onClose={() => setActiveTab('GOALS')} todos={todos}
+        todoLists={todoLists} todoGroups={todoGroups} activeListId={activeListId}
+        onActiveListChange={setActiveListId}
+        onTodoListsChange={setTodoLists} onTodoGroupsChange={setTodoGroups}
+        onAddToDo={(text, listId) => {
   const trimmed = text.trim().slice(0, 500);
   if (!trimmed) return;
   const newId = Date.now().toString();
-  setTodos(prev => [{id: newId, text: trimmed, completed: false, createdAt: Date.now()}, ...prev]);
+  setTodos(prev => [{id: newId, text: trimmed, completed: false, createdAt: Date.now(), listId}, ...prev]);
   appendAction(getUserId(), 'ADD_TODO', `"${trimmed}" 추가`, { todoId: newId });
 }} onToggleToDo={handleToggleToDo} onDeleteToDo={(id) => {
   const todo = todos.find(t => t.id === id);
@@ -605,17 +739,34 @@ const App: React.FC = () => {
   setTodos(prev => prev.map(t => t.id === id ? {...t, ...up} : t));
   appendAction(getUserId(), 'UPDATE_TODO', `할일 수정`, { todoId: id });
 }} />
-      <CalendarView isOpen={activeTab === 'CALENDAR'} onClose={() => setActiveTab('GOALS')} todos={todos} onToggleToDo={handleToggleToDo} />
-      <CoachChat isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} selectedNode={selectedNode} nodes={nodes} userProfile={userProfile} userId={getUserId()} todos={todos} onOpenVisualization={() => setActiveTab('VISUALIZE')} messages={chatMessages} onMessagesChange={setChatMessages} activeTab={activeTab} />
+      <CalendarView isOpen={activeTab === 'CALENDAR'} onClose={() => setActiveTab('GOALS')} todos={todos} onToggleToDo={handleToggleToDo} viewMode={calendarViewMode} onViewModeChange={setCalendarViewMode} />
+      <CoachChat
+        isOpen={isChatOpen}
+        onClose={() => setIsChatOpen(false)}
+        selectedNode={selectedNode}
+        nodes={nodes}
+        userProfile={userProfile}
+        userId={getUserId()}
+        todos={todos}
+        onOpenVisualization={() => setActiveTab('VISUALIZE')}
+        messages={chatMessages}
+        onMessagesChange={setChatMessages}
+        activeTab={activeTab}
+      />
       <VisualizationModal isOpen={activeTab === 'VISUALIZE'} onClose={() => setActiveTab('GOALS')} userProfile={userProfile} nodes={nodes} />
       <ShortcutsPanel isOpen={isShortcutsOpen} onClose={() => setIsShortcutsOpen(false)} />
-      <BottomDock activeTab={activeTab} onTabChange={handleTabChange} />
-      <CoachBubble isOpen={isChatOpen} onToggle={() => {
-        setIsChatOpen(prev => {
-          if (!prev) appendAction(getUserId(), 'OPEN_COACH', '코치 대화 시작');
-          return !prev;
-        });
-      }} />
+      <BottomDock activeTab={activeTab} onTabChange={handleTabChange} calendarViewMode={calendarViewMode} onCalendarViewModeChange={setCalendarViewMode} />
+      <CoachBubble
+        isOpen={isChatOpen}
+        onToggle={() => {
+          setIsChatOpen(prev => {
+            if (!prev) appendAction(getUserId(), 'OPEN_COACH', '코치 대화 시작');
+            return !prev;
+          });
+        }}
+        selectedNode={selectedNode}
+        nodes={nodes}
+      />
       <input
         ref={insertImageInputRef}
         type="file"
@@ -663,8 +814,8 @@ const App: React.FC = () => {
       />
 
       {isTrialExpired && !isSettingsPageOpen && !trialDismissed && (
-        <div className="fixed inset-0 z-[150] bg-th-overlay backdrop-blur-sm flex items-center justify-center p-6">
-          <div className="bg-th-card border border-th-border rounded-2xl p-6 max-w-sm w-full text-center space-y-4 shadow-lg">
+        <div className="fixed inset-0 z-[150] bg-th-elevated backdrop-blur-sm flex items-center justify-center p-6">
+          <div className="bg-th-base border border-th-border rounded-2xl p-6 max-w-sm w-full text-center space-y-4">
             <Crown size={40} className="text-th-accent mx-auto" />
             <h2 className="text-xl font-bold text-th-text">무료 체험이 종료되었습니다</h2>
             <p className="text-sm text-th-text-secondary leading-relaxed">
@@ -674,7 +825,7 @@ const App: React.FC = () => {
             </p>
             <button
               onClick={() => setIsSettingsPageOpen(true)}
-              className="w-full py-3 bg-th-accent text-th-text-inverse font-bold rounded-full hover:bg-th-accent-hover transition-all"
+              className="w-full py-3 bg-th-accent text-th-text-inverse font-bold rounded-full hover:bg-white transition-all"
             >
               플랜 업그레이드
             </button>
@@ -688,9 +839,9 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {deleteConfirmNodeId && (
+      {deleteConfirmNodeId && createPortal(
           <div className="fixed inset-0 z-[200] flex items-center justify-center bg-th-overlay backdrop-blur-sm animate-fade-in">
-              <div className="bg-th-card border border-th-border rounded-3xl p-8 max-w-sm w-full mx-4 shadow-2xl">
+              <div className="bg-th-base border border-th-border rounded-3xl p-8 max-w-sm w-full mx-4 shadow-2xl">
                   <div className="text-center space-y-4">
                        <div className="w-16 h-16 mx-auto rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center">
                            <span className="text-3xl">!</span>
@@ -711,14 +862,15 @@ const App: React.FC = () => {
                           </button>
                           <button
                               onClick={() => executeDeleteNode(deleteConfirmNodeId)}
-                              className="flex-1 px-6 py-3 bg-red-500 rounded-full text-sm font-bold text-th-text-inverse hover:bg-red-400 transition-all shadow-[0_0_20px_rgba(239,68,68,0.3)]"
+                              className="flex-1 px-6 py-3 bg-red-500 rounded-full text-sm font-bold text-white hover:bg-red-400 transition-all shadow-[0_0_20px_rgba(239,68,68,0.3)]"
                           >
                               삭제
                           </button>
                       </div>
                   </div>
               </div>
-          </div>
+          </div>,
+          document.body
       )}
 
       <ToastContainer toasts={toasts} onRemove={removeToast} />
