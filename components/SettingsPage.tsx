@@ -481,7 +481,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
               return (
                 <div className="px-4 py-3 border-b border-white/10 space-y-2">
                   <p className="text-[11px] text-gray-400 font-bold uppercase tracking-wider">
-                    이번 달 사용량
+                    {t.settings.monthlyUsage}
                   </p>
                   {resources.map(([key, lim]) => {
                     const cur = (usage as Record<string, number>)[key] ?? 0;

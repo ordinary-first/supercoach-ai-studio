@@ -513,9 +513,9 @@ const MindMap: React.FC<MindMapProps> = ({
       enableShortcutOnlyWhenMouseInSvg: true,
       createNewNodeBehavior: 'notActive',
       // Prevent Chinese default text when the library inserts nodes internally.
-      defaultInsertSecondLevelNodeText: '???몃뱶',
-      defaultInsertBelowSecondLevelNodeText: '???몃뱶',
-      defaultGeneralizationText: '?붿빟',
+      defaultInsertSecondLevelNodeText: 'New node',
+      defaultInsertBelowSecondLevelNodeText: 'New node',
+      defaultGeneralizationText: 'Summary',
       defaultAssociativeLineText: '',
       // Hook the built-in "+" quick-create button so node creation goes through React state.
       // This avoids Chinese placeholder text and allows immediate text editing via editingNodeId.
@@ -859,7 +859,7 @@ const MindMap: React.FC<MindMapProps> = ({
                 setActionBar(null);
               }}
               className="rounded-full p-2 text-white/70 hover:text-white hover:bg-white/10 transition-colors"
-              title="자식 노드 추가"
+              title={t.mindmap.onboarding.addChildTitle}
             >
               <AddChildIcon />
             </button>
@@ -875,7 +875,7 @@ const MindMap: React.FC<MindMapProps> = ({
                     setActionBar(null);
                   }}
                   className="rounded-full p-2 text-white/70 hover:text-white hover:bg-white/10 transition-colors"
-                  title="형제 노드 추가"
+                  title={t.mindmap.onboarding.addSiblingTitle}
                 >
                   <AddSiblingIcon />
                 </button>
@@ -885,7 +885,7 @@ const MindMap: React.FC<MindMapProps> = ({
                     setActionBar(null);
                   }}
                   className="rounded-full p-2 text-white/70 hover:text-white hover:bg-white/10 transition-colors"
-                  title="부모 노드 추가"
+                  title={t.mindmap.onboarding.addParentTitle}
                 >
                   <AddParentIcon />
                 </button>
@@ -990,7 +990,7 @@ const MindMap: React.FC<MindMapProps> = ({
               style={{ left: rootNodeCenter.x, top: rootNodeCenter.y - 70, transform: 'translate(-50%, 0)' }}
             >
               <span className="text-[10px] text-gray-400 uppercase tracking-[0.2em] font-mono">
-                정체성 노드
+                {t.mindmap.onboarding.identityLabel}
               </span>
             </div>
           )}
@@ -1002,7 +1002,7 @@ const MindMap: React.FC<MindMapProps> = ({
               style={{ left: rootNodeCenter.x, top: rootNodeCenter.y, transform: 'translate(-50%, -50%)' }}
             >
               <span className="text-white/30 text-sm font-body whitespace-nowrap">
-                나는 ~ 한 사람이다
+                {t.mindmap.onboarding.identityPlaceholder}
               </span>
             </div>
           )}
@@ -1015,12 +1015,12 @@ const MindMap: React.FC<MindMapProps> = ({
             >
               <div className="bg-[#0d1b30]/95 border border-white/15 rounded-2xl px-4 py-3 max-w-[260px] backdrop-blur-md shadow-2xl">
                 <p className="text-white/90 text-xs leading-relaxed text-center">
-                  당신이 원하는 궁극적인 모습을 여기에 적어보세요.
+                  {t.mindmap.onboarding.identityPrompt}
                   <br />
-                  <span className="text-neon-lime/80 font-semibold">모든 변화는 여기서 시작됩니다.</span>
+                  <span className="text-neon-lime/80 font-semibold">{t.mindmap.onboarding.identityMotivation}</span>
                 </p>
                 <div className="mt-2 flex justify-center">
-                  <span className="text-[10px] text-gray-500 animate-pulse">더블탭으로 수정</span>
+                  <span className="text-[10px] text-gray-500 animate-pulse">{t.mindmap.onboarding.doubleTapToEdit}</span>
                 </div>
               </div>
             </div>
@@ -1031,7 +1031,7 @@ const MindMap: React.FC<MindMapProps> = ({
             onClick={() => setIdentitySkipped(true)}
             className="absolute bottom-6 right-4 z-40 text-gray-500 text-xs hover:text-gray-300 transition-colors"
           >
-            건너뛰기 →
+            {t.mindmap.onboarding.skip}
           </button>
         </>
       )}
@@ -1042,7 +1042,7 @@ const MindMap: React.FC<MindMapProps> = ({
           onClick={() => setTemplatesSkipped(true)}
           className="absolute bottom-6 right-4 z-40 text-gray-500 text-xs hover:text-gray-300 transition-colors"
         >
-          건너뛰기 →
+          {t.mindmap.onboarding.skip}
         </button>
       )}
 
@@ -1056,12 +1056,12 @@ const MindMap: React.FC<MindMapProps> = ({
             <div className="flex items-center gap-4 text-white/80 text-xs">
               <div className="flex items-center gap-1.5">
                 <span className="text-neon-lime">◉</span>
-                <span>더블탭: 이름 수정</span>
+                <span>{t.mindmap.onboarding.tooltipDoubleTap}</span>
               </div>
               <div className="w-px h-4 bg-white/20" />
               <div className="flex items-center gap-1.5">
                 <span className="text-neon-lime">◎</span>
-                <span>탭: 하위 목표 추가</span>
+                <span>{t.mindmap.onboarding.tooltipTap}</span>
               </div>
             </div>
           </div>
