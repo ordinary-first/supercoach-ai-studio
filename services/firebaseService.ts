@@ -4,6 +4,7 @@ import {
   getAdditionalUserInfo,
   getAuth,
   onAuthStateChanged,
+  signInAnonymously,
   signInWithPopup,
   signOut,
   type User,
@@ -94,6 +95,17 @@ export const loginWithGoogle = async (): Promise<{ user: User; isNewUser: boolea
     }
     console.error('[Auth] Google Login Error:', code, error);
     throw error;
+  }
+};
+
+export const loginAnonymously = async (): Promise<User | null> => {
+  try {
+    const result = await signInAnonymously(auth);
+    log('[Auth] Anonymous login:', result.user.uid);
+    return result.user;
+  } catch (error) {
+    console.error('[Auth] Anonymous login failed:', error);
+    return null;
   }
 };
 
