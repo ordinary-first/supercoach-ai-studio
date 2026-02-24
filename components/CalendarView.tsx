@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Sun, CheckCircle2, Lock, AlertCircle, Trophy, Star, ArrowLeft } from 'lucide-react';
 import { ToDoItem, RepeatFrequency } from '../types';
 import { useFocusTrap } from '../hooks/useFocusTrap';
@@ -8,9 +8,11 @@ interface CalendarViewProps {
   onClose: () => void;
   todos: ToDoItem[];
   onToggleToDo: (id: string) => void;
+  viewMode?: 'month' | 'week' | 'list';
+  onViewModeChange?: (mode: 'month' | 'week' | 'list') => void;
 }
 
-type ViewMode = 'month' | 'week' | 'day';
+type ViewMode = 'month' | 'week' | 'list' | 'day';
 
 // Logic to check if the targetDate falls on the recurrence pattern of the task.
 // Since we have complex patterns (Weekly-2, Weekly-3), we need to simulate the sequence.
@@ -72,11 +74,19 @@ const checkRecurrenceMatch = (todo: ToDoItem, targetDate: Date): boolean => {
     }
 }
 
-const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onToggleToDo }) => {
+const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onToggleToDo, viewMode: externalViewMode, onViewModeChange }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>('month');
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [previousViewMode, setPreviousViewMode] = useState<ViewMode>('month');
+
+  // Sync with external viewMode (skip if currently in day view)
+  useEffect(() => {
+    if (externalViewMode && viewMode !== 'day') {
+      setViewMode(externalViewMode);
+    }
+  }, [externalViewMode]);
+
   const focusTrapRef = useFocusTrap(isOpen);
 
   const getDaysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
@@ -84,6 +94,16 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
+
+  // Auto-scroll to today when entering list view
+  useEffect(() => {
+    if (viewMode === 'list') {
+      requestAnimationFrame(() => {
+        const todayEl = document.querySelector('[data-today="true"]');
+        todayEl?.scrollIntoView({ block: 'start' });
+      });
+    }
+  }, [viewMode, month, year]);
 
   const daysInMonth = getDaysInMonth(year, month);
   const startDay = getStartDayOfMonth(year, month);
@@ -199,9 +219,12 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
 
   // View mode switch
   const switchViewMode = (mode: ViewMode) => {
-    if (mode === 'day') return; // Day mode is only entered by clicking a date
+    if (mode === 'day') return;
     setViewMode(mode);
     setSelectedDate(null);
+    if (mode !== 'day') {
+      onViewModeChange?.(mode as 'month' | 'week' | 'list');
+    }
   };
 
   // Day name helpers
@@ -238,7 +261,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
 
   // Navigation title
   const getHeaderTitle = () => {
-    if (viewMode === 'month') {
+    if (viewMode === 'month' || viewMode === 'list') {
       return `${year}. ${String(month + 1).padStart(2, '0')}`;
     }
     if (viewMode === 'week') {
@@ -252,13 +275,13 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
 
   // Navigation actions based on view mode
   const handlePrev = () => {
-    if (viewMode === 'month') prevMonth();
+    if (viewMode === 'month' || viewMode === 'list') prevMonth();
     else if (viewMode === 'week') prevWeek();
     else if (viewMode === 'day') prevDay();
   };
 
   const handleNext = () => {
-    if (viewMode === 'month') nextMonth();
+    if (viewMode === 'month' || viewMode === 'list') nextMonth();
     else if (viewMode === 'week') nextWeek();
     else if (viewMode === 'day') nextDay();
   };
@@ -313,12 +336,14 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
   // ==================== MONTH VIEW ====================
   const renderCalendarDays = () => {
       const days = [];
-      const totalSlots = 42;
+      const totalCellsNeeded = startDay + daysInMonth;
+      const totalRows = Math.ceil(totalCellsNeeded / 7);
+      const totalSlots = totalRows * 7;
 
       // Prev Month (Placeholder)
       for (let i = startDay - 1; i >= 0; i--) {
           days.push(
-              <div key={`prev-${i}`} className="min-h-[60px] md:min-h-[120px] bg-black/40 border-b border-r border-white/5 opacity-20 p-2 text-gray-600 font-mono text-xs">
+              <div key={`prev-${i}`} className="min-h-0 md:min-h-0 bg-black/40 border-b border-r border-white/5 opacity-20 p-1 text-gray-600 font-mono text-xs">
                   {prevMonthDays - i}
               </div>
           );
@@ -336,17 +361,17 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
               <div
                 key={`curr-${day}`}
                 onClick={() => handleDayClick(dateObj)}
-                className={`min-h-[60px] md:min-h-[120px] border-b border-r border-white/10 p-2 relative group transition-all duration-300 cursor-pointer ${isToday ? 'bg-white/5 shadow-[inset_0_0_20px_rgba(204,255,0,0.05)]' : 'bg-transparent hover:bg-white/[0.07]'}`}
+                className={`min-h-0 md:min-h-0 border-b border-r border-white/10 p-1 relative group transition-all duration-300 cursor-pointer ${isToday ? 'bg-white/5 shadow-[inset_0_0_20px_rgba(204,255,0,0.05)]' : 'bg-transparent hover:bg-white/[0.07]'}`}
               >
                   {/* Date Header */}
-                  <div className="flex justify-between items-start mb-2">
-                      <span className={`text-sm font-bold w-7 h-7 flex items-center justify-center rounded-full transition-all ${isToday ? 'bg-neon-lime text-black shadow-[0_0_10px_#CCFF00]' : 'text-gray-400 group-hover:text-white'}`}>
+                  <div className="flex justify-between items-start mb-0.5">
+                      <span className={`text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full transition-all ${isToday ? 'bg-neon-lime text-black shadow-[0_0_10px_#CCFF00]' : 'text-gray-400 group-hover:text-white'}`}>
                           {day}
                       </span>
                   </div>
 
                   {/* Tasks Container */}
-                  <div className="space-y-1.5 overflow-y-auto max-h-[40px] md:max-h-[90px] scrollbar-hide">
+                  <div className="space-y-1.5 overflow-y-auto max-h-[28px] md:max-h-[80px] scrollbar-hide">
                       {dayTodos.map((todo: any) => renderTodoCell(todo, isPastDate, todo.isGhost))}
 
                       {/* Empty State placeholder for Today */}
@@ -366,7 +391,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
       const remainingSlots = totalSlots - days.length;
       for (let i = 1; i <= remainingSlots; i++) {
           days.push(
-              <div key={`next-${i}`} className="min-h-[60px] md:min-h-[120px] bg-black/40 border-b border-r border-white/5 opacity-20 p-2 text-gray-600 font-mono text-xs">
+              <div key={`next-${i}`} className="min-h-0 md:min-h-0 bg-black/40 border-b border-r border-white/5 opacity-20 p-1 text-gray-600 font-mono text-xs">
                   {i}
               </div>
           );
@@ -386,83 +411,40 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
       const isToday = normalizeDate(new Date()) === normalizeDate(dateObj);
       const isPastDate = normalizeDate(dateObj) < normalizeDate(new Date());
       const dayTodos = getTodosForDateGeneric(dateObj);
+      const dayOfWeek = dateObj.getDay();
 
       days.push(
         <div
           key={`week-${i}`}
           onClick={() => handleDayClick(dateObj)}
-          className={`border-r border-white/10 p-3 relative group transition-all duration-300 cursor-pointer flex flex-col ${isToday ? 'bg-white/5 shadow-[inset_0_0_30px_rgba(204,255,0,0.05)]' : 'bg-transparent hover:bg-white/[0.07]'}`}
+          className={`flex-1 flex items-stretch border-b border-white/10 cursor-pointer transition-all duration-200 min-h-[56px] ${
+            isToday
+              ? 'bg-white/5'
+              : 'hover:bg-white/[0.03]'
+          }`}
         >
-          {/* Date Header */}
-          <div className="flex items-center gap-2 mb-3 pb-2 border-b border-white/5">
-            <span className={`text-lg font-bold w-9 h-9 flex items-center justify-center rounded-full transition-all font-display ${isToday ? 'bg-neon-lime text-black shadow-[0_0_10px_#CCFF00]' : 'text-gray-400 group-hover:text-white'}`}>
+          {/* Date column */}
+          <div className={`w-16 shrink-0 flex flex-col items-center justify-center py-2 border-r border-white/10 ${
+            dayOfWeek === 0 ? 'text-red-400' : dayOfWeek === 6 ? 'text-blue-400' : ''
+          }`}>
+            <span className={`text-lg font-bold font-display ${
+              isToday
+                ? 'w-8 h-8 flex items-center justify-center rounded-full bg-neon-lime text-black shadow-[0_0_10px_#CCFF00]'
+                : 'text-gray-300'
+            }`}>
               {dateObj.getDate()}
             </span>
-            <span className={`text-xs font-medium ${isToday ? 'text-neon-lime' : 'text-gray-500'}`}>
-              {dayNames[dateObj.getDay()]}
+            <span className={`text-[10px] mt-0.5 ${isToday ? 'text-neon-lime font-bold' : 'text-gray-500'}`}>
+              {dayNamesFull[dayOfWeek]}
             </span>
-            {dayTodos.length > 0 && (
-              <span className="ml-auto text-[10px] px-2 py-0.5 rounded-full bg-white/5 text-gray-500 border border-white/10">
-                {dayTodos.filter((t: any) => t.completed).length}/{dayTodos.length}
-              </span>
-            )}
           </div>
 
-          {/* Tasks Container - scrollable, takes remaining height */}
-          <div className="space-y-2 overflow-y-auto flex-1 scrollbar-hide pr-1">
-            {dayTodos.map((todo: any) => {
-              const isGhost = todo.isGhost;
-              let itemStyle = "";
-              let icon = null;
-              let glowEffect = "";
-
-              if (todo.completed) {
-                itemStyle = "bg-gradient-to-r from-neon-lime/80 to-green-400/80 text-black border border-white/50";
-                glowEffect = "shadow-[0_0_12px_rgba(204,255,0,0.6)] z-10 scale-[1.01]";
-                icon = <Trophy size={12} className="fill-black text-black" />;
-              } else if (isGhost) {
-                itemStyle = "bg-white/5 text-gray-500 border border-white/5 border-dashed backdrop-blur-[2px] cursor-not-allowed";
-                icon = <Lock size={12} className="text-gray-600" />;
-              } else if (isPastDate && !todo.completed) {
-                itemStyle = "bg-[#1a1a1a] text-gray-500 border border-white/10 opacity-60 grayscale";
-                icon = <AlertCircle size={12} className="text-red-900" />;
-              } else {
-                itemStyle = "bg-white/5 text-gray-300 border border-white/20 backdrop-blur-sm";
-                icon = <Lock size={12} className="text-gray-400" />;
-              }
-
-              return (
-                <div
-                  key={todo.id}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (!isGhost) onToggleToDo(todo.id);
-                  }}
-                  className={`
-                    relative flex items-center gap-2.5 p-2 rounded-lg text-xs font-medium
-                    transition-all duration-300 transform
-                    ${!isGhost ? 'hover:scale-[1.03] hover:z-20 cursor-pointer' : ''}
-                    ${itemStyle} ${glowEffect}
-                  `}
-                  title={isGhost ? "잠긴 미션 (미래 반복)" : todo.text}
-                >
-                  {todo.completed && (
-                    <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/40 to-transparent opacity-50 rounded-lg pointer-events-none"></div>
-                  )}
-                  <div className="shrink-0">{icon}</div>
-                  <span className={`line-clamp-2 ${todo.completed ? 'font-bold' : ''}`}>
-                    {todo.text}
-                  </span>
-                </div>
-              );
-            })}
-
-            {dayTodos.length === 0 && (
-              <div className="h-full flex items-center justify-center pt-4 opacity-30">
-                <div className="border border-dashed border-white/30 rounded-lg px-3 py-2 text-[10px] text-gray-500 flex items-center gap-1.5">
-                  <Star size={10} /> 미션 없음
-                </div>
-              </div>
+          {/* Todos column */}
+          <div className="flex-1 flex flex-wrap items-center gap-1.5 p-2 min-h-[56px]">
+            {dayTodos.length > 0 ? (
+              dayTodos.map((todo: any) => renderTodoCell(todo, isPastDate, todo.isGhost))
+            ) : (
+              <span className="text-xs text-gray-600 italic">미션 없음</span>
             )}
           </div>
         </div>
@@ -557,7 +539,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
     };
 
     return (
-      <div className="flex-1 overflow-y-auto p-4 md:p-8 pb-[100px] md:pb-[110px] relative z-0">
+      <div className="flex-1 overflow-y-auto p-4 md:p-8 pb-[56px] md:pb-[64px] relative z-0">
         {/* Stats Summary */}
         <div className="max-w-2xl mx-auto mb-8">
           <div className="bg-white/5 border border-white/10 rounded-2xl p-5 backdrop-blur-sm">
@@ -638,6 +620,68 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
     );
   };
 
+  // ==================== LIST VIEW ====================
+  const renderListView = () => {
+    const daysWithTodos: { date: Date; todos: any[] }[] = [];
+
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dateObj = new Date(year, month, day);
+      const dayTodos = getTodosForDate(day);
+      daysWithTodos.push({ date: dateObj, todos: dayTodos });
+    }
+
+    return (
+      <div className="flex-1 overflow-y-auto p-2 md:p-4 pb-[56px] md:pb-[64px] relative z-0">
+        <div className="space-y-1">
+          {daysWithTodos.map(({ date, todos: dayTodos }) => {
+            const isToday = normalizeDate(new Date()) === normalizeDate(date);
+            const isPastDate = normalizeDate(date) < normalizeDate(new Date());
+            const dayOfWeek = date.getDay();
+
+            return (
+              <div key={date.getTime()}>
+                {/* Date header */}
+                <div
+                  data-today={isToday ? "true" : undefined}
+                  onClick={() => handleDayClick(date)}
+                  className={`sticky top-0 z-10 flex items-center gap-3 px-3 py-2 cursor-pointer rounded-lg transition-colors ${
+                    isToday
+                      ? 'bg-neon-lime/10 border border-neon-lime/20'
+                      : 'bg-black/60 backdrop-blur-sm hover:bg-white/5'
+                  }`}
+                >
+                  <span className={`text-lg font-bold font-display ${
+                    isToday ? 'text-neon-lime' : dayOfWeek === 0 ? 'text-red-400' : dayOfWeek === 6 ? 'text-blue-400' : 'text-gray-300'
+                  }`}>
+                    {date.getDate()}
+                  </span>
+                  <span className={`text-xs ${isToday ? 'text-neon-lime font-bold' : 'text-gray-500'}`}>
+                    {dayNamesFull[dayOfWeek]}
+                  </span>
+                  {isToday && (
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-neon-lime/20 text-neon-lime font-bold">오늘</span>
+                  )}
+                  {dayTodos.length > 0 && (
+                    <span className="ml-auto text-[10px] text-gray-500">
+                      {dayTodos.filter((t: any) => t.completed).length}/{dayTodos.length}
+                    </span>
+                  )}
+                </div>
+
+                {/* Todos */}
+                {dayTodos.length > 0 && (
+                  <div className="pl-8 pr-2 py-1.5 space-y-1">
+                    {dayTodos.map((todo: any) => renderTodoCell(todo, isPastDate, todo.isGhost))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -647,10 +691,10 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
         <div className="absolute top-0 left-1/4 w-1/2 h-1/2 bg-neon-lime/5 rounded-full blur-[150px] pointer-events-none"></div>
 
         {/* Header */}
-        <div className="px-3 md:px-8 py-2 md:py-4 border-b border-white/10 flex flex-wrap gap-2 md:gap-3 justify-between items-center bg-black/60 backdrop-blur-xl z-10">
-            <div className="flex items-center gap-3 md:gap-6 flex-wrap">
+        <div className="px-3 md:px-8 py-1.5 md:py-2 border-b border-white/10 flex gap-2 md:gap-3 justify-between items-center bg-black/60 backdrop-blur-xl z-10">
+            <div className="flex items-center gap-3 md:gap-6">
                 {/* Back button in day view */}
-                {viewMode === 'day' ? (
+                {viewMode === 'day' && (
                   <button
                     onClick={handleBackFromDay}
                     className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors p-1.5 rounded-full hover:bg-white/10"
@@ -658,21 +702,14 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
                   >
                     <ArrowLeft size={20} />
                   </button>
-                ) : (
-                  <div className="flex items-center gap-3 text-neon-lime drop-shadow-[0_0_8px_rgba(204,255,0,0.5)]">
-                    <Trophy className="w-5 h-5 md:w-7 md:h-7" />
-                    <span className="font-display font-bold text-sm md:text-xl tracking-wider hidden sm:inline">미션 달력</span>
-                  </div>
                 )}
 
-                <div className="h-8 w-px bg-white/10"></div>
-
                 {/* Navigation */}
-                <div className="flex items-center gap-4 bg-white/5 px-4 py-2 rounded-full border border-white/10">
+                <div className="flex items-center gap-2">
                     <button onClick={handlePrev} className="p-1.5 rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors" aria-label="이전">
                       <ChevronLeft size={18}/>
                     </button>
-                    <h2 className={`font-bold text-white text-center font-display tracking-wide ${viewMode === 'day' ? 'text-sm md:text-base min-w-[180px]' : 'text-lg min-w-[120px]'}`}>
+                    <h2 className={`font-bold text-white text-center font-display tracking-wide ${viewMode === 'day' ? 'text-sm md:text-base min-w-[180px]' : 'text-base min-w-[120px]'}`}>
                         {getHeaderTitle()}
                     </h2>
                     <button onClick={handleNext} className="p-1.5 rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors" aria-label="다음">
@@ -680,96 +717,44 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
                     </button>
                 </div>
 
-                {/* Today button */}
-
-                {/* View Mode Toggle Pills */}
-                {viewMode !== 'day' && (
-                  <div className="flex items-center bg-white/5 rounded-full border border-white/10 p-0.5">
-                    <button
-                      onClick={() => switchViewMode('month')}
-                      className={`text-xs font-bold px-4 py-1.5 rounded-full transition-all duration-300 ${
-                        viewMode === 'month'
-                          ? 'bg-neon-lime text-black shadow-[0_0_10px_rgba(204,255,0,0.3)]'
-                          : 'text-gray-400 hover:text-white hover:bg-white/10'
-                      }`}
-                    >
-                      월
-                    </button>
-                    <button
-                      onClick={() => switchViewMode('week')}
-                      className={`text-xs font-bold px-4 py-1.5 rounded-full transition-all duration-300 ${
-                        viewMode === 'week'
-                          ? 'bg-neon-lime text-black shadow-[0_0_10px_rgba(204,255,0,0.3)]'
-                          : 'text-gray-400 hover:text-white hover:bg-white/10'
-                      }`}
-                    >
-                      주
-                    </button>
-                  </div>
-                )}
             </div>
 
         </div>
-
-        {/* Legend / Status Bar (hidden in day view for cleaner look) */}
-        {viewMode !== 'day' && (
-          <div className="px-3 md:px-8 py-1.5 md:py-2 bg-black/40 border-b border-white/5 flex gap-2 md:gap-6 overflow-x-auto text-[8px] md:text-[10px] uppercase tracking-widest text-gray-500 font-bold z-10">
-              <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-neon-lime shadow-[0_0_5px_#CCFF00]"></div>
-                  <span>달성 (히스토리)</span>
-              </div>
-              <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full border border-white/40 bg-white/10"></div>
-                  <span>진행 중 (현재)</span>
-              </div>
-              <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full border border-white/10 border-dashed bg-white/5"></div>
-                  <span>예정 (미래)</span>
-              </div>
-              <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-white/10 opacity-50"></div>
-                  <span>미달성 (놓침)</span>
-              </div>
-          </div>
-        )}
 
         {/* ==================== CONTENT AREA ==================== */}
 
         {/* Month View */}
         {viewMode === 'month' && (
-          <div className="flex-1 overflow-hidden flex flex-col p-2 md:p-4 lg:p-8 pb-[100px] md:pb-[110px] relative z-0 animate-in fade-in duration-300">
+          <div className="flex-1 overflow-hidden flex flex-col p-1 md:p-3 lg:p-6 pb-[56px] md:pb-[64px] relative z-0 animate-in fade-in duration-300">
               {/* Week Headers */}
               <div className="grid grid-cols-7 border-b border-white/10 mb-0 bg-white/5 rounded-t-lg">
                   {dayNames.map((day, idx) => (
-                      <div key={day} className={`text-center py-3 font-display font-bold text-xs tracking-wider ${idx === 0 ? 'text-red-400' : (idx === 6 ? 'text-blue-400' : 'text-gray-400')}`}>
+                      <div key={day} className={`text-center py-1.5 font-display font-bold text-[10px] tracking-wider ${idx === 0 ? 'text-red-400' : (idx === 6 ? 'text-blue-400' : 'text-gray-400')}`}>
                           {day}
                       </div>
                   ))}
               </div>
 
               {/* Days */}
-              <div className="grid grid-cols-7 flex-1 border-l border-white/10 auto-rows-fr bg-black/20 backdrop-blur-sm rounded-b-lg overflow-y-auto">
+              <div className="grid grid-cols-7 flex-1 border-l border-white/10 auto-rows-fr bg-black/20 backdrop-blur-sm rounded-b-lg overflow-hidden">
                    {renderCalendarDays()}
               </div>
           </div>
         )}
 
-        {/* Week View */}
+        {/* Week View (Vertical) */}
         {viewMode === 'week' && (
-          <div className="flex-1 overflow-hidden flex flex-col p-2 md:p-4 lg:p-8 pb-[100px] md:pb-[110px] relative z-0 animate-in fade-in duration-300">
-              {/* Week Day Headers */}
-              <div className="grid grid-cols-7 border-b border-white/10 mb-0 bg-white/5 rounded-t-lg">
-                  {dayNames.map((day, idx) => (
-                      <div key={`wh-${day}`} className={`text-center py-3 font-display font-bold text-xs tracking-wider ${idx === 0 ? 'text-red-400' : (idx === 6 ? 'text-blue-400' : 'text-gray-400')}`}>
-                          {day}
-                      </div>
-                  ))}
-              </div>
+          <div className="flex-1 overflow-y-auto flex flex-col p-1 md:p-3 pb-[56px] md:pb-[64px] relative z-0 animate-in fade-in duration-300">
+            <div className="flex-1 flex flex-col bg-black/20 backdrop-blur-sm rounded-lg border border-white/10 overflow-hidden">
+              {renderWeekDays()}
+            </div>
+          </div>
+        )}
 
-              {/* Single Row of 7 Days */}
-              <div className="grid grid-cols-7 flex-1 border-l border-white/10 bg-black/20 backdrop-blur-sm rounded-b-lg overflow-hidden">
-                  {renderWeekDays()}
-              </div>
+        {/* List View */}
+        {viewMode === 'list' && (
+          <div className="flex-1 overflow-hidden flex flex-col animate-in fade-in duration-300">
+            {renderListView()}
           </div>
         )}
 

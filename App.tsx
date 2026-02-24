@@ -141,6 +141,7 @@ const getInitialLanguage = (): AppLanguage => {
 const App: React.FC = () => {
   const [dimensions, setDimensions] = useState({ width: window.innerWidth, height: window.innerHeight });
   const [activeTab, setActiveTab] = useState<TabType>('GOALS');
+  const [calendarViewMode, setCalendarViewMode] = useState<'month' | 'week' | 'list'>('month');
   const [language, setLanguage] = useState<AppLanguage>(getInitialLanguage);
   const [isLanguageLoaded, setIsLanguageLoaded] = useState(false);
   const [isSettingsPageOpen, setIsSettingsPageOpen] = useState(false);
@@ -733,7 +734,7 @@ const App: React.FC = () => {
   setTodos(prev => prev.map(t => t.id === id ? {...t, ...up} : t));
   appendAction(getUserId(), 'UPDATE_TODO', `할일 수정`, { todoId: id });
 }} />
-      <CalendarView isOpen={activeTab === 'CALENDAR'} onClose={() => setActiveTab('GOALS')} todos={todos} onToggleToDo={handleToggleToDo} />
+      <CalendarView isOpen={activeTab === 'CALENDAR'} onClose={() => setActiveTab('GOALS')} todos={todos} onToggleToDo={handleToggleToDo} viewMode={calendarViewMode} onViewModeChange={setCalendarViewMode} />
       <CoachChat
         isOpen={isChatOpen}
         onClose={() => setIsChatOpen(false)}
@@ -749,7 +750,7 @@ const App: React.FC = () => {
       />
       <VisualizationModal isOpen={activeTab === 'VISUALIZE'} onClose={() => setActiveTab('GOALS')} userProfile={userProfile} nodes={nodes} />
       <ShortcutsPanel isOpen={isShortcutsOpen} onClose={() => setIsShortcutsOpen(false)} />
-      <BottomDock activeTab={activeTab} onTabChange={handleTabChange} />
+      <BottomDock activeTab={activeTab} onTabChange={handleTabChange} calendarViewMode={calendarViewMode} onCalendarViewModeChange={setCalendarViewMode} />
       <CoachBubble
         isOpen={isChatOpen}
         onToggle={() => {
