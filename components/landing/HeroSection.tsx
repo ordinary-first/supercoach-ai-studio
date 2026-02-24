@@ -129,7 +129,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onCTAClick }) => {
 
         {/* Primary CTA */}
         <div
-          className="flex flex-col items-center gap-3 mt-2"
+          className="flex flex-col items-center gap-3 mt-1 md:mt-2"
           style={{ animation: 'fadeIn 0.8s ease-out 0.55s both' }}
         >
           <button

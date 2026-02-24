@@ -10,7 +10,7 @@ export const FinalCTA: React.FC<FinalCTAProps> = ({ onCTAClick }) => {
 
   return (
     <section
-      className="py-12 md:py-24 px-6 relative overflow-hidden"
+      className="py-8 md:py-24 px-6 relative overflow-hidden"
       style={{ backgroundColor: '#050B14' }}
     >
       {/* Radial neon-lime glow background */}
@@ -24,20 +24,20 @@ export const FinalCTA: React.FC<FinalCTAProps> = ({ onCTAClick }) => {
       {/* Content */}
       <div
         ref={ref as React.RefObject<HTMLDivElement>}
-        className={`relative z-10 flex flex-col items-center text-center gap-4 md:gap-6 max-w-3xl mx-auto transition-all duration-700 ease-out ${
+        className={`relative z-10 flex flex-col items-center text-center gap-3 md:gap-6 max-w-3xl mx-auto transition-all duration-700 ease-out ${
           isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
         }`}
       >
         {/* Headline */}
         <div className="flex flex-col gap-1">
           <h2
-            className="text-2xl md:text-5xl font-bold text-white"
+            className="text-xl md:text-5xl font-bold text-white"
             style={{ fontFamily: 'Inter, sans-serif' }}
           >
             1년 후에도 같은 자리에 서 있을 건가요?
           </h2>
           <h2
-            className="text-2xl md:text-5xl font-bold"
+            className="text-xl md:text-5xl font-bold"
             style={{ fontFamily: 'Inter, sans-serif', color: '#CCFF00' }}
           >
             지금이 가장 빠른 시작입니다
@@ -53,7 +53,7 @@ export const FinalCTA: React.FC<FinalCTAProps> = ({ onCTAClick }) => {
         </p>
 
         {/* CTA Button */}
-        <div className="flex flex-col items-center gap-3 mt-2">
+        <div className="flex flex-col items-center gap-3 mt-1 md:mt-2">
           <button
             onClick={onCTAClick}
             className="uppercase tracking-widest font-black text-base md:text-lg py-4 px-10 md:py-5 md:px-12 rounded-full text-black transition-all duration-200 hover:scale-105"

@@ -11,11 +11,11 @@ export const VisualizationDemo: React.FC = () => {
   return (
     <section
       id="visualization"
-      className="py-12 md:py-24 px-6"
+      className="py-8 md:py-24 px-6"
       style={{ backgroundColor: '#050B14' }}
     >
       {/* Section header */}
-      <div className="flex flex-col items-center text-center mb-8 md:mb-12 gap-2">
+      <div className="flex flex-col items-center text-center mb-5 md:mb-12 gap-2">
         <h2
           className="text-2xl md:text-5xl font-bold leading-tight"
           style={{ fontFamily: 'Inter, sans-serif' }}
@@ -43,7 +43,7 @@ export const VisualizationDemo: React.FC = () => {
         }`}
       >
         <div
-          className="rounded-3xl p-6 md:p-8 border"
+          className="rounded-2xl md:rounded-3xl p-4 md:p-8 border"
           style={{
             backgroundColor: 'rgba(255,255,255,0.04)',
             backdropFilter: 'blur(24px)',
@@ -52,7 +52,7 @@ export const VisualizationDemo: React.FC = () => {
           }}
         >
           {/* 2x2 grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
 
             {/* 1. 텍스트 */}
             <div

@@ -63,7 +63,7 @@ const AccordionItem: React.FC<AccordionItemProps> = ({ item, index, isOpen, onTo
   return (
     <div
       ref={ref as React.RefObject<HTMLDivElement>}
-      className="bg-white/5 border border-white/10 rounded-2xl mb-3 overflow-hidden transition-all duration-700"
+      className="bg-white/5 border border-white/10 rounded-2xl mb-2 overflow-hidden transition-all duration-700"
       style={{
         opacity: isVisible ? 1 : 0,
         transform: isVisible ? 'translateY(0)' : 'translateY(20px)',
@@ -72,7 +72,7 @@ const AccordionItem: React.FC<AccordionItemProps> = ({ item, index, isOpen, onTo
     >
       {/* Question row */}
       <button
-        className="w-full p-5 flex justify-between items-center cursor-pointer hover:bg-white/10 transition-colors rounded-2xl text-left"
+        className="w-full p-4 md:p-5 flex justify-between items-center cursor-pointer hover:bg-white/10 transition-colors rounded-2xl text-left"
         onClick={onToggle}
         aria-expanded={isOpen}
       >
@@ -104,12 +104,12 @@ export const FAQSection: React.FC = () => {
   };
 
   return (
-    <section id="faq" className="py-12 md:py-24 px-6">
+    <section id="faq" className="py-8 md:py-24 px-6">
       <div className="max-w-3xl mx-auto">
         {/* Heading */}
         <div
           ref={headingRef as React.RefObject<HTMLDivElement>}
-          className="text-center mb-8 md:mb-12 transition-all duration-700"
+          className="text-center mb-5 md:mb-12 transition-all duration-700"
           style={{
             opacity: headingVisible ? 1 : 0,
             transform: headingVisible ? 'translateY(0)' : 'translateY(24px)',
