@@ -1,5 +1,6 @@
 ﻿
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import MindMap from './components/MindMap';
 import CoachChat from './components/CoachChat';
 import CoachBubble from './components/CoachBubble';
@@ -352,6 +353,41 @@ const App: React.FC = () => {
     if (text) appendAction(getUserId(), 'ADD_NODE', `"${text}" 추가`, { nodeId: newNodeId, parentId });
   }, [dimensions, nodes, handleUpdateNode]);
 
+  const handleAddParentNode = useCallback((nodeId: string) => {
+    const node = nodes.find(n => n.id === nodeId);
+    if (!node || node.type === NodeType.ROOT) return;
+
+    const newNodeId = Date.now().toString();
+    const oldParentId = node.parentId;
+
+    const newNode: GoalNode = {
+      id: newNodeId, text: '', type: NodeType.SUB,
+      status: NodeStatus.PENDING, progress: 0,
+      parentId: oldParentId,
+      x: (node.x ?? 0) + (Math.random() - 0.5) * 50,
+      y: (node.y ?? 0) - 60,
+      collapsed: false,
+    };
+
+    setNodes(prev => prev
+      .map(n => n.id === nodeId ? { ...n, parentId: newNodeId } : n)
+      .concat(newNode)
+    );
+    setLinks(prev => prev
+      .map(l => {
+        const targetId = typeof l.target === 'string' ? l.target : l.target.id;
+        if (targetId === nodeId && oldParentId) {
+          const sourceId = typeof l.source === 'string' ? l.source : l.source.id;
+          if (sourceId === oldParentId) return { source: oldParentId, target: newNodeId };
+        }
+        return l;
+      })
+      .concat({ source: newNodeId, target: nodeId })
+    );
+    setSelectedNode(newNode);
+    setEditingNodeId(newNodeId);
+  }, [nodes]);
+
   // 紐낆떆???대?吏 ?앹꽦 (濡깊봽?덉뒪 硫붾돱?먯꽌 ?몄텧)
   const handleGenerateNodeImage = useCallback(async (nodeId: string) => {
     const node = nodes.find(n => n.id === nodeId);
@@ -646,7 +682,7 @@ const App: React.FC = () => {
       {activeTab === 'GOALS' && (
         <>
           <MindMap
-            nodes={visibleNodes} links={visibleLinks} language={language} selectedNodeId={selectedNode?.id} onNodeClick={setSelectedNode} onEditNode={(nodeId) => setEditingNodeId(nodeId)} onUpdateNode={handleUpdateNode} onDeleteNode={handleDeleteNode} onReparentNode={handleReparentNode} onAddSubNode={handleAddSubNode} onGenerateImage={handleGenerateNodeImage} onInsertImage={handleInsertNodeImage} onConvertNodeToTask={handleConvertNodeToTodo} onDecomposeGoal={handleDecomposeGoal} previewNodeIds={previewNodeIds} confirmedPreviewIds={confirmedPreviewIds} onTogglePreviewConfirm={handleTogglePreviewConfirm} onFinalizePreview={handleFinalizePreview} editingNodeId={editingNodeId} onEditEnd={() => setEditingNodeId(null)} width={dimensions.width} height={dimensions.height} imageLoadingNodes={imageLoadingNodes}
+            nodes={visibleNodes} links={visibleLinks} language={language} selectedNodeId={selectedNode?.id} onNodeClick={setSelectedNode} onEditNode={(nodeId) => setEditingNodeId(nodeId)} onUpdateNode={handleUpdateNode} onDeleteNode={handleDeleteNode} onReparentNode={handleReparentNode} onAddSubNode={handleAddSubNode} onAddParentNode={handleAddParentNode} onGenerateImage={handleGenerateNodeImage} onInsertImage={handleInsertNodeImage} onConvertNodeToTask={handleConvertNodeToTodo} onDecomposeGoal={handleDecomposeGoal} previewNodeIds={previewNodeIds} confirmedPreviewIds={confirmedPreviewIds} onTogglePreviewConfirm={handleTogglePreviewConfirm} onFinalizePreview={handleFinalizePreview} editingNodeId={editingNodeId} onEditEnd={() => setEditingNodeId(null)} width={dimensions.width} height={dimensions.height} imageLoadingNodes={imageLoadingNodes}
           />
 
            <div className="absolute top-[64px] left-3 md:top-[72px] md:left-6 z-50">
@@ -785,7 +821,7 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {deleteConfirmNodeId && (
+      {deleteConfirmNodeId && createPortal(
           <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in">
               <div className="bg-[#0a0f1a] border border-white/10 rounded-3xl p-8 max-w-sm w-full mx-4 shadow-2xl">
                   <div className="text-center space-y-4">
@@ -815,7 +851,8 @@ const App: React.FC = () => {
                       </div>
                   </div>
               </div>
-          </div>
+          </div>,
+          document.body
       )}
 
       <ToastContainer toasts={toasts} onRemove={removeToast} />
