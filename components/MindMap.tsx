@@ -1,4 +1,5 @@
 ﻿import React, { useEffect, useRef, useCallback, useState } from 'react';
+import { Sparkles } from 'lucide-react';
 import MindMapSDK from 'simple-mind-map';
 import Drag from 'simple-mind-map/src/plugins/Drag.js';
 import RainbowLines from 'simple-mind-map/src/plugins/RainbowLines.js';
