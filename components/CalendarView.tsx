@@ -2,6 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Sun, CheckCircle2, Lock, AlertCircle, Trophy, Star, ArrowLeft } from 'lucide-react';
 import { ToDoItem, RepeatFrequency } from '../types';
 import { useFocusTrap } from '../hooks/useFocusTrap';
+import { useTranslation } from '../i18n/useTranslation';
 
 interface CalendarViewProps {
   isOpen: boolean;
@@ -73,6 +74,7 @@ const checkRecurrenceMatch = (todo: ToDoItem, targetDate: Date): boolean => {
 }
 
 const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onToggleToDo }) => {
+  const { t } = useTranslation();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>('month');
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -205,8 +207,8 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
   };
 
   // Day name helpers
-  const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
-  const dayNamesFull = ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일'];
+  const dayNames = t.calendar.dayNames;
+  const dayNamesFull = t.calendar.dayNamesFull;
 
   // Format week range for header
   const formatWeekRange = () => {
@@ -233,7 +235,10 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
     const m = selectedDate.getMonth() + 1;
     const d = selectedDate.getDate();
     const dayOfWeek = dayNamesFull[selectedDate.getDay()];
-    return `${y}년 ${m}월 ${d}일 ${dayOfWeek}`;
+    if (t.calendar.yearSuffix) {
+      return `${y}${t.calendar.yearSuffix} ${m}${t.calendar.monthSuffix} ${d}${t.calendar.daySuffix} ${dayOfWeek}`;
+    }
+    return `${dayOfWeek}, ${selectedDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`;
   };
 
   // Navigation title
@@ -297,7 +302,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
           ${!isGhost ? 'hover:scale-105 hover:z-20 cursor-pointer' : ''}
           ${itemStyle} ${glowEffect}
         `}
-        title={isGhost ? "잠긴 미션 (미래 반복)" : todo.text}
+        title={isGhost ? t.calendar.lockedMission : todo.text}
       >
         {todo.completed && (
           <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/40 to-transparent opacity-50 rounded-md pointer-events-none"></div>
@@ -353,7 +358,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
                       {dayTodos.length === 0 && isToday && (
                           <div className="h-full flex items-center justify-center pt-2 opacity-30">
                               <div className="border border-dashed border-white/30 rounded px-2 py-1 text-[9px] text-gray-500 flex items-center gap-1">
-                                  <Star size={8} /> 미션 없음
+                                  <Star size={8} /> {t.calendar.noMission}
                               </div>
                           </div>
                       )}
@@ -444,7 +449,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
                     ${!isGhost ? 'hover:scale-[1.03] hover:z-20 cursor-pointer' : ''}
                     ${itemStyle} ${glowEffect}
                   `}
-                  title={isGhost ? "잠긴 미션 (미래 반복)" : todo.text}
+                  title={isGhost ? t.calendar.lockedMission : todo.text}
                 >
                   {todo.completed && (
                     <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/40 to-transparent opacity-50 rounded-lg pointer-events-none"></div>
@@ -460,7 +465,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
             {dayTodos.length === 0 && (
               <div className="h-full flex items-center justify-center pt-4 opacity-30">
                 <div className="border border-dashed border-white/30 rounded-lg px-3 py-2 text-[10px] text-gray-500 flex items-center gap-1.5">
-                  <Star size={10} /> 미션 없음
+                  <Star size={10} /> {t.calendar.noMission}
                 </div>
               </div>
             )}
@@ -498,22 +503,22 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
       if (todo.completed) {
         cardStyle = "bg-gradient-to-r from-neon-lime/20 to-green-400/10 border-neon-lime/30 shadow-[0_0_20px_rgba(204,255,0,0.1)]";
         icon = <Trophy size={18} className="text-neon-lime fill-neon-lime/50" />;
-        statusLabel = "완료";
+        statusLabel = t.calendar.status.completed;
         labelStyle = "text-neon-lime bg-neon-lime/10";
       } else if (isGhost) {
         cardStyle = "bg-white/[0.03] border-white/5 border-dashed";
         icon = <Lock size={18} className="text-gray-600" />;
-        statusLabel = "잠긴 미션";
+        statusLabel = t.calendar.status.locked;
         labelStyle = "text-gray-600 bg-white/5";
       } else if (isPastDate) {
         cardStyle = "bg-[#1a1a1a]/80 border-white/10 opacity-70 grayscale";
         icon = <AlertCircle size={18} className="text-red-500/60" />;
-        statusLabel = "놓침";
+        statusLabel = t.calendar.status.missed;
         labelStyle = "text-red-400/80 bg-red-500/10";
       } else {
         cardStyle = "bg-white/5 border-white/15 hover:border-white/30 hover:bg-white/[0.08]";
         icon = <CheckCircle2 size={18} className="text-gray-400" />;
-        statusLabel = isToday ? "진행 중" : "예정";
+        statusLabel = isToday ? t.calendar.status.inProgress : t.calendar.status.scheduled;
         labelStyle = isToday ? "text-blue-400 bg-blue-500/10" : "text-gray-400 bg-white/5";
       }
 
@@ -567,9 +572,9 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
                   <Trophy size={18} className="text-neon-lime" />
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500 uppercase tracking-wider font-bold">미션 현황</p>
+                  <p className="text-xs text-gray-500 uppercase tracking-wider font-bold">{t.calendar.missionStatus}</p>
                   <p className="text-lg font-display font-bold text-white">
-                    {completedCount}/{totalCount} <span className="text-sm text-gray-400 font-body">완료</span>
+                    {completedCount}/{totalCount} <span className="text-sm text-gray-400 font-body">{t.common.done}</span>
                   </p>
                 </div>
               </div>
@@ -595,7 +600,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-2 h-2 rounded-full bg-neon-lime shadow-[0_0_6px_#CCFF00]"></div>
                 <h3 className="text-sm font-bold text-neon-lime uppercase tracking-wider font-display">
-                  완료한 미션
+                  {t.calendar.completedMissions}
                 </h3>
                 <span className="text-xs text-gray-600 font-mono">{completedTodos.length}</span>
                 <div className="flex-1 h-px bg-neon-lime/10"></div>
@@ -612,7 +617,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
               <div className="flex items-center gap-3 mb-4">
                 <div className={`w-2 h-2 rounded-full ${isPastDate ? 'bg-red-500/60' : 'bg-white/30'}`}></div>
                 <h3 className={`text-sm font-bold uppercase tracking-wider font-display ${isPastDate ? 'text-red-400/80' : 'text-gray-400'}`}>
-                  미완료 미션
+                  {t.calendar.incompleteMissions}
                 </h3>
                 <span className="text-xs text-gray-600 font-mono">{incompleteTodos.length}</span>
                 <div className={`flex-1 h-px ${isPastDate ? 'bg-red-500/10' : 'bg-white/5'}`}></div>
@@ -629,8 +634,8 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
               <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mx-auto mb-4">
                 <Star size={24} className="text-gray-600" />
               </div>
-              <p className="text-gray-500 text-sm font-medium">이 날에는 미션이 없습니다</p>
-              <p className="text-gray-700 text-xs mt-1">미션을 추가하여 하루를 시작해 보세요</p>
+              <p className="text-gray-500 text-sm font-medium">{t.calendar.emptyDay}</p>
+              <p className="text-gray-700 text-xs mt-1">{t.calendar.emptyDayHint}</p>
             </div>
           )}
         </div>
@@ -654,14 +659,14 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
                   <button
                     onClick={handleBackFromDay}
                     className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors p-1.5 rounded-full hover:bg-white/10"
-                    aria-label="뒤로 가기"
+                    aria-label={t.common.back}
                   >
                     <ArrowLeft size={20} />
                   </button>
                 ) : (
                   <div className="flex items-center gap-3 text-neon-lime drop-shadow-[0_0_8px_rgba(204,255,0,0.5)]">
                     <Trophy className="w-5 h-5 md:w-7 md:h-7" />
-                    <span className="font-display font-bold text-sm md:text-xl tracking-wider hidden sm:inline">미션 달력</span>
+                    <span className="font-display font-bold text-sm md:text-xl tracking-wider hidden sm:inline">{t.calendar.title}</span>
                   </div>
                 )}
 
@@ -669,13 +674,13 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
 
                 {/* Navigation */}
                 <div className="flex items-center gap-4 bg-white/5 px-4 py-2 rounded-full border border-white/10">
-                    <button onClick={handlePrev} className="p-1.5 rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors" aria-label="이전">
+                    <button onClick={handlePrev} className="p-1.5 rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors" aria-label={t.calendar.prev}>
                       <ChevronLeft size={18}/>
                     </button>
                     <h2 className={`font-bold text-white text-center font-display tracking-wide ${viewMode === 'day' ? 'text-sm md:text-base min-w-[180px]' : 'text-lg min-w-[120px]'}`}>
                         {getHeaderTitle()}
                     </h2>
-                    <button onClick={handleNext} className="p-1.5 rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors" aria-label="다음">
+                    <button onClick={handleNext} className="p-1.5 rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors" aria-label={t.calendar.next}>
                       <ChevronRight size={18}/>
                     </button>
                 </div>
@@ -693,7 +698,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
                           : 'text-gray-400 hover:text-white hover:bg-white/10'
                       }`}
                     >
-                      월
+                      {t.calendar.monthView}
                     </button>
                     <button
                       onClick={() => switchViewMode('week')}
@@ -703,7 +708,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
                           : 'text-gray-400 hover:text-white hover:bg-white/10'
                       }`}
                     >
-                      주
+                      {t.calendar.weekView}
                     </button>
                   </div>
                 )}
@@ -716,19 +721,19 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
           <div className="px-3 md:px-8 py-1.5 md:py-2 bg-black/40 border-b border-white/5 flex gap-2 md:gap-6 overflow-x-auto text-[8px] md:text-[10px] uppercase tracking-widest text-gray-500 font-bold z-10">
               <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-neon-lime shadow-[0_0_5px_#CCFF00]"></div>
-                  <span>달성 (히스토리)</span>
+                  <span>{t.calendar.legend.achieved}</span>
               </div>
               <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full border border-white/40 bg-white/10"></div>
-                  <span>진행 중 (현재)</span>
+                  <span>{t.calendar.legend.inProgress}</span>
               </div>
               <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full border border-white/10 border-dashed bg-white/5"></div>
-                  <span>예정 (미래)</span>
+                  <span>{t.calendar.legend.scheduled}</span>
               </div>
               <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-white/10 opacity-50"></div>
-                  <span>미달성 (놓침)</span>
+                  <span>{t.calendar.legend.missed}</span>
               </div>
           </div>
         )}

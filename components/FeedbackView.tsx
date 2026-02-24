@@ -1,7 +1,9 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { BarChart3, Loader2, RefreshCw, Target, CheckCircle2, TrendingUp } from 'lucide-react';
 import type { GoalNode, ToDoItem, UserProfile } from '../types';
+import type { TranslationStrings } from '../i18n/types';
 import { generateFeedback } from '../services/aiService';
+import { useTranslation } from '../i18n/useTranslation';
 
 type FeedbackPeriod = 'daily' | 'weekly' | 'monthly';
 
@@ -14,12 +16,6 @@ interface FeedbackViewProps {
   userId: string | null;
 }
 
-const PERIOD_LABELS: Record<FeedbackPeriod, string> = {
-  daily: '일간',
-  weekly: '주간',
-  monthly: '월간',
-};
-
 const getPeriodRange = (period: FeedbackPeriod): { start: number; end: number } => {
   const now = new Date();
   const end = now.getTime();
@@ -30,10 +26,10 @@ const getPeriodRange = (period: FeedbackPeriod): { start: number; end: number } 
   return { start: dayStart - 29 * 86400000, end };
 };
 
-const serializeGoalContext = (nodes: GoalNode[]): string => {
-  if (nodes.length === 0) return '목표 없음';
+const serializeGoalContext = (nodes: GoalNode[], t: TranslationStrings): string => {
+  if (nodes.length === 0) return t.feedback.noGoals;
   return nodes
-    .map((n) => `- ${n.text} (진행률: ${n.progress}%, 상태: ${n.status})`)
+    .map((n) => `- ${n.text} (${t.feedback.progressLabel}: ${n.progress}%, ${t.feedback.statusLabel}: ${n.status})`)
     .join('\n');
 };
 
@@ -48,6 +44,13 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
   const [period, setPeriod] = useState<FeedbackPeriod>('daily');
   const [feedbackText, setFeedbackText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const { t } = useTranslation();
+
+  const periodLabels: Record<FeedbackPeriod, string> = {
+    daily: t.feedback.daily,
+    weekly: t.feedback.weekly,
+    monthly: t.feedback.monthly,
+  };
 
   const stats = useMemo(() => {
     const range = getPeriodRange(period);
@@ -83,25 +86,25 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
     setIsLoading(true);
     setFeedbackText('');
 
-    const goalContext = serializeGoalContext(nodes);
+    const goalContext = serializeGoalContext(nodes, t);
     const range = getPeriodRange(period);
-    const periodTodos = todos.filter((t) => {
-      const ref = t.dueDate || t.createdAt;
+    const periodTodos = todos.filter((td) => {
+      const ref = td.dueDate || td.createdAt;
       return ref >= range.start && ref <= range.end;
     });
     const todoContext = periodTodos.length > 0
-      ? periodTodos.map((t) => `- [${t.completed ? 'O' : 'X'}] ${t.text}`).join('\n')
-      : '해당 기간 할일 없음';
+      ? periodTodos.map((td) => `- [${td.completed ? 'O' : 'X'}] ${td.text}`).join('\n')
+      : t.feedback.noTodosInPeriod;
 
     const statsContext = [
-      `기간: ${PERIOD_LABELS[period]}`,
-      `할일 완료: ${stats.completedTodos}/${stats.totalTodos} (${stats.completionRate}%)`,
-      `목표 평균 진행률: ${stats.avgProgress}%`,
-      `완료된 목표: ${stats.completedNodes}/${stats.totalNodes}`,
+      `${t.feedback.period}: ${periodLabels[period]}`,
+      `${t.feedback.todoCompletion}: ${stats.completedTodos}/${stats.totalTodos} (${stats.completionRate}%)`,
+      `${t.feedback.goalAvgProgress}: ${stats.avgProgress}%`,
+      `${t.feedback.completedGoalCount}: ${stats.completedNodes}/${stats.totalNodes}`,
     ].join('\n');
 
     const text = await generateFeedback(period, userProfile, goalContext, todoContext, statsContext, userId);
-    setFeedbackText(text || '피드백을 생성하지 못했습니다. 다시 시도해주세요.');
+    setFeedbackText(text || t.feedback.fallbackError);
     setIsLoading(false);
   }, [nodes, todos, period, userProfile, stats, userId]);
 
@@ -112,13 +115,13 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
       <div className="h-14 md:h-16 border-b border-white/10 bg-black/30 backdrop-blur-md px-4 md:px-6 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2">
           <BarChart3 size={18} className="text-neon-lime" />
-          <h1 className="text-sm md:text-base font-semibold tracking-wide">AI 피드백</h1>
+          <h1 className="text-sm md:text-base font-semibold tracking-wide">{t.feedback.title}</h1>
         </div>
         <button
           onClick={onClose}
           className="text-xs text-gray-400 hover:text-white transition-colors"
         >
-          닫기
+          {t.common.close}
         </button>
       </div>
 
@@ -136,7 +139,7 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
                     : 'bg-white/5 border border-white/10 text-gray-400 hover:text-white hover:bg-white/10'
                 }`}
               >
-                {PERIOD_LABELS[p]}
+                {periodLabels[p]}
               </button>
             ))}
           </div>
@@ -146,20 +149,20 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
             <div className="bg-white/5 border border-white/10 rounded-2xl p-4 text-center">
               <CheckCircle2 size={20} className="text-emerald-400 mx-auto mb-2" />
               <p className="text-2xl font-bold text-white">{stats.completionRate}%</p>
-              <p className="text-[10px] text-gray-400 mt-1">할일 완료율</p>
+              <p className="text-[10px] text-gray-400 mt-1">{t.feedback.completionRate}</p>
               <p className="text-[10px] text-gray-500">{stats.completedTodos}/{stats.totalTodos}</p>
             </div>
             <div className="bg-white/5 border border-white/10 rounded-2xl p-4 text-center">
               <TrendingUp size={20} className="text-blue-400 mx-auto mb-2" />
               <p className="text-2xl font-bold text-white">{stats.avgProgress}%</p>
-              <p className="text-[10px] text-gray-400 mt-1">평균 진행률</p>
-              <p className="text-[10px] text-gray-500">{nodes.filter((n) => n.type !== 'ROOT').length}개 목표</p>
+              <p className="text-[10px] text-gray-400 mt-1">{t.feedback.avgProgress}</p>
+              <p className="text-[10px] text-gray-500">{nodes.filter((n) => n.type !== 'ROOT').length}{t.feedback.goalsCount}</p>
             </div>
             <div className="bg-white/5 border border-white/10 rounded-2xl p-4 text-center">
               <Target size={20} className="text-neon-lime mx-auto mb-2" />
               <p className="text-2xl font-bold text-white">{stats.completedNodes}</p>
-              <p className="text-[10px] text-gray-400 mt-1">완료 목표</p>
-              <p className="text-[10px] text-gray-500">/{stats.totalNodes}개 중</p>
+              <p className="text-[10px] text-gray-400 mt-1">{t.feedback.completedGoals}</p>
+              <p className="text-[10px] text-gray-500">{t.feedback.ofTotal.replace('{total}', String(stats.totalNodes))}</p>
             </div>
           </div>
 
@@ -172,12 +175,12 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
             {isLoading ? (
               <>
                 <Loader2 size={16} className="animate-spin" />
-                피드백 생성 중...
+                {t.feedback.generating}
               </>
             ) : (
               <>
                 <RefreshCw size={16} />
-                {PERIOD_LABELS[period]} 피드백 생성
+                {t.feedback.generate.replace('{period}', periodLabels[period])}
               </>
             )}
           </button>
@@ -188,7 +191,7 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
               <div className="flex items-center gap-2 mb-3">
                 <BarChart3 size={14} className="text-neon-lime" />
                 <span className="text-[11px] uppercase tracking-wider text-gray-400">
-                  {PERIOD_LABELS[period]} AI 피드백
+                  {periodLabels[period]} {t.feedback.title}
                 </span>
               </div>
               <div className="text-sm text-gray-200 leading-relaxed whitespace-pre-wrap">

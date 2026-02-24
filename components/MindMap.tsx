@@ -7,6 +7,7 @@ import Select from 'simple-mind-map/src/plugins/Select.js';
 import TouchEvent from 'simple-mind-map/src/plugins/TouchEvent.js';
 import { GoalNode, GoalLink, NodeType, NodeStatus } from '../types';
 import { getLinkId } from '../hooks/useAutoSave';
+import { useTranslation } from '../i18n/useTranslation';
 
 // Register plugins once
 MindMapSDK.usePlugin(Drag);
@@ -126,6 +127,7 @@ function goalNodesToTree(
   links: GoalLink[],
   selectedNodeId?: string,
   confirmedPreviewIds?: string[],
+  defaultRootText?: string,
 ): SMMNode | null {
   const root = nodes.find(n => n.type === NodeType.ROOT);
   if (!root) return null;
@@ -183,7 +185,7 @@ function goalNodesToTree(
     }
 
     const data: SMMNodeData = {
-      text: goalNode.text || '나의 인생 비전',
+      text: goalNode.text || defaultRootText || 'My Life Vision',
       uid: goalNode.id,
       expand: !goalNode.collapsed,
       goalId: goalNode.id,
@@ -291,36 +293,11 @@ const RAINBOW_COLORS = [
 ];
 
 const layoutOptions: { mode: LayoutMode; label: string }[] = [
-  { mode: 'mindMap', label: '마인드' },
-  { mode: 'logicalStructure', label: '논리' },
-  { mode: 'logicalStructureLeft', label: '논리(좌)' },
-  { mode: 'organizationStructure', label: '조직도' },
+  { mode: 'mindMap', label: 'Mind Map' },
+  { mode: 'logicalStructure', label: 'Logic' },
+  { mode: 'logicalStructureLeft', label: 'Logic (L)' },
+  { mode: 'organizationStructure', label: 'Org Chart' },
 ];
-
-const ACTION_BAR_LABELS = {
-  en: {
-    child: 'Child',
-    sibling: 'Sibling',
-    todo: 'Todo',
-    generate: 'Generate',
-    insert: 'Insert',
-    more: 'More',
-    insertImage: 'Insert image',
-    delete: 'Delete',
-    decompose: 'Decompose',
-  },
-  ko: {
-    child: '자식',
-    sibling: '형제',
-    todo: '투두',
-    generate: '이미지 생성',
-    insert: '이미지 삽입',
-    more: '더보기',
-    insertImage: '이미지 삽입',
-    delete: '삭제',
-    decompose: '분해',
-  },
-} as const;
 
 // --- Component ---
 const MindMap: React.FC<MindMapProps> = ({
@@ -329,6 +306,7 @@ const MindMap: React.FC<MindMapProps> = ({
   onDecomposeGoal, previewNodeIds, confirmedPreviewIds, onTogglePreviewConfirm, onFinalizePreview,
   width, height, editingNodeId, onEditEnd, imageLoadingNodes
 }) => {
+  const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const mindMapRef = useRef<any>(null);
   const [layout, setLayout] = useState<LayoutMode>('mindMap');
@@ -339,11 +317,7 @@ const MindMap: React.FC<MindMapProps> = ({
   const [tooltipDismissed, setTooltipDismissed] = useState(false);
 
   // --- Onboarding: Ghost templates ---
-  const GHOST_TEMPLATES = [
-    '나는 매달 100만원의 부수입이 생겼다',
-    '나는 슬림하고 탄탄한 몸을 가졌다',
-    '나는 누구에게나 호감을 주는 유머감각을 가졌다',
-  ];
+  const GHOST_TEMPLATES = t.mindmap.ghostTemplates;
   const [usedGhosts, setUsedGhosts] = useState<Set<number>>(new Set());
 
   // --- Onboarding Phase Computation ---
@@ -351,7 +325,7 @@ const MindMap: React.FC<MindMapProps> = ({
 
   const rootNode = nodes.find(n => n.type === NodeType.ROOT);
   const rootText = rootNode?.text || '';
-  const isRootDefault = rootText === '' || rootText === '나의 인생 비전';
+  const isRootDefault = rootText === '' || rootText === t.mindmap.defaultRootText || rootText === '나의 인생 비전';
   const childCount = nodes.filter(n => n.type === NodeType.SUB).length;
   const allGhostsUsed = usedGhosts.size >= GHOST_TEMPLATES.length;
 
@@ -360,13 +334,6 @@ const MindMap: React.FC<MindMapProps> = ({
     !templatesSkipped && !allGhostsUsed && childCount <= usedGhosts.size ? 'templates' :
     (childCount > 0 || templatesSkipped) && !tooltipDismissed ? 'tooltips' :
     'done';
-
-  const languageByDom = document.documentElement.lang.toLowerCase().startsWith('ko') ? 'ko' : 'en';
-  const resolvedLanguage: 'en' | 'ko' = (
-    language === 'ko'
-    || languageByDom === 'ko'
-  ) ? 'ko' : 'en';
-  const labels = ACTION_BAR_LABELS[resolvedLanguage];
 
   const getCurrentMindMapScale = useCallback(() => {
     const mindMap = mindMapRef.current;
@@ -520,7 +487,7 @@ const MindMap: React.FC<MindMapProps> = ({
   useEffect(() => {
     if (!containerRef.current) return;
 
-    const treeData = goalNodesToTree(nodes, links, selectedNodeId, confirmedPreviewIds);
+    const treeData = goalNodesToTree(nodes, links, selectedNodeId, confirmedPreviewIds, t.mindmap.defaultRootText);
     if (!treeData) return;
 
     lastStructureKeyRef.current = computeStructureKey(nodes, links, selectedNodeId, confirmedPreviewIds);
@@ -723,7 +690,7 @@ const MindMap: React.FC<MindMapProps> = ({
     if (newKey === lastStructureKeyRef.current) return;
     lastStructureKeyRef.current = newKey;
 
-    const treeData = goalNodesToTree(nodes, links, selectedNodeId, confirmedPreviewIds);
+    const treeData = goalNodesToTree(nodes, links, selectedNodeId, confirmedPreviewIds, t.mindmap.defaultRootText);
     if (!treeData) return;
 
     // Inject ghost nodes for Phase 2
@@ -860,7 +827,7 @@ const MindMap: React.FC<MindMapProps> = ({
                 : 'text-gray-400 hover:text-white hover:bg-white/10'
             }`}
           >
-            {opt.label}
+            {t.mindmap.layoutModes[opt.mode] || opt.label}
           </button>
         ))}
       </div>
@@ -929,7 +896,7 @@ const MindMap: React.FC<MindMapProps> = ({
                   }}
                   className="rounded-full px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/10"
                 >
-                  {labels.todo}
+                  {t.mindmap.todo}
                 </button>
               </>
             )}
@@ -940,7 +907,7 @@ const MindMap: React.FC<MindMapProps> = ({
                 className="flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-medium bg-neon-lime/10 text-neon-lime hover:bg-neon-lime/20 transition-colors whitespace-nowrap"
               >
                 <Sparkles className="w-3.5 h-3.5" />
-                {labels.decompose}
+                {t.mindmap.decompose}
               </button>
             )}
 
@@ -951,7 +918,7 @@ const MindMap: React.FC<MindMapProps> = ({
               }}
               className="rounded-full px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/10"
             >
-              {labels.generate}
+              {t.mindmap.generate}
             </button>
 
             {isRootActionNode ? (
@@ -962,7 +929,7 @@ const MindMap: React.FC<MindMapProps> = ({
                 }}
                 className="rounded-full px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/10"
               >
-                {labels.insert}
+                {t.mindmap.insert}
               </button>
             ) : (
               <button
@@ -973,7 +940,7 @@ const MindMap: React.FC<MindMapProps> = ({
                 }}
                 className="rounded-full px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/10"
               >
-                {labels.more}
+                {t.mindmap.more}
               </button>
             )}
           </div>
@@ -987,7 +954,7 @@ const MindMap: React.FC<MindMapProps> = ({
                 }}
                 className="w-full rounded-lg px-3 py-2 text-left text-xs font-semibold text-white hover:bg-white/10"
               >
-                {labels.insertImage}
+                {t.mindmap.insertImage}
               </button>
               <button
                 onClick={() => {
@@ -996,7 +963,7 @@ const MindMap: React.FC<MindMapProps> = ({
                 }}
                 className="mt-1 w-full rounded-lg px-3 py-2 text-left text-xs font-semibold text-red-400 hover:bg-red-500/15"
               >
-                {labels.delete}
+                {t.mindmap.delete}
               </button>
             </div>
           )}

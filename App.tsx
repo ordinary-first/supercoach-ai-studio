@@ -32,6 +32,9 @@ import { useToast } from './hooks/useToast';
 import { appendAction } from './services/actionLogService';
 import ToastContainer from './components/ToastContainer';
 import { Crown, Settings as SettingsIcon } from 'lucide-react';
+import { LanguageContext } from './i18n/useTranslation';
+import { getTranslations } from './i18n/index';
+import type { AppLanguage } from './i18n/types';
 
 // Helper function to calculate the next occurrence date for recurring todos
 const calculateNextDate = (repeat: RepeatFrequency, fromDate: Date): number => {
@@ -114,8 +117,6 @@ const calculateNextDate = (repeat: RepeatFrequency, fromDate: Date): number => {
   }
 };
 
-type AppLanguage = 'en' | 'ko';
-
 const DEFAULT_VIEWPORT_CONTENT =
   'width=device-width, initial-scale=1.0, viewport-fit=cover';
 const GOALS_LOCKED_VIEWPORT_CONTENT =
@@ -143,6 +144,7 @@ const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('GOALS');
   const [language, setLanguage] = useState<AppLanguage>(getInitialLanguage);
   const [isLanguageLoaded, setIsLanguageLoaded] = useState(false);
+  const t = useMemo(() => getTranslations(language), [language]);
   const [isSettingsPageOpen, setIsSettingsPageOpen] = useState(false);
 
   const [nodes, setNodes] = useState<GoalNode[]>(createInitialGoalNodes);
@@ -254,7 +256,7 @@ const App: React.FC = () => {
   useEffect(() => {
     if (!userId || !isLanguageLoaded) return;
     saveUserSettings(userId, { language }).catch(() => {
-      addToast('언어 설정 저장에 실패했습니다.', 'warning');
+      addToast(t.app.toasts.languageSaveFailed, 'warning');
     });
   }, [addToast, isLanguageLoaded, language, userId]);
 
@@ -270,15 +272,15 @@ const App: React.FC = () => {
         if (cancelled) return;
 
         if (result.verified && result.isSubscriptionActive) {
-          addToast('결제가 확인되었습니다. 구독이 활성화됐습니다.', 'success');
+          addToast(t.app.toasts.paymentVerified, 'success');
         } else if (result.verified) {
-          addToast('결제는 확인되었습니다.', 'success');
+          addToast(t.app.toasts.paymentConfirmed, 'success');
         } else {
-          addToast('결제 확인 중입니다. 잠시 후 다시 확인해주세요.', 'warning');
+          addToast(t.app.toasts.paymentPending, 'warning');
         }
       } catch {
         if (!cancelled) {
-          addToast('결제 검증에 실패했습니다. 다시 시도해주세요.', 'error');
+          addToast(t.app.toasts.paymentFailed, 'error');
         }
       } finally {
         if (cancelled) return;
@@ -403,7 +405,7 @@ const App: React.FC = () => {
       );
       if (imageUrl) handleUpdateNode(nodeId, { imageUrl });
     } catch {
-      addToast('이미지 생성에 실패했습니다', 'warning');
+      addToast(t.app.toasts.imageFailed, 'warning');
     } finally {
       setImageLoadingNodes(prev => {
         const next = new Set(prev); next.delete(nodeId); return next;
@@ -445,7 +447,7 @@ const App: React.FC = () => {
 
       const suggestions = await decomposeGoal(node.text, childTexts, getUserId());
       if (!suggestions.length) {
-        addToast('목표 분해에 실패했습니다', 'warning');
+        addToast(t.app.toasts.decomposeFailed, 'warning');
         return;
       }
 
@@ -477,7 +479,7 @@ const App: React.FC = () => {
       setPreviewNodeIds(newNodes.map(n => n.id));
       setConfirmedPreviewIds([]);
     } catch {
-      addToast('목표 분해 중 오류가 발생했습니다', 'warning');
+      addToast(t.app.toasts.decomposeError, 'warning');
     } finally {
       setDecomposingNodeId(null);
     }
@@ -503,7 +505,7 @@ const App: React.FC = () => {
 
     const confirmedCount = confirmedPreviewIds.length;
     if (confirmedCount > 0) {
-      addToast(`${confirmedCount}개 하위 목표가 추가되었습니다`, 'success');
+      addToast(t.app.toasts.subgoalsAdded.replace('{count}', String(confirmedCount)), 'success');
       confirmedPreviewIds.forEach(id => {
         const node = nodes.find(n => n.id === id);
         if (node) appendAction(getUserId(), 'ADD_NODE', `"${node.text}" AI 분해 추가`, { nodeId: id, parentId: node.parentId });
@@ -534,12 +536,12 @@ const App: React.FC = () => {
       const uploaded = await uploadNodeImage(imageDataUrl, currentUserId, nodeId);
       if (uploaded) {
         handleUpdateNode(nodeId, { imageUrl: uploaded });
-        addToast('이미지가 노드에 삽입되었습니다.', 'success');
+        addToast(t.app.toasts.imageInserted, 'success');
       } else {
-        addToast('이미지 삽입에 실패했습니다.', 'warning');
+        addToast(t.app.toasts.imageInsertFailed, 'warning');
       }
     } catch {
-      addToast('이미지 삽입에 실패했습니다.', 'warning');
+      addToast(t.app.toasts.imageInsertFailed, 'warning');
     } finally {
       insertImageTargetNodeRef.current = null;
     }
@@ -657,7 +659,7 @@ const App: React.FC = () => {
       <div className="fixed inset-0 bg-deep-space flex flex-col items-center justify-center gap-6">
         <div className="w-12 h-12 border-4 border-neon-lime border-t-transparent rounded-full animate-spin"></div>
         <p className="text-xs text-gray-500 font-mono tracking-widest animate-pulse">
-          {isInitializing ? '초기화 중...' : '데이터 로딩 중...'}
+          {isInitializing ? t.app.initializing : t.app.loadingData}
         </p>
       </div>
     );
@@ -678,6 +680,7 @@ const App: React.FC = () => {
   }
 
   return (
+    <LanguageContext.Provider value={{ language, t, setLanguage }}>
     <div className="relative w-screen h-screen bg-deep-space text-white font-body overflow-hidden">
       {activeTab === 'GOALS' && (
         <>
@@ -691,7 +694,7 @@ const App: React.FC = () => {
                  className="flex items-center gap-2 bg-black/40 backdrop-blur-md border border-white/10 px-3 py-1.5 md:px-4 md:py-2 rounded-full text-[10px] font-bold tracking-widest text-neon-lime hover:bg-neon-lime hover:text-black transition-all"
                >
                    <span className="bg-neon-lime/20 px-1.5 py-0.5 rounded text-[8px] border border-neon-lime/30">K</span>
-                   단축키
+                   {t.shortcuts.button}
                </button>
            </div>
          </>
@@ -762,7 +765,7 @@ const App: React.FC = () => {
         <div className="fixed top-3 left-1/2 -translate-x-1/2 z-[52] flex items-center gap-2 bg-black/70 backdrop-blur-md border border-white/10 rounded-full px-3 py-1.5 animate-fade-in">
           <div className="w-2 h-2 rounded-full bg-red-400 animate-pulse" />
           <span className="text-[10px] font-bold text-gray-300 tracking-wide">
-            동기화 불가
+            {t.app.syncOffline}
           </span>
         </div>
       )}
@@ -789,7 +792,7 @@ const App: React.FC = () => {
         onSaveProfile={(p) => {
           setUserProfile(p);
           const uid = getUserId();
-          if (uid) saveProfile(uid, p).catch(() => addToast('프로필 저장에 실패했습니다', 'error'));
+          if (uid) saveProfile(uid, p).catch(() => addToast(t.app.toasts.profileSaveFailed, 'error'));
           appendAction(getUserId(), 'UPDATE_PROFILE', `프로필 업데이트: ${p.name}`);
         }}
         onLogout={() => { logout(); setUserProfile(null); setActiveTab('GOALS'); setIsSettingsPageOpen(false); }}
@@ -799,23 +802,21 @@ const App: React.FC = () => {
         <div className="fixed inset-0 z-[150] bg-black/80 backdrop-blur-sm flex items-center justify-center p-6">
           <div className="bg-[#0a0f1a] border border-white/10 rounded-2xl p-6 max-w-sm w-full text-center space-y-4">
             <Crown size={40} className="text-neon-lime mx-auto" />
-            <h2 className="text-xl font-bold text-white">무료 체험이 종료되었습니다</h2>
+            <h2 className="text-xl font-bold text-white">{t.app.trialExpiredTitle}</h2>
             <p className="text-sm text-gray-400 leading-relaxed">
-              3일 무료 체험 기간이 끝났습니다.<br />
-              AI 코칭 기능을 계속 사용하려면<br />
-              플랜을 업그레이드해 주세요.
+              {t.app.trialExpiredDesc.split('\n').map((line, i) => <React.Fragment key={i}>{line}<br /></React.Fragment>)}
             </p>
             <button
               onClick={() => setIsSettingsPageOpen(true)}
               className="w-full py-3 bg-neon-lime text-black font-bold rounded-full hover:bg-white transition-all"
             >
-              플랜 업그레이드
+              {t.app.trialUpgrade}
             </button>
             <button
               onClick={() => setTrialDismissed(true)}
               className="text-[11px] text-gray-600 hover:text-gray-400 transition-colors"
             >
-              나중에 하기
+              {t.common.later}
             </button>
           </div>
         </div>
@@ -828,11 +829,11 @@ const App: React.FC = () => {
                        <div className="w-16 h-16 mx-auto rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center">
                            <span className="text-3xl">!</span>
                        </div>
-                      <h3 className="text-xl font-display font-bold text-white">노드 삭제</h3>
+                      <h3 className="text-xl font-display font-bold text-white">{t.app.deleteNodeTitle}</h3>
                       <p className="text-sm text-gray-400">
-                          "{nodes.find(n => n.id === deleteConfirmNodeId)?.text || '이 노드'}"를 삭제하시겠습니까?
+                          {t.app.deleteNodeConfirm.replace('{name}', nodes.find(n => n.id === deleteConfirmNodeId)?.text || t.app.deleteNodeDefault)}
                           {nodes.filter(n => n.parentId === deleteConfirmNodeId).length > 0 && (
-                              <span className="block mt-1 text-red-400">하위 노드도 함께 삭제됩니다.</span>
+                              <span className="block mt-1 text-red-400">{t.app.deleteNodeChildren}</span>
                           )}
                       </p>
                       <div className="flex gap-3 pt-2">
@@ -840,13 +841,13 @@ const App: React.FC = () => {
                               onClick={() => setDeleteConfirmNodeId(null)}
                               className="flex-1 px-6 py-3 bg-white/5 border border-white/10 rounded-full text-sm font-bold text-gray-300 hover:bg-white/10 transition-all"
                           >
-                              취소
+                              {t.common.cancel}
                           </button>
                           <button
                               onClick={() => executeDeleteNode(deleteConfirmNodeId)}
                               className="flex-1 px-6 py-3 bg-red-500 rounded-full text-sm font-bold text-white hover:bg-red-400 transition-all shadow-[0_0_20px_rgba(239,68,68,0.3)]"
                           >
-                              삭제
+                              {t.common.delete}
                           </button>
                       </div>
                   </div>
@@ -857,6 +858,7 @@ const App: React.FC = () => {
 
       <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
+    </LanguageContext.Provider>
   );
 };
 

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Circle, CheckCircle2, Calendar, Target, Sun, Repeat, Trash2, Edit3 } from 'lucide-react';
 import { ToDoItem, RepeatFrequency } from '../../types';
+import { useTranslation } from '../../i18n/useTranslation';
 
 interface TodoItemProps {
   todo: ToDoItem;
@@ -11,25 +12,16 @@ interface TodoItemProps {
 }
 
 const TodoItem: React.FC<TodoItemProps> = ({ todo, onToggle, onEdit, onDelete, isSelected = false }) => {
+  const { language, t } = useTranslation();
+
   const formatDate = (timestamp?: number | null) => {
     if (!timestamp) return null;
-    return new Date(timestamp).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', weekday: 'short' });
+    return new Date(timestamp).toLocaleDateString(language === 'ko' ? 'ko-KR' : 'en-US', { month: 'short', day: 'numeric', weekday: 'short' });
   };
 
   const getRepeatLabel = (freq: RepeatFrequency | undefined) => {
     if (!freq) return null;
-    const labels: Record<string, string> = {
-      'daily': '매일',
-      'weekdays': '평일',
-      'weekly': '매주',
-      'monthly': '매월',
-      'weekly-2': '주 2회',
-      'weekly-3': '주 3회',
-      'weekly-4': '주 4회',
-      'weekly-5': '주 5회',
-      'weekly-6': '주 6회',
-    };
-    return labels[freq] || freq;
+    return t.todo.repeat[freq] || freq;
   };
 
   const getPriorityColor = () => {
@@ -91,7 +83,7 @@ const TodoItem: React.FC<TodoItemProps> = ({ todo, onToggle, onEdit, onDelete, i
           {todo.isMyDay && (
             <div className="flex items-center gap-1 text-xs text-yellow-400 bg-yellow-400/10 px-2 py-1 rounded-full border border-yellow-400/20">
               <Sun size={12} />
-              <span>오늘</span>
+              <span>{t.common.today}</span>
             </div>
           )}
 

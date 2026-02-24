@@ -1,4 +1,5 @@
 import { GoalNode, NodeType } from '../types';
+import type { AppLanguage } from '../i18n/types';
 
 export interface CoachingQuestion {
   id: string;
@@ -78,6 +79,76 @@ const SITUATION_1_QUESTIONS: CoachingQuestion[] = [
   },
 ];
 
+const SITUATION_1_QUESTIONS_EN: CoachingQuestion[] = [
+  {
+    id: 'brain-lag',
+    question: 'Why does your brain "lag" without a clear goal?',
+    icon: '🧠',
+    summary: 'The neuroscience behind why goals actually matter',
+    topicDirective: `[Coaching Topic: Why does your brain "lag" without a clear goal?]
+The user selected this question. Deliver the content below in a natural conversational tone. Don't dump everything at once — unpack one key point at a time and invite the user's reaction:
+
+Most people think: "Goals are nice to have, but I can work hard either way." That's a complete misunderstanding of how the brain actually works. Your brain doesn't perceive the world as it is — it filters reality through the lens of your current purpose.
+
+1. Your eyes don't see "facts"
+The brain doesn't process the world as objective data. Instead, it asks a single question about everything it encounters: **"Is this a tool that helps my goal, or an obstacle that threatens it?"** The moment you decide you want to find a great restaurant for dinner, your brain instantly starts spotting every restaurant sign on the street — signs that were invisible a moment ago. Without a goal, the brain can't decide what to notice and what to discard.
+
+2. Why the absence of a goal literally lowers your intelligence (the Chaos state)
+Not having a clear goal isn't just laziness. It means the perceptual framework your brain uses to make sense of the world has collapsed. In this state, the brain tries to assign equal weight to every incoming stimulus and overloads immediately. That's **Chaos** — and it's the real reason you feel directionless, unmotivated, and anxious. It's not a character flaw. Your brain's filtering system is simply switched off.
+
+3. Goals are not a productivity hack — they're a survival mechanism
+Setting a goal isn't about doing more work. It's about not losing your mind, and about being able to read the world clearly enough to act in it. Only when a goal exists does the chaos of daily life transform into a **game map you can actually navigate**.
+
+Closing: "Living without a goal is like driving at 120 mph on a highway thick with fog. Give your brain a clear destination. Only then does the world become a set of tools working in your favor."`,
+  },
+  {
+    id: 'meaning-goals',
+    question: 'What kind of goals should you really pursue?',
+    icon: '🧭',
+    summary: "Forget what everyone else says is a good goal",
+    topicDirective: `[Coaching Topic: What kind of goals should you really pursue?]
+The user selected this question. Deliver the content below in a natural conversational tone. Don't dump everything at once — unpack one key point at a time and invite the user's reaction:
+
+The life playbook: stop chasing "happiness" and configure for "meaning" instead.
+Most people frame their goals around a single question: "How do I become happier?" That's falling for one of your genes' oldest tricks. Happiness is a bonus — a dopamine spike that comes and goes. It was never meant to be a destination.
+
+The top 1% who actually build extraordinary lives configure what you might call **meaning-driven goals**. This isn't about getting more done or optimizing your schedule. It starts with an honest acknowledgment: life's default settings include suffering and tragedy. That's not pessimism — it's the prerequisite for everything that follows.
+
+1. Swap pleasure for the weapon called "voluntary responsibility"
+The pleasure of good food and leisure adapts quickly and turns hollow. But when you **voluntarily shoulder a heavy responsibility**, your brain reframes the pain as growth. Meaning is the only patch that fixes the existential emptiness bug. Instead of flailing in existential dread, you develop a powerful operating identity: "I am someone who solves this problem."
+
+2. Narrative restructuring — the highest-ROI upgrade for your brain
+When you set the right kind of goal, your entire neural architecture aligns around it. The brain begins to filter the world's noise and surface only what's relevant to you. In short, you're optimizing your mind into a goal-achieving machine.
+
+3. The highest good is building a livable order
+It sounds grand, but it's concrete: reduce the unnecessary suffering within your reach, speak and act with integrity, and construct — one decision at a time — an ordered world you can actually inhabit. That's the real game.
+
+4. A goal is a tool, not a trophy
+People fixate on the outcome — on what they'll have once they achieve the goal. Wrong frame. What actually matters is **who you become in the process of pursuing it** — the upgraded version of yourself capable of carrying the goal's weight. The goal is the best possible instrument for replacing your mental and behavioral hardware.
+
+Closing: "Are you setting goals just to make more money — or are you searching for a meaning that will completely redefine who you are?"`,
+  },
+  {
+    id: 'identity-node',
+    question: 'Why should the center node be your identity?',
+    icon: '🎯',
+    summary: 'Competence is a byproduct of identity',
+    topicDirective: `[Coaching Topic: Why should the center node be your identity?]
+The user selected this question. Deliver the content below in a natural conversational tone. Don't dump everything at once — unpack one key point at a time and invite the user's reaction:
+
+The core process is this: transforming yourself into someone capable of achieving the highest good you can imagine. The essence isn't skill acquisition — it's **Transformation** into the kind of person the goal demands.
+
+"Competence is a byproduct of identity."
+Simply learning a technique is functional acquisition. Changing your identity is **ontological transformation** — a shift in what you fundamentally are.
+
+Consider the difference between someone studying "how to write well" versus someone who has claimed the identity: "I am a writer who delivers truth." The intensity and depth of the training each person submits to is categorically different.
+
+The competence needed to achieve a goal grows naturally — almost inevitably — from the effort to embody the character that goal requires. You don't build the skill first and then become the person. You become the person, and the skills follow.
+
+Closing: Guide the user to place their identity node at the very center of their mind map. Ask them directly: "Who is the person you want to become?"`,
+  },
+];
+
 const SITUATION_2_QUESTIONS: CoachingQuestion[] = [
   {
     id: 'jealousy-fuel',
@@ -141,16 +212,80 @@ const SITUATION_2_QUESTIONS: CoachingQuestion[] = [
   },
 ];
 
+const SITUATION_2_QUESTIONS_EN: CoachingQuestion[] = [
+  {
+    id: 'jealousy-fuel',
+    question: 'Have you lost sleep recently over jealousy or feeling inferior to someone?',
+    icon: '😤',
+    summary: 'Turn envy into fuel for identity transformation',
+    topicDirective: `[Coaching Topic: Jealousy and Inferiority]
+The user selected "Have you lost sleep recently over jealousy or feeling inferior to someone?"
+
+That feeling is a powerful signal from your genes — not a weakness. Don't focus on the other person's bank balance. Dig deeper: what is your brain **unconsciously craving** about them? Their overwhelming mastery? Their freedom to influence the world on their own terms? If you can't convert that envy into fuel for identity transformation, you'll stay exactly where you are — forever watching from the sidelines.
+
+Ask the user specifically: Who triggered this feeling, and what quality or capability in that person made them feel that way? Use their answer to surface the core keywords for their identity node.`,
+  },
+  {
+    id: 'heavy-burden',
+    question: 'What heavy burden would you willingly carry for the people you love?',
+    icon: '💪',
+    summary: 'Voluntary responsibility creates your highest title',
+    topicDirective: `[Coaching Topic: Voluntary Responsibility]
+The user selected "What heavy burden would you willingly carry for the people you love?"
+
+Most people spend their lives chasing comfort — and their minds quietly atrophy. The rare individual who **voluntarily chooses responsibility** does the opposite: they optimize their brain through the weight of meaningful obligation. When you've fulfilled that responsibility, what is the **highest-value title** the world would give you? That title is your real goal.
+
+Ask the user specifically what responsibility they want to take on. Extract the identity keywords from their answer and guide them to embed it at the center of their mind map.`,
+  },
+  {
+    id: 'bug-delete',
+    question: "What's the most embarrassing habit you'd love to delete about yourself?",
+    icon: '🗑️',
+    summary: 'Delete the survival-instinct bugs in your system',
+    topicDirective: `[Coaching Topic: Deleting the Bug]
+The user selected "What's the most embarrassing habit you'd love to delete about yourself?"
+
+That behavior is not your essence. It's a **bug** — a glitch produced by survival instincts that no longer serve you. Strip away the fragile ego and the lazy shortcuts, and what remains? What does the **pure, uncompromised version of you** look like at 100% signal strength? Give that version a name and start living as that person today.
+
+Ask the user specifically what behavior they find most embarrassing. Then connect the opposite — the ideal self on the other side of that bug — to the keywords of their identity node.`,
+  },
+  {
+    id: 'chaos-to-order',
+    question: 'Look around you. What is the biggest mess — at home or at work — that you most want to fix?',
+    icon: '🔧',
+    summary: 'The leveled-up ability to turn chaos into order',
+    topicDirective: `[Coaching Topic: Chaos to Order]
+The user selected "Look around you. What is the biggest mess — at home or at work — that you most want to fix?"
+
+Complaining about chaos without acting on it is low-leverage thinking. Now imagine using your natural talents as your hardware and transforming that chaos into **a beautiful system or a profitable structure**. What is the specific **leveled-up capability** that would make that transformation possible?
+
+Ask the user specifically what situation feels most chaotic, and what skill or capacity they'd need to resolve it. Guide them to encode that capability into their identity node.`,
+  },
+  {
+    id: 'ending-credits',
+    question: 'When the ending credits of your life roll, what character do you want to be remembered as?',
+    icon: '🏆',
+    summary: 'Put your final evolved form at the center of your mind map',
+    topicDirective: `[Coaching Topic: Ending Credits]
+The user selected "When the ending credits of your life roll, what character do you want to be remembered as?"
+
+Picture the version of yourself that — even after everything it cost — you can say with total conviction: "Living as this person was the greatest play I ever made." That is your **final evolved form**. Define its characteristics right now and place it at the center of your mind map.
+
+Ask the user specifically what traits define that character. Their answer becomes the core text of their identity node.`,
+  },
+];
+
 export function getCoachingQuestions(
   selectedNode: GoalNode | null,
-  nodes: GoalNode[]
+  nodes: GoalNode[],
+  language: AppLanguage = 'ko'
 ): CoachingQuestion[] {
   if (!nodes.length || !selectedNode) {
-    return SITUATION_1_QUESTIONS;
+    return language === 'ko' ? SITUATION_1_QUESTIONS : SITUATION_1_QUESTIONS_EN;
   }
 
   if (selectedNode.type === NodeType.ROOT || selectedNode.type === NodeType.SUB) {
-    return SITUATION_2_QUESTIONS;
+    return language === 'ko' ? SITUATION_2_QUESTIONS : SITUATION_2_QUESTIONS_EN;
   }
 
   return [];

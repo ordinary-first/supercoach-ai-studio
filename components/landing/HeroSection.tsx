@@ -1,11 +1,13 @@
 import React from 'react';
 import { ShieldCheck } from 'lucide-react';
+import { useTranslation } from '../../i18n/useTranslation';
 
 interface HeroSectionProps {
   onCTAClick: () => void;
 }
 
 export const HeroSection: React.FC<HeroSectionProps> = ({ onCTAClick }) => {
+  const { language } = useTranslation();
   return (
     <section
       className="relative min-h-screen flex items-center justify-center overflow-hidden"
@@ -105,14 +107,14 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onCTAClick }) => {
             className="text-xl sm:text-2xl md:text-4xl text-white/70 font-light"
             style={{ fontFamily: 'Inter, sans-serif' }}
           >
-            잠깐의 동기부여가 아닌
+            {language === 'ko' ? '잠깐의 동기부여가 아닌' : 'Not fleeting motivation'}
           </p>
           <p
             className="text-2xl sm:text-3xl md:text-5xl font-bold leading-tight"
             style={{ fontFamily: 'Inter, sans-serif' }}
           >
-            <span style={{ color: '#CCFF00' }}>과학적</span>
-            <span className="text-white"> AI 밀착 관리 시스템</span>
+            <span style={{ color: '#CCFF00' }}>{language === 'ko' ? '과학적' : 'Scientific'}</span>
+            <span className="text-white">{language === 'ko' ? ' AI 밀착 관리 시스템' : ' AI Close-Management System'}</span>
           </p>
         </div>
 
@@ -124,7 +126,9 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onCTAClick }) => {
             animation: 'fadeIn 0.8s ease-out 0.4s both',
           }}
         >
-          구조화 + AI 코치 + 시각화 — 목표 달성의 3가지 열쇠를 하나의 앱에서
+          {language === 'ko'
+            ? '구조화 + AI 코치 + 시각화 — 목표 달성의 3가지 열쇠를 하나의 앱에서'
+            : 'Structure + AI Coach + Visualization — Three keys to goal achievement, in one app'}
         </p>
 
         {/* Primary CTA */}
@@ -150,7 +154,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onCTAClick }) => {
                 '0 0 0 0 rgba(204,255,0,0)';
             }}
           >
-            무료로 시작하기
+            {language === 'ko' ? '무료로 시작하기' : 'Start Free'}
           </button>
 
           {/* Pulsing indicator */}
@@ -163,7 +167,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onCTAClick }) => {
               className="text-xs text-gray-400"
               style={{ fontFamily: 'Inter, sans-serif' }}
             >
-              베타 기간 무료 체험 · 집중 케어 인원 한정
+              {language === 'ko' ? '베타 기간 무료 체험 · 집중 케어 인원 한정' : 'Free beta trial · Limited spots for focused care'}
             </span>
           </div>
         </div>

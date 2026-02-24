@@ -2,6 +2,7 @@
 import React from 'react';
 import { Keyboard, Zap, MousePointer2 } from 'lucide-react';
 import CloseButton from './CloseButton';
+import { useTranslation } from '../i18n/useTranslation';
 
 interface ShortcutsPanelProps {
   isOpen: boolean;
@@ -9,24 +10,25 @@ interface ShortcutsPanelProps {
 }
 
 const ShortcutsPanel: React.FC<ShortcutsPanelProps> = ({ isOpen, onClose }) => {
+  const { t } = useTranslation();
   if (!isOpen) return null;
 
   const sections = [
     {
-      title: "마인드맵 조작",
+      title: t.shortcuts.sections.mindmap,
       items: [
-        { key: 'Tab', desc: '하위 목표 추가' },
-        { key: 'Enter', desc: '형제 목표 추가' },
-        { key: 'Del', desc: '선택 삭제' },
-        { key: 'Space', desc: '화면 중앙 이동' },
+        { key: 'Tab', desc: t.shortcuts.items.addChild },
+        { key: 'Enter', desc: t.shortcuts.items.addSibling },
+        { key: 'Del', desc: t.shortcuts.items.deleteSelected },
+        { key: 'Space', desc: t.shortcuts.items.centerView },
       ]
     },
     {
-      title: "탐색 제어",
+      title: t.shortcuts.sections.navigation,
       items: [
-        { key: '1 - 5', desc: '탭 전환' },
-        { key: 'Esc', desc: '닫기 / 선택 해제' },
-        { key: 'K', desc: '단축키 패널 열기/닫기' },
+        { key: '1 - 5', desc: t.shortcuts.items.switchTab },
+        { key: 'Esc', desc: t.shortcuts.items.closeOrDeselect },
+        { key: 'K', desc: t.shortcuts.items.toggleShortcuts },
       ]
     }
   ];
@@ -43,8 +45,8 @@ const ShortcutsPanel: React.FC<ShortcutsPanelProps> = ({ isOpen, onClose }) => {
                 <Zap size={16} className="text-neon-lime" />
             </div>
             <div className="flex flex-col">
-                <span className="font-display font-bold text-xs tracking-widest text-white uppercase">단축키 안내</span>
-                <span className="text-[8px] text-neon-lime/60 uppercase font-mono tracking-tighter">키보드 단축키 활성</span>
+                <span className="font-display font-bold text-xs tracking-widest text-white uppercase">{t.shortcuts.title}</span>
+                <span className="text-[8px] text-neon-lime/60 uppercase font-mono tracking-tighter">{t.shortcuts.subtitle}</span>
             </div>
           </div>
           <CloseButton onClick={onClose} size="sm" />
@@ -76,7 +78,7 @@ const ShortcutsPanel: React.FC<ShortcutsPanelProps> = ({ isOpen, onClose }) => {
 
         <div className="mt-6 pt-4 border-t border-white/5 flex items-center justify-center gap-2">
             <MousePointer2 size={12} className="text-gray-600" />
-            <span className="text-[9px] text-gray-600 font-bold uppercase tracking-widest">더블클릭으로 노드 편집</span>
+            <span className="text-[9px] text-gray-600 font-bold uppercase tracking-widest">{t.shortcuts.footer}</span>
         </div>
       </div>
     </div>

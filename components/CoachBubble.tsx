@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { MessageCircle } from 'lucide-react';
 import { GoalNode, NodeType } from '../types';
+import { useTranslation } from '../i18n/useTranslation';
 
 interface CoachBubbleProps {
   isOpen: boolean;
@@ -12,6 +13,7 @@ interface CoachBubbleProps {
 }
 
 const CoachBubble: React.FC<CoachBubbleProps> = ({ isOpen, onToggle, hasUnread, selectedNode, nodes }) => {
+  const { t } = useTranslation();
   const [shouldPulse, setShouldPulse] = useState(false);
   const hasInitialPulsed = useRef(false);
 
@@ -56,7 +58,7 @@ const CoachBubble: React.FC<CoachBubbleProps> = ({ isOpen, onToggle, hasUnread, 
             : 'border-neon-lime/30 shadow-[0_0_20px_rgba(0,0,0,0.5)]',
           'hover:border-neon-lime hover:shadow-[0_0_25px_rgba(204,255,0,0.15)]',
         ].join(' ')}
-        aria-label="AI 코치 열기"
+        aria-label={t.coach.openCoach}
       >
         {/* 맥동 링 */}
         <div className={`absolute inset-0 rounded-full border border-neon-lime/30 ${shouldPulse ? 'animate-ping' : 'animate-pulse'}`} />

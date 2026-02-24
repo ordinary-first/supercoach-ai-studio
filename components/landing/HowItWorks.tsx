@@ -1,6 +1,7 @@
 import React from 'react';
 import { UserPlus, Target, Zap } from 'lucide-react';
 import { useScrollReveal } from '../../hooks/useScrollReveal';
+import { useTranslation } from '../../i18n/useTranslation';
 
 interface Step {
   number: number;
@@ -9,29 +10,21 @@ interface Step {
   description: string;
 }
 
-const STEPS: Step[] = [
-  {
-    number: 1,
-    icon: <UserPlus size={18} className="text-white" />,
-    title: '가입',
-    description: 'Google 원클릭. 10초면 완료.',
-  },
-  {
-    number: 2,
-    icon: <Target size={18} className="text-white" />,
-    title: '목표 설정',
-    description: '마인드맵으로 비전을 구조화.',
-  },
-  {
-    number: 3,
-    icon: <Zap size={18} className="text-white" />,
-    title: 'AI와 달성',
-    description: '매일 코치와 함께 성장.',
-  },
-];
-
 export const HowItWorks: React.FC = () => {
   const { ref, isVisible } = useScrollReveal<HTMLElement>({ threshold: 0.1 });
+  const { language } = useTranslation();
+
+  const STEPS_KO: Step[] = [
+    { number: 1, icon: <UserPlus size={18} className="text-white" />, title: '가입', description: 'Google 원클릭. 10초면 완료.' },
+    { number: 2, icon: <Target size={18} className="text-white" />, title: '목표 설정', description: '마인드맵으로 비전을 구조화.' },
+    { number: 3, icon: <Zap size={18} className="text-white" />, title: 'AI와 달성', description: '매일 코치와 함께 성장.' },
+  ];
+  const STEPS_EN: Step[] = [
+    { number: 1, icon: <UserPlus size={18} className="text-white" />, title: 'Sign Up', description: 'One-click Google login. Done in 10 seconds.' },
+    { number: 2, icon: <Target size={18} className="text-white" />, title: 'Set Goals', description: 'Structure your vision with a mind map.' },
+    { number: 3, icon: <Zap size={18} className="text-white" />, title: 'Achieve with AI', description: 'Grow daily with your coach.' },
+  ];
+  const STEPS = language === 'ko' ? STEPS_KO : STEPS_EN;
 
   return (
     <section
@@ -47,7 +40,7 @@ export const HowItWorks: React.FC = () => {
           }`}
           style={{ fontFamily: 'Orbitron, sans-serif' }}
         >
-          3단계로 시작
+          {language === 'ko' ? '3단계로 시작' : 'Start in 3 Steps'}
         </h2>
 
         {/* Steps */}

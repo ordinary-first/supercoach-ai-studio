@@ -1,12 +1,14 @@
 import React from 'react';
 import { FileText, Image, Volume2, Video, ImagePlus, Play } from 'lucide-react';
 import { useScrollReveal } from '../../hooks/useScrollReveal';
+import { useTranslation } from '../../i18n/useTranslation';
 
 // Fake audio waveform bar heights
 const WAVEFORM_HEIGHTS = [4, 8, 16, 12, 20, 10, 24, 14, 18, 8, 22, 12, 16, 6, 20, 10, 14, 18, 8, 12];
 
 export const VisualizationDemo: React.FC = () => {
   const { ref, isVisible } = useScrollReveal();
+  const { language } = useTranslation();
 
   return (
     <section
@@ -20,14 +22,23 @@ export const VisualizationDemo: React.FC = () => {
           className="text-2xl md:text-5xl font-bold leading-tight"
           style={{ fontFamily: 'Inter, sans-serif' }}
         >
-          <span className="text-gray-300">성공을 미리 </span>
-          <span style={{ color: '#CCFF00' }}>경험하세요</span>
+          {language === 'ko' ? (
+            <>
+              <span className="text-gray-300">성공을 미리 </span>
+              <span style={{ color: '#CCFF00' }}>경험하세요</span>
+            </>
+          ) : (
+            <>
+              <span className="text-gray-300">Experience success </span>
+              <span style={{ color: '#CCFF00' }}>before it happens</span>
+            </>
+          )}
         </h2>
         <p
           className="text-gray-400 text-sm md:text-base mt-2"
           style={{ fontFamily: 'Inter, sans-serif' }}
         >
-          AI가 생성하는 4가지 감각의 미래 시각화
+          {language === 'ko' ? 'AI가 생성하는 4가지 감각의 미래 시각화' : 'AI-generated future visualization across 4 senses'}
         </p>
         <div
           className="w-12 h-0.5 rounded-full mt-2"
@@ -77,20 +88,22 @@ export const VisualizationDemo: React.FC = () => {
                     fontFamily: 'Inter, sans-serif',
                   }}
                 >
-                  텍스트
+                  {language === 'ko' ? '텍스트' : 'Text'}
                 </span>
                 <span
                   className="text-xs text-gray-500 ml-auto"
                   style={{ fontFamily: 'Inter, sans-serif' }}
                 >
-                  AI 성공 내러티브
+                  {language === 'ko' ? 'AI 성공 내러티브' : 'AI Success Narrative'}
                 </span>
               </div>
               <p
                 className="text-sm text-gray-300 italic leading-relaxed"
                 style={{ fontFamily: 'Inter, sans-serif' }}
               >
-                "나는 6개월 후, 마침내 그 목표를 이뤘다. 매일 쌓아온 작은 습관들이 결국 큰 변화를 만들어냈다..."
+                {language === 'ko'
+                  ? '"나는 6개월 후, 마침내 그 목표를 이뤘다. 매일 쌓아온 작은 습관들이 결국 큰 변화를 만들어냈다..."'
+                  : '"Six months later, I finally achieved that goal. The small habits I built each day ultimately created a massive transformation..."'}
               </p>
             </div>
 
@@ -117,13 +130,13 @@ export const VisualizationDemo: React.FC = () => {
                     fontFamily: 'Inter, sans-serif',
                   }}
                 >
-                  이미지
+                  {language === 'ko' ? '이미지' : 'Image'}
                 </span>
                 <span
                   className="text-xs text-gray-500 ml-auto"
                   style={{ fontFamily: 'Inter, sans-serif' }}
                 >
-                  AI 생성 이미지
+                  {language === 'ko' ? 'AI 생성 이미지' : 'AI Generated Image'}
                 </span>
               </div>
               {/* Placeholder with gradient + icon */}
@@ -161,13 +174,13 @@ export const VisualizationDemo: React.FC = () => {
                     fontFamily: 'Inter, sans-serif',
                   }}
                 >
-                  음성
+                  {language === 'ko' ? '음성' : 'Audio'}
                 </span>
                 <span
                   className="text-xs text-gray-500 ml-auto"
                   style={{ fontFamily: 'Inter, sans-serif' }}
                 >
-                  AI 나레이션
+                  {language === 'ko' ? 'AI 나레이션' : 'AI Narration'}
                 </span>
               </div>
               {/* Fake waveform */}
@@ -209,13 +222,13 @@ export const VisualizationDemo: React.FC = () => {
                     fontFamily: 'Inter, sans-serif',
                   }}
                 >
-                  영상
+                  {language === 'ko' ? '영상' : 'Video'}
                 </span>
                 <span
                   className="text-xs text-gray-500 ml-auto"
                   style={{ fontFamily: 'Inter, sans-serif' }}
                 >
-                  AI 비전 영상
+                  {language === 'ko' ? 'AI 비전 영상' : 'AI Vision Video'}
                 </span>
               </div>
               {/* Play button placeholder */}

@@ -1,8 +1,10 @@
 import React from 'react';
+import { useTranslation } from '../../i18n/useTranslation';
 
 export const FooterSection: React.FC = () => {
   const appVersion =
     typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : null;
+  const { language } = useTranslation();
 
   return (
     <footer
@@ -18,8 +20,8 @@ export const FooterSection: React.FC = () => {
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">
               Product
             </p>
-            <p className="text-xs text-gray-600">기능</p>
-            <p className="text-xs text-gray-600">가격</p>
+            <p className="text-xs text-gray-600">{language === 'ko' ? '기능' : 'Features'}</p>
+            <p className="text-xs text-gray-600">{language === 'ko' ? '가격' : 'Pricing'}</p>
           </div>
 
           {/* Legal */}

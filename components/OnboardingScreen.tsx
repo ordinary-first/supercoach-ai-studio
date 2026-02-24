@@ -3,6 +3,7 @@ import { Check, Crown, Loader2, Sparkles, Star } from 'lucide-react';
 import { createPolarCheckout, type PlanTier } from '../services/polarService';
 import { completeOnboarding, saveProfile } from '../services/firebaseService';
 import type { UserProfile } from '../types';
+import { useTranslation } from '../i18n/useTranslation';
 
 interface OnboardingScreenProps {
   userProfile: UserProfile;
@@ -22,34 +23,34 @@ const PLANS: {
   {
     plan: 'explorer',
     label: 'Explorer',
-    price: '무료',
-    badge: '3일 체험',
-    features: ['코칭 채팅 300회/월', '내러티브 5회/월', '이미지 8장/월'],
-    cta: '3일 무료로 시작하기',
+    price: 'Free',
+    badge: '3-day trial',
+    features: ['300 coaching chats/mo', '5 narratives/mo', '8 images/mo'],
+    cta: 'Start free for 3 days',
     highlight: true,
   },
   {
     plan: 'essential',
     label: 'Essential',
-    price: '$9.99/월',
-    features: ['코칭 채팅 2,500회/월', '내러티브 20회/월', '이미지 80장/월', '음성 TTS 30분/월'],
-    cta: '바로 시작하기',
+    price: '$9.99/mo',
+    features: ['2,500 coaching chats/mo', '20 narratives/mo', '80 images/mo', '30 min TTS audio/mo'],
+    cta: 'Get started',
     highlight: false,
   },
   {
     plan: 'visionary',
     label: 'Visionary',
-    price: '$19.99/월',
-    features: ['코칭 채팅 6,000회/월', '내러티브 40회/월', '이미지 180장/월', '음성 90분/월', '영상 4회/월'],
-    cta: '바로 시작하기',
+    price: '$19.99/mo',
+    features: ['6,000 coaching chats/mo', '40 narratives/mo', '180 images/mo', '90 min audio/mo', '4 videos/mo'],
+    cta: 'Get started',
     highlight: false,
   },
   {
     plan: 'master',
     label: 'Master',
-    price: '$49.99/월',
-    features: ['코칭 채팅 15,000회/월', '내러티브 80회/월', '이미지 450장/월', '음성 240분/월', '영상 12회/월'],
-    cta: '바로 시작하기',
+    price: '$49.99/mo',
+    features: ['15,000 coaching chats/mo', '80 narratives/mo', '450 images/mo', '240 min audio/mo', '12 videos/mo'],
+    cta: 'Get started',
     highlight: false,
   },
 ];
@@ -59,8 +60,23 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
   userId,
   onComplete,
 }) => {
+  const { t, language } = useTranslation();
   const [loadingPlan, setLoadingPlan] = useState<PlanTier | null>(null);
   const [error, setError] = useState('');
+
+  const planFeatures: Record<string, string[]> = {
+    explorer: t.onboarding.planFeatures.explorer,
+    essential: t.onboarding.planFeatures.essential,
+    visionary: t.onboarding.planFeatures.visionary,
+    master: t.onboarding.planFeatures.master,
+  };
+
+  const planCta: Record<string, string> = {
+    explorer: t.onboarding.startFree,
+    essential: t.onboarding.startNow,
+    visionary: t.onboarding.startNow,
+    master: t.onboarding.startNow,
+  };
 
   const handleSelect = async (plan: PlanTier) => {
     if (loadingPlan) return;
@@ -89,7 +105,7 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
         window.location.assign(url);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : '오류가 발생했습니다.');
+      setError(err instanceof Error ? err.message : t.onboarding.error);
       setLoadingPlan(null);
     }
   };
@@ -110,10 +126,10 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
           </div>
         )}
         <h1 className="text-2xl font-bold mb-1">
-          안녕하세요, {userProfile.name.split(' ')[0]}님!
+          {t.onboarding.welcome.replace('{name}', userProfile.name.split(' ')[0])}
         </h1>
         <p className="text-sm text-gray-400">
-          SuperCoach AI에 오신 것을 환영합니다
+          {t.onboarding.subtitle}
         </p>
       </div>
 
@@ -122,7 +138,7 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
         <div className="flex items-center gap-2 mb-4 justify-center">
           <Sparkles size={14} className="text-neon-lime" />
           <p className="text-[13px] text-gray-300 font-medium">
-            당신에게 맞는 플랜을 선택해주세요
+            {t.onboarding.selectPlan}
           </p>
         </div>
 
@@ -145,18 +161,18 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
                     )}
                     <div>
                       <p className="text-sm font-bold text-white">{item.label}</p>
-                      <p className="text-[11px] text-gray-400">{item.price}</p>
+                      <p className="text-[11px] text-gray-400">{item.plan === 'explorer' ? t.onboarding.free : item.price}</p>
                     </div>
                   </div>
-                  {item.badge && (
+                  {item.plan === 'explorer' && (
                     <span className="text-[10px] font-bold bg-neon-lime/20 text-neon-lime border border-neon-lime/30 rounded-full px-2 py-0.5">
-                      {item.badge}
+                      {t.onboarding.trialBadge}
                     </span>
                   )}
                 </div>
 
                 <div className="flex flex-wrap gap-x-3 gap-y-0.5 mb-3">
-                  {item.features.map((f) => (
+                  {(planFeatures[item.plan] || item.features).map((f) => (
                     <span
                       key={f}
                       className="flex items-center gap-1 text-[11px] text-gray-400"
@@ -179,10 +195,10 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
                   {isLoading ? (
                     <>
                       <Loader2 size={14} className="animate-spin" />
-                      처리 중...
+                      {t.common.processing}
                     </>
                   ) : (
-                    item.cta
+                    planCta[item.plan] || item.cta
                   )}
                 </button>
               </div>
@@ -195,7 +211,7 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
         )}
 
         <p className="mt-6 text-[11px] text-gray-600 text-center leading-relaxed">
-          언제든지 설정에서 플랜을 변경할 수 있습니다.
+          {t.onboarding.footer}
         </p>
       </div>
     </div>

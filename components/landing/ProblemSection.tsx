@@ -1,6 +1,7 @@
 import React from 'react';
 import { MessageCircleOff, LayoutPanelLeft, BatteryLow } from 'lucide-react';
 import { useScrollReveal } from '../../hooks/useScrollReveal';
+import { useTranslation } from '../../i18n/useTranslation';
 
 interface ProblemCard {
   icon: React.ReactNode;
@@ -8,7 +9,7 @@ interface ProblemCard {
   description: string;
 }
 
-const PROBLEMS: ProblemCard[] = [
+const PROBLEMS_KO: ProblemCard[] = [
   {
     icon: <MessageCircleOff size={18} color="#FF4D00" />,
     title: '피드백 부재',
@@ -29,8 +30,31 @@ const PROBLEMS: ProblemCard[] = [
   },
 ];
 
+const PROBLEMS_EN: ProblemCard[] = [
+  {
+    icon: <MessageCircleOff size={18} color="#FF4D00" />,
+    title: 'No Feedback',
+    description:
+      'Plans made at dawn fade by evening. Without someone to say "do this now," motivation evaporates.',
+  },
+  {
+    icon: <LayoutPanelLeft size={18} color="#FF4D00" />,
+    title: 'No Structure',
+    description:
+      '"This year will be different" — same resolution, same result. Goals that stay in your head vanish in 3 days.',
+  },
+  {
+    icon: <BatteryLow size={18} color="#FF4D00" />,
+    title: 'Motivation Dies',
+    description:
+      "Giving up after 3 days isn't a willpower problem. Your brain is wired that way. Without a system, everyone reverts.",
+  },
+];
+
 export const ProblemSection: React.FC = () => {
   const { ref, isVisible } = useScrollReveal<HTMLElement>({ threshold: 0.1 });
+  const { language } = useTranslation();
+  const PROBLEMS = language === 'ko' ? PROBLEMS_KO : PROBLEMS_EN;
 
   return (
     <section
@@ -58,13 +82,13 @@ export const ProblemSection: React.FC = () => {
             className="text-gray-300 text-sm md:text-3xl mb-1 md:mb-2"
             style={{ fontFamily: 'Inter, sans-serif' }}
           >
-            당신은 정말
+            {language === 'ko' ? '당신은 정말' : 'Can you really'}
           </p>
           <h2
             className="text-white font-bold text-xl md:text-5xl leading-tight"
             style={{ fontFamily: 'Orbitron, sans-serif' }}
           >
-            원하는 삶을 살 수 없는 것일까요?
+            {language === 'ko' ? '원하는 삶을 살 수 없는 것일까요?' : 'not live the life you want?'}
           </h2>
         </div>
 

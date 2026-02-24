@@ -1,6 +1,7 @@
 import React from 'react';
 import { GitBranch, Brain, Sparkles, Calendar, ListTodo, BarChart3 } from 'lucide-react';
 import { useScrollReveal } from '../../hooks/useScrollReveal';
+import { useTranslation } from '../../i18n/useTranslation';
 
 interface FeatureCard {
   icon: React.ReactNode;
@@ -8,7 +9,7 @@ interface FeatureCard {
   desc: string;
 }
 
-const FEATURES: FeatureCard[] = [
+const FEATURES_KO: FeatureCard[] = [
   {
     icon: <GitBranch size={18} style={{ color: '#CCFF00' }} />,
     title: '목표를 눈에 보이게',
@@ -41,8 +42,43 @@ const FEATURES: FeatureCard[] = [
   },
 ];
 
+const FEATURES_EN: FeatureCard[] = [
+  {
+    icon: <GitBranch size={18} style={{ color: '#CCFF00' }} />,
+    title: 'Make Goals Visible',
+    desc: 'Turn vague dreams into structure with 4 layout modes. AI generates images for each goal.',
+  },
+  {
+    icon: <Brain size={18} style={{ color: '#CCFF00' }} />,
+    title: 'A Coach Who Knows You',
+    desc: 'The more you talk, the deeper AI understands you. 3-layer memory never forgets context.',
+  },
+  {
+    icon: <Sparkles size={18} style={{ color: '#CCFF00' }} />,
+    title: 'Experience Success Early',
+    desc: 'See and hear your successful future through text, image, audio, and video.',
+  },
+  {
+    icon: <Calendar size={18} style={{ color: '#CCFF00' }} />,
+    title: 'Every Day Is a Mission',
+    desc: 'Clear missions like a game and collect trophies. Habits form automatically.',
+  },
+  {
+    icon: <ListTodo size={18} style={{ color: '#CCFF00' }} />,
+    title: 'Tasks Linked to Goals',
+    desc: "Tasks connect directly to goals. Seeing \"why you're doing this\" keeps motivation alive.",
+  },
+  {
+    icon: <BarChart3 size={18} style={{ color: '#CCFF00' }} />,
+    title: 'Growth Through Data',
+    desc: "Daily, weekly, and monthly AI analysis pinpoints exactly where you're stuck.",
+  },
+];
+
 export const FeatureShowcase: React.FC = () => {
   const { ref, isVisible } = useScrollReveal();
+  const { language } = useTranslation();
+  const FEATURES = language === 'ko' ? FEATURES_KO : FEATURES_EN;
 
   return (
     <section
@@ -56,13 +92,13 @@ export const FeatureShowcase: React.FC = () => {
           className="text-xl md:text-5xl font-bold text-white"
           style={{ fontFamily: 'Orbitron, sans-serif' }}
         >
-          강력한 기능들
+          {language === 'ko' ? '강력한 기능들' : 'Powerful Features'}
         </h2>
         <p
           className="text-gray-400 text-sm md:text-base max-w-md"
           style={{ fontFamily: 'Inter, sans-serif' }}
         >
-          목표 달성에 필요한 모든 것이 하나의 앱에
+          {language === 'ko' ? '목표 달성에 필요한 모든 것이 하나의 앱에' : 'Everything you need for goal achievement, in one app'}
         </p>
         {/* Accent line */}
         <div

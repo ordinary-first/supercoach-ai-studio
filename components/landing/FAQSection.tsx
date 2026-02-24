@@ -1,54 +1,12 @@
 import React, { useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { useScrollReveal } from '../../hooks/useScrollReveal';
+import { useTranslation } from '../../i18n/useTranslation';
 
 interface FAQItem {
   question: string;
   answer: string;
 }
-
-const FAQ_ITEMS: FAQItem[] = [
-  {
-    question: '무료 체험 후 자동 결제되나요?',
-    answer:
-      '아니요. 3일 체험 후 Explorer 무료 플랜으로 자동 전환됩니다. 유료 결제는 직접 업그레이드할 때만 발생합니다.',
-  },
-  {
-    question: 'AI 코치가 정말 개인화되나요?',
-    answer:
-      '네. 단기·중기·장기 3단 기억 시스템으로 당신의 목표, 할 일, 성격, 대화 이력을 모두 기억합니다. 사용할수록 더 정확한 코칭을 제공합니다.',
-  },
-  {
-    question: 'AI 코칭이 사람 코칭만큼 효과 있나요?',
-    answer:
-      '사람 코치의 강점(공감)과 AI의 강점(24시간, 데이터 축적, 일관성)은 다릅니다. Secret Coach는 "코치 대체"가 아니라 "매일 곁에 있는 보조 코치" 역할입니다. 사람 코치와 병행해도 시너지가 납니다.',
-  },
-  {
-    question: '데이터는 안전한가요?',
-    answer:
-      'Firebase Authentication으로 계정을 보호하고, 모든 데이터는 Google Cloud Firestore와 Cloudflare R2에 암호화되어 저장됩니다.',
-  },
-  {
-    question: '모바일에서도 사용할 수 있나요?',
-    answer:
-      '웹앱으로 모든 기기의 브라우저에서 사용 가능합니다. Android 네이티브 앱도 준비 중입니다.',
-  },
-  {
-    question: '베타 특가가 끝나면 어떻게 되나요?',
-    answer:
-      '베타 기간 중 가입하신 분들은 현재 특가가 영구 유지됩니다. 정식 출시 후 가격이 인상되어도 베타 가입자는 락인(Lock-in) 혜택으로 보호됩니다.',
-  },
-  {
-    question: '환불 정책이 어떻게 되나요?',
-    answer:
-      '구독 시작 후 14일 이내 전액 환불 가능합니다. 환불 정책 페이지에서 자세한 내용을 확인하세요.',
-  },
-  {
-    question: '다른 목표 관리 앱과 뭐가 다른가요?',
-    answer:
-      'AI 코치(3단 기억 시스템) + 시각화 스튜디오(이미지/음성/영상 생성) + 마인드맵 통합은 Secret Coach만의 고유 기능입니다. 단순 할일 앱이 아닌 통합 목표 달성 시스템입니다.',
-  },
-];
 
 interface AccordionItemProps {
   item: FAQItem;
@@ -98,6 +56,31 @@ const AccordionItem: React.FC<AccordionItemProps> = ({ item, index, isOpen, onTo
 export const FAQSection: React.FC = () => {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   const { ref: headingRef, isVisible: headingVisible } = useScrollReveal();
+  const { language } = useTranslation();
+
+  const FAQ_KO: FAQItem[] = [
+    { question: '무료 체험 후 자동 결제되나요?', answer: '아니요. 3일 체험 후 Explorer 무료 플랜으로 자동 전환됩니다. 유료 결제는 직접 업그레이드할 때만 발생합니다.' },
+    { question: 'AI 코치가 정말 개인화되나요?', answer: '네. 단기·중기·장기 3단 기억 시스템으로 당신의 목표, 할 일, 성격, 대화 이력을 모두 기억합니다. 사용할수록 더 정확한 코칭을 제공합니다.' },
+    { question: 'AI 코칭이 사람 코칭만큼 효과 있나요?', answer: '사람 코치의 강점(공감)과 AI의 강점(24시간, 데이터 축적, 일관성)은 다릅니다. Secret Coach는 "코치 대체"가 아니라 "매일 곁에 있는 보조 코치" 역할입니다. 사람 코치와 병행해도 시너지가 납니다.' },
+    { question: '데이터는 안전한가요?', answer: 'Firebase Authentication으로 계정을 보호하고, 모든 데이터는 Google Cloud Firestore와 Cloudflare R2에 암호화되어 저장됩니다.' },
+    { question: '모바일에서도 사용할 수 있나요?', answer: '웹앱으로 모든 기기의 브라우저에서 사용 가능합니다. Android 네이티브 앱도 준비 중입니다.' },
+    { question: '베타 특가가 끝나면 어떻게 되나요?', answer: '베타 기간 중 가입하신 분들은 현재 특가가 영구 유지됩니다. 정식 출시 후 가격이 인상되어도 베타 가입자는 락인(Lock-in) 혜택으로 보호됩니다.' },
+    { question: '환불 정책이 어떻게 되나요?', answer: '구독 시작 후 14일 이내 전액 환불 가능합니다. 환불 정책 페이지에서 자세한 내용을 확인하세요.' },
+    { question: '다른 목표 관리 앱과 뭐가 다른가요?', answer: 'AI 코치(3단 기억 시스템) + 시각화 스튜디오(이미지/음성/영상 생성) + 마인드맵 통합은 Secret Coach만의 고유 기능입니다. 단순 할일 앱이 아닌 통합 목표 달성 시스템입니다.' },
+  ];
+
+  const FAQ_EN: FAQItem[] = [
+    { question: 'Will I be charged automatically after the free trial?', answer: 'No. After your 3-day trial, you\'ll automatically switch to the free Explorer plan. Paid billing only happens when you manually upgrade.' },
+    { question: 'Is the AI coach really personalized?', answer: 'Yes. A 3-layer memory system (short, mid, long-term) retains your goals, tasks, personality, and conversation history. The more you use it, the more precise the coaching becomes.' },
+    { question: 'Is AI coaching as effective as human coaching?', answer: 'Human coaches excel at empathy while AI excels at 24/7 availability, data accumulation, and consistency. Secret Coach isn\'t a "coach replacement" — it\'s a "daily companion coach." It synergizes well alongside a human coach.' },
+    { question: 'Is my data secure?', answer: 'Your account is protected by Firebase Authentication, and all data is encrypted and stored on Google Cloud Firestore and Cloudflare R2.' },
+    { question: 'Can I use it on mobile?', answer: 'Yes, it works on any device browser as a web app. A native Android app is also in development.' },
+    { question: 'What happens when beta pricing ends?', answer: 'Beta users keep their current pricing permanently. Even if prices increase after official launch, beta subscribers are protected with a lock-in benefit.' },
+    { question: 'What\'s your refund policy?', answer: 'Full refund available within 14 days of subscription start. Check the refund policy page for details.' },
+    { question: 'How is this different from other goal management apps?', answer: 'AI Coach (3-layer memory system) + Visualization Studio (image/audio/video generation) + Mind Map integration are unique to Secret Coach. It\'s not a simple to-do app — it\'s an integrated goal achievement system.' },
+  ];
+
+  const FAQ_ITEMS = language === 'ko' ? FAQ_KO : FAQ_EN;
 
   const handleToggle = (index: number) => {
     setOpenIndex((prev) => (prev === index ? null : index));
@@ -115,7 +98,9 @@ export const FAQSection: React.FC = () => {
             transform: headingVisible ? 'translateY(0)' : 'translateY(24px)',
           }}
         >
-          <h2 className="text-2xl md:text-5xl font-bold text-white">자주 묻는 질문</h2>
+          <h2 className="text-2xl md:text-5xl font-bold text-white">
+            {language === 'ko' ? '자주 묻는 질문' : 'Frequently Asked Questions'}
+          </h2>
         </div>
 
         {/* Accordion */}

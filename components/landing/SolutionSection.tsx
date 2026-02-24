@@ -1,6 +1,7 @@
 import React from 'react';
 import { Brain, GitBranch, Eye } from 'lucide-react';
 import { useScrollReveal } from '../../hooks/useScrollReveal';
+import { useTranslation } from '../../i18n/useTranslation';
 
 interface SolutionPillar {
   icon: React.ReactNode;
@@ -8,7 +9,7 @@ interface SolutionPillar {
   description: string;
 }
 
-const PILLARS: SolutionPillar[] = [
+const PILLARS_KO: SolutionPillar[] = [
   {
     icon: <Brain size={18} color="#CCFF00" />,
     title: '심리학 기반 AI 코치',
@@ -29,8 +30,31 @@ const PILLARS: SolutionPillar[] = [
   },
 ];
 
+const PILLARS_EN: SolutionPillar[] = [
+  {
+    icon: <Brain size={18} color="#CCFF00" />,
+    title: 'Psychology-Based AI Coach',
+    description:
+      "A 3-layer memory system accumulates your personality, goals, and history. The more you talk, the sharper the AI gets—delivering exactly the words you need right now.",
+  },
+  {
+    icon: <GitBranch size={18} color="#CCFF00" />,
+    title: 'Structuring (Mind Map)',
+    description:
+      "10-year vision → This year's goals → This week's tasks. Auto-decompose into brain-processable units and make progress visible.",
+  },
+  {
+    icon: <Eye size={18} color="#CCFF00" />,
+    title: 'Visualization (Subconscious Imprinting)',
+    description:
+      "Psychology research: Repeatedly visualizing success tricks your brain into believing it's already achieved. AI generates your success in text, image, audio, and video.",
+  },
+];
+
 export const SolutionSection: React.FC = () => {
   const { ref, isVisible } = useScrollReveal<HTMLElement>({ threshold: 0.1 });
+  const { language } = useTranslation();
+  const PILLARS = language === 'ko' ? PILLARS_KO : PILLARS_EN;
 
   return (
     <section
@@ -59,13 +83,13 @@ export const SolutionSection: React.FC = () => {
             className="text-gray-300 text-sm md:text-3xl mb-1"
             style={{ fontFamily: 'Orbitron, sans-serif' }}
           >
-            Secret Coach의
+            {language === 'ko' ? 'Secret Coach의' : "Secret Coach's"}
           </p>
           <h2
             className="font-bold text-2xl md:text-6xl"
             style={{ fontFamily: 'Orbitron, sans-serif', color: '#CCFF00' }}
           >
-            해답
+            {language === 'ko' ? '해답' : 'Answer'}
           </h2>
         </div>
 
@@ -79,7 +103,7 @@ export const SolutionSection: React.FC = () => {
             transitionDelay: '100ms',
           }}
         >
-          의지력이 아닌, 시스템으로 목표를 달성합니다
+          {language === 'ko' ? '의지력이 아닌, 시스템으로 목표를 달성합니다' : 'Achieve goals with systems, not willpower'}
         </p>
 
         {/* Solution Pillars */}

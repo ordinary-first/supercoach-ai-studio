@@ -27,6 +27,7 @@ import {
 import type { UserProfile } from '../types';
 import { uploadProfileGalleryImage } from '../services/aiService';
 import { getUserId, loadUsage, type MonthlyUsage } from '../services/firebaseService';
+import { useTranslation } from '../i18n/useTranslation';
 
 const compressImage = (
   file: File,
@@ -72,78 +73,12 @@ interface SettingsPageProps {
   onLogout: () => void;
 }
 
-const LABELS = {
-  en: {
-    title: 'Settings',
-    language: 'Language',
-    subscription: 'Subscription',
-    choosePlan: 'Choose your plan',
-    checkout: 'Start checkout',
-    redirecting: 'Redirecting...',
-    account: 'Account',
-    notifications: 'Notifications',
-    polarPolicyTitle: 'Polar compliance',
-    ruleDigitalOnly: 'Digital SaaS only. No physical goods.',
-    ruleNoHumanService: 'No consulting or human-delivered service.',
-    ruleNoDonation: 'No donations, tips, or pure money transfers.',
-    ruleInstantAccess: 'Paid users must get immediate in-app access.',
-    legalTitle: 'Legal',
-    legalHint:
-      'By continuing, you agree to the Terms of Service and acknowledge the Privacy Policy and Refund Policy.',
-    terms: 'Terms',
-    privacy: 'Privacy',
-    refund: 'Refunds',
-    checkoutFailed: 'Failed to create checkout session.',
-  },
-  ko: {
-    title: '설정',
-    language: '언어',
-    subscription: '구독',
-    choosePlan: '플랜 선택',
-    checkout: '결제 시작',
-    redirecting: '이동 중...',
-    account: '계정',
-    notifications: '알림',
-    polarPolicyTitle: 'Polar 규정 체크',
-    ruleDigitalOnly: '디지털 SaaS만 판매. 물리 상품 금지.',
-    ruleNoHumanService: '컨설팅/인적 서비스 결제 금지.',
-    ruleNoDonation: '후원/기부/팁 형태 결제 금지.',
-    ruleInstantAccess: '결제 즉시 유료 기능 접근 제공.',
-    legalTitle: '약관/정책',
-    legalHint:
-      '결제를 진행하면 서비스 이용약관에 동의하고, 개인정보 처리방침 및 환불규정을 확인한 것으로 간주합니다.',
-    terms: '이용약관',
-    privacy: '개인정보',
-    refund: '환불규정',
-    checkoutFailed: '체크아웃 세션 생성에 실패했습니다.',
-  },
-};
 
 const PLANS: { plan: PlanTier; title: string; price: string; features: string[] }[] = [
-  {
-    plan: 'explorer',
-    title: 'Explorer',
-    price: 'Free',
-    features: ['코칭 채팅 300회/월', '내러티브 5회/월', '이미지 8장/월'],
-  },
-  {
-    plan: 'essential',
-    title: 'Essential',
-    price: '$9.99/mo',
-    features: ['코칭 채팅 2,500회/월', '내러티브 20회/월', '이미지 80장/월', '음성 TTS 30분/월'],
-  },
-  {
-    plan: 'visionary',
-    title: 'Visionary',
-    price: '$19.99/mo',
-    features: ['코칭 채팅 6,000회/월', '내러티브 40회/월', '이미지 180장 (고품질)/월', '음성 90분/월', '영상 4회/월'],
-  },
-  {
-    plan: 'master',
-    title: 'Master',
-    price: '$49.99/mo',
-    features: ['코칭 채팅 15,000회/월', '내러티브 80회/월', '이미지 450장 (고품질)/월', '음성 240분/월', '영상 12회/월'],
-  },
+  { plan: 'explorer', title: 'Explorer', price: 'Free', features: [] },
+  { plan: 'essential', title: 'Essential', price: '$9.99/mo', features: [] },
+  { plan: 'visionary', title: 'Visionary', price: '$19.99/mo', features: [] },
+  { plan: 'master', title: 'Master', price: '$49.99/mo', features: [] },
 ];
 
 const PLAN_LIMITS: Record<string, Record<string, number>> = {
@@ -165,13 +100,6 @@ const PLAN_LIMITS: Record<string, Record<string, number>> = {
   },
 };
 
-const RESOURCE_LABELS: Record<string, string> = {
-  chatMessages: '코칭 채팅',
-  narrativeCalls: '내러티브',
-  imageCredits: '이미지',
-  audioMinutes: '음성 (분)',
-  videoGenerations: '영상',
-};
 
 const SettingsPage: React.FC<SettingsPageProps> = ({
   isOpen,
@@ -186,6 +114,8 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
   onSaveProfile,
   onLogout,
 }) => {
+  const { t } = useTranslation();
+  const planFeatures = t.settings.planFeatures;
   const [loadingPlan, setLoadingPlan] = useState<PlanTier | null>(null);
   const [checkoutError, setCheckoutError] = useState('');
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
@@ -255,8 +185,6 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
 
   if (!isOpen) return null;
 
-  const labels = LABELS[language];
-
   const customerId = (() => {
     if (externalCustomerId && externalCustomerId.trim().length > 0) {
       return externalCustomerId.trim();
@@ -291,7 +219,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
       const message =
         error instanceof Error && error.message.trim().length > 0
           ? error.message
-          : labels.checkoutFailed;
+          : t.settings.checkoutFailed;
       setCheckoutError(message);
       setLoadingPlan(null);
     }
@@ -310,7 +238,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
       const message =
         error instanceof Error && error.message.trim().length > 0
           ? error.message
-          : '플랜 변경에 실패했습니다.';
+          : t.settings.checkoutFailed;
       setCheckoutError(message);
       setLoadingPlan(null);
     }
@@ -329,7 +257,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
       const message =
         error instanceof Error && error.message.trim().length > 0
           ? error.message
-          : '구독 취소에 실패했습니다.';
+          : t.settings.checkoutFailed;
       setCheckoutError(message);
       setLoadingPlan(null);
     }
@@ -349,7 +277,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
         <div className="flex items-center gap-2">
           <Settings size={16} className="text-neon-lime" />
           <h1 className="text-sm md:text-base font-semibold tracking-wide">
-            {labels.title}
+            {t.settings.title}
           </h1>
         </div>
 
@@ -364,13 +292,13 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-[11px] uppercase tracking-wider text-gray-400">
                   <User size={14} className="text-neon-lime" />
-                  <span>프로필</span>
+                  <span>{t.settings.profile}</span>
                 </div>
                 <button
                   onClick={() => onSaveProfile(formData)}
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-neon-lime text-black font-bold rounded-full hover:bg-white transition-all text-[11px]"
                 >
-                  <Save size={12} /> 저장
+                  <Save size={12} /> {t.common.save}
                 </button>
               </div>
 
@@ -406,7 +334,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     className="bg-transparent text-lg font-bold text-white w-full focus:outline-none border-b border-transparent focus:border-neon-lime/30 pb-1 transition-colors"
-                    placeholder="이름을 입력하세요"
+                    placeholder={t.settings.name}
                   />
                   <p className="text-[10px] text-gray-500 mt-1">{formData.email}</p>
                 </div>
@@ -416,28 +344,28 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                 <div className="flex items-center gap-3 p-3">
                   <Calendar size={16} className="text-gray-500 shrink-0" />
                   <div className="flex-1">
-                    <p className="text-[10px] text-gray-500 font-bold">나이</p>
+                    <p className="text-[10px] text-gray-500 font-bold">{t.settings.age}</p>
                     <input
                       type="number"
                       value={formData.age}
                       onChange={(e) => setFormData({ ...formData, age: e.target.value })}
                       className="bg-transparent text-white text-sm w-full focus:outline-none mt-0.5"
-                      placeholder="나이를 입력하세요"
+                      placeholder={t.settings.age}
                     />
                   </div>
                 </div>
                 <div className="flex items-center gap-3 p-3">
                   <User size={16} className="text-gray-500 shrink-0" />
                   <div className="flex-1">
-                    <p className="text-[10px] text-gray-500 font-bold">성별</p>
+                    <p className="text-[10px] text-gray-500 font-bold">{t.settings.gender}</p>
                     <select
                       value={formData.gender}
                       onChange={(e) => setFormData({ ...formData, gender: e.target.value as any })}
                       className="bg-transparent text-white text-sm w-full focus:outline-none mt-0.5 appearance-none"
                     >
-                      <option value="Male" className="bg-deep-space">남성</option>
-                      <option value="Female" className="bg-deep-space">여성</option>
-                      <option value="Other" className="bg-deep-space">기타</option>
+                      <option value="Male" className="bg-deep-space">{t.settings.genderOptions.Male}</option>
+                      <option value="Female" className="bg-deep-space">{t.settings.genderOptions.Female}</option>
+                      <option value="Other" className="bg-deep-space">{t.settings.genderOptions.Other}</option>
                     </select>
                   </div>
                   <ChevronRight size={14} className="text-gray-600" />
@@ -445,13 +373,13 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                 <div className="flex items-center gap-3 p-3">
                   <MapPin size={16} className="text-gray-500 shrink-0" />
                   <div className="flex-1">
-                    <p className="text-[10px] text-gray-500 font-bold">위치</p>
+                    <p className="text-[10px] text-gray-500 font-bold">{t.settings.location}</p>
                     <input
                       type="text"
                       value={formData.location}
                       onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                       className="bg-transparent text-white text-sm w-full focus:outline-none mt-0.5"
-                      placeholder="도시를 입력하세요"
+                      placeholder={t.settings.location}
                     />
                   </div>
                 </div>
@@ -460,12 +388,12 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
               <div className="space-y-2">
                 <div className="flex items-center gap-2 text-gray-400 text-[11px] font-bold">
                   <Quote size={12} className="text-neon-lime" />
-                  자기소개
+                  {t.settings.bio}
                 </div>
                 <textarea
                   value={formData.bio}
                   onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
-                  placeholder="관심사와 목표를 적어주세요."
+                  placeholder={t.settings.bio}
                   className="w-full h-24 bg-black/20 border border-white/5 rounded-xl p-3 text-sm text-gray-200 leading-relaxed focus:outline-none focus:border-neon-lime/30 transition-all resize-none"
                 />
               </div>
@@ -474,7 +402,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                 <div className="flex justify-between items-center">
                   <div className="flex items-center gap-2 text-gray-400 text-[11px] font-bold">
                     <ImageIcon size={12} className="text-neon-lime" />
-                    포토 갤러리
+                    {t.settings.gallery}
                   </div>
                   <span className="text-[10px] text-gray-600">{formData.gallery?.length || 0} / 6</span>
                 </div>
@@ -500,7 +428,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                     >
                       <Plus size={18} />
                       <span className="text-[9px] font-bold">
-                        {isUploadingMedia ? '업로드 중' : '추가'}
+                        {isUploadingMedia ? t.common.processing : t.common.add}
                       </span>
                     </button>
                   )}
@@ -520,7 +448,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
           <section className="rounded-2xl border border-white/10 bg-white/5 p-4">
             <div className="flex items-center gap-2 text-[11px] uppercase tracking-wider text-gray-400 mb-3">
               <Globe size={14} className="text-neon-lime" />
-              <span>{labels.language}</span>
+              <span>{t.settings.language}</span>
             </div>
             <select
               value={language}
@@ -538,9 +466,9 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
             <div className="w-full flex items-center justify-between px-4 py-3.5 border-b border-white/10">
               <div className="flex items-center gap-2">
                 <Crown size={16} className="text-neon-lime" />
-                <span className="text-sm">{labels.subscription}</span>
+                <span className="text-sm">{t.settings.subscription}</span>
               </div>
-              <span className="text-[11px] text-gray-400">{labels.choosePlan}</span>
+              <span className="text-[11px] text-gray-400">{t.settings.choosePlan}</span>
             </div>
 
             {usage && (() => {
@@ -568,7 +496,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                       <div key={key} className="space-y-1">
                         <div className="flex justify-between text-[11px]">
                           <span className="text-gray-400">
-                            {RESOURCE_LABELS[key] || key}
+                            {t.settings.resourceLabels[key] || key}
                           </span>
                           <span
                             className={
@@ -609,7 +537,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                   if (isCurrent) {
                     return (
                       <span className="text-[10px] text-neon-lime font-bold border border-neon-lime/30 rounded-full px-2 py-0.5">
-                        현재 플랜
+                        {t.settings.currentPlan}
                       </span>
                     );
                   }
@@ -618,7 +546,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                     return (
                       <span className="inline-flex items-center gap-1 text-xs text-gray-400">
                         <Loader2 size={13} className="animate-spin" />
-                        처리 중...
+                        {t.common.processing}
                       </span>
                     );
                   }
@@ -635,7 +563,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                             : 'text-amber-400 hover:text-amber-200'
                         }`}
                       >
-                        {isUpgrade ? '업그레이드' : '다운그레이드'}
+                        {isUpgrade ? t.settings.upgrade : t.settings.downgrade}
                       </button>
                     );
                   }
@@ -648,7 +576,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                         disabled={loadingPlan !== null}
                         className="inline-flex items-center gap-1 text-xs text-neon-lime hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        {labels.checkout}
+                        {t.settings.checkout}
                       </button>
                     );
                   }
@@ -669,7 +597,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                       {renderAction()}
                     </div>
                     <div className="mt-1.5 flex flex-wrap gap-x-2 gap-y-0.5">
-                      {item.features.map((f) => (
+                      {(planFeatures[item.plan] || item.features).map((f) => (
                         <span key={f} className="text-[10px] text-gray-500">{f}</span>
                       ))}
                     </div>
@@ -683,27 +611,27 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                   onClick={() => setShowCancelConfirm(true)}
                   className="w-full text-[11px] text-gray-500 hover:text-red-400 transition-colors pt-2"
                 >
-                  구독 취소
+                  {t.settings.cancelSubscription}
                 </button>
               )}
               {isSubscriber && showCancelConfirm && (
                 <div className="rounded-xl border border-red-500/30 bg-red-500/5 p-3 space-y-2">
                   <p className="text-xs text-gray-300">
-                    현재 결제 기간이 끝나면 구독이 취소됩니다. 계속하시겠습니까?
+                    {t.settings.cancelSubscriptionConfirm}
                   </p>
                   <div className="flex gap-2">
                     <button
                       onClick={() => setShowCancelConfirm(false)}
                       className="flex-1 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-xs font-medium transition-all"
                     >
-                      돌아가기
+                      {t.common.back}
                     </button>
                     <button
                       onClick={handleCancelSubscription}
                       disabled={loadingPlan !== null}
                       className="flex-1 py-2 bg-red-600 hover:bg-red-500 rounded-lg text-xs font-medium transition-all disabled:opacity-50"
                     >
-                      구독 취소 확인
+                      {t.settings.cancelSubscription}
                     </button>
                   </div>
                 </div>
@@ -717,23 +645,23 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
             <div className="px-4 py-3.5">
               <div className="flex items-center gap-2 text-xs text-gray-300 mb-2">
                 <ShieldCheck size={14} className="text-neon-lime" />
-                <span>{labels.polarPolicyTitle}</span>
+                <span>{t.settings.polarPolicyTitle}</span>
               </div>
               <ul className="space-y-1.5 text-[12px] text-gray-400">
-                <li>{labels.ruleDigitalOnly}</li>
-                <li>{labels.ruleNoHumanService}</li>
-                <li>{labels.ruleNoDonation}</li>
-                <li>{labels.ruleInstantAccess}</li>
+                <li>{t.settings.ruleDigitalOnly}</li>
+                <li>{t.settings.ruleNoHumanService}</li>
+                <li>{t.settings.ruleNoDonation}</li>
+                <li>{t.settings.ruleInstantAccess}</li>
               </ul>
             </div>
 
             <div className="px-4 py-3.5 border-t border-white/10">
               <div className="flex items-center gap-2 text-xs text-gray-300 mb-2">
                 <ShieldCheck size={14} className="text-neon-lime" />
-                <span>{labels.legalTitle}</span>
+                <span>{t.settings.legalTitle}</span>
               </div>
               <p className="text-[11px] text-gray-400 leading-relaxed">
-                {labels.legalHint}
+                {t.settings.legalHint}
               </p>
               <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
                 <a
@@ -742,7 +670,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                   rel="noreferrer"
                   className="rounded-full border border-white/10 bg-black/30 px-3 py-1 text-neon-lime hover:border-neon-lime/40"
                 >
-                  {labels.terms}
+                  {t.settings.terms}
                 </a>
                 <a
                   href="/privacy"
@@ -750,7 +678,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                   rel="noreferrer"
                   className="rounded-full border border-white/10 bg-black/30 px-3 py-1 text-neon-lime hover:border-neon-lime/40"
                 >
-                  {labels.privacy}
+                  {t.settings.privacy}
                 </a>
                 <a
                   href="/refund"
@@ -758,7 +686,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                   rel="noreferrer"
                   className="rounded-full border border-white/10 bg-black/30 px-3 py-1 text-neon-lime hover:border-neon-lime/40"
                 >
-                  {labels.refund}
+                  {t.settings.refund}
                 </a>
               </div>
             </div>
@@ -768,19 +696,19 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
           <section className="rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
             {showLogoutConfirm ? (
               <div className="p-4 space-y-3">
-                <p className="text-sm text-gray-300">로그아웃 하시겠습니까?</p>
+                <p className="text-sm text-gray-300">{t.settings.logoutConfirm}</p>
                 <div className="flex gap-2">
                   <button
                     onClick={() => setShowLogoutConfirm(false)}
                     className="flex-1 py-2.5 bg-white/5 hover:bg-white/10 rounded-xl text-sm font-medium transition-all"
                   >
-                    취소
+                    {t.common.cancel}
                   </button>
                   <button
                     onClick={onLogout}
                     className="flex-1 py-2.5 bg-red-600 hover:bg-red-500 rounded-xl text-sm font-medium transition-all"
                   >
-                    로그아웃
+                    {t.settings.logoutTitle}
                   </button>
                 </div>
               </div>
@@ -790,7 +718,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                 className="w-full flex items-center justify-center gap-2 px-4 py-3.5 text-gray-500 hover:text-red-400 hover:bg-red-500/5 transition-all"
               >
                 <LogOut size={16} />
-                <span className="text-sm">로그아웃</span>
+                <span className="text-sm">{t.settings.logoutTitle}</span>
               </button>
             )}
           </section>

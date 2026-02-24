@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import type { UserProfile } from '../types';
 import { loginWithGoogle } from '../services/firebaseService';
 import { AlertTriangle, Chrome, HelpCircle, Settings, ShieldCheck } from 'lucide-react';
+import { useTranslation } from '../i18n/useTranslation';
 
 interface LandingPageProps {
   onLoginSuccess: (profile: UserProfile) => void;
@@ -11,6 +12,7 @@ const LandingPage: React.FC<LandingPageProps> = () => {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [showSetupGuide, setShowSetupGuide] = useState(false);
+  const { language } = useTranslation();
 
   const handleGoogleLogin = async () => {
     setErrorMessage(null);
@@ -18,7 +20,7 @@ const LandingPage: React.FC<LandingPageProps> = () => {
     try {
       await loginWithGoogle();
     } catch (error: any) {
-      setErrorMessage(error?.message || '로그인 중 오류가 발생했습니다.');
+      setErrorMessage(error?.message || (language === 'ko' ? '로그인 중 오류가 발생했습니다.' : 'An error occurred during login.'));
     } finally {
       setIsLoggingIn(false);
     }
@@ -47,7 +49,9 @@ const LandingPage: React.FC<LandingPageProps> = () => {
               System Authorization
             </h2>
             <p className="text-[11px] text-gray-400">
-              Google 계정으로 로그인해 목표 데이터를 클라우드에 저장하세요.
+              {language === 'ko'
+                ? 'Google 계정으로 로그인해 목표 데이터를 클라우드에 저장하세요.'
+                : 'Sign in with Google to save your goal data to the cloud.'}
             </p>
           </div>
 
@@ -70,7 +74,9 @@ const LandingPage: React.FC<LandingPageProps> = () => {
             </button>
 
             <p className="text-[9px] text-gray-600 text-center px-4">
-              로그인 후 데이터는 계정 기준으로 Firestore/R2에 저장됩니다.
+              {language === 'ko'
+                ? '로그인 후 데이터는 계정 기준으로 Firestore/R2에 저장됩니다.'
+                : 'After login, data is stored in Firestore/R2 under your account.'}
             </p>
           </div>
 
@@ -83,9 +89,19 @@ const LandingPage: React.FC<LandingPageProps> = () => {
 
           <div className="pt-4 border-t border-white/5">
             <p className="text-[9px] text-gray-500 text-center leading-relaxed">
-              로그인 시 브라우저는 Firebase 인증 상태를 유지합니다.
-              <br />
-              사용자 데이터는 로컬이 아닌 백엔드에 저장됩니다.
+              {language === 'ko' ? (
+                <>
+                  로그인 시 브라우저는 Firebase 인증 상태를 유지합니다.
+                  <br />
+                  사용자 데이터는 로컬이 아닌 백엔드에 저장됩니다.
+                </>
+              ) : (
+                <>
+                  Your browser maintains Firebase auth state on login.
+                  <br />
+                  User data is stored on the backend, not locally.
+                </>
+              )}
             </p>
             <div className="mt-4 flex flex-wrap items-center justify-center gap-3 text-[9px] font-bold text-gray-500 uppercase tracking-widest">
               <a className="hover:text-neon-lime transition-colors" href="/terms" target="_blank" rel="noreferrer">Terms</a>
@@ -120,15 +136,20 @@ const LandingPage: React.FC<LandingPageProps> = () => {
               </button>
             </div>
 
-            <h3 className="text-xl font-display font-bold">인증 도메인 가이드</h3>
+            <h3 className="text-xl font-display font-bold">
+              {language === 'ko' ? '인증 도메인 가이드' : 'Auth Domain Guide'}
+            </h3>
 
             <div className="space-y-4 bg-white/5 p-5 rounded-2xl">
               <p className="text-[11px] text-gray-400 leading-relaxed">
-                Origin not allowed 오류가 나오면 아래 주소를 Firebase Console 인증 도메인에
-                추가하세요.
+                {language === 'ko'
+                  ? 'Origin not allowed 오류가 나오면 아래 주소를 Firebase Console 인증 도메인에 추가하세요.'
+                  : 'If you see an "Origin not allowed" error, add the address below to Firebase Console authorized domains.'}
               </p>
               <div className="space-y-2">
-                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">복사할 주소</p>
+                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
+                  {language === 'ko' ? '복사할 주소' : 'Address to copy'}
+                </p>
                 <code className="block bg-black p-3 rounded text-neon-lime font-mono text-xs overflow-x-auto whitespace-nowrap">
                   {window.location.origin}
                 </code>
@@ -139,7 +160,7 @@ const LandingPage: React.FC<LandingPageProps> = () => {
               onClick={() => setShowSetupGuide(false)}
               className="w-full py-4 bg-neon-lime text-black rounded-xl font-bold text-xs uppercase tracking-widest hover:scale-105 transition-all"
             >
-              확인 완료
+              {language === 'ko' ? '확인 완료' : 'Done'}
             </button>
           </div>
         </div>

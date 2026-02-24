@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from '../../i18n/useTranslation';
 
 interface StickyNavProps {
   onCTAClick: () => void;
@@ -6,6 +7,7 @@ interface StickyNavProps {
 
 export const StickyNav: React.FC<StickyNavProps> = ({ onCTAClick }) => {
   const [scrolled, setScrolled] = useState(false);
+  const { language } = useTranslation();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -56,7 +58,7 @@ export const StickyNav: React.FC<StickyNavProps> = ({ onCTAClick }) => {
           fontFamily: 'Inter, sans-serif',
         }}
       >
-        무료 시작
+        {language === 'ko' ? '무료 시작' : 'Start Free'}
       </button>
     </nav>
   );

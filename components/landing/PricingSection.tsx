@@ -1,6 +1,7 @@
 import React from 'react';
 import { Check } from 'lucide-react';
 import { useScrollReveal } from '../../hooks/useScrollReveal';
+import { useTranslation } from '../../i18n/useTranslation';
 
 interface PricingSectionProps {
   onPlanSelect: (plan: string) => void;
@@ -17,66 +18,11 @@ interface PlanConfig {
   recommended?: boolean;
 }
 
-const PLANS: PlanConfig[] = [
-  {
-    id: 'explorer',
-    name: 'Explorer',
-    price: '무료',
-    priceSub: '3일 체험',
-    features: [
-      'AI 코치 300회',
-      '이미지 8장',
-    ],
-    cta: '무료 시작',
-  },
-  {
-    id: 'essential',
-    name: 'Essential',
-    price: '$9.99',
-    originalPrice: '$19.99',
-    priceSub: '/월',
-    features: [
-      'AI 코치 2,500회',
-      '이미지 80장',
-      '음성 30분',
-    ],
-    cta: '시작하기',
-  },
-  {
-    id: 'visionary',
-    name: 'Visionary',
-    price: '$19.99',
-    originalPrice: '$39.99',
-    priceSub: '/월',
-    features: [
-      'AI 코치 6,000회',
-      'HQ 이미지 180장',
-      '음성 90분',
-      '영상 4편',
-    ],
-    cta: '시작하기',
-    recommended: true,
-  },
-  {
-    id: 'master',
-    name: 'Master',
-    price: '$49.99',
-    originalPrice: '$99.99',
-    priceSub: '/월',
-    features: [
-      'AI 코치 15,000회',
-      'HQ 이미지 450장',
-      '음성 240분',
-      '영상 12편',
-    ],
-    cta: '시작하기',
-  },
-];
-
-const PlanCard: React.FC<{ plan: PlanConfig; onSelect: (id: string) => void; delay: number }> = ({
+const PlanCard: React.FC<{ plan: PlanConfig; onSelect: (id: string) => void; delay: number; language: string }> = ({
   plan,
   onSelect,
   delay,
+  language,
 }) => {
   const { ref, isVisible } = useScrollReveal();
 
@@ -102,7 +48,7 @@ const PlanCard: React.FC<{ plan: PlanConfig; onSelect: (id: string) => void; del
     >
       {plan.recommended && (
         <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#CCFF00] text-black text-xs font-bold px-4 py-1 rounded-full whitespace-nowrap">
-          추천
+          {language === 'ko' ? '추천' : 'Best'}
         </span>
       )}
 
@@ -125,7 +71,7 @@ const PlanCard: React.FC<{ plan: PlanConfig; onSelect: (id: string) => void; del
             className="text-xs mt-1 px-2 py-0.5 rounded-full"
             style={{ backgroundColor: 'rgba(204,255,0,0.15)', color: '#CCFF00' }}
           >
-            베타 특가
+            {language === 'ko' ? '베타 특가' : 'Beta Deal'}
           </span>
         )}
       </div>
@@ -156,6 +102,21 @@ const PlanCard: React.FC<{ plan: PlanConfig; onSelect: (id: string) => void; del
 
 export const PricingSection: React.FC<PricingSectionProps> = ({ onPlanSelect }) => {
   const { ref: headingRef, isVisible: headingVisible } = useScrollReveal();
+  const { language } = useTranslation();
+
+  const PLANS_KO: PlanConfig[] = [
+    { id: 'explorer', name: 'Explorer', price: '무료', priceSub: '3일 체험', features: ['AI 코치 300회', '이미지 8장'], cta: '무료 시작' },
+    { id: 'essential', name: 'Essential', price: '$9.99', originalPrice: '$19.99', priceSub: '/월', features: ['AI 코치 2,500회', '이미지 80장', '음성 30분'], cta: '시작하기' },
+    { id: 'visionary', name: 'Visionary', price: '$19.99', originalPrice: '$39.99', priceSub: '/월', features: ['AI 코치 6,000회', 'HQ 이미지 180장', '음성 90분', '영상 4편'], cta: '시작하기', recommended: true },
+    { id: 'master', name: 'Master', price: '$49.99', originalPrice: '$99.99', priceSub: '/월', features: ['AI 코치 15,000회', 'HQ 이미지 450장', '음성 240분', '영상 12편'], cta: '시작하기' },
+  ];
+  const PLANS_EN: PlanConfig[] = [
+    { id: 'explorer', name: 'Explorer', price: 'Free', priceSub: '3-day trial', features: ['300 AI coaching chats', '8 images'], cta: 'Start Free' },
+    { id: 'essential', name: 'Essential', price: '$9.99', originalPrice: '$19.99', priceSub: '/mo', features: ['2,500 AI coaching chats', '80 images', '30 min audio'], cta: 'Get Started' },
+    { id: 'visionary', name: 'Visionary', price: '$19.99', originalPrice: '$39.99', priceSub: '/mo', features: ['6,000 AI coaching chats', '180 HQ images', '90 min audio', '4 videos'], cta: 'Get Started', recommended: true },
+    { id: 'master', name: 'Master', price: '$49.99', originalPrice: '$99.99', priceSub: '/mo', features: ['15,000 AI coaching chats', '450 HQ images', '240 min audio', '12 videos'], cta: 'Get Started' },
+  ];
+  const PLANS = language === 'ko' ? PLANS_KO : PLANS_EN;
 
   return (
     <section id="pricing" className="py-8 md:py-24 px-6">
@@ -170,20 +131,20 @@ export const PricingSection: React.FC<PricingSectionProps> = ({ onPlanSelect }) 
           }}
         >
           <h2 className="text-2xl md:text-5xl font-bold text-white mb-3 md:mb-4">
-            당신에게 맞는 플랜
+            {language === 'ko' ? '당신에게 맞는 플랜' : 'Find Your Perfect Plan'}
           </h2>
           <p className="text-gray-400 text-sm md:text-lg">
-            3일 무료 체험으로 시작 · 언제든 해지 가능
+            {language === 'ko' ? '3일 무료 체험으로 시작 · 언제든 해지 가능' : 'Start with a 3-day free trial · Cancel anytime'}
           </p>
         </div>
 
         {/* Anchoring */}
         <div className="text-center mb-4 md:mb-8">
           <p className="text-gray-500 text-sm" style={{ fontFamily: 'Inter, sans-serif' }}>
-            전문 라이프 코칭 비용: <span className="line-through">월 200~300만원</span>
+            {language === 'ko' ? '전문 라이프 코칭 비용: ' : 'Professional life coaching cost: '}<span className="line-through">{language === 'ko' ? '월 200~300만원' : '$2,000~3,000/mo'}</span>
           </p>
           <p className="text-lg font-semibold mt-1" style={{ fontFamily: 'Inter, sans-serif', color: '#CCFF00' }}>
-            Secret Coach: AI가 24시간 밀착 관리 — 베타 특가
+            {language === 'ko' ? 'Secret Coach: AI가 24시간 밀착 관리 — 베타 특가' : 'Secret Coach: 24/7 AI close management — Beta pricing'}
           </p>
         </div>
 
@@ -195,6 +156,7 @@ export const PricingSection: React.FC<PricingSectionProps> = ({ onPlanSelect }) 
               plan={plan}
               onSelect={onPlanSelect}
               delay={index * 100}
+              language={language}
             />
           ))}
         </div>

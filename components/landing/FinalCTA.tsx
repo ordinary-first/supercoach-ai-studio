@@ -1,5 +1,6 @@
 import React from 'react';
 import { useScrollReveal } from '../../hooks/useScrollReveal';
+import { useTranslation } from '../../i18n/useTranslation';
 
 interface FinalCTAProps {
   onCTAClick: () => void;
@@ -7,6 +8,7 @@ interface FinalCTAProps {
 
 export const FinalCTA: React.FC<FinalCTAProps> = ({ onCTAClick }) => {
   const { ref, isVisible } = useScrollReveal();
+  const { language } = useTranslation();
 
   return (
     <section
@@ -34,13 +36,13 @@ export const FinalCTA: React.FC<FinalCTAProps> = ({ onCTAClick }) => {
             className="text-xl md:text-5xl font-bold text-white"
             style={{ fontFamily: 'Inter, sans-serif' }}
           >
-            1년 후에도 같은 자리에 서 있을 건가요?
+            {language === 'ko' ? '1년 후에도 같은 자리에 서 있을 건가요?' : 'Will you still be standing in the same spot a year from now?'}
           </h2>
           <h2
             className="text-xl md:text-5xl font-bold"
             style={{ fontFamily: 'Inter, sans-serif', color: '#CCFF00' }}
           >
-            지금이 가장 빠른 시작입니다
+            {language === 'ko' ? '지금이 가장 빠른 시작입니다' : 'Right now is the fastest start'}
           </h2>
         </div>
 
@@ -49,7 +51,7 @@ export const FinalCTA: React.FC<FinalCTAProps> = ({ onCTAClick }) => {
           className="text-gray-400 text-sm md:text-base max-w-sm"
           style={{ fontFamily: 'Inter, sans-serif' }}
         >
-          매일 0.1%씩 성장하면, 1년 뒤 44% 더 나은 당신이 됩니다.
+          {language === 'ko' ? '매일 0.1%씩 성장하면, 1년 뒤 44% 더 나은 당신이 됩니다.' : 'Grow 0.1% every day, and you\'ll be 44% better in a year.'}
         </p>
 
         {/* CTA Button */}
@@ -70,7 +72,7 @@ export const FinalCTA: React.FC<FinalCTAProps> = ({ onCTAClick }) => {
               (e.currentTarget as HTMLButtonElement).style.boxShadow = 'none';
             }}
           >
-            무료로 시작하기
+            {language === 'ko' ? '무료로 시작하기' : 'Start Free'}
           </button>
 
           {/* Below-CTA fine print */}
@@ -78,7 +80,7 @@ export const FinalCTA: React.FC<FinalCTAProps> = ({ onCTAClick }) => {
             className="text-xs text-gray-500"
             style={{ fontFamily: 'Inter, sans-serif' }}
           >
-            3일 무료 · 카드 불필요 · 10초 가입
+            {language === 'ko' ? '3일 무료 · 카드 불필요 · 10초 가입' : '3-day free trial · No card required · 10-second signup'}
           </p>
         </div>
       </div>
