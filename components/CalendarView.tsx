@@ -294,17 +294,17 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
 
     if (todo.completed) {
       itemStyle = "bg-gradient-to-r from-neon-lime/80 to-green-400/80 text-black border border-white/50";
-      glowEffect = "shadow-[0_0_12px_rgba(204,255,0,0.6)] z-10 scale-[1.02]";
+      glowEffect = "shadow-[0_0_12px_var(--shadow-glow)] z-10 scale-[1.02]";
       icon = <Trophy size={10} className="fill-black text-black" />;
     } else if (isGhost) {
-      itemStyle = "bg-white/5 text-gray-500 border border-white/5 border-dashed backdrop-blur-[2px] cursor-not-allowed";
-      icon = <Lock size={10} className="text-gray-600" />;
+      itemStyle = "bg-th-surface text-th-text-tertiary border border-th-border-subtle border-dashed backdrop-blur-[2px] cursor-not-allowed";
+      icon = <Lock size={10} className="text-th-text-muted" />;
     } else if (isPastDate && !todo.completed) {
-      itemStyle = "bg-[#1a1a1a] text-gray-500 border border-white/10 opacity-60 grayscale";
+      itemStyle = "bg-th-elevated text-th-text-tertiary border border-th-border opacity-60 grayscale";
       icon = <AlertCircle size={10} className="text-red-900" />;
     } else {
-      itemStyle = "bg-white/5 text-gray-300 border border-white/20 backdrop-blur-sm";
-      icon = <Lock size={10} className="text-gray-400" />;
+      itemStyle = "bg-th-surface text-gray-300 border border-th-border backdrop-blur-sm";
+      icon = <Lock size={10} className="text-th-text-secondary" />;
     }
 
     return (
@@ -343,7 +343,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
       // Prev Month (Placeholder)
       for (let i = startDay - 1; i >= 0; i--) {
           days.push(
-              <div key={`prev-${i}`} className="min-h-0 md:min-h-0 bg-black/40 border-b border-r border-white/5 opacity-20 p-1 text-gray-600 font-mono text-xs">
+              <div key={`prev-${i}`} className="min-h-0 md:min-h-0 bg-th-header border-b border-r border-th-border-subtle opacity-20 p-1 text-th-text-muted font-mono text-xs">
                   {prevMonthDays - i}
               </div>
           );
@@ -361,11 +361,11 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
               <div
                 key={`curr-${day}`}
                 onClick={() => handleDayClick(dateObj)}
-                className={`min-h-0 md:min-h-0 border-b border-r border-white/10 p-1 relative group transition-all duration-300 cursor-pointer ${isToday ? 'bg-white/5 shadow-[inset_0_0_20px_rgba(204,255,0,0.05)]' : 'bg-transparent hover:bg-white/[0.07]'}`}
+                className={`min-h-0 md:min-h-0 border-b border-r border-th-border p-1 relative group transition-all duration-300 cursor-pointer ${isToday ? 'bg-th-surface shadow-[inset_0_0_20px_var(--shadow-glow)]' : 'bg-transparent hover:bg-white/[0.07]'}`}
               >
                   {/* Date Header */}
                   <div className="flex justify-between items-start mb-0.5">
-                      <span className={`text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full transition-all ${isToday ? 'bg-neon-lime text-black shadow-[0_0_10px_#CCFF00]' : 'text-gray-400 group-hover:text-white'}`}>
+                      <span className={`text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full transition-all ${isToday ? 'bg-th-accent text-th-text-inverse shadow-[0_0_10px_var(--shadow-glow)]' : 'text-th-text-secondary group-hover:text-th-text'}`}>
                           {day}
                       </span>
                   </div>
@@ -377,7 +377,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
                       {/* Empty State placeholder for Today */}
                       {dayTodos.length === 0 && isToday && (
                           <div className="h-full flex items-center justify-center pt-2 opacity-30">
-                              <div className="border border-dashed border-white/30 rounded px-2 py-1 text-[9px] text-gray-500 flex items-center gap-1">
+                              <div className="border border-dashed border-th-border rounded px-2 py-1 text-[9px] text-th-text-tertiary flex items-center gap-1">
                                   <Star size={8} /> 미션 없음
                               </div>
                           </div>
@@ -391,7 +391,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
       const remainingSlots = totalSlots - days.length;
       for (let i = 1; i <= remainingSlots; i++) {
           days.push(
-              <div key={`next-${i}`} className="min-h-0 md:min-h-0 bg-black/40 border-b border-r border-white/5 opacity-20 p-1 text-gray-600 font-mono text-xs">
+              <div key={`next-${i}`} className="min-h-0 md:min-h-0 bg-th-header border-b border-r border-th-border-subtle opacity-20 p-1 text-th-text-muted font-mono text-xs">
                   {i}
               </div>
           );
@@ -417,24 +417,24 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
         <div
           key={`week-${i}`}
           onClick={() => handleDayClick(dateObj)}
-          className={`flex-1 flex items-stretch border-b border-white/10 cursor-pointer transition-all duration-200 min-h-[56px] ${
+          className={`flex-1 flex items-stretch border-b border-th-border cursor-pointer transition-all duration-200 min-h-[56px] ${
             isToday
-              ? 'bg-white/5'
+              ? 'bg-th-surface'
               : 'hover:bg-white/[0.03]'
           }`}
         >
           {/* Date column */}
-          <div className={`w-16 shrink-0 flex flex-col items-center justify-center py-2 border-r border-white/10 ${
+          <div className={`w-16 shrink-0 flex flex-col items-center justify-center py-2 border-r border-th-border ${
             dayOfWeek === 0 ? 'text-red-400' : dayOfWeek === 6 ? 'text-blue-400' : ''
           }`}>
             <span className={`text-lg font-bold font-display ${
               isToday
-                ? 'w-8 h-8 flex items-center justify-center rounded-full bg-neon-lime text-black shadow-[0_0_10px_#CCFF00]'
+                ? 'w-8 h-8 flex items-center justify-center rounded-full bg-th-accent text-th-text-inverse shadow-[0_0_10px_var(--shadow-glow)]'
                 : 'text-gray-300'
             }`}>
               {dateObj.getDate()}
             </span>
-            <span className={`text-[10px] mt-0.5 ${isToday ? 'text-neon-lime font-bold' : 'text-gray-500'}`}>
+            <span className={`text-[10px] mt-0.5 ${isToday ? 'text-th-accent font-bold' : 'text-th-text-tertiary'}`}>
               {dayNamesFull[dayOfWeek]}
             </span>
           </div>
@@ -444,7 +444,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
             {dayTodos.length > 0 ? (
               dayTodos.map((todo: any) => renderTodoCell(todo, isPastDate, todo.isGhost))
             ) : (
-              <span className="text-xs text-gray-600 italic">미션 없음</span>
+              <span className="text-xs text-th-text-muted italic">미션 없음</span>
             )}
           </div>
         </div>
@@ -478,25 +478,25 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
       let labelStyle = "";
 
       if (todo.completed) {
-        cardStyle = "bg-gradient-to-r from-neon-lime/20 to-green-400/10 border-neon-lime/30 shadow-[0_0_20px_rgba(204,255,0,0.1)]";
-        icon = <Trophy size={18} className="text-neon-lime fill-neon-lime/50" />;
+        cardStyle = "bg-gradient-to-r from-neon-lime/20 to-green-400/10 border-th-accent-border shadow-[0_0_20px_var(--shadow-glow)]";
+        icon = <Trophy size={18} className="text-th-accent fill-neon-lime/50" />;
         statusLabel = "완료";
-        labelStyle = "text-neon-lime bg-neon-lime/10";
+        labelStyle = "text-th-accent bg-neon-lime/10";
       } else if (isGhost) {
-        cardStyle = "bg-white/[0.03] border-white/5 border-dashed";
-        icon = <Lock size={18} className="text-gray-600" />;
+        cardStyle = "bg-white/[0.03] border-th-border-subtle border-dashed";
+        icon = <Lock size={18} className="text-th-text-muted" />;
         statusLabel = "잠긴 미션";
-        labelStyle = "text-gray-600 bg-white/5";
+        labelStyle = "text-th-text-muted bg-th-surface";
       } else if (isPastDate) {
-        cardStyle = "bg-[#1a1a1a]/80 border-white/10 opacity-70 grayscale";
+        cardStyle = "bg-th-elevated border-th-border opacity-70 grayscale";
         icon = <AlertCircle size={18} className="text-red-500/60" />;
         statusLabel = "놓침";
         labelStyle = "text-red-400/80 bg-red-500/10";
       } else {
-        cardStyle = "bg-white/5 border-white/15 hover:border-white/30 hover:bg-white/[0.08]";
-        icon = <CheckCircle2 size={18} className="text-gray-400" />;
+        cardStyle = "bg-th-surface border-white/15 hover:border-white/30 hover:bg-th-surface-hover";
+        icon = <CheckCircle2 size={18} className="text-th-text-secondary" />;
         statusLabel = isToday ? "진행 중" : "예정";
-        labelStyle = isToday ? "text-blue-400 bg-blue-500/10" : "text-gray-400 bg-white/5";
+        labelStyle = isToday ? "text-blue-400 bg-blue-500/10" : "text-th-text-secondary bg-th-surface";
       }
 
       return (
@@ -516,17 +516,17 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
           )}
 
           {/* Icon */}
-          <div className="shrink-0 w-10 h-10 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center">
+          <div className="shrink-0 w-10 h-10 rounded-lg bg-th-surface border border-th-border flex items-center justify-center">
             {icon}
           </div>
 
           {/* Content */}
           <div className="flex-1 min-w-0">
-            <p className={`text-sm font-medium leading-relaxed ${todo.completed ? 'text-white font-bold' : isGhost ? 'text-gray-600' : isPastDate ? 'text-gray-500' : 'text-gray-200'}`}>
+            <p className={`text-sm font-medium leading-relaxed ${todo.completed ? 'text-th-text font-bold' : isGhost ? 'text-th-text-muted' : isPastDate ? 'text-th-text-tertiary' : 'text-gray-200'}`}>
               {todo.text}
             </p>
             {todo.note && (
-              <p className="text-xs text-gray-500 mt-1 truncate">{todo.note}</p>
+              <p className="text-xs text-th-text-tertiary mt-1 truncate">{todo.note}</p>
             )}
           </div>
 
@@ -542,27 +542,27 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
       <div className="flex-1 overflow-y-auto p-4 md:p-8 pb-[56px] md:pb-[64px] relative z-0">
         {/* Stats Summary */}
         <div className="max-w-2xl mx-auto mb-8">
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-5 backdrop-blur-sm">
+          <div className="bg-th-surface border border-th-border rounded-2xl p-5 backdrop-blur-sm">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-neon-lime/10 border border-neon-lime/20 flex items-center justify-center">
-                  <Trophy size={18} className="text-neon-lime" />
+                  <Trophy size={18} className="text-th-accent" />
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500 uppercase tracking-wider font-bold">미션 현황</p>
-                  <p className="text-lg font-display font-bold text-white">
-                    {completedCount}/{totalCount} <span className="text-sm text-gray-400 font-body">완료</span>
+                  <p className="text-xs text-th-text-tertiary uppercase tracking-wider font-bold">미션 현황</p>
+                  <p className="text-lg font-display font-bold text-th-text">
+                    {completedCount}/{totalCount} <span className="text-sm text-th-text-secondary font-body">완료</span>
                   </p>
                 </div>
               </div>
-              <span className="text-2xl font-display font-bold text-neon-lime">
+              <span className="text-2xl font-display font-bold text-th-accent">
                 {totalCount > 0 ? Math.round(progressPercent) : 0}%
               </span>
             </div>
             {/* Progress Bar */}
-            <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden border border-white/10">
+            <div className="w-full h-2 bg-th-surface rounded-full overflow-hidden border border-th-border">
               <div
-                className="h-full bg-gradient-to-r from-neon-lime to-green-400 rounded-full transition-all duration-500 ease-out shadow-[0_0_8px_rgba(204,255,0,0.4)]"
+                className="h-full bg-gradient-to-r from-neon-lime to-green-400 rounded-full transition-all duration-500 ease-out shadow-[0_0_8px_var(--shadow-glow)]"
                 style={{ width: `${progressPercent}%` }}
               />
             </div>
@@ -575,11 +575,11 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
           {completedTodos.length > 0 && (
             <div>
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-2 h-2 rounded-full bg-neon-lime shadow-[0_0_6px_#CCFF00]"></div>
-                <h3 className="text-sm font-bold text-neon-lime uppercase tracking-wider font-display">
+                <div className="w-2 h-2 rounded-full bg-th-accent shadow-[0_0_6px_var(--shadow-glow)]"></div>
+                <h3 className="text-sm font-bold text-th-accent uppercase tracking-wider font-display">
                   완료한 미션
                 </h3>
-                <span className="text-xs text-gray-600 font-mono">{completedTodos.length}</span>
+                <span className="text-xs text-th-text-muted font-mono">{completedTodos.length}</span>
                 <div className="flex-1 h-px bg-neon-lime/10"></div>
               </div>
               <div className="space-y-2.5">
@@ -593,11 +593,11 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
             <div>
               <div className="flex items-center gap-3 mb-4">
                 <div className={`w-2 h-2 rounded-full ${isPastDate ? 'bg-red-500/60' : 'bg-white/30'}`}></div>
-                <h3 className={`text-sm font-bold uppercase tracking-wider font-display ${isPastDate ? 'text-red-400/80' : 'text-gray-400'}`}>
+                <h3 className={`text-sm font-bold uppercase tracking-wider font-display ${isPastDate ? 'text-red-400/80' : 'text-th-text-secondary'}`}>
                   미완료 미션
                 </h3>
-                <span className="text-xs text-gray-600 font-mono">{incompleteTodos.length}</span>
-                <div className={`flex-1 h-px ${isPastDate ? 'bg-red-500/10' : 'bg-white/5'}`}></div>
+                <span className="text-xs text-th-text-muted font-mono">{incompleteTodos.length}</span>
+                <div className={`flex-1 h-px ${isPastDate ? 'bg-red-500/10' : 'bg-th-surface'}`}></div>
               </div>
               <div className="space-y-2.5">
                 {incompleteTodos.map(renderDayTodoCard)}
@@ -608,10 +608,10 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
           {/* Empty state */}
           {dayTodos.length === 0 && (
             <div className="text-center py-16">
-              <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mx-auto mb-4">
-                <Star size={24} className="text-gray-600" />
+              <div className="w-16 h-16 rounded-2xl bg-th-surface border border-th-border flex items-center justify-center mx-auto mb-4">
+                <Star size={24} className="text-th-text-muted" />
               </div>
-              <p className="text-gray-500 text-sm font-medium">이 날에는 미션이 없습니다</p>
+              <p className="text-th-text-tertiary text-sm font-medium">이 날에는 미션이 없습니다</p>
               <p className="text-gray-700 text-xs mt-1">미션을 추가하여 하루를 시작해 보세요</p>
             </div>
           )}
@@ -647,22 +647,22 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
                   className={`sticky top-0 z-10 flex items-center gap-3 px-3 py-2 cursor-pointer rounded-lg transition-colors ${
                     isToday
                       ? 'bg-neon-lime/10 border border-neon-lime/20'
-                      : 'bg-black/60 backdrop-blur-sm hover:bg-white/5'
+                      : 'bg-th-overlay backdrop-blur-sm hover:bg-th-surface'
                   }`}
                 >
                   <span className={`text-lg font-bold font-display ${
-                    isToday ? 'text-neon-lime' : dayOfWeek === 0 ? 'text-red-400' : dayOfWeek === 6 ? 'text-blue-400' : 'text-gray-300'
+                    isToday ? 'text-th-accent' : dayOfWeek === 0 ? 'text-red-400' : dayOfWeek === 6 ? 'text-blue-400' : 'text-gray-300'
                   }`}>
                     {date.getDate()}
                   </span>
-                  <span className={`text-xs ${isToday ? 'text-neon-lime font-bold' : 'text-gray-500'}`}>
+                  <span className={`text-xs ${isToday ? 'text-th-accent font-bold' : 'text-th-text-tertiary'}`}>
                     {dayNamesFull[dayOfWeek]}
                   </span>
                   {isToday && (
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-neon-lime/20 text-neon-lime font-bold">오늘</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-neon-lime/20 text-th-accent font-bold">오늘</span>
                   )}
                   {dayTodos.length > 0 && (
-                    <span className="ml-auto text-[10px] text-gray-500">
+                    <span className="ml-auto text-[10px] text-th-text-tertiary">
                       {dayTodos.filter((t: any) => t.completed).length}/{dayTodos.length}
                     </span>
                   )}
@@ -685,19 +685,19 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
   if (!isOpen) return null;
 
   return (
-    <div ref={focusTrapRef} className="fixed inset-0 z-50 bg-deep-space flex flex-col font-body text-white">
+    <div ref={focusTrapRef} className="fixed inset-0 z-50 bg-th-base flex flex-col font-body text-th-text">
 
         {/* Ambient Background Glow */}
         <div className="absolute top-0 left-1/4 w-1/2 h-1/2 bg-neon-lime/5 rounded-full blur-[150px] pointer-events-none"></div>
 
         {/* Header */}
-        <div className="px-3 md:px-8 py-1.5 md:py-2 border-b border-white/10 flex gap-2 md:gap-3 justify-between items-center bg-black/60 backdrop-blur-xl z-10">
+        <div className="px-3 md:px-8 py-1.5 md:py-2 border-b border-th-border flex gap-2 md:gap-3 justify-between items-center bg-th-overlay backdrop-blur-xl z-10">
             <div className="flex items-center gap-3 md:gap-6">
                 {/* Back button in day view */}
                 {viewMode === 'day' && (
                   <button
                     onClick={handleBackFromDay}
-                    className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors p-1.5 rounded-full hover:bg-white/10"
+                    className="flex items-center gap-2 text-th-text-secondary hover:text-th-text transition-colors p-1.5 rounded-full hover:bg-th-surface-hover"
                     aria-label="뒤로 가기"
                   >
                     <ArrowLeft size={20} />
@@ -706,13 +706,13 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
 
                 {/* Navigation */}
                 <div className="flex items-center gap-2">
-                    <button onClick={handlePrev} className="p-1.5 rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors" aria-label="이전">
+                    <button onClick={handlePrev} className="p-1.5 rounded-full hover:bg-th-surface-hover text-th-text-secondary hover:text-th-text transition-colors" aria-label="이전">
                       <ChevronLeft size={18}/>
                     </button>
-                    <h2 className={`font-bold text-white text-center font-display tracking-wide ${viewMode === 'day' ? 'text-sm md:text-base min-w-[180px]' : 'text-base min-w-[120px]'}`}>
+                    <h2 className={`font-bold text-th-text text-center font-display tracking-wide ${viewMode === 'day' ? 'text-sm md:text-base min-w-[180px]' : 'text-base min-w-[120px]'}`}>
                         {getHeaderTitle()}
                     </h2>
-                    <button onClick={handleNext} className="p-1.5 rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors" aria-label="다음">
+                    <button onClick={handleNext} className="p-1.5 rounded-full hover:bg-th-surface-hover text-th-text-secondary hover:text-th-text transition-colors" aria-label="다음">
                       <ChevronRight size={18}/>
                     </button>
                 </div>
@@ -727,16 +727,16 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
         {viewMode === 'month' && (
           <div className="flex-1 overflow-hidden flex flex-col p-1 md:p-3 lg:p-6 pb-[56px] md:pb-[64px] relative z-0 animate-in fade-in duration-300">
               {/* Week Headers */}
-              <div className="grid grid-cols-7 border-b border-white/10 mb-0 bg-white/5 rounded-t-lg">
+              <div className="grid grid-cols-7 border-b border-th-border mb-0 bg-th-surface rounded-t-lg">
                   {dayNames.map((day, idx) => (
-                      <div key={day} className={`text-center py-1.5 font-display font-bold text-[10px] tracking-wider ${idx === 0 ? 'text-red-400' : (idx === 6 ? 'text-blue-400' : 'text-gray-400')}`}>
+                      <div key={day} className={`text-center py-1.5 font-display font-bold text-[10px] tracking-wider ${idx === 0 ? 'text-red-400' : (idx === 6 ? 'text-blue-400' : 'text-th-text-secondary')}`}>
                           {day}
                       </div>
                   ))}
               </div>
 
               {/* Days */}
-              <div className="grid grid-cols-7 flex-1 border-l border-white/10 auto-rows-fr bg-black/20 backdrop-blur-sm rounded-b-lg overflow-hidden">
+              <div className="grid grid-cols-7 flex-1 border-l border-th-border auto-rows-fr bg-th-header backdrop-blur-sm rounded-b-lg overflow-hidden">
                    {renderCalendarDays()}
               </div>
           </div>
@@ -745,7 +745,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
         {/* Week View (Vertical) */}
         {viewMode === 'week' && (
           <div className="flex-1 overflow-y-auto flex flex-col p-1 md:p-3 pb-[56px] md:pb-[64px] relative z-0 animate-in fade-in duration-300">
-            <div className="flex-1 flex flex-col bg-black/20 backdrop-blur-sm rounded-lg border border-white/10 overflow-hidden">
+            <div className="flex-1 flex flex-col bg-th-header backdrop-blur-sm rounded-lg border border-th-border overflow-hidden">
               {renderWeekDays()}
             </div>
           </div>

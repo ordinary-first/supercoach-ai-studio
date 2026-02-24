@@ -49,23 +49,23 @@ const CoachBubble: React.FC<CoachBubbleProps> = ({ isOpen, onToggle, hasUnread, 
         onClick={onToggle}
         className={[
           'relative flex flex-col items-center justify-center w-14 h-14',
-          'bg-black/80 backdrop-blur-xl rounded-full',
+          'bg-th-elevated backdrop-blur-xl rounded-full',
           'border transition-all duration-300',
           shouldPulse
-            ? 'border-neon-lime ring-2 ring-neon-lime/60 shadow-[0_0_30px_rgba(204,255,0,0.3)]'
-            : 'border-neon-lime/30 shadow-[0_0_20px_rgba(0,0,0,0.5)]',
-          'hover:border-neon-lime hover:shadow-[0_0_25px_rgba(204,255,0,0.15)]',
+            ? 'border-th-accent-border ring-2 ring-th-accent/60 shadow-[0_0_30px_var(--shadow-glow)]'
+            : 'border-th-accent-border shadow-[0_0_20px_rgba(0,0,0,0.5)]',
+          'hover:border-th-accent-border hover:shadow-[0_0_25px_var(--shadow-glow)]',
         ].join(' ')}
         aria-label="AI 코치 열기"
       >
         {/* 맥동 링 */}
-        <div className={`absolute inset-0 rounded-full border border-neon-lime/30 ${shouldPulse ? 'animate-ping' : 'animate-pulse'}`} />
+        <div className={`absolute inset-0 rounded-full border border-th-accent-border ${shouldPulse ? 'animate-ping' : 'animate-pulse'}`} />
 
-        <MessageCircle className="w-6 h-6 text-neon-lime transition-all duration-300" />
+        <MessageCircle className="w-6 h-6 text-th-accent transition-all duration-300" />
 
         {/* 읽지 않은 알림 배지 */}
         {hasUnread && (
-          <div className="absolute top-0 right-0 w-2.5 h-2.5 bg-neon-lime rounded-full shadow-[0_0_5px_#CCFF00]" />
+          <div className="absolute top-0 right-0 w-2.5 h-2.5 bg-th-accent rounded-full shadow-[0_0_5px_var(--shadow-glow)]" />
         )}
       </button>
     </div>

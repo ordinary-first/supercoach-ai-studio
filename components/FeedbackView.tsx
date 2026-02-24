@@ -108,15 +108,15 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-deep-space flex flex-col overflow-hidden font-body text-white">
-      <div className="h-14 md:h-16 border-b border-white/10 bg-black/30 backdrop-blur-md px-4 md:px-6 flex items-center justify-between shrink-0">
+    <div className="fixed inset-0 z-50 bg-th-base flex flex-col overflow-hidden font-body text-th-text">
+      <div className="h-14 md:h-16 border-b border-th-border bg-th-header backdrop-blur-md px-4 md:px-6 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2">
-          <BarChart3 size={18} className="text-neon-lime" />
+          <BarChart3 size={18} className="text-th-accent" />
           <h1 className="text-sm md:text-base font-semibold tracking-wide">AI 피드백</h1>
         </div>
         <button
           onClick={onClose}
-          className="text-xs text-gray-400 hover:text-white transition-colors"
+          className="text-xs text-th-text-secondary hover:text-th-text transition-colors"
         >
           닫기
         </button>
@@ -132,8 +132,8 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
                 onClick={() => { setPeriod(p); setFeedbackText(''); }}
                 className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all ${
                   period === p
-                    ? 'bg-neon-lime text-black shadow-[0_0_15px_rgba(204,255,0,0.2)]'
-                    : 'bg-white/5 border border-white/10 text-gray-400 hover:text-white hover:bg-white/10'
+                    ? 'bg-th-accent text-th-text-inverse shadow-[0_0_15px_var(--shadow-glow)]'
+                    : 'bg-th-surface border border-th-border text-th-text-secondary hover:text-th-text hover:bg-th-surface-hover'
                 }`}
               >
                 {PERIOD_LABELS[p]}
@@ -143,23 +143,23 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
 
           {/* 통계 카드 */}
           <div className="grid grid-cols-3 gap-3">
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-4 text-center">
+            <div className="bg-th-surface border border-th-border rounded-2xl p-4 text-center">
               <CheckCircle2 size={20} className="text-emerald-400 mx-auto mb-2" />
-              <p className="text-2xl font-bold text-white">{stats.completionRate}%</p>
-              <p className="text-[10px] text-gray-400 mt-1">할일 완료율</p>
-              <p className="text-[10px] text-gray-500">{stats.completedTodos}/{stats.totalTodos}</p>
+              <p className="text-2xl font-bold text-th-text">{stats.completionRate}%</p>
+              <p className="text-[10px] text-th-text-secondary mt-1">할일 완료율</p>
+              <p className="text-[10px] text-th-text-tertiary">{stats.completedTodos}/{stats.totalTodos}</p>
             </div>
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-4 text-center">
+            <div className="bg-th-surface border border-th-border rounded-2xl p-4 text-center">
               <TrendingUp size={20} className="text-blue-400 mx-auto mb-2" />
-              <p className="text-2xl font-bold text-white">{stats.avgProgress}%</p>
-              <p className="text-[10px] text-gray-400 mt-1">평균 진행률</p>
-              <p className="text-[10px] text-gray-500">{nodes.filter((n) => n.type !== 'ROOT').length}개 목표</p>
+              <p className="text-2xl font-bold text-th-text">{stats.avgProgress}%</p>
+              <p className="text-[10px] text-th-text-secondary mt-1">평균 진행률</p>
+              <p className="text-[10px] text-th-text-tertiary">{nodes.filter((n) => n.type !== 'ROOT').length}개 목표</p>
             </div>
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-4 text-center">
-              <Target size={20} className="text-neon-lime mx-auto mb-2" />
-              <p className="text-2xl font-bold text-white">{stats.completedNodes}</p>
-              <p className="text-[10px] text-gray-400 mt-1">완료 목표</p>
-              <p className="text-[10px] text-gray-500">/{stats.totalNodes}개 중</p>
+            <div className="bg-th-surface border border-th-border rounded-2xl p-4 text-center">
+              <Target size={20} className="text-th-accent mx-auto mb-2" />
+              <p className="text-2xl font-bold text-th-text">{stats.completedNodes}</p>
+              <p className="text-[10px] text-th-text-secondary mt-1">완료 목표</p>
+              <p className="text-[10px] text-th-text-tertiary">/{stats.totalNodes}개 중</p>
             </div>
           </div>
 
@@ -167,7 +167,7 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
           <button
             onClick={handleGenerate}
             disabled={isLoading}
-            className="w-full py-3.5 rounded-2xl font-bold text-sm transition-all flex items-center justify-center gap-2 bg-neon-lime text-black hover:bg-white disabled:opacity-60 disabled:cursor-not-allowed"
+            className="w-full py-3.5 rounded-2xl font-bold text-sm transition-all flex items-center justify-center gap-2 bg-th-accent text-th-text-inverse hover:bg-white disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {isLoading ? (
               <>
@@ -184,14 +184,14 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
 
           {/* 피드백 결과 */}
           {feedbackText && (
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
+            <div className="bg-th-surface border border-th-border rounded-2xl p-5">
               <div className="flex items-center gap-2 mb-3">
-                <BarChart3 size={14} className="text-neon-lime" />
-                <span className="text-[11px] uppercase tracking-wider text-gray-400">
+                <BarChart3 size={14} className="text-th-accent" />
+                <span className="text-[11px] uppercase tracking-wider text-th-text-secondary">
                   {PERIOD_LABELS[period]} AI 피드백
                 </span>
               </div>
-              <div className="text-sm text-gray-200 leading-relaxed whitespace-pre-wrap">
+              <div className="text-sm text-th-text leading-relaxed whitespace-pre-wrap">
                 {feedbackText}
               </div>
             </div>

@@ -60,7 +60,7 @@ const BottomDock: React.FC<BottomDockProps> = ({
   return (
     <div className="fixed bottom-0 left-1/2 transform -translate-x-1/2 z-[55] w-full">
       <div
-        className="flex items-center justify-around gap-1 px-2 py-1.5 bg-black/80 backdrop-blur-xl border-t border-x border-white/10 rounded-t-xl shadow-[0_0_20px_rgba(0,0,0,0.5)]"
+        className="flex items-center justify-around gap-1 px-2 py-1.5 bg-th-elevated backdrop-blur-xl border-t border-x border-th-border rounded-t-xl shadow-[0_0_20px_rgba(0,0,0,0.5)]"
         style={{ marginBottom: 'env(safe-area-inset-bottom)' }}
         role="navigation"
         aria-label="메인 탐색"
@@ -93,8 +93,8 @@ const BottomDock: React.FC<BottomDockProps> = ({
               })}
               className={`relative group flex flex-col items-center justify-center w-11 h-11 rounded-xl transition-all duration-300 ${
                 isActive
-                  ? 'bg-white/10 text-neon-lime shadow-[0_0_15px_rgba(204,255,0,0.2)]'
-                  : 'text-gray-400 hover:text-white hover:bg-white/5'
+                  ? 'bg-th-surface-hover text-th-accent shadow-[0_0_15px_var(--shadow-glow)]'
+                  : 'text-th-text-secondary hover:text-th-text hover:bg-th-surface'
               }`}
               aria-label={tab.label}
               aria-current={isActive ? 'page' : undefined}
@@ -107,13 +107,13 @@ const BottomDock: React.FC<BottomDockProps> = ({
               </span>
 
               {isActive && (
-                <div className="absolute -bottom-1 w-1 h-1 bg-neon-lime rounded-full shadow-[0_0_5px_#CCFF00]"></div>
+                <div className="absolute -bottom-1 w-1 h-1 bg-th-accent rounded-full shadow-[0_0_5px_var(--shadow-glow)]"></div>
               )}
 
               {showPopup && isCalendar && (
                 <div
                   ref={popupRef}
-                  className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-black/90 backdrop-blur-xl border border-white/15 rounded-xl shadow-2xl overflow-hidden min-w-[120px] z-[60]"
+                  className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-th-elevated backdrop-blur-xl border border-th-border rounded-xl shadow-2xl overflow-hidden min-w-[120px] z-[60]"
                 >
                   {[
                     { mode: 'month' as const, label: '월간' },
@@ -130,8 +130,8 @@ const BottomDock: React.FC<BottomDockProps> = ({
                       }}
                       className={`w-full px-4 py-2.5 text-sm text-left transition-colors ${
                         calendarViewMode === item.mode
-                          ? 'text-neon-lime font-bold bg-white/5'
-                          : 'text-gray-300 hover:text-white hover:bg-white/5'
+                          ? 'text-th-accent font-bold bg-th-surface'
+                          : 'text-gray-300 hover:text-th-text hover:bg-th-surface'
                       }`}
                     >
                       {item.label}

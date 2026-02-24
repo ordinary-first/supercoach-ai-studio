@@ -1,6 +1,7 @@
 ﻿import React, { useEffect, useRef, useCallback, useState } from 'react';
 import { Sparkles } from 'lucide-react';
 import MindMapSDK from 'simple-mind-map';
+import { useThemeStore } from '../stores/useThemeStore';
 import Drag from 'simple-mind-map/src/plugins/Drag.js';
 import RainbowLines from 'simple-mind-map/src/plugins/RainbowLines.js';
 import Select from 'simple-mind-map/src/plugins/Select.js';
@@ -285,6 +286,16 @@ const DARK_THEME_CONFIG = {
   },
 };
 
+const LIGHT_THEME_CONFIG = {
+  backgroundColor: '#F8FAFC',
+  lineColor: '#CBD5E1',
+  generalizationLineColor: '#94A3B8',
+  root: { fillColor: '#FFFFFF', fontColor: '#0F172A', borderColor: '#E2E8F0', borderWidth: 2, fontSize: 18, fontWeight: 'bold' },
+  second: { fillColor: '#F1F5F9', fontColor: '#1E293B', borderColor: '#CBD5E1', borderWidth: 1, fontSize: 14, fontWeight: 'normal' },
+  third: { fillColor: '#F8FAFC', fontColor: '#334155', borderColor: '#E2E8F0', borderWidth: 1, fontSize: 12, fontWeight: 'normal' },
+  node: { fillColor: '#FFFFFF', fontColor: '#475569', borderColor: '#E2E8F0', borderWidth: 1, fontSize: 12, fontWeight: 'normal' },
+};
+
 const RAINBOW_COLORS = [
   '#CCFF00', '#00D4FF', '#FF6B6B', '#A78BFA',
   '#34D399', '#FBBF24', '#F472B6', '#60A5FA',
@@ -337,6 +348,7 @@ const MindMap: React.FC<MindMapProps> = ({
   const [identitySkipped, setIdentitySkipped] = useState(false);
   const [templatesSkipped, setTemplatesSkipped] = useState(false);
   const [tooltipDismissed, setTooltipDismissed] = useState(false);
+  const currentThemeConfig = useThemeStore((s) => s.resolved === 'light' ? LIGHT_THEME_CONFIG : null);
 
   // --- Onboarding: Ghost templates ---
   const GHOST_TEMPLATES = [
@@ -558,10 +570,10 @@ const MindMap: React.FC<MindMapProps> = ({
         onAddSubNodeRef.current?.(goalId);
       },
       expandBtnStyle: {
-        color: '#CCFF00',
-        fill: '#0a1a2f',
+        color: 'var(--accent)',
+        fill: 'var(--bg-base)',
         fontSize: 12,
-        strokeColor: '#CCFF0088',
+        strokeColor: 'var(--accent)',
       },
       fit: true,
       enableNodeTransitionMove: true,
@@ -781,6 +793,17 @@ const MindMap: React.FC<MindMapProps> = ({
     mindMapRef.current?.resize();
   }, [width, height]);
 
+  // --- Runtime theme switching ---
+  useEffect(() => {
+    const mindMap = mindMapRef.current;
+    if (!mindMap) return;
+    if (currentThemeConfig) {
+      mindMap.setThemeConfig(currentThemeConfig);
+    } else {
+      mindMap.setThemeConfig({});
+    }
+  }, [currentThemeConfig]);
+
   // --- Trigger text editing when editingNodeId is set ---
   // setData() 후 라이브러리 내부 렌더가 비동기이므로, 노드가 나타날 때까지 폴링
   useEffect(() => {
@@ -827,7 +850,7 @@ const MindMap: React.FC<MindMapProps> = ({
   const isRootActionNode = actionNode?.type === NodeType.ROOT;
 
   return (
-    <div className="w-full h-full bg-deep-space relative overflow-hidden">
+    <div className="w-full h-full bg-th-base relative overflow-hidden">
       <style>{`
         @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
         .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
@@ -838,26 +861,26 @@ const MindMap: React.FC<MindMapProps> = ({
       {/* Header */}
       <div className="absolute top-3 left-3 z-10 pointer-events-none select-none max-w-[calc(100%-72px)]">
         <div className="flex items-baseline gap-2 flex-wrap">
-          <h1 className="text-lg sm:text-xl md:text-2xl font-display text-white tracking-[0.22em] md:tracking-widest leading-none drop-shadow-[0_0_10px_rgba(204,255,0,0.5)]">
+          <h1 className="text-lg sm:text-xl md:text-2xl font-display text-th-text tracking-[0.22em] md:tracking-widest leading-none drop-shadow-[0_0_10px_rgba(204,255,0,0.5)]">
             SECRET COACH
           </h1>
-          <span className="text-neon-lime text-[10px] md:text-xs font-mono tracking-wide">
+          <span className="text-th-accent text-[10px] md:text-xs font-mono tracking-wide">
             {__APP_VERSION__}
           </span>
         </div>
-        <p className="text-gray-400 text-[10px] md:text-xs font-body">Neural Interface Active</p>
+        <p className="text-th-text-secondary text-[10px] md:text-xs font-body">Neural Interface Active</p>
       </div>
 
       {/* Layout Switcher */}
-      <div className="absolute top-14 right-3 md:top-16 md:right-4 z-10 flex bg-black/60 backdrop-blur-md border border-white/10 rounded-full px-1 py-0.5 gap-0.5">
+      <div className="absolute top-14 right-3 md:top-16 md:right-4 z-10 flex bg-th-overlay backdrop-blur-md border border-th-border rounded-full px-1 py-0.5 gap-0.5">
         {layoutOptions.map(opt => (
           <button
             key={opt.mode}
             onClick={() => handleLayoutChange(opt.mode)}
             className={`px-2 py-1 rounded-full text-[9px] md:text-[10px] font-semibold transition-all duration-200 ${
               layout === opt.mode
-                ? 'bg-neon-lime text-black shadow-[0_0_8px_rgba(204,255,0,0.5)]'
-                : 'text-gray-400 hover:text-white hover:bg-white/10'
+                ? 'bg-th-accent text-th-text-inverse shadow-[0_0_8px_var(--shadow-glow)]'
+                : 'text-th-text-secondary hover:text-th-text hover:bg-th-surface-hover'
             }`}
           >
             {opt.label}
@@ -885,13 +908,13 @@ const MindMap: React.FC<MindMapProps> = ({
             transformOrigin: 'top center',
           }}
         >
-          <div className="flex items-center gap-1 rounded-full border border-white/15 bg-[#0d1b30]/95 p-1 shadow-2xl backdrop-blur-md">
+          <div className="flex items-center gap-1 rounded-full border border-th-border bg-th-elevated/95 p-1 shadow-2xl backdrop-blur-md">
             <button
               onClick={() => {
                 onAddSubNode(actionBar.nodeId);
                 setActionBar(null);
               }}
-              className="rounded-full p-2 text-white/70 hover:text-white hover:bg-white/10 transition-colors"
+              className="rounded-full p-2 text-th-text-secondary hover:text-th-text hover:bg-th-surface-hover transition-colors"
               title="자식 노드 추가"
             >
               <AddChildIcon />
@@ -907,7 +930,7 @@ const MindMap: React.FC<MindMapProps> = ({
                     }
                     setActionBar(null);
                   }}
-                  className="rounded-full p-2 text-white/70 hover:text-white hover:bg-white/10 transition-colors"
+                  className="rounded-full p-2 text-th-text-secondary hover:text-th-text hover:bg-th-surface-hover transition-colors"
                   title="형제 노드 추가"
                 >
                   <AddSiblingIcon />
@@ -917,7 +940,7 @@ const MindMap: React.FC<MindMapProps> = ({
                     onAddParentNode?.(actionBar.nodeId);
                     setActionBar(null);
                   }}
-                  className="rounded-full p-2 text-white/70 hover:text-white hover:bg-white/10 transition-colors"
+                  className="rounded-full p-2 text-th-text-secondary hover:text-th-text hover:bg-th-surface-hover transition-colors"
                   title="부모 노드 추가"
                 >
                   <AddParentIcon />
@@ -927,7 +950,7 @@ const MindMap: React.FC<MindMapProps> = ({
                     onConvertNodeToTask?.(actionBar.nodeId);
                     setActionBar(null);
                   }}
-                  className="rounded-full px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/10"
+                  className="rounded-full px-3 py-1.5 text-xs font-semibold text-th-text hover:bg-th-surface-hover"
                 >
                   {labels.todo}
                 </button>
@@ -937,7 +960,7 @@ const MindMap: React.FC<MindMapProps> = ({
             {!isRootActionNode && (
               <button
                 onClick={() => { onDecomposeGoal?.(actionBar.nodeId); setActionBar(null); }}
-                className="flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-medium bg-neon-lime/10 text-neon-lime hover:bg-neon-lime/20 transition-colors whitespace-nowrap"
+                className="flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-medium bg-th-accent/10 text-th-accent hover:bg-th-accent/20 transition-colors whitespace-nowrap"
               >
                 <Sparkles className="w-3.5 h-3.5" />
                 {labels.decompose}
@@ -949,7 +972,7 @@ const MindMap: React.FC<MindMapProps> = ({
                 onGenerateImage?.(actionBar.nodeId);
                 setActionBar(null);
               }}
-              className="rounded-full px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/10"
+              className="rounded-full px-3 py-1.5 text-xs font-semibold text-th-text hover:bg-th-surface-hover"
             >
               {labels.generate}
             </button>
@@ -960,7 +983,7 @@ const MindMap: React.FC<MindMapProps> = ({
                   onInsertImage?.(actionBar.nodeId);
                   setActionBar(null);
                 }}
-                className="rounded-full px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/10"
+                className="rounded-full px-3 py-1.5 text-xs font-semibold text-th-text hover:bg-th-surface-hover"
               >
                 {labels.insert}
               </button>
@@ -971,7 +994,7 @@ const MindMap: React.FC<MindMapProps> = ({
                     prev ? { ...prev, isMoreOpen: !prev.isMoreOpen } : prev
                   ));
                 }}
-                className="rounded-full px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/10"
+                className="rounded-full px-3 py-1.5 text-xs font-semibold text-th-text hover:bg-th-surface-hover"
               >
                 {labels.more}
               </button>
@@ -979,13 +1002,13 @@ const MindMap: React.FC<MindMapProps> = ({
           </div>
 
           {!isRootActionNode && actionBar.isMoreOpen && (
-            <div className="mt-2 min-w-[150px] rounded-xl border border-white/15 bg-[#0d1b30]/95 p-1 shadow-2xl backdrop-blur-md">
+            <div className="mt-2 min-w-[150px] rounded-xl border border-th-border bg-th-elevated/95 p-1 shadow-2xl backdrop-blur-md">
               <button
                 onClick={() => {
                   onInsertImage?.(actionBar.nodeId);
                   setActionBar(null);
                 }}
-                className="w-full rounded-lg px-3 py-2 text-left text-xs font-semibold text-white hover:bg-white/10"
+                className="w-full rounded-lg px-3 py-2 text-left text-xs font-semibold text-th-text hover:bg-th-surface-hover"
               >
                 {labels.insertImage}
               </button>
@@ -1022,7 +1045,7 @@ const MindMap: React.FC<MindMapProps> = ({
               className="absolute z-40 pointer-events-none"
               style={{ left: rootNodeCenter.x, top: rootNodeCenter.y - 70, transform: 'translate(-50%, 0)' }}
             >
-              <span className="text-[10px] text-gray-400 uppercase tracking-[0.2em] font-mono">
+              <span className="text-[10px] text-th-text-secondary uppercase tracking-[0.2em] font-mono">
                 정체성 노드
               </span>
             </div>
@@ -1034,7 +1057,7 @@ const MindMap: React.FC<MindMapProps> = ({
               className="absolute z-40 pointer-events-none"
               style={{ left: rootNodeCenter.x, top: rootNodeCenter.y, transform: 'translate(-50%, -50%)' }}
             >
-              <span className="text-white/30 text-sm font-body whitespace-nowrap">
+              <span className="text-th-text/30 text-sm font-body whitespace-nowrap">
                 나는 ~ 한 사람이다
               </span>
             </div>
@@ -1046,14 +1069,14 @@ const MindMap: React.FC<MindMapProps> = ({
               className="absolute z-40 pointer-events-none"
               style={{ left: rootNodeCenter.x, top: rootNodeCenter.y + 60, transform: 'translate(-50%, 0)' }}
             >
-              <div className="bg-[#0d1b30]/95 border border-white/15 rounded-2xl px-4 py-3 max-w-[260px] backdrop-blur-md shadow-2xl">
-                <p className="text-white/90 text-xs leading-relaxed text-center">
+              <div className="bg-th-elevated/95 border border-th-border rounded-2xl px-4 py-3 max-w-[260px] backdrop-blur-md shadow-2xl">
+                <p className="text-th-text text-xs leading-relaxed text-center">
                   당신이 원하는 궁극적인 모습을 여기에 적어보세요.
                   <br />
-                  <span className="text-neon-lime/80 font-semibold">모든 변화는 여기서 시작됩니다.</span>
+                  <span className="text-th-accent/80 font-semibold">모든 변화는 여기서 시작됩니다.</span>
                 </p>
                 <div className="mt-2 flex justify-center">
-                  <span className="text-[10px] text-gray-500 animate-pulse">더블탭으로 수정</span>
+                  <span className="text-[10px] text-th-text-tertiary animate-pulse">더블탭으로 수정</span>
                 </div>
               </div>
             </div>
@@ -1062,7 +1085,7 @@ const MindMap: React.FC<MindMapProps> = ({
           {/* Skip button */}
           <button
             onClick={() => setIdentitySkipped(true)}
-            className="absolute bottom-6 right-4 z-40 text-gray-500 text-xs hover:text-gray-300 transition-colors"
+            className="absolute bottom-6 right-4 z-40 text-th-text-tertiary text-xs hover:text-th-text-secondary transition-colors"
           >
             건너뛰기 →
           </button>
@@ -1073,7 +1096,7 @@ const MindMap: React.FC<MindMapProps> = ({
       {onboardingPhase === 'templates' && (
         <button
           onClick={() => setTemplatesSkipped(true)}
-          className="absolute bottom-6 right-4 z-40 text-gray-500 text-xs hover:text-gray-300 transition-colors"
+          className="absolute bottom-6 right-4 z-40 text-th-text-tertiary text-xs hover:text-th-text-secondary transition-colors"
         >
           건너뛰기 →
         </button>
@@ -1085,15 +1108,15 @@ const MindMap: React.FC<MindMapProps> = ({
           onClick={() => setTooltipDismissed(true)}
           className="absolute bottom-20 left-1/2 -translate-x-1/2 z-30 animate-fade-in cursor-pointer"
         >
-          <div className="bg-[#0d1b30]/95 border border-white/15 rounded-2xl px-5 py-3 backdrop-blur-md shadow-2xl">
-            <div className="flex items-center gap-4 text-white/80 text-xs">
+          <div className="bg-th-elevated/95 border border-th-border rounded-2xl px-5 py-3 backdrop-blur-md shadow-2xl">
+            <div className="flex items-center gap-4 text-th-text-secondary text-xs">
               <div className="flex items-center gap-1.5">
-                <span className="text-neon-lime">◉</span>
+                <span className="text-th-accent">◉</span>
                 <span>더블탭: 이름 수정</span>
               </div>
-              <div className="w-px h-4 bg-white/20" />
+              <div className="w-px h-4 bg-th-border" />
               <div className="flex items-center gap-1.5">
-                <span className="text-neon-lime">◎</span>
+                <span className="text-th-accent">◎</span>
                 <span>탭: 하위 목표 추가</span>
               </div>
             </div>

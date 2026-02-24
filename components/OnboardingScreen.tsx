@@ -95,24 +95,24 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-deep-space text-white flex flex-col overflow-y-auto">
+    <div className="fixed inset-0 bg-th-base text-th-text flex flex-col overflow-y-auto">
       {/* 헤더 */}
       <div className="flex-shrink-0 pt-12 pb-6 px-6 text-center">
         {userProfile.avatarUrl ? (
           <img
             src={userProfile.avatarUrl}
             alt="avatar"
-            className="w-16 h-16 rounded-full mx-auto mb-4 border-2 border-neon-lime/40 object-cover"
+            className="w-16 h-16 rounded-full mx-auto mb-4 border-2 border-th-accent-border object-cover"
           />
         ) : (
-          <div className="w-16 h-16 rounded-full mx-auto mb-4 bg-white/10 border-2 border-neon-lime/40 flex items-center justify-center">
-            <Star size={28} className="text-neon-lime" />
+          <div className="w-16 h-16 rounded-full mx-auto mb-4 bg-th-surface-hover border-2 border-th-accent-border flex items-center justify-center">
+            <Star size={28} className="text-th-accent" />
           </div>
         )}
         <h1 className="text-2xl font-bold mb-1">
           안녕하세요, {userProfile.name.split(' ')[0]}님!
         </h1>
-        <p className="text-sm text-gray-400">
+        <p className="text-sm text-th-text-secondary">
           SuperCoach AI에 오신 것을 환영합니다
         </p>
       </div>
@@ -120,8 +120,8 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
       {/* 플랜 선택 */}
       <div className="flex-1 px-4 pb-8 max-w-lg mx-auto w-full">
         <div className="flex items-center gap-2 mb-4 justify-center">
-          <Sparkles size={14} className="text-neon-lime" />
-          <p className="text-[13px] text-gray-300 font-medium">
+          <Sparkles size={14} className="text-th-accent" />
+          <p className="text-[13px] text-th-text-secondary font-medium">
             당신에게 맞는 플랜을 선택해주세요
           </p>
         </div>
@@ -134,22 +134,22 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
                 key={item.plan}
                 className={`rounded-2xl border p-4 transition-all ${
                   item.highlight
-                    ? 'border-neon-lime/50 bg-neon-lime/5 shadow-[0_0_20px_rgba(204,255,0,0.08)]'
-                    : 'border-white/10 bg-white/5'
+                    ? 'border-th-accent-border bg-th-accent-muted shadow-[0_0_20px_var(--shadow-glow)]'
+                    : 'border-th-border bg-th-surface'
                 }`}
               >
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex items-center gap-2">
                     {item.highlight && (
-                      <Crown size={15} className="text-neon-lime shrink-0" />
+                      <Crown size={15} className="text-th-accent shrink-0" />
                     )}
                     <div>
-                      <p className="text-sm font-bold text-white">{item.label}</p>
-                      <p className="text-[11px] text-gray-400">{item.price}</p>
+                      <p className="text-sm font-bold text-th-text">{item.label}</p>
+                      <p className="text-[11px] text-th-text-secondary">{item.price}</p>
                     </div>
                   </div>
                   {item.badge && (
-                    <span className="text-[10px] font-bold bg-neon-lime/20 text-neon-lime border border-neon-lime/30 rounded-full px-2 py-0.5">
+                    <span className="text-[10px] font-bold bg-th-accent-muted text-th-accent border border-th-accent-border rounded-full px-2 py-0.5">
                       {item.badge}
                     </span>
                   )}
@@ -159,9 +159,9 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
                   {item.features.map((f) => (
                     <span
                       key={f}
-                      className="flex items-center gap-1 text-[11px] text-gray-400"
+                      className="flex items-center gap-1 text-[11px] text-th-text-secondary"
                     >
-                      <Check size={10} className={item.highlight ? 'text-neon-lime' : 'text-gray-600'} />
+                      <Check size={10} className={item.highlight ? 'text-th-accent' : 'text-th-text-muted'} />
                       {f}
                     </span>
                   ))}
@@ -172,8 +172,8 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
                   disabled={loadingPlan !== null}
                   className={`w-full py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${
                     item.highlight
-                      ? 'bg-neon-lime text-black hover:bg-white'
-                      : 'bg-white/10 text-white hover:bg-white/20'
+                      ? 'bg-th-accent text-th-text-inverse hover:bg-white'
+                      : 'bg-th-surface-hover text-th-text hover:bg-th-header'
                   }`}
                 >
                   {isLoading ? (
@@ -194,7 +194,7 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
           <p className="mt-3 text-xs text-red-400 text-center">{error}</p>
         )}
 
-        <p className="mt-6 text-[11px] text-gray-600 text-center leading-relaxed">
+        <p className="mt-6 text-[11px] text-th-text-muted text-center leading-relaxed">
           언제든지 설정에서 플랜을 변경할 수 있습니다.
         </p>
       </div>
