@@ -1,5 +1,6 @@
 ﻿
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import MindMap from './components/MindMap';
 import CoachChat from './components/CoachChat';
 import CoachBubble from './components/CoachBubble';
@@ -820,7 +821,7 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {deleteConfirmNodeId && (
+      {deleteConfirmNodeId && createPortal(
           <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in">
               <div className="bg-[#0a0f1a] border border-white/10 rounded-3xl p-8 max-w-sm w-full mx-4 shadow-2xl">
                   <div className="text-center space-y-4">
@@ -850,7 +851,8 @@ const App: React.FC = () => {
                       </div>
                   </div>
               </div>
-          </div>
+          </div>,
+          document.body
       )}
 
       <ToastContainer toasts={toasts} onRemove={removeToast} />
