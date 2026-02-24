@@ -13,7 +13,7 @@ import MarketingLandingPage from './components/landing/MarketingLandingPage';
 import SettingsPage from './components/SettingsPage';
 import OnboardingScreen from './components/OnboardingScreen';
 import FeedbackView from './components/FeedbackView';
-import { GoalNode, GoalLink, NodeType, NodeStatus, ToDoItem, ChatMessage, RepeatFrequency } from './types';
+import { GoalNode, GoalLink, NodeType, NodeStatus, ToDoItem, ChatMessage, RepeatFrequency, UserProfile, ActionLogEntry, TodoList, TodoGroup, SmartListId } from './types';
 import { generateGoalImage, uploadNodeImage, decomposeGoal } from './services/aiService';
 import { verifyPolarCheckout } from './services/polarService';
 import {
@@ -148,6 +148,9 @@ const App: React.FC = () => {
   const [nodes, setNodes] = useState<GoalNode[]>(createInitialGoalNodes);
   const [links, setLinks] = useState<GoalLink[]>([]);
   const [todos, setTodos] = useState<ToDoItem[]>([]);
+  const [todoLists, setTodoLists] = useState<TodoList[]>([]);
+  const [todoGroups, setTodoGroups] = useState<TodoGroup[]>([]);
+  const [activeListId, setActiveListId] = useState<string | SmartListId>('myDay');
   const [selectedNode, setSelectedNode] = useState<GoalNode | null>(null);
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
   const [trialDismissed, setTrialDismissed] = useState(false);
@@ -172,13 +175,18 @@ const App: React.FC = () => {
     setTodos(loadedTodos);
   }, []);
 
+  const handleTodoListsLoaded = useCallback((lists: TodoList[], groups: TodoGroup[]) => {
+    setTodoLists(lists);
+    setTodoGroups(groups);
+  }, []);
+
   // --- Custom Hooks ---
   const { toasts, addToast, removeToast } = useToast();
 
   const { userProfile, setUserProfile, isInitializing, isDataLoaded, syncStatus, userId, isTrialExpired, isNewUser, setIsNewUser } =
-    useAuth(handleGoalDataLoaded, handleTodosLoaded);
+    useAuth(handleGoalDataLoaded, handleTodosLoaded, handleTodoListsLoaded);
 
-  useAutoSave(nodes, links, todos, userProfile, isDataLoaded, userId);
+  useAutoSave(nodes, links, todos, todoLists, todoGroups, userProfile, isDataLoaded, userId);
 
   // Prevent cross-account data bleed: reset in-memory state when the uid changes.
   const prevUserIdRef = useRef<string | null | undefined>(undefined);
@@ -707,11 +715,15 @@ const App: React.FC = () => {
          </button>
        </div>
 
-      <ToDoList isOpen={activeTab === 'TODO'} onClose={() => setActiveTab('GOALS')} todos={todos} onAddToDo={(text) => {
+      <ToDoList isOpen={activeTab === 'TODO'} onClose={() => setActiveTab('GOALS')} todos={todos}
+        todoLists={todoLists} todoGroups={todoGroups} activeListId={activeListId}
+        onActiveListChange={setActiveListId}
+        onTodoListsChange={setTodoLists} onTodoGroupsChange={setTodoGroups}
+        onAddToDo={(text, listId) => {
   const trimmed = text.trim().slice(0, 500);
   if (!trimmed) return;
   const newId = Date.now().toString();
-  setTodos(prev => [{id: newId, text: trimmed, completed: false, createdAt: Date.now()}, ...prev]);
+  setTodos(prev => [{id: newId, text: trimmed, completed: false, createdAt: Date.now(), listId}, ...prev]);
   appendAction(getUserId(), 'ADD_TODO', `"${trimmed}" 추가`, { todoId: newId });
 }} onToggleToDo={handleToggleToDo} onDeleteToDo={(id) => {
   const todo = todos.find(t => t.id === id);

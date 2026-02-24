@@ -1,33 +1,132 @@
-import React, { useState } from 'react';
-import { Check, Trash2, Plus, ListTodo, Circle, CheckCircle2, Target, Bell, Repeat, Sun, ArrowLeft, ChevronRight, Layout, X, Calendar } from 'lucide-react';
-import { ToDoItem, RepeatFrequency } from '../types';
+import React, { useState, useMemo } from 'react';
+import { Check, Trash2, Plus, ListTodo, Circle, CheckCircle2, Target, Bell, Repeat, Sun, ArrowLeft, ChevronRight, Layout, X, Calendar, Star, CalendarDays, Home, Menu } from 'lucide-react';
+import { ToDoItem, TodoList, TodoGroup, SmartListId, RepeatFrequency } from '../types';
 import { useFocusTrap } from '../hooks/useFocusTrap';
+import TodoSidebar from './todo/TodoSidebar';
+import CreateListModal from './todo/CreateListModal';
+import CreateGroupModal from './todo/CreateGroupModal';
 
 interface ToDoListProps {
   isOpen: boolean;
   onClose: () => void;
   todos: ToDoItem[];
-  onAddToDo: (text: string) => void;
+  todoLists: TodoList[];
+  todoGroups: TodoGroup[];
+  activeListId: string;
+  onActiveListChange: (id: string) => void;
+  onTodoListsChange: React.Dispatch<React.SetStateAction<TodoList[]>>;
+  onTodoGroupsChange: React.Dispatch<React.SetStateAction<TodoGroup[]>>;
+  onAddToDo: (text: string, listId?: string) => void;
   onToggleToDo: (id: string) => void;
   onDeleteToDo: (id: string) => void;
   onUpdateToDo: (id: string, updates: Partial<ToDoItem>) => void;
 }
 
-const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, onAddToDo, onToggleToDo, onDeleteToDo, onUpdateToDo }) => {
+const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, todoGroups, activeListId, onActiveListChange, onTodoListsChange, onTodoGroupsChange, onAddToDo, onToggleToDo, onDeleteToDo, onUpdateToDo }) => {
   const [inputText, setInputText] = useState('');
   const [selectedToDoId, setSelectedToDoId] = useState<string | null>(null);
   const focusTrapRef = useFocusTrap(isOpen);
 
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [showCreateList, setShowCreateList] = useState(false);
+  const [showCreateGroup, setShowCreateGroup] = useState(false);
+  const [editingListId, setEditingListId] = useState<string | null>(null);
+  const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
+
+  // Smart list definitions
+  const SMART_LIST_META: Record<SmartListId, { name: string; icon: React.ReactNode; color: string }> = {
+    myDay: { name: '오늘 할 일', icon: <Sun size={20} />, color: 'text-yellow-400' },
+    important: { name: '중요', icon: <Star size={20} />, color: 'text-red-400' },
+    planned: { name: '계획된 일정', icon: <CalendarDays size={20} />, color: 'text-blue-400' },
+    tasks: { name: '작업', icon: <Home size={20} />, color: 'text-neon-lime' },
+  };
+
+  // Filter todos based on active list or search
+  const filteredTodos = useMemo(() => {
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      return todos.filter(t =>
+        t.text.toLowerCase().includes(q) ||
+        (t.note?.toLowerCase().includes(q)) ||
+        (t.tags?.some(tag => tag.toLowerCase().includes(q)))
+      );
+    }
+    switch (activeListId) {
+      case 'myDay': return todos.filter(t => !!t.isMyDay);
+      case 'important': return todos.filter(t => t.priority === 'high');
+      case 'planned': return todos.filter(t => t.dueDate != null);
+      case 'tasks': return todos.filter(t => !t.listId || t.listId === 'tasks');
+      default: return todos.filter(t => t.listId === activeListId);
+    }
+  }, [todos, activeListId, searchQuery]);
+
+  // Get active list display info
+  const activeListInfo = useMemo(() => {
+    const smart = SMART_LIST_META[activeListId as SmartListId];
+    if (smart) return smart;
+    const customList = todoLists.find(l => l.id === activeListId);
+    if (customList) return { name: customList.name, icon: <ListTodo size={20} />, color: `text-[${customList.color || '#CCFF00'}]` };
+    return { name: '작업', icon: <Home size={20} />, color: 'text-neon-lime' };
+  }, [activeListId, todoLists]);
+
+  // CRUD handlers
+  const handleCreateList = (name: string, color: string, groupId?: string) => {
+    const newList: TodoList = { id: `list_${Date.now()}`, name, color, groupId, sortOrder: todoLists.length, createdAt: Date.now() };
+    onTodoListsChange(prev => [...prev, newList]);
+  };
+
+  const handleCreateGroup = (name: string) => {
+    const newGroup: TodoGroup = { id: `grp_${Date.now()}`, name, isCollapsed: false, sortOrder: todoGroups.length, createdAt: Date.now() };
+    onTodoGroupsChange(prev => [...prev, newGroup]);
+  };
+
+  const handleDeleteList = (id: string) => {
+    onTodoListsChange(prev => prev.filter(l => l.id !== id));
+    if (activeListId === id) onActiveListChange('tasks');
+  };
+
+  const handleDeleteGroup = (id: string) => {
+    onTodoGroupsChange(prev => prev.filter(g => g.id !== id));
+    onTodoListsChange(prev => prev.map(l => l.groupId === id ? { ...l, groupId: undefined } : l));
+  };
+
+  const handleRenameList = (id: string) => { setEditingListId(id); setShowCreateList(true); };
+  const handleRenameGroup = (id: string) => { setEditingGroupId(id); setShowCreateGroup(true); };
+
+  const handleSaveRenamedList = (name: string, color: string, groupId?: string) => {
+    if (editingListId) {
+      onTodoListsChange(prev => prev.map(l => l.id === editingListId ? { ...l, name, color, groupId } : l));
+      setEditingListId(null);
+    } else {
+      handleCreateList(name, color, groupId);
+    }
+  };
+
+  const handleSaveRenamedGroup = (name: string) => {
+    if (editingGroupId) {
+      onTodoGroupsChange(prev => prev.map(g => g.id === editingGroupId ? { ...g, name } : g));
+      setEditingGroupId(null);
+    } else {
+      handleCreateGroup(name);
+    }
+  };
+
+  const handleToggleGroupCollapse = (id: string) => {
+    onTodoGroupsChange(prev => prev.map(g => g.id === id ? { ...g, isCollapsed: !g.isCollapsed } : g));
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (inputText.trim()) {
-      onAddToDo(inputText);
+      const listId = (['myDay', 'important', 'planned', 'tasks'] as string[]).includes(activeListId) ? undefined : activeListId;
+      onAddToDo(inputText, listId);
       setInputText('');
     }
   };
 
   // Sort: MyDay first, then Incomplete first, then by creation date
-  const sortedTodos = [...todos].sort((a, b) => {
+  const sortedTodos = [...filteredTodos].sort((a, b) => {
       if (a.completed === b.completed) {
           if (a.isMyDay === b.isMyDay) return b.createdAt - a.createdAt;
           return a.isMyDay ? -1 : 1;
@@ -73,19 +172,46 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, onAddToDo, 
       <div className="absolute top-[-20%] right-[-10%] w-[50%] h-[50%] bg-blue-900/20 rounded-full blur-[120px] pointer-events-none"></div>
       <div className="absolute bottom-[-20%] left-[-10%] w-[50%] h-[50%] bg-purple-900/20 rounded-full blur-[120px] pointer-events-none"></div>
 
+      {/* === SIDEBAR NAVIGATION === */}
+      {/* Mobile overlay */}
+      {isSidebarOpen && (
+        <div className="fixed inset-0 bg-black/50 z-30 md:hidden" onClick={() => setIsSidebarOpen(false)} />
+      )}
+      <div className={`fixed inset-y-0 left-0 w-[260px] z-40 md:relative md:z-10 transform transition-transform duration-300 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
+        <TodoSidebar
+          todos={todos}
+          lists={todoLists}
+          groups={todoGroups}
+          activeListId={activeListId}
+          searchQuery={searchQuery}
+          onSelectList={(id) => { onActiveListChange(id); setIsSidebarOpen(false); }}
+          onSearchChange={setSearchQuery}
+          onCreateList={() => { setEditingListId(null); setShowCreateList(true); }}
+          onCreateGroup={() => { setEditingGroupId(null); setShowCreateGroup(true); }}
+          onDeleteList={handleDeleteList}
+          onDeleteGroup={handleDeleteGroup}
+          onRenameList={handleRenameList}
+          onRenameGroup={handleRenameGroup}
+          onToggleGroupCollapse={handleToggleGroupCollapse}
+        />
+      </div>
+
       {/* === LEFT MAIN AREA (LIST) === */}
       <div className="flex-1 flex flex-col min-w-0 relative z-10">
           
           {/* Header */}
           <div className="h-14 md:h-20 border-b border-white/10 flex items-center justify-between px-4 md:px-8 bg-black/20 backdrop-blur-md shrink-0">
               <div className="flex items-center gap-4">
-                  <div className="p-2 md:p-3 bg-neon-lime/10 rounded-lg md:rounded-xl">
-                    <ListTodo className="text-neon-lime w-5 h-5 md:w-8 md:h-8" />
+                  <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="md:hidden p-2 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-colors">
+                    <Menu size={20} />
+                  </button>
+                  <div className={`p-2 md:p-3 rounded-lg md:rounded-xl ${activeListId === 'myDay' ? 'bg-yellow-400/10' : activeListId === 'important' ? 'bg-red-400/10' : activeListId === 'planned' ? 'bg-blue-400/10' : 'bg-neon-lime/10'}`}>
+                    <span className={activeListInfo.color}>{activeListInfo.icon}</span>
                   </div>
                   <div>
-                      <h1 className="text-lg md:text-2xl font-display font-bold tracking-wider text-white">할 일</h1>
+                      <h1 className="text-lg md:text-2xl font-display font-bold tracking-wider text-white">{searchQuery ? '검색 결과' : activeListInfo.name}</h1>
                       <p className="text-[10px] md:text-sm text-gray-400 font-mono mt-0.5 hidden md:block">
-                          {new Date().toLocaleDateString('ko-KR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                          {searchQuery ? `"${searchQuery}" · ${sortedTodos.length}개 결과` : new Date().toLocaleDateString('ko-KR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                       </p>
                   </div>
               </div>
@@ -360,6 +486,23 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, onAddToDo, 
               </div>
           )}
       </div>
+
+      {/* Modals */}
+      <CreateListModal
+        isOpen={showCreateList}
+        onClose={() => { setShowCreateList(false); setEditingListId(null); }}
+        onSave={handleSaveRenamedList}
+        groups={todoGroups}
+        initialName={editingListId ? todoLists.find(l => l.id === editingListId)?.name : ''}
+        initialColor={editingListId ? todoLists.find(l => l.id === editingListId)?.color : '#CCFF00'}
+        initialGroupId={editingListId ? todoLists.find(l => l.id === editingListId)?.groupId : undefined}
+      />
+      <CreateGroupModal
+        isOpen={showCreateGroup}
+        onClose={() => { setShowCreateGroup(false); setEditingGroupId(null); }}
+        onSave={handleSaveRenamedGroup}
+        initialName={editingGroupId ? todoGroups.find(g => g.id === editingGroupId)?.name : ''}
+      />
     </div>
   );
 };

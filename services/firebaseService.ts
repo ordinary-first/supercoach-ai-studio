@@ -20,7 +20,7 @@ import {
   query,
   setDoc,
 } from 'firebase/firestore';
-import type { ChatMessage, GoalLink, GoalNode, ToDoItem, UserProfile } from '../types';
+import type { ChatMessage, GoalLink, GoalNode, ToDoItem, TodoList, TodoGroup, UserProfile } from '../types';
 
 const isDev = typeof process !== 'undefined' && process.env.NODE_ENV === 'development';
 const log = isDev ? console.log : () => {};
@@ -218,6 +218,37 @@ export const loadTodos = async (userId: string): Promise<ToDoItem[] | null> => {
     return Array.isArray(data.items) ? data.items : null;
   } catch (error: any) {
     console.error('[Load:Todos] Firestore read failed:', error?.code || error?.message);
+    return null;
+  }
+};
+
+export const saveTodoLists = async (
+  userId: string,
+  lists: TodoList[],
+  groups: TodoGroup[],
+): Promise<void> => {
+  if (!userId) return;
+  const payload = { lists, groups, updatedAt: Date.now() };
+  const docRef = doc(db, 'users', userId, 'data', 'todoLists');
+  await setDoc(docRef, payload);
+};
+
+export const loadTodoLists = async (
+  userId: string,
+): Promise<{ lists: TodoList[]; groups: TodoGroup[] } | null> => {
+  if (!userId) return null;
+  try {
+    const docRef = doc(db, 'users', userId, 'data', 'todoLists');
+    const snap = await getDoc(docRef);
+    if (!snap.exists()) return null;
+    const data = snap.data() as Record<string, unknown>;
+    return {
+      lists: Array.isArray(data.lists) ? data.lists as TodoList[] : [],
+      groups: Array.isArray(data.groups) ? data.groups as TodoGroup[] : [],
+    };
+  } catch (error: unknown) {
+    const err = error as { code?: string; message?: string };
+    console.error('[Load:TodoLists] Firestore read failed:', err?.code || err?.message);
     return null;
   }
 };
