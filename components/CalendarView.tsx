@@ -313,7 +313,9 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
   // ==================== MONTH VIEW ====================
   const renderCalendarDays = () => {
       const days = [];
-      const totalSlots = 42;
+      const totalCellsNeeded = startDay + daysInMonth;
+      const totalRows = Math.ceil(totalCellsNeeded / 7);
+      const totalSlots = totalRows * 7;
 
       // Prev Month (Placeholder)
       for (let i = startDay - 1; i >= 0; i--) {
@@ -719,7 +721,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
               </div>
 
               {/* Days */}
-              <div className="grid grid-cols-7 flex-1 border-l border-white/10 auto-rows-fr bg-black/20 backdrop-blur-sm rounded-b-lg overflow-y-auto">
+              <div className="grid grid-cols-7 flex-1 border-l border-white/10 auto-rows-fr bg-black/20 backdrop-blur-sm rounded-b-lg overflow-hidden">
                    {renderCalendarDays()}
               </div>
           </div>
