@@ -83,7 +83,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onCTAClick }) => {
       />
 
       {/* Content */}
-      <div className="relative z-10 flex flex-col items-center text-center px-5 max-w-4xl mx-auto gap-5 md:gap-6">
+      <div className="relative z-10 flex flex-col items-center text-center px-5 max-w-4xl mx-auto gap-4 md:gap-6">
 
         {/* Sub-label */}
         <div
@@ -129,12 +129,12 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onCTAClick }) => {
 
         {/* Primary CTA */}
         <div
-          className="flex flex-col items-center gap-3 mt-2"
+          className="flex flex-col items-center gap-3 mt-1 md:mt-2"
           style={{ animation: 'fadeIn 0.8s ease-out 0.55s both' }}
         >
           <button
             onClick={onCTAClick}
-            className="px-10 py-4 rounded-full text-black font-black uppercase tracking-widest text-sm md:text-base transition-all duration-200 hover:scale-105"
+            className="px-8 py-3 md:px-10 md:py-4 rounded-full text-black font-black uppercase tracking-widest text-sm md:text-base transition-all duration-200 hover:scale-105"
             style={{
               backgroundColor: '#CCFF00',
               fontFamily: 'Inter, sans-serif',

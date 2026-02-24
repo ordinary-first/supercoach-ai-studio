@@ -93,7 +93,7 @@ const PlanCard: React.FC<{ plan: PlanConfig; onSelect: (id: string) => void; del
   return (
     <div
       ref={ref as React.RefObject<HTMLDivElement>}
-      className={`bg-white/5 ${cardBorder} rounded-3xl p-6 flex flex-col relative transition-all duration-700`}
+      className={`bg-white/5 ${cardBorder} rounded-2xl md:rounded-3xl p-3 md:p-6 flex flex-col relative transition-all duration-700`}
       style={{
         opacity: isVisible ? 1 : 0,
         transform: isVisible ? 'translateY(0)' : 'translateY(32px)',
@@ -117,7 +117,7 @@ const PlanCard: React.FC<{ plan: PlanConfig; onSelect: (id: string) => void; del
           <span className="text-gray-500 line-through text-sm">{plan.originalPrice}{plan.priceSub}</span>
         )}
         <div className="flex items-baseline gap-1">
-          <span className={`text-4xl font-bold ${priceColor}`}>{plan.price}</span>
+          <span className={`text-2xl md:text-4xl font-bold ${priceColor}`}>{plan.price}</span>
           <span className="text-gray-400 text-sm">{plan.priceSub}</span>
         </div>
         {plan.originalPrice && (
@@ -134,9 +134,9 @@ const PlanCard: React.FC<{ plan: PlanConfig; onSelect: (id: string) => void; del
       <hr className="border-white/10 mb-4" />
 
       {/* Features */}
-      <ul className="flex flex-col gap-3 flex-1 mb-6">
+      <ul className="flex flex-col gap-2 md:gap-3 flex-1 mb-4 md:mb-6">
         {plan.features.map((feature) => (
-          <li key={feature} className="flex items-center gap-2 text-sm text-gray-300">
+          <li key={feature} className="flex items-center gap-2 text-xs md:text-sm text-gray-300">
             <Check
               size={16}
               className={plan.recommended ? 'text-[#CCFF00] shrink-0' : 'text-gray-400 shrink-0'}
@@ -158,27 +158,27 @@ export const PricingSection: React.FC<PricingSectionProps> = ({ onPlanSelect }) 
   const { ref: headingRef, isVisible: headingVisible } = useScrollReveal();
 
   return (
-    <section id="pricing" className="py-24 px-6">
+    <section id="pricing" className="py-8 md:py-24 px-6">
       <div className="max-w-6xl mx-auto">
         {/* Heading */}
         <div
           ref={headingRef as React.RefObject<HTMLDivElement>}
-          className="text-center mb-16 transition-all duration-700"
+          className="text-center mb-4 md:mb-16 transition-all duration-700"
           style={{
             opacity: headingVisible ? 1 : 0,
             transform: headingVisible ? 'translateY(0)' : 'translateY(24px)',
           }}
         >
-          <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
+          <h2 className="text-2xl md:text-5xl font-bold text-white mb-3 md:mb-4">
             당신에게 맞는 플랜
           </h2>
-          <p className="text-gray-400 text-lg">
+          <p className="text-gray-400 text-sm md:text-lg">
             3일 무료 체험으로 시작 · 언제든 해지 가능
           </p>
         </div>
 
         {/* Anchoring */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-4 md:mb-8">
           <p className="text-gray-500 text-sm" style={{ fontFamily: 'Inter, sans-serif' }}>
             전문 라이프 코칭 비용: <span className="line-through">월 200~300만원</span>
           </p>
@@ -188,7 +188,7 @@ export const PricingSection: React.FC<PricingSectionProps> = ({ onPlanSelect }) 
         </div>
 
         {/* Plan cards grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-2 md:gap-6">
           {PLANS.map((plan, index) => (
             <PlanCard
               key={plan.id}
