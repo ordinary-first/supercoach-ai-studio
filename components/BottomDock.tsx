@@ -31,6 +31,7 @@ const BottomDock: React.FC<BottomDockProps> = ({
   ];
 
   const startPress = () => {
+    cancelPress();
     longPressTriggered.current = false;
     pressTimer.current = setTimeout(() => {
       longPressTriggered.current = true;

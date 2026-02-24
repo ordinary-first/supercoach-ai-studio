@@ -95,6 +95,16 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
 
+  // Auto-scroll to today when entering list view
+  useEffect(() => {
+    if (viewMode === 'list') {
+      requestAnimationFrame(() => {
+        const todayEl = document.querySelector('[data-today="true"]');
+        todayEl?.scrollIntoView({ block: 'start' });
+      });
+    }
+  }, [viewMode, month, year]);
+
   const daysInMonth = getDaysInMonth(year, month);
   const startDay = getStartDayOfMonth(year, month);
   const prevMonthDays = getDaysInMonth(year, month - 1);
@@ -407,7 +417,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
         <div
           key={`week-${i}`}
           onClick={() => handleDayClick(dateObj)}
-          className={`flex items-stretch border-b border-white/10 cursor-pointer transition-all duration-200 min-h-[56px] ${
+          className={`flex-1 flex items-stretch border-b border-white/10 cursor-pointer transition-all duration-200 min-h-[56px] ${
             isToday
               ? 'bg-white/5'
               : 'hover:bg-white/[0.03]'
@@ -632,6 +642,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
               <div key={date.getTime()}>
                 {/* Date header */}
                 <div
+                  data-today={isToday ? "true" : undefined}
                   onClick={() => handleDayClick(date)}
                   className={`sticky top-0 z-10 flex items-center gap-3 px-3 py-2 cursor-pointer rounded-lg transition-colors ${
                     isToday
@@ -734,7 +745,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
         {/* Week View (Vertical) */}
         {viewMode === 'week' && (
           <div className="flex-1 overflow-y-auto flex flex-col p-1 md:p-3 pb-[56px] md:pb-[64px] relative z-0 animate-in fade-in duration-300">
-            <div className="bg-black/20 backdrop-blur-sm rounded-lg border border-white/10 overflow-hidden">
+            <div className="flex-1 flex flex-col bg-black/20 backdrop-blur-sm rounded-lg border border-white/10 overflow-hidden">
               {renderWeekDays()}
             </div>
           </div>
