@@ -263,10 +263,10 @@ const RAINBOW_COLORS = [
 ];
 
 const layoutOptions: { mode: LayoutMode; label: string }[] = [
-  { mode: 'mindMap', label: 'Mind' },
-  { mode: 'logicalStructure', label: 'Logical' },
-  { mode: 'logicalStructureLeft', label: 'Logical Left' },
-  { mode: 'organizationStructure', label: 'Org' },
+  { mode: 'mindMap', label: '마인드' },
+  { mode: 'logicalStructure', label: '논리' },
+  { mode: 'logicalStructureLeft', label: '논리(좌)' },
+  { mode: 'organizationStructure', label: '조직도' },
 ];
 
 const ACTION_BAR_LABELS = {
