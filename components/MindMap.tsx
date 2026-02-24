@@ -14,6 +14,32 @@ MindMapSDK.usePlugin(RainbowLines);
 MindMapSDK.usePlugin(Select);
 MindMapSDK.usePlugin(TouchEvent);
 
+// --- Node Action SVG Icons ---
+const AddChildIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5">
+    <circle cx="5" cy="4" r="2.5" />
+    <circle cx="13" cy="13" r="2.5" />
+    <path d="M5 6.5V9h4.5V13" strokeLinecap="round" />
+  </svg>
+);
+
+const AddSiblingIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5">
+    <circle cx="5" cy="13" r="2.5" />
+    <circle cx="13" cy="13" r="2.5" />
+    <circle cx="9" cy="4" r="2.5" />
+    <path d="M9 6.5V9M5 10.5V9h8v1.5" strokeLinecap="round" />
+  </svg>
+);
+
+const AddParentIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5">
+    <circle cx="9" cy="4" r="2.5" strokeDasharray="3 2" />
+    <circle cx="9" cy="14" r="2.5" />
+    <path d="M9 6.5V11.5" strokeLinecap="round" />
+  </svg>
+);
+
 // --- Types ---
 type LayoutMode = 'mindMap' | 'logicalStructure' | 'logicalStructureLeft' | 'organizationStructure';
 
@@ -31,6 +57,7 @@ interface MindMapProps {
   onGenerateImage?: (nodeId: string) => void;
   onInsertImage?: (nodeId: string) => void;
   onAddSubNode: (parentId: string, text?: string) => void;
+  onAddParentNode?: (nodeId: string) => void;
   onDecomposeGoal?: (nodeId: string) => void;
   previewNodeIds?: string[];
   confirmedPreviewIds?: string[];
@@ -298,7 +325,7 @@ const ACTION_BAR_LABELS = {
 // --- Component ---
 const MindMap: React.FC<MindMapProps> = ({
   nodes, links, language, selectedNodeId, onNodeClick, onEditNode, onUpdateNode, onDeleteNode,
-  onReparentNode, onConvertNodeToTask, onGenerateImage, onInsertImage, onAddSubNode,
+  onReparentNode, onConvertNodeToTask, onGenerateImage, onInsertImage, onAddSubNode, onAddParentNode,
   onDecomposeGoal, previewNodeIds, confirmedPreviewIds, onTogglePreviewConfirm, onFinalizePreview,
   width, height, editingNodeId, onEditEnd, imageLoadingNodes
 }) => {
@@ -864,9 +891,10 @@ const MindMap: React.FC<MindMapProps> = ({
                 onAddSubNode(actionBar.nodeId);
                 setActionBar(null);
               }}
-              className="rounded-full px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/10"
+              className="rounded-full p-2 text-white/70 hover:text-white hover:bg-white/10 transition-colors"
+              title="자식 노드 추가"
             >
-              {labels.child}
+              <AddChildIcon />
             </button>
 
             {!isRootActionNode && (
@@ -879,9 +907,20 @@ const MindMap: React.FC<MindMapProps> = ({
                     }
                     setActionBar(null);
                   }}
-                  className="rounded-full px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/10"
+                  className="rounded-full p-2 text-white/70 hover:text-white hover:bg-white/10 transition-colors"
+                  title="형제 노드 추가"
                 >
-                  {labels.sibling}
+                  <AddSiblingIcon />
+                </button>
+                <button
+                  onClick={() => {
+                    onAddParentNode?.(actionBar.nodeId);
+                    setActionBar(null);
+                  }}
+                  className="rounded-full p-2 text-white/70 hover:text-white hover:bg-white/10 transition-colors"
+                  title="부모 노드 추가"
+                >
+                  <AddParentIcon />
                 </button>
                 <button
                   onClick={() => {
