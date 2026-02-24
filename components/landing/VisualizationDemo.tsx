@@ -11,13 +11,13 @@ export const VisualizationDemo: React.FC = () => {
   return (
     <section
       id="visualization"
-      className="py-24 px-6"
+      className="py-12 md:py-24 px-6"
       style={{ backgroundColor: '#050B14' }}
     >
       {/* Section header */}
-      <div className="flex flex-col items-center text-center mb-12 gap-2">
+      <div className="flex flex-col items-center text-center mb-8 md:mb-12 gap-2">
         <h2
-          className="text-3xl md:text-5xl font-bold leading-tight"
+          className="text-2xl md:text-5xl font-bold leading-tight"
           style={{ fontFamily: 'Inter, sans-serif' }}
         >
           <span className="text-gray-300">성공을 미리 </span>

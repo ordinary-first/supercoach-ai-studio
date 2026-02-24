@@ -12,19 +12,19 @@ interface Step {
 const STEPS: Step[] = [
   {
     number: 1,
-    icon: <UserPlus size={28} className="text-white" />,
+    icon: <UserPlus size={22} className="text-white" />,
     title: '가입',
     description: 'Google 원클릭. 10초면 완료.',
   },
   {
     number: 2,
-    icon: <Target size={28} className="text-white" />,
+    icon: <Target size={22} className="text-white" />,
     title: '목표 설정',
     description: '마인드맵으로 비전을 구조화.',
   },
   {
     number: 3,
-    icon: <Zap size={28} className="text-white" />,
+    icon: <Zap size={22} className="text-white" />,
     title: 'AI와 달성',
     description: '매일 코치와 함께 성장.',
   },
@@ -37,12 +37,12 @@ export const HowItWorks: React.FC = () => {
     <section
       id="how"
       ref={ref}
-      className="py-24 px-6"
+      className="py-12 md:py-24 px-6"
     >
       <div className="max-w-4xl mx-auto">
         {/* Headline */}
         <h2
-          className={`text-center text-white font-bold text-3xl md:text-5xl mb-20 transition-all duration-700 ease-out ${
+          className={`text-center text-white font-bold text-2xl md:text-5xl mb-10 md:mb-20 transition-all duration-700 ease-out ${
             isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
           }`}
           style={{ fontFamily: 'Orbitron, sans-serif' }}
@@ -51,7 +51,7 @@ export const HowItWorks: React.FC = () => {
         </h2>
 
         {/* Steps */}
-        <div className="flex flex-col md:flex-row items-center md:items-start gap-8 md:gap-0">
+        <div className="flex flex-col md:flex-row items-center md:items-start gap-4 md:gap-0">
           {STEPS.map((step, i) => (
             <div key={step.number} className="flex flex-col md:flex-row items-center flex-1">
               {/* Step card */}
@@ -65,7 +65,7 @@ export const HowItWorks: React.FC = () => {
               >
                 {/* Number circle */}
                 <div
-                  className="flex items-center justify-center w-12 h-12 rounded-full text-black font-bold text-lg mb-4 select-none"
+                  className="flex items-center justify-center w-10 h-10 md:w-12 md:h-12 rounded-full text-black font-bold text-base md:text-lg mb-2 md:mb-4 select-none"
                   style={{
                     background: '#CCFF00',
                     fontFamily: 'Orbitron, sans-serif',
@@ -76,7 +76,7 @@ export const HowItWorks: React.FC = () => {
 
                 {/* Icon */}
                 <div
-                  className="flex items-center justify-center w-14 h-14 rounded-2xl mb-4"
+                  className="flex items-center justify-center w-10 h-10 md:w-14 md:h-14 rounded-xl md:rounded-2xl mb-2 md:mb-4"
                   style={{ background: 'rgba(255,255,255,0.06)' }}
                 >
                   {step.icon}
@@ -84,7 +84,7 @@ export const HowItWorks: React.FC = () => {
 
                 {/* Title */}
                 <h3
-                  className="text-white font-bold text-lg mb-2"
+                  className="text-white font-bold text-base md:text-lg mb-1 md:mb-2"
                   style={{ fontFamily: 'Orbitron, sans-serif' }}
                 >
                   {step.title}

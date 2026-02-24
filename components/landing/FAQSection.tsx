@@ -104,18 +104,18 @@ export const FAQSection: React.FC = () => {
   };
 
   return (
-    <section id="faq" className="py-24 px-6">
+    <section id="faq" className="py-12 md:py-24 px-6">
       <div className="max-w-3xl mx-auto">
         {/* Heading */}
         <div
           ref={headingRef as React.RefObject<HTMLDivElement>}
-          className="text-center mb-12 transition-all duration-700"
+          className="text-center mb-8 md:mb-12 transition-all duration-700"
           style={{
             opacity: headingVisible ? 1 : 0,
             transform: headingVisible ? 'translateY(0)' : 'translateY(24px)',
           }}
         >
-          <h2 className="text-4xl md:text-5xl font-bold text-white">자주 묻는 질문</h2>
+          <h2 className="text-2xl md:text-5xl font-bold text-white">자주 묻는 질문</h2>
         </div>
 
         {/* Accordion */}

@@ -93,7 +93,7 @@ const PlanCard: React.FC<{ plan: PlanConfig; onSelect: (id: string) => void; del
   return (
     <div
       ref={ref as React.RefObject<HTMLDivElement>}
-      className={`bg-white/5 ${cardBorder} rounded-3xl p-6 flex flex-col relative transition-all duration-700`}
+      className={`bg-white/5 ${cardBorder} rounded-3xl p-4 md:p-6 flex flex-col relative transition-all duration-700`}
       style={{
         opacity: isVisible ? 1 : 0,
         transform: isVisible ? 'translateY(0)' : 'translateY(32px)',
@@ -158,21 +158,21 @@ export const PricingSection: React.FC<PricingSectionProps> = ({ onPlanSelect }) 
   const { ref: headingRef, isVisible: headingVisible } = useScrollReveal();
 
   return (
-    <section id="pricing" className="py-24 px-6">
+    <section id="pricing" className="py-12 md:py-24 px-6">
       <div className="max-w-6xl mx-auto">
         {/* Heading */}
         <div
           ref={headingRef as React.RefObject<HTMLDivElement>}
-          className="text-center mb-16 transition-all duration-700"
+          className="text-center mb-8 md:mb-16 transition-all duration-700"
           style={{
             opacity: headingVisible ? 1 : 0,
             transform: headingVisible ? 'translateY(0)' : 'translateY(24px)',
           }}
         >
-          <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
+          <h2 className="text-2xl md:text-5xl font-bold text-white mb-3 md:mb-4">
             당신에게 맞는 플랜
           </h2>
-          <p className="text-gray-400 text-lg">
+          <p className="text-gray-400 text-sm md:text-lg">
             3일 무료 체험으로 시작 · 언제든 해지 가능
           </p>
         </div>
@@ -188,7 +188,7 @@ export const PricingSection: React.FC<PricingSectionProps> = ({ onPlanSelect }) 
         </div>
 
         {/* Plan cards grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
           {PLANS.map((plan, index) => (
             <PlanCard
               key={plan.id}

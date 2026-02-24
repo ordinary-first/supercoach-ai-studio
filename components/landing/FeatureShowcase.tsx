@@ -47,13 +47,13 @@ export const FeatureShowcase: React.FC = () => {
   return (
     <section
       id="features"
-      className="py-24 px-6"
+      className="py-12 md:py-24 px-6"
       style={{ backgroundColor: '#050B14' }}
     >
       {/* Section header */}
-      <div className="flex flex-col items-center text-center mb-16 gap-3">
+      <div className="flex flex-col items-center text-center mb-8 md:mb-16 gap-3">
         <h2
-          className="text-3xl md:text-5xl font-bold text-white"
+          className="text-2xl md:text-5xl font-bold text-white"
           style={{ fontFamily: 'Orbitron, sans-serif' }}
         >
           강력한 기능들
@@ -74,7 +74,7 @@ export const FeatureShowcase: React.FC = () => {
       {/* Feature grid */}
       <div
         ref={ref as React.RefObject<HTMLDivElement>}
-        className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto transition-all duration-700 ease-out ${
+        className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6 max-w-6xl mx-auto transition-all duration-700 ease-out ${
           isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
         }`}
       >
@@ -94,7 +94,7 @@ interface FeatureCardProps {
 const FeatureCard: React.FC<FeatureCardProps> = ({ feature, index }) => {
   return (
     <div
-      className="bg-white/5 border border-white/10 rounded-3xl p-6 hover:border-neon-lime/30 transition-all duration-300 group"
+      className="bg-white/5 border border-white/10 rounded-2xl md:rounded-3xl p-4 md:p-6 hover:border-neon-lime/30 transition-all duration-300 group"
       style={{
         transitionDelay: `${index * 60}ms`,
       }}
@@ -109,7 +109,7 @@ const FeatureCard: React.FC<FeatureCardProps> = ({ feature, index }) => {
     >
       {/* Icon wrapper */}
       <div
-        className="p-3 rounded-2xl w-fit"
+        className="p-2 md:p-3 rounded-xl md:rounded-2xl w-fit"
         style={{ backgroundColor: 'rgba(204,255,0,0.1)' }}
       >
         {feature.icon}
@@ -117,7 +117,7 @@ const FeatureCard: React.FC<FeatureCardProps> = ({ feature, index }) => {
 
       {/* Title */}
       <h3
-        className="text-lg font-bold text-white mt-4"
+        className="text-base md:text-lg font-bold text-white mt-3 md:mt-4"
         style={{ fontFamily: 'Inter, sans-serif' }}
       >
         {feature.title}
@@ -125,7 +125,7 @@ const FeatureCard: React.FC<FeatureCardProps> = ({ feature, index }) => {
 
       {/* Description */}
       <p
-        className="text-sm text-gray-400 mt-2 leading-relaxed"
+        className="text-xs md:text-sm text-gray-400 mt-1 md:mt-2 leading-relaxed"
         style={{ fontFamily: 'Inter, sans-serif' }}
       >
         {feature.desc}
