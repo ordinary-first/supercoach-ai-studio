@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Check, Zap } from 'lucide-react';
+import { useTranslation } from '../i18n/useTranslation';
 
 interface GoalInputModalProps {
   isOpen: boolean;
@@ -9,6 +10,7 @@ interface GoalInputModalProps {
 }
 
 const GoalInputModal: React.FC<GoalInputModalProps> = ({ isOpen, onClose, onSubmit, parentName }) => {
+  const { t } = useTranslation();
   const [text, setText] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -47,7 +49,7 @@ const GoalInputModal: React.FC<GoalInputModalProps> = ({ isOpen, onClose, onSubm
         {/* Body */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div className="text-sm text-th-text-secondary">
-            상위 목표: <span className="text-th-text font-bold">{parentName}</span>
+            {t.goalInput.parentGoal}: <span className="text-th-text font-bold">{parentName}</span>
           </div>
           
           <input
@@ -55,7 +57,7 @@ const GoalInputModal: React.FC<GoalInputModalProps> = ({ isOpen, onClose, onSubm
             type="text"
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder="새로운 목표를 입력하세요..."
+            placeholder={t.goalInput.placeholder}
             className="w-full bg-th-header border border-th-border-strong rounded-xl p-4 text-lg text-th-text placeholder-th-text-muted focus:outline-none focus:border-th-accent-border focus:shadow-[0_0_15px_var(--shadow-glow)] transition-all"
           />
 
@@ -65,7 +67,7 @@ const GoalInputModal: React.FC<GoalInputModalProps> = ({ isOpen, onClose, onSubm
               onClick={onClose}
               className="px-4 py-2 text-th-text-secondary hover:text-th-text transition-colors mr-2"
             >
-              취소
+              {t.common.cancel}
             </button>
             <button
               type="submit"
@@ -73,7 +75,7 @@ const GoalInputModal: React.FC<GoalInputModalProps> = ({ isOpen, onClose, onSubm
               className="flex items-center gap-2 px-6 py-2 bg-th-accent text-th-text-inverse font-bold rounded-full hover:bg-white hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Check size={18} />
-              생성
+              {t.goalInput.create}
             </button>
           </div>
         </form>

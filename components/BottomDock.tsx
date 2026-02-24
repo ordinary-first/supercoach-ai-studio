@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Target, ListTodo, Eye, Calendar, BarChart3 } from 'lucide-react';
+import { useTranslation } from '../i18n/useTranslation';
 
 export type TabType = 'GOALS' | 'TODO' | 'VISUALIZE' | 'CALENDAR' | 'FEEDBACK';
 export type CalendarViewMode = 'month' | 'week' | 'list';
@@ -17,17 +18,18 @@ const BottomDock: React.FC<BottomDockProps> = ({
   calendarViewMode,
   onCalendarViewModeChange,
 }) => {
+  const { t } = useTranslation();
   const [showPopup, setShowPopup] = useState(false);
   const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressTriggered = useRef(false);
   const popupRef = useRef<HTMLDivElement>(null);
 
   const tabs: { id: TabType; label: string; icon: React.ReactNode }[] = [
-    { id: 'GOALS', label: '목표', icon: <Target size={20} /> },
-    { id: 'CALENDAR', label: '일정', icon: <Calendar size={20} /> },
-    { id: 'TODO', label: '할 일', icon: <ListTodo size={20} /> },
-    { id: 'VISUALIZE', label: '시각화', icon: <Eye size={20} /> },
-    { id: 'FEEDBACK', label: '피드백', icon: <BarChart3 size={20} /> },
+    { id: 'GOALS', label: t.nav.goals, icon: <Target size={20} /> },
+    { id: 'CALENDAR', label: t.nav.calendar, icon: <Calendar size={20} /> },
+    { id: 'TODO', label: t.nav.todo, icon: <ListTodo size={20} /> },
+    { id: 'VISUALIZE', label: t.nav.visualize, icon: <Eye size={20} /> },
+    { id: 'FEEDBACK', label: t.nav.feedback, icon: <BarChart3 size={20} /> },
   ];
 
   const startPress = () => {
@@ -63,7 +65,7 @@ const BottomDock: React.FC<BottomDockProps> = ({
         className="flex items-center justify-around gap-1 px-2 py-1.5 bg-th-elevated backdrop-blur-xl border-t border-x border-th-border rounded-t-xl shadow-[0_0_20px_rgba(0,0,0,0.5)]"
         style={{ marginBottom: 'env(safe-area-inset-bottom)' }}
         role="navigation"
-        aria-label="메인 탐색"
+        aria-label={t.nav.mainNav}
       >
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id;

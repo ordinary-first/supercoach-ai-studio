@@ -8,6 +8,7 @@ import Select from 'simple-mind-map/src/plugins/Select.js';
 import TouchEvent from 'simple-mind-map/src/plugins/TouchEvent.js';
 import { GoalNode, GoalLink, NodeType, NodeStatus } from '../types';
 import { getLinkId } from '../hooks/useAutoSave';
+import { useTranslation } from '../i18n/useTranslation';
 
 // Register plugins once
 MindMapSDK.usePlugin(Drag);
@@ -127,6 +128,7 @@ function goalNodesToTree(
   links: GoalLink[],
   selectedNodeId?: string,
   confirmedPreviewIds?: string[],
+  defaultRootText?: string,
 ): SMMNode | null {
   const root = nodes.find(n => n.type === NodeType.ROOT);
   if (!root) return null;
@@ -184,7 +186,7 @@ function goalNodesToTree(
     }
 
     const data: SMMNodeData = {
-      text: goalNode.text || '나의 인생 비전',
+      text: goalNode.text || defaultRootText || 'My Life Vision',
       uid: goalNode.id,
       expand: !goalNode.collapsed,
       goalId: goalNode.id,
@@ -352,37 +354,11 @@ const RAINBOW_COLORS = [
   '#34D399', '#FBBF24', '#F472B6', '#60A5FA',
 ];
 
-const layoutOptions: { mode: LayoutMode; label: string }[] = [
-  { mode: 'mindMap', label: '마인드' },
-  { mode: 'logicalStructure', label: '논리' },
-  { mode: 'logicalStructureLeft', label: '논리(좌)' },
-  { mode: 'organizationStructure', label: '조직도' },
+const LAYOUT_MODES: LayoutMode[] = [
+  'mindMap', 'logicalStructure', 'logicalStructureLeft', 'organizationStructure',
 ];
 
-const ACTION_BAR_LABELS = {
-  en: {
-    child: 'Child',
-    sibling: 'Sibling',
-    todo: 'Todo',
-    generate: 'Generate',
-    insert: 'Insert',
-    more: 'More',
-    insertImage: 'Insert image',
-    delete: 'Delete',
-    decompose: 'Decompose',
-  },
-  ko: {
-    child: '자식',
-    sibling: '형제',
-    todo: '투두',
-    generate: '이미지 생성',
-    insert: '이미지 삽입',
-    more: '더보기',
-    insertImage: '이미지 삽입',
-    delete: '삭제',
-    decompose: '분해',
-  },
-} as const;
+// Action bar labels are now in t.mindmap.* via useTranslation
 
 // --- Component ---
 const MindMap: React.FC<MindMapProps> = ({
@@ -401,13 +377,10 @@ const MindMap: React.FC<MindMapProps> = ({
   const [tooltipDismissed, setTooltipDismissed] = useState(false);
   const currentThemeConfig = useThemeStore((s) => s.resolved === 'light' ? LIGHT_THEME_CONFIG : DARK_THEME_CONFIG);
   const isLight = useThemeStore((s) => s.resolved === 'light');
+  const { t } = useTranslation();
 
   // --- Onboarding: Ghost templates ---
-  const GHOST_TEMPLATES = [
-    '나는 매달 100만원의 부수입이 생겼다',
-    '나는 슬림하고 탄탄한 몸을 가졌다',
-    '나는 누구에게나 호감을 주는 유머감각을 가졌다',
-  ];
+  const GHOST_TEMPLATES = t.mindmap.ghostTemplates;
   const [usedGhosts, setUsedGhosts] = useState<Set<number>>(new Set());
 
   // --- Onboarding Phase Computation ---
@@ -415,7 +388,7 @@ const MindMap: React.FC<MindMapProps> = ({
 
   const rootNode = nodes.find(n => n.type === NodeType.ROOT);
   const rootText = rootNode?.text || '';
-  const isRootDefault = rootText === '' || rootText === '나의 인생 비전';
+  const isRootDefault = rootText === '' || rootText === '나의 인생 비전' || rootText === 'My Life Vision';
   const childCount = nodes.filter(n => n.type === NodeType.SUB).length;
   const allGhostsUsed = usedGhosts.size >= GHOST_TEMPLATES.length;
 
@@ -425,12 +398,7 @@ const MindMap: React.FC<MindMapProps> = ({
     (childCount > 0 || templatesSkipped) && !tooltipDismissed ? 'tooltips' :
     'done';
 
-  const languageByDom = document.documentElement.lang.toLowerCase().startsWith('ko') ? 'ko' : 'en';
-  const resolvedLanguage: 'en' | 'ko' = (
-    language === 'ko'
-    || languageByDom === 'ko'
-  ) ? 'ko' : 'en';
-  const labels = ACTION_BAR_LABELS[resolvedLanguage];
+  const labels = t.mindmap;
 
   const getCurrentMindMapScale = useCallback(() => {
     const mindMap = mindMapRef.current;
@@ -584,7 +552,7 @@ const MindMap: React.FC<MindMapProps> = ({
   useEffect(() => {
     if (!containerRef.current) return;
 
-    const treeData = goalNodesToTree(nodes, links, selectedNodeId, confirmedPreviewIds);
+    const treeData = goalNodesToTree(nodes, links, selectedNodeId, confirmedPreviewIds, t.mindmap.defaultRootText);
     if (!treeData) return;
 
     lastStructureKeyRef.current = computeStructureKey(nodes, links, selectedNodeId, confirmedPreviewIds);
@@ -610,9 +578,9 @@ const MindMap: React.FC<MindMapProps> = ({
       enableShortcutOnlyWhenMouseInSvg: true,
       createNewNodeBehavior: 'notActive',
       // Prevent Chinese default text when the library inserts nodes internally.
-      defaultInsertSecondLevelNodeText: '???몃뱶',
-      defaultInsertBelowSecondLevelNodeText: '???몃뱶',
-      defaultGeneralizationText: '?붿빟',
+      defaultInsertSecondLevelNodeText: 'New node',
+      defaultInsertBelowSecondLevelNodeText: 'New node',
+      defaultGeneralizationText: 'Summary',
       defaultAssociativeLineText: '',
       // Hook the built-in "+" quick-create button so node creation goes through React state.
       // This avoids Chinese placeholder text and allows immediate text editing via editingNodeId.
@@ -787,7 +755,7 @@ const MindMap: React.FC<MindMapProps> = ({
     if (newKey === lastStructureKeyRef.current) return;
     lastStructureKeyRef.current = newKey;
 
-    const treeData = goalNodesToTree(nodes, links, selectedNodeId, confirmedPreviewIds);
+    const treeData = goalNodesToTree(nodes, links, selectedNodeId, confirmedPreviewIds, t.mindmap.defaultRootText);
     if (!treeData) return;
 
     // Inject ghost nodes for Phase 2
@@ -921,17 +889,17 @@ const MindMap: React.FC<MindMapProps> = ({
 
       {/* Layout Switcher */}
       <div className="absolute top-14 right-3 md:top-16 md:right-4 z-10 flex bg-th-overlay backdrop-blur-md border border-th-border rounded-full px-1 py-0.5 gap-0.5">
-        {layoutOptions.map(opt => (
+        {LAYOUT_MODES.map(mode => (
           <button
-            key={opt.mode}
-            onClick={() => handleLayoutChange(opt.mode)}
+            key={mode}
+            onClick={() => handleLayoutChange(mode)}
             className={`px-2 py-1 rounded-full text-[9px] md:text-[10px] font-semibold transition-all duration-200 ${
-              layout === opt.mode
+              layout === mode
                 ? 'bg-th-accent text-th-text-inverse shadow-[0_0_8px_var(--shadow-glow)]'
                 : 'text-th-text-secondary hover:text-th-text hover:bg-th-surface-hover'
             }`}
           >
-            {opt.label}
+            {t.mindmap.layoutModes[mode]}
           </button>
         ))}
       </div>
@@ -963,7 +931,7 @@ const MindMap: React.FC<MindMapProps> = ({
                 setActionBar(null);
               }}
               className="rounded-full p-2 text-th-text-secondary hover:text-th-text hover:bg-th-surface-hover transition-colors"
-              title="자식 노드 추가"
+              title={t.mindmap.onboarding.addChildTitle}
             >
               <AddChildIcon />
             </button>
@@ -979,7 +947,7 @@ const MindMap: React.FC<MindMapProps> = ({
                     setActionBar(null);
                   }}
                   className="rounded-full p-2 text-th-text-secondary hover:text-th-text hover:bg-th-surface-hover transition-colors"
-                  title="형제 노드 추가"
+                  title={t.mindmap.onboarding.addSiblingTitle}
                 >
                   <AddSiblingIcon />
                 </button>
@@ -989,7 +957,7 @@ const MindMap: React.FC<MindMapProps> = ({
                     setActionBar(null);
                   }}
                   className="rounded-full p-2 text-th-text-secondary hover:text-th-text hover:bg-th-surface-hover transition-colors"
-                  title="부모 노드 추가"
+                  title={t.mindmap.onboarding.addParentTitle}
                 >
                   <AddParentIcon />
                 </button>
@@ -1094,7 +1062,7 @@ const MindMap: React.FC<MindMapProps> = ({
               style={{ left: rootNodeCenter.x, top: rootNodeCenter.y - 70, transform: 'translate(-50%, 0)' }}
             >
               <span className="text-[10px] text-th-text-secondary uppercase tracking-[0.2em] font-mono">
-                정체성 노드
+                {t.mindmap.onboarding.identityLabel}
               </span>
             </div>
           )}
@@ -1106,7 +1074,7 @@ const MindMap: React.FC<MindMapProps> = ({
               style={{ left: rootNodeCenter.x, top: rootNodeCenter.y, transform: 'translate(-50%, -50%)' }}
             >
               <span className="text-th-text/30 text-sm font-body whitespace-nowrap">
-                나는 ~ 한 사람이다
+                {t.mindmap.onboarding.identityPlaceholder}
               </span>
             </div>
           )}
@@ -1119,12 +1087,12 @@ const MindMap: React.FC<MindMapProps> = ({
             >
               <div className="bg-th-elevated/95 border border-th-border rounded-2xl px-4 py-3 max-w-[260px] backdrop-blur-md shadow-2xl">
                 <p className="text-th-text text-xs leading-relaxed text-center">
-                  당신이 원하는 궁극적인 모습을 여기에 적어보세요.
+                  {t.mindmap.onboarding.identityPrompt}
                   <br />
-                  <span className="text-th-accent/80 font-semibold">모든 변화는 여기서 시작됩니다.</span>
+                  <span className="text-th-accent/80 font-semibold">{t.mindmap.onboarding.identityMotivation}</span>
                 </p>
                 <div className="mt-2 flex justify-center">
-                  <span className="text-[10px] text-th-text-tertiary animate-pulse">더블탭으로 수정</span>
+                  <span className="text-[10px] text-th-text-tertiary animate-pulse">{t.mindmap.onboarding.doubleTapToEdit}</span>
                 </div>
               </div>
             </div>
@@ -1135,7 +1103,7 @@ const MindMap: React.FC<MindMapProps> = ({
             onClick={() => setIdentitySkipped(true)}
             className="absolute bottom-6 right-4 z-40 text-th-text-tertiary text-xs hover:text-th-text-secondary transition-colors"
           >
-            건너뛰기 →
+            {t.mindmap.onboarding.skip}
           </button>
         </>
       )}
@@ -1146,7 +1114,7 @@ const MindMap: React.FC<MindMapProps> = ({
           onClick={() => setTemplatesSkipped(true)}
           className="absolute bottom-6 right-4 z-40 text-th-text-tertiary text-xs hover:text-th-text-secondary transition-colors"
         >
-          건너뛰기 →
+          {t.mindmap.onboarding.skip}
         </button>
       )}
 
@@ -1160,12 +1128,12 @@ const MindMap: React.FC<MindMapProps> = ({
             <div className="flex items-center gap-4 text-th-text-secondary text-xs">
               <div className="flex items-center gap-1.5">
                 <span className="text-th-accent">◉</span>
-                <span>더블탭: 이름 수정</span>
+                <span>{t.mindmap.onboarding.tooltipDoubleTap}</span>
               </div>
               <div className="w-px h-4 bg-th-border" />
               <div className="flex items-center gap-1.5">
                 <span className="text-th-accent">◎</span>
-                <span>탭: 하위 목표 추가</span>
+                <span>{t.mindmap.onboarding.tooltipTap}</span>
               </div>
             </div>
           </div>
