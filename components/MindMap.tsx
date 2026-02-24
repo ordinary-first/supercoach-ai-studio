@@ -1118,27 +1118,7 @@ const MindMap: React.FC<MindMapProps> = ({
         </button>
       )}
 
-      {/* Phase 3: Contextual Tooltip */}
-      {onboardingPhase === 'tooltips' && (
-        <div
-          onClick={() => setTooltipDismissed(true)}
-          className="absolute bottom-20 left-1/2 -translate-x-1/2 z-30 animate-fade-in cursor-pointer"
-        >
-          <div className="bg-th-elevated/95 border border-th-border rounded-2xl px-5 py-3 backdrop-blur-md shadow-2xl">
-            <div className="flex items-center gap-4 text-th-text-secondary text-xs">
-              <div className="flex items-center gap-1.5">
-                <span className="text-th-accent">◉</span>
-                <span>{t.mindmap.onboarding.tooltipDoubleTap}</span>
-              </div>
-              <div className="w-px h-4 bg-th-border" />
-              <div className="flex items-center gap-1.5">
-                <span className="text-th-accent">◎</span>
-                <span>{t.mindmap.onboarding.tooltipTap}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Phase 3: Contextual Tooltip — removed */}
 
     </div>
   );
