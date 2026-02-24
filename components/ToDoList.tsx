@@ -1,35 +1,134 @@
-import React, { useState } from 'react';
-import { Check, Trash2, Plus, ListTodo, Circle, CheckCircle2, Target, Bell, Repeat, Sun, ArrowLeft, ChevronRight, Layout, X, Calendar } from 'lucide-react';
-import { ToDoItem, RepeatFrequency } from '../types';
+import React, { useState, useMemo } from 'react';
+import { Check, Trash2, Plus, ListTodo, Circle, CheckCircle2, Target, Bell, Repeat, Sun, ArrowLeft, ChevronRight, Layout, X, Calendar, Star, CalendarDays, Home, Menu } from 'lucide-react';
+import { ToDoItem, TodoList, TodoGroup, SmartListId, RepeatFrequency } from '../types';
 import { useFocusTrap } from '../hooks/useFocusTrap';
-import { useTranslation } from '../i18n/useTranslation';
+import TodoSidebar from './todo/TodoSidebar';
+import CreateListModal from './todo/CreateListModal';
+import CreateGroupModal from './todo/CreateGroupModal';
 
 interface ToDoListProps {
   isOpen: boolean;
   onClose: () => void;
   todos: ToDoItem[];
-  onAddToDo: (text: string) => void;
+  todoLists: TodoList[];
+  todoGroups: TodoGroup[];
+  activeListId: string;
+  onActiveListChange: (id: string) => void;
+  onTodoListsChange: React.Dispatch<React.SetStateAction<TodoList[]>>;
+  onTodoGroupsChange: React.Dispatch<React.SetStateAction<TodoGroup[]>>;
+  onAddToDo: (text: string, listId?: string) => void;
   onToggleToDo: (id: string) => void;
   onDeleteToDo: (id: string) => void;
   onUpdateToDo: (id: string, updates: Partial<ToDoItem>) => void;
 }
 
-const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, onAddToDo, onToggleToDo, onDeleteToDo, onUpdateToDo }) => {
-  const { t, language } = useTranslation();
+const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, todoGroups, activeListId, onActiveListChange, onTodoListsChange, onTodoGroupsChange, onAddToDo, onToggleToDo, onDeleteToDo, onUpdateToDo }) => {
   const [inputText, setInputText] = useState('');
   const [selectedToDoId, setSelectedToDoId] = useState<string | null>(null);
   const focusTrapRef = useFocusTrap(isOpen);
 
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isInputVisible, setIsInputVisible] = useState(false);
+  const inputRef = React.useRef<HTMLInputElement>(null);
+  const [showCreateList, setShowCreateList] = useState(false);
+  const [showCreateGroup, setShowCreateGroup] = useState(false);
+  const [editingListId, setEditingListId] = useState<string | null>(null);
+  const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
+
+  // Smart list definitions
+  const SMART_LIST_META: Record<SmartListId, { name: string; icon: React.ReactNode; color: string }> = {
+    myDay: { name: '오늘 할 일', icon: <Sun size={20} />, color: 'text-yellow-400' },
+    important: { name: '중요', icon: <Star size={20} />, color: 'text-red-400' },
+    planned: { name: '계획된 일정', icon: <CalendarDays size={20} />, color: 'text-blue-400' },
+    tasks: { name: '작업', icon: <Home size={20} />, color: 'text-neon-lime' },
+  };
+
+  // Filter todos based on active list or search
+  const filteredTodos = useMemo(() => {
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      return todos.filter(t =>
+        t.text.toLowerCase().includes(q) ||
+        (t.note?.toLowerCase().includes(q)) ||
+        (t.tags?.some(tag => tag.toLowerCase().includes(q)))
+      );
+    }
+    switch (activeListId) {
+      case 'myDay': return todos.filter(t => !!t.isMyDay);
+      case 'important': return todos.filter(t => t.priority === 'high');
+      case 'planned': return todos.filter(t => t.dueDate != null);
+      case 'tasks': return todos.filter(t => !t.listId || t.listId === 'tasks');
+      default: return todos.filter(t => t.listId === activeListId);
+    }
+  }, [todos, activeListId, searchQuery]);
+
+  // Get active list display info
+  const activeListInfo = useMemo(() => {
+    const smart = SMART_LIST_META[activeListId as SmartListId];
+    if (smart) return smart;
+    const customList = todoLists.find(l => l.id === activeListId);
+    if (customList) return { name: customList.name, icon: <ListTodo size={20} />, color: `text-[${customList.color || '#CCFF00'}]` };
+    return { name: '작업', icon: <Home size={20} />, color: 'text-neon-lime' };
+  }, [activeListId, todoLists]);
+
+  // CRUD handlers
+  const handleCreateList = (name: string, color: string, groupId?: string) => {
+    const newList: TodoList = { id: `list_${Date.now()}`, name, color, groupId, sortOrder: todoLists.length, createdAt: Date.now() };
+    onTodoListsChange(prev => [...prev, newList]);
+  };
+
+  const handleCreateGroup = (name: string) => {
+    const newGroup: TodoGroup = { id: `grp_${Date.now()}`, name, isCollapsed: false, sortOrder: todoGroups.length, createdAt: Date.now() };
+    onTodoGroupsChange(prev => [...prev, newGroup]);
+  };
+
+  const handleDeleteList = (id: string) => {
+    onTodoListsChange(prev => prev.filter(l => l.id !== id));
+    if (activeListId === id) onActiveListChange('tasks');
+  };
+
+  const handleDeleteGroup = (id: string) => {
+    onTodoGroupsChange(prev => prev.filter(g => g.id !== id));
+    onTodoListsChange(prev => prev.map(l => l.groupId === id ? { ...l, groupId: undefined } : l));
+  };
+
+  const handleRenameList = (id: string) => { setEditingListId(id); setShowCreateList(true); };
+  const handleRenameGroup = (id: string) => { setEditingGroupId(id); setShowCreateGroup(true); };
+
+  const handleSaveRenamedList = (name: string, color: string, groupId?: string) => {
+    if (editingListId) {
+      onTodoListsChange(prev => prev.map(l => l.id === editingListId ? { ...l, name, color, groupId } : l));
+      setEditingListId(null);
+    } else {
+      handleCreateList(name, color, groupId);
+    }
+  };
+
+  const handleSaveRenamedGroup = (name: string) => {
+    if (editingGroupId) {
+      onTodoGroupsChange(prev => prev.map(g => g.id === editingGroupId ? { ...g, name } : g));
+      setEditingGroupId(null);
+    } else {
+      handleCreateGroup(name);
+    }
+  };
+
+  const handleToggleGroupCollapse = (id: string) => {
+    onTodoGroupsChange(prev => prev.map(g => g.id === id ? { ...g, isCollapsed: !g.isCollapsed } : g));
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (inputText.trim()) {
-      onAddToDo(inputText);
+      const listId = (['myDay', 'important', 'planned', 'tasks'] as string[]).includes(activeListId) ? undefined : activeListId;
+      onAddToDo(inputText, listId);
       setInputText('');
     }
   };
 
   // Sort: MyDay first, then Incomplete first, then by creation date
-  const sortedTodos = [...todos].sort((a, b) => {
+  const sortedTodos = [...filteredTodos].sort((a, b) => {
       if (a.completed === b.completed) {
           if (a.isMyDay === b.isMyDay) return b.createdAt - a.createdAt;
           return a.isMyDay ? -1 : 1;
@@ -42,17 +141,28 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, onAddToDo, 
   // Date Format Helpers
   const formatDate = (timestamp?: number | null) => {
       if (!timestamp) return null;
-      return new Date(timestamp).toLocaleDateString(language === 'ko' ? 'ko-KR' : 'en-US', { month: 'short', day: 'numeric', weekday: 'short' });
+      return new Date(timestamp).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', weekday: 'short' });
   };
 
   const formatTime = (timestamp?: number | null) => {
       if (!timestamp) return null;
-      return new Date(timestamp).toLocaleTimeString(language === 'ko' ? 'ko-KR' : 'en-US', { hour: '2-digit', minute: '2-digit' });
+      return new Date(timestamp).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
   };
 
   const getRepeatLabel = (freq: RepeatFrequency | undefined) => {
       if (!freq) return null;
-      return t.todo.repeat[freq] || freq;
+      const labels: Record<string, string> = {
+          'daily': '매일',
+          'weekdays': '평일(월~금)',
+          'weekly': '매주(주 1회)',
+          'monthly': '매월',
+          'weekly-2': '주 2회',
+          'weekly-3': '주 3회',
+          'weekly-4': '주 4회',
+          'weekly-5': '주 5회',
+          'weekly-6': '주 6회',
+      };
+      return labels[freq] || freq;
   };
 
   if (!isOpen) return null;
@@ -64,133 +174,157 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, onAddToDo, 
       <div className="absolute top-[-20%] right-[-10%] w-[50%] h-[50%] bg-blue-900/20 rounded-full blur-[120px] pointer-events-none"></div>
       <div className="absolute bottom-[-20%] left-[-10%] w-[50%] h-[50%] bg-purple-900/20 rounded-full blur-[120px] pointer-events-none"></div>
 
+      {/* === SIDEBAR NAVIGATION === */}
+      {/* Mobile overlay */}
+      {isSidebarOpen && (
+        <div className="fixed inset-0 bg-black/50 z-30 md:hidden" onClick={() => setIsSidebarOpen(false)} />
+      )}
+      <div className={`fixed inset-y-0 left-0 w-[260px] z-40 md:relative md:z-10 transform transition-transform duration-300 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
+        <TodoSidebar
+          todos={todos}
+          lists={todoLists}
+          groups={todoGroups}
+          activeListId={activeListId}
+          searchQuery={searchQuery}
+          onSelectList={(id) => { onActiveListChange(id); setIsSidebarOpen(false); }}
+          onSearchChange={setSearchQuery}
+          onCreateList={() => { setEditingListId(null); setShowCreateList(true); }}
+          onCreateGroup={() => { setEditingGroupId(null); setShowCreateGroup(true); }}
+          onDeleteList={handleDeleteList}
+          onDeleteGroup={handleDeleteGroup}
+          onRenameList={handleRenameList}
+          onRenameGroup={handleRenameGroup}
+          onToggleGroupCollapse={handleToggleGroupCollapse}
+        />
+      </div>
+
       {/* === LEFT MAIN AREA (LIST) === */}
       <div className="flex-1 flex flex-col min-w-0 relative z-10">
           
           {/* Header */}
-          <div className="h-14 md:h-20 border-b border-white/10 flex items-center justify-between px-4 md:px-8 bg-black/20 backdrop-blur-md shrink-0">
-              <div className="flex items-center gap-4">
-                  <div className="p-2 md:p-3 bg-neon-lime/10 rounded-lg md:rounded-xl">
-                    <ListTodo className="text-neon-lime w-5 h-5 md:w-8 md:h-8" />
+          <div className="h-11 md:h-12 border-b border-white/10 flex items-center justify-between px-3 md:px-6 bg-black/20 backdrop-blur-md shrink-0">
+              <div className="flex items-center gap-2.5">
+                  <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="md:hidden p-1.5 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-colors">
+                    <Menu size={18} />
+                  </button>
+                  <div className={`p-1.5 rounded-lg ${activeListId === 'myDay' ? 'bg-yellow-400/10' : activeListId === 'important' ? 'bg-red-400/10' : activeListId === 'planned' ? 'bg-blue-400/10' : 'bg-neon-lime/10'}`}>
+                    <span className={activeListInfo.color}>{activeListInfo.icon}</span>
                   </div>
                   <div>
-                      <h1 className="text-lg md:text-2xl font-display font-bold tracking-wider text-white">{t.todo.title}</h1>
-                      <p className="text-[10px] md:text-sm text-gray-400 font-mono mt-0.5 hidden md:block">
-                          {new Date().toLocaleDateString(language === 'ko' ? 'ko-KR' : 'en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-                      </p>
+                      <h1 className="text-base md:text-lg font-display font-bold tracking-wider text-white">{searchQuery ? '검색 결과' : activeListInfo.name}</h1>
                   </div>
               </div>
           </div>
 
           {/* List Content */}
-          <div className="flex-1 overflow-y-auto p-4 lg:p-8 scrollbar-hide">
-              <div className="max-w-4xl mx-auto space-y-3">
-                  {sortedTodos.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center py-20 text-gray-600 space-y-6">
-                          <div className="w-24 h-24 rounded-full bg-white/5 flex items-center justify-center">
-                              <Target size={48} className="opacity-30" />
+          <div className="flex-1 overflow-y-auto px-0 pt-1 scrollbar-hide">
+              <div className="max-w-4xl mx-auto">
+                  {sortedTodos.length === 0 && !isInputVisible ? (
+                      <div className="flex flex-col items-center justify-center py-12 text-gray-600 space-y-4">
+                          <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center">
+                              <Target size={32} className="opacity-30" />
                           </div>
                           <div className="text-center">
-                            <p className="text-xl font-bold text-gray-500">{t.todo.empty}</p>
-                            <p className="text-sm mt-2">{t.todo.emptyHint}</p>
+                            <p className="text-base font-bold text-gray-500">할 일이 없습니다</p>
+                            <p className="text-xs mt-1 text-gray-600">+ 버튼을 눌러 작업을 추가하세요</p>
                           </div>
                       </div>
                   ) : (
                       sortedTodos.map(todo => (
-                          <div 
+                          <div
                             key={todo.id}
                             onClick={() => setSelectedToDoId(todo.id)}
-                            className={`group flex items-center gap-4 p-4 rounded-2xl border cursor-pointer transition-all duration-200 ${
+                            className={`group flex items-center gap-2.5 py-2.5 px-3 border-b cursor-pointer transition-all duration-150 ${
                                 selectedToDoId === todo.id
-                                    ? 'bg-white/10 border-neon-lime shadow-[0_0_15px_rgba(204,255,0,0.1)]'
-                                    : (todo.completed 
-                                        ? 'bg-white/5 border-transparent opacity-50' 
-                                        : 'bg-white/5 border-white/5 hover:bg-white/10 hover:border-white/20')
+                                    ? 'bg-white/10 border-white/10'
+                                    : (todo.completed
+                                        ? 'border-white/5 opacity-50'
+                                        : 'border-white/5 hover:bg-white/5')
                             }`}
                           >
-                              <button 
+                              <button
                                 onClick={(e) => { e.stopPropagation(); onToggleToDo(todo.id); }}
-                                className={`transition-colors flex-shrink-0 p-1 rounded-full hover:bg-white/10 ${todo.completed ? 'text-neon-lime' : 'text-gray-500 hover:text-neon-lime'}`}
+                                className={`transition-colors flex-shrink-0 ${todo.completed ? 'text-neon-lime' : 'text-gray-500 hover:text-neon-lime'}`}
                               >
-                                  {todo.completed ? <CheckCircle2 size={24} /> : <Circle size={24} />}
+                                  {todo.completed ? <CheckCircle2 size={20} /> : <Circle size={20} />}
                               </button>
 
                               <div className="flex-1 min-w-0">
-                                  <p className={`text-lg truncate ${todo.completed ? 'line-through text-gray-500' : 'text-white'}`}>
+                                  <p className={`text-sm truncate ${todo.completed ? 'line-through text-gray-500' : 'text-white'}`}>
                                       {todo.text}
                                   </p>
-                                  <div className="flex flex-wrap gap-3 mt-1.5">
-                                      {todo.isMyDay && (
-                                          <div className="flex items-center gap-1 text-xs text-yellow-400 bg-yellow-400/10 px-2 py-0.5 rounded-full">
-                                              <Sun size={12} />
-                                              <span>{t.common.today}</span>
-                                          </div>
-                                      )}
-                                      {todo.dueDate && (
-                                          <div className={`flex items-center gap-1 text-xs px-2 py-0.5 rounded-full ${todo.dueDate < Date.now() && !todo.completed ? 'text-red-400 bg-red-400/10' : 'text-gray-400 bg-white/5'}`}>
-                                              <Calendar size={12} />
-                                              <span>{formatDate(todo.dueDate)}</span>
-                                          </div>
-                                      )}
-                                      {todo.repeat && (
-                                          <div className="flex items-center gap-1 text-xs text-blue-400 bg-blue-400/10 px-2 py-0.5 rounded-full">
-                                              <Repeat size={12} />
-                                              <span className="capitalize">{getRepeatLabel(todo.repeat)}</span>
-                                          </div>
-                                      )}
-                                      {todo.linkedNodeText && (
-                                          <div className="flex items-center gap-1 text-xs text-electric-orange/80 bg-electric-orange/10 px-2 py-0.5 rounded-full">
-                                              <Target size={12} />
-                                              <span className="truncate max-w-[150px]">{todo.linkedNodeText}</span>
-                                          </div>
-                                      )}
-                                  </div>
+                                  {(todo.isMyDay || todo.dueDate || todo.repeat || todo.linkedNodeText) && (
+                                    <div className="flex flex-wrap gap-1.5 mt-0.5">
+                                        {todo.isMyDay && (
+                                            <span className="flex items-center gap-0.5 text-[10px] text-yellow-400">
+                                                <Sun size={10} /> 오늘 할 일
+                                            </span>
+                                        )}
+                                        {todo.dueDate && (
+                                            <span className={`flex items-center gap-0.5 text-[10px] ${todo.dueDate < Date.now() && !todo.completed ? 'text-red-400' : 'text-gray-500'}`}>
+                                                <Calendar size={10} /> {formatDate(todo.dueDate)}
+                                            </span>
+                                        )}
+                                        {todo.repeat && (
+                                            <span className="flex items-center gap-0.5 text-[10px] text-blue-400">
+                                                <Repeat size={10} /> {getRepeatLabel(todo.repeat)}
+                                            </span>
+                                        )}
+                                        {todo.linkedNodeText && (
+                                            <span className="flex items-center gap-0.5 text-[10px] text-electric-orange/80">
+                                                <Target size={10} /> {todo.linkedNodeText}
+                                            </span>
+                                        )}
+                                    </div>
+                                  )}
                               </div>
                               <button
                                 onClick={(e) => { e.stopPropagation(); onDeleteToDo(todo.id); }}
-                                className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 p-2 rounded-full hover:bg-red-500/20 text-gray-500 hover:text-red-400"
-                                title={t.todo.deleteTitle}
+                                className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 p-1 rounded hover:bg-red-500/20 text-gray-500 hover:text-red-400"
+                                title="삭제"
                               >
-                                  <Trash2 size={18} />
+                                  <Trash2 size={14} />
                               </button>
-                              <ChevronRight size={20} className={`text-gray-600 transition-transform ${selectedToDoId === todo.id ? 'translate-x-1 text-neon-lime' : ''}`} />
+                              <ChevronRight size={16} className={`text-gray-600 flex-shrink-0 transition-transform ${selectedToDoId === todo.id ? 'translate-x-0.5 text-neon-lime' : ''}`} />
                           </div>
                       ))
                   )}
-                  {/* Bottom padding for floating input */}
-                  <div className="h-48"></div>
-              </div>
-          </div>
 
-          {/* Floating Input Area */}
-          <div className="absolute bottom-[120px] left-0 right-0 px-4 flex justify-center z-20 pointer-events-none">
-              <div className="w-full max-w-4xl pointer-events-auto">
-                <form onSubmit={handleSubmit} className="relative group">
-                    <div className="absolute inset-0 bg-neon-lime/20 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                    <div className="relative flex items-center bg-black/80 backdrop-blur-xl border border-white/20 rounded-full shadow-2xl overflow-hidden transition-colors hover:border-neon-lime/50">
-                        <div className="pl-6 text-neon-lime">
-                            <Plus size={24} />
-                        </div>
+                  {/* Inline Input (shown when FAB is tapped) */}
+                  {isInputVisible && (
+                    <form onSubmit={(e) => { handleSubmit(e); if (!inputText.trim()) { setIsInputVisible(false); } }} className="flex items-center gap-2.5 py-2.5 px-3 border-b border-white/10 bg-white/5">
+                        <Plus size={20} className="text-neon-lime flex-shrink-0" />
                         <input
+                            ref={inputRef}
                             type="text"
                             value={inputText}
                             onChange={(e) => setInputText(e.target.value)}
-                            placeholder={t.todo.inputPlaceholder}
-                            className="w-full bg-transparent border-none py-4 px-4 text-lg text-white placeholder-gray-500 focus:outline-none focus:ring-0"
-                            aria-label={t.todo.inputLabel}
+                            onKeyDown={(e) => { if (e.key === 'Escape') { setIsInputVisible(false); setInputText(''); } }}
+                            placeholder="새 작업 추가..."
+                            className="flex-1 bg-transparent text-sm text-white placeholder-gray-500 focus:outline-none"
+                            aria-label="새 할 일 입력"
+                            autoFocus
                         />
-                        <button
-                            type="submit"
-                            disabled={!inputText.trim()}
-                            className="mr-2 px-6 py-2 bg-white/10 hover:bg-neon-lime hover:text-black rounded-full text-sm font-bold transition-all disabled:opacity-0 disabled:scale-95"
-                            aria-label={t.todo.addLabel}
-                        >
-                            {t.common.add}
+                        <button type="button" onClick={() => { setIsInputVisible(false); setInputText(''); }} className="text-gray-500 hover:text-white p-0.5">
+                          <X size={16} />
                         </button>
-                    </div>
-                </form>
+                    </form>
+                  )}
+
+                  <div className="h-20"></div>
               </div>
           </div>
+
+          {/* FAB Button */}
+          {!isInputVisible && (
+            <button
+              onClick={() => { setIsInputVisible(true); setTimeout(() => inputRef.current?.focus(), 50); }}
+              className="absolute bottom-20 right-4 md:bottom-6 md:right-6 z-20 w-12 h-12 rounded-full bg-neon-lime text-black flex items-center justify-center shadow-lg shadow-neon-lime/30 hover:scale-110 active:scale-95 transition-transform"
+              aria-label="새 할 일 추가"
+            >
+              <Plus size={24} strokeWidth={2.5} />
+            </button>
+          )}
       </div>
 
       {/* === RIGHT DETAIL AREA (SIDEBAR) === */}
@@ -201,125 +335,125 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, onAddToDo, 
           />
       )}
       <div
-        className={`fixed inset-y-0 right-0 w-full md:w-[450px] bg-[#0a0a10]/95 backdrop-blur-2xl border-l border-white/10 shadow-[-20px_0_50px_rgba(0,0,0,0.5)] z-20 transform transition-transform duration-300 ease-out flex flex-col ${selectedToDoId ? 'translate-x-0' : 'translate-x-full'}`}
+        className={`fixed inset-y-0 right-0 w-full md:w-[380px] bg-[#0a0a10]/95 backdrop-blur-2xl border-l border-white/10 shadow-[-20px_0_50px_rgba(0,0,0,0.5)] z-20 transform transition-transform duration-300 ease-out flex flex-col ${selectedToDoId ? 'translate-x-0' : 'translate-x-full'}`}
       >
           {selectedToDo ? (
               <>
                   {/* Detail Header */}
-                  <div className="p-6 border-b border-white/10 flex items-center justify-between bg-black/20">
-                      <div className="flex items-center gap-3">
-                          <button onClick={() => setSelectedToDoId(null)} className="md:hidden p-2 -ml-2 rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-all">
-                              <ArrowLeft size={20} />
+                  <div className="py-3 px-4 border-b border-white/10 flex items-center justify-between bg-black/20">
+                      <div className="flex items-center gap-2">
+                          <button onClick={() => setSelectedToDoId(null)} className="md:hidden p-1.5 -ml-1 rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-all">
+                              <ArrowLeft size={18} />
                           </button>
                           <h3 className="text-gray-400 font-bold text-sm tracking-wider flex items-center gap-2">
-                            <Layout size={16}/> {t.todo.detail}
+                            <Layout size={14}/> 세부 정보
                           </h3>
                       </div>
                       <button onClick={() => setSelectedToDoId(null)} className="text-gray-500 hover:text-white transition-colors">
-                          <X size={24} />
+                          <X size={20} />
                       </button>
                   </div>
 
                   {/* Detail Body */}
-                  <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                  <div className="flex-1 overflow-y-auto p-4 space-y-4">
                       {/* Title Edit */}
-                      <div className="bg-white/5 rounded-2xl p-4 flex items-start gap-4 ring-1 ring-white/5 focus-within:ring-neon-lime/50 transition-all">
-                          <button 
+                      <div className="bg-white/5 rounded-xl p-3 flex items-start gap-3 ring-1 ring-white/5 focus-within:ring-neon-lime/50 transition-all">
+                          <button
                             onClick={() => onToggleToDo(selectedToDo.id)}
-                            className={`mt-1.5 transition-colors flex-shrink-0 ${selectedToDo.completed ? 'text-neon-lime' : 'text-gray-500 hover:text-white'}`}
+                            className={`mt-1 transition-colors flex-shrink-0 ${selectedToDo.completed ? 'text-neon-lime' : 'text-gray-500 hover:text-white'}`}
                           >
-                              {selectedToDo.completed ? <CheckCircle2 size={26} /> : <Circle size={26} />}
+                              {selectedToDo.completed ? <CheckCircle2 size={20} /> : <Circle size={20} />}
                           </button>
-                          <textarea 
+                          <textarea
                               value={selectedToDo.text}
                               onChange={(e) => onUpdateToDo(selectedToDo.id, { text: e.target.value })}
-                              className="bg-transparent text-xl font-bold text-white w-full focus:outline-none resize-none h-auto min-h-[3rem]"
+                              className="bg-transparent text-base font-semibold text-white w-full focus:outline-none resize-none h-auto min-h-[2rem]"
                               rows={2}
                           />
                       </div>
 
                       {/* Action Toggles */}
-                      <div className="space-y-3">
-                        <div 
-                            className={`p-4 rounded-xl flex items-center gap-4 cursor-pointer transition-all border ${selectedToDo.isMyDay ? 'bg-yellow-400/10 border-yellow-400/30 text-yellow-400' : 'bg-white/5 border-white/5 text-gray-400 hover:bg-white/10'}`}
+                      <div className="space-y-2">
+                        <div
+                            className={`py-2.5 px-3 rounded-lg flex items-center gap-3 cursor-pointer transition-all border ${selectedToDo.isMyDay ? 'bg-yellow-400/10 border-yellow-400/30 text-yellow-400' : 'bg-white/5 border-white/5 text-gray-400 hover:bg-white/10'}`}
                             onClick={() => onUpdateToDo(selectedToDo.id, { isMyDay: !selectedToDo.isMyDay })}
                         >
-                            <Sun size={20} />
-                            <span className="font-medium flex-1">{t.todo.myDay}</span>
-                            {selectedToDo.isMyDay && <Check size={16} />}
+                            <Sun size={16} />
+                            <span className="text-sm font-medium flex-1">나의 하루에 추가</span>
+                            {selectedToDo.isMyDay && <Check size={14} />}
                         </div>
                       </div>
 
                       {/* Metadata Group */}
-                      <div className="bg-white/5 rounded-2xl overflow-hidden border border-white/5 divide-y divide-white/5">
-                          
+                      <div className="bg-white/5 rounded-xl overflow-hidden border border-white/5 divide-y divide-white/5">
+
                           {/* Reminder */}
-                          <div className="p-4 flex items-center gap-4 hover:bg-white/5 relative group transition-colors">
-                              <Bell size={20} className={selectedToDo.reminder ? 'text-electric-orange' : 'text-gray-500'} />
+                          <div className="py-2.5 px-3 flex items-center gap-3 hover:bg-white/5 relative group transition-colors">
+                              <Bell size={16} className={selectedToDo.reminder ? 'text-electric-orange' : 'text-gray-500'} />
                               <div className="flex-1">
-                                  <p className="text-sm font-medium text-gray-200">{t.todo.reminder}</p>
+                                  <p className="text-sm font-medium text-gray-200">미리 알림</p>
                                   {selectedToDo.reminder && <p className="text-xs text-electric-orange mt-0.5">{formatDate(selectedToDo.reminder)} {formatTime(selectedToDo.reminder)}</p>}
                               </div>
-                              <input 
-                                type="datetime-local" 
+                              <input
+                                type="datetime-local"
                                 className="absolute inset-0 opacity-0 cursor-pointer"
                                 onChange={(e) => {
                                     const date = new Date(e.target.value);
                                     if (!isNaN(date.getTime())) onUpdateToDo(selectedToDo.id, { reminder: date.getTime() });
                                 }}
                               />
-                              {selectedToDo.reminder && <button onClick={() => onUpdateToDo(selectedToDo.id, { reminder: null })} className="p-1 hover:text-red-500 text-gray-500 z-10"><X size={16}/></button>}
+                              {selectedToDo.reminder && <button onClick={() => onUpdateToDo(selectedToDo.id, { reminder: null })} className="p-1 hover:text-red-500 text-gray-500 z-10"><X size={14}/></button>}
                           </div>
 
                           {/* Due Date */}
-                          <div className="p-4 flex items-center gap-4 hover:bg-white/5 relative group transition-colors">
-                              <Calendar size={20} className={selectedToDo.dueDate ? 'text-neon-lime' : 'text-gray-500'} />
+                          <div className="py-2.5 px-3 flex items-center gap-3 hover:bg-white/5 relative group transition-colors">
+                              <Calendar size={16} className={selectedToDo.dueDate ? 'text-neon-lime' : 'text-gray-500'} />
                               <div className="flex-1">
-                                  <p className="text-sm font-medium text-gray-200">{t.todo.dueDate}</p>
+                                  <p className="text-sm font-medium text-gray-200">기한 설정</p>
                                   {selectedToDo.dueDate && <p className="text-xs text-neon-lime mt-0.5">{formatDate(selectedToDo.dueDate)}</p>}
                               </div>
-                              <input 
-                                type="date" 
+                              <input
+                                type="date"
                                 className="absolute inset-0 opacity-0 cursor-pointer"
                                 onChange={(e) => {
                                     const date = new Date(e.target.value);
                                     if (!isNaN(date.getTime())) onUpdateToDo(selectedToDo.id, { dueDate: date.getTime() });
                                 }}
                               />
-                              {selectedToDo.dueDate && <button onClick={() => onUpdateToDo(selectedToDo.id, { dueDate: null })} className="p-1 hover:text-red-500 text-gray-500 z-10"><X size={16}/></button>}
+                              {selectedToDo.dueDate && <button onClick={() => onUpdateToDo(selectedToDo.id, { dueDate: null })} className="p-1 hover:text-red-500 text-gray-500 z-10"><X size={14}/></button>}
                           </div>
 
                           {/* Repeat */}
-                          <div className="p-4 flex items-center gap-4 hover:bg-white/5 relative group transition-colors">
-                              <Repeat size={20} className={selectedToDo.repeat ? 'text-blue-400' : 'text-gray-500'} />
+                          <div className="py-2.5 px-3 flex items-center gap-3 hover:bg-white/5 relative group transition-colors">
+                              <Repeat size={16} className={selectedToDo.repeat ? 'text-blue-400' : 'text-gray-500'} />
                               <div className="flex-1">
-                                  <p className="text-sm font-medium text-gray-200">{t.todo.repeatLabel}</p>
+                                  <p className="text-sm font-medium text-gray-200">반복</p>
                                   {selectedToDo.repeat && <p className="text-xs text-blue-400 capitalize mt-0.5">{getRepeatLabel(selectedToDo.repeat)}</p>}
                               </div>
-                              <select 
-                                value={selectedToDo.repeat || ''} 
+                              <select
+                                value={selectedToDo.repeat || ''}
                                 onChange={(e) => onUpdateToDo(selectedToDo.id, { repeat: e.target.value as RepeatFrequency || null })}
                                 className="absolute inset-0 opacity-0 cursor-pointer bg-deep-space text-white"
                               >
-                                  <option value="">{t.todo.repeatOptions.none}</option>
-                                  <option value="daily">{t.todo.repeatOptions.daily}</option>
-                                  <option value="weekdays">{t.todo.repeatOptions.weekdays}</option>
-                                  <option value="weekly">{t.todo.repeatOptions.weekly}</option>
-                                  <option value="weekly-2">{t.todo.repeatOptions['weekly-2']}</option>
-                                  <option value="weekly-3">{t.todo.repeatOptions['weekly-3']}</option>
-                                  <option value="weekly-4">{t.todo.repeatOptions['weekly-4']}</option>
-                                  <option value="weekly-5">{t.todo.repeatOptions['weekly-5']}</option>
-                                  <option value="weekly-6">{t.todo.repeatOptions['weekly-6']}</option>
-                                  <option value="monthly">{t.todo.repeatOptions.monthly}</option>
+                                  <option value="">반복 안 함</option>
+                                  <option value="daily">매일</option>
+                                  <option value="weekdays">평일 (월-금)</option>
+                                  <option value="weekly">주 1회 (매주)</option>
+                                  <option value="weekly-2">주 2회</option>
+                                  <option value="weekly-3">주 3회</option>
+                                  <option value="weekly-4">주 4회</option>
+                                  <option value="weekly-5">주 5회</option>
+                                  <option value="weekly-6">주 6회</option>
+                                  <option value="monthly">매월</option>
                               </select>
-                              {selectedToDo.repeat && <button onClick={() => onUpdateToDo(selectedToDo.id, { repeat: null })} className="p-1 hover:text-red-500 text-gray-500 z-10"><X size={16}/></button>}
+                              {selectedToDo.repeat && <button onClick={() => onUpdateToDo(selectedToDo.id, { repeat: null })} className="p-1 hover:text-red-500 text-gray-500 z-10"><X size={14}/></button>}
                           </div>
                       </div>
 
                       {/* Notes */}
-                      <div className="bg-white/5 rounded-2xl p-4 h-48 ring-1 ring-white/5 focus-within:ring-neon-lime/30 transition-all flex flex-col">
-                          <textarea
-                              placeholder={t.todo.notePlaceholder}
+                      <div className="bg-white/5 rounded-xl p-3 h-36 ring-1 ring-white/5 focus-within:ring-neon-lime/30 transition-all flex flex-col">
+                          <textarea 
+                              placeholder="메모 추가..."
                               value={selectedToDo.note || ''}
                               onChange={(e) => onUpdateToDo(selectedToDo.id, { note: e.target.value })}
                               className="w-full h-full bg-transparent text-sm text-gray-300 resize-none focus:outline-none placeholder-gray-600"
@@ -327,30 +461,47 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, onAddToDo, 
                       </div>
                       
                       <div className="text-xs text-gray-600 text-center font-mono">
-                          CREATED: {new Date(selectedToDo.createdAt).toLocaleString(language === 'ko' ? 'ko-KR' : 'en-US')}
+                          CREATED: {new Date(selectedToDo.createdAt).toLocaleString()}
                       </div>
                   </div>
 
                   {/* Footer */}
-                  <div className="p-6 border-t border-white/10 flex justify-between items-center bg-black/40">
+                  <div className="py-3 px-4 border-t border-white/10 flex justify-between items-center bg-black/40">
                       <div className="text-xs text-gray-500">
                           ID: {selectedToDo.id.slice(-6)}
                       </div>
-                      <button 
+                      <button
                         onClick={() => { onDeleteToDo(selectedToDo.id); setSelectedToDoId(null); }}
-                        className="text-gray-400 hover:text-red-500 transition-colors flex items-center gap-2 hover:bg-red-500/10 px-3 py-2 rounded-lg"
+                        className="text-gray-400 hover:text-red-500 transition-colors flex items-center gap-2 hover:bg-red-500/10 px-3 py-1.5 rounded-lg"
                       >
-                          <Trash2 size={18} />
-                          <span className="text-sm">{t.todo.deleteTitle}</span>
+                          <Trash2 size={16} />
+                          <span className="text-sm">삭제</span>
                       </button>
                   </div>
               </>
           ) : (
               <div className="flex-1 flex items-center justify-center text-gray-600">
-                  {t.todo.noSelection}
+                  선택된 작업이 없습니다
               </div>
           )}
       </div>
+
+      {/* Modals */}
+      <CreateListModal
+        isOpen={showCreateList}
+        onClose={() => { setShowCreateList(false); setEditingListId(null); }}
+        onSave={handleSaveRenamedList}
+        groups={todoGroups}
+        initialName={editingListId ? todoLists.find(l => l.id === editingListId)?.name : ''}
+        initialColor={editingListId ? todoLists.find(l => l.id === editingListId)?.color : '#CCFF00'}
+        initialGroupId={editingListId ? todoLists.find(l => l.id === editingListId)?.groupId : undefined}
+      />
+      <CreateGroupModal
+        isOpen={showCreateGroup}
+        onClose={() => { setShowCreateGroup(false); setEditingGroupId(null); }}
+        onSave={handleSaveRenamedGroup}
+        initialName={editingGroupId ? todoGroups.find(g => g.id === editingGroupId)?.name : ''}
+      />
     </div>
   );
 };

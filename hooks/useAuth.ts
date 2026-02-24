@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { UserProfile, GoalNode, GoalLink, ToDoItem } from '../types';
+import { UserProfile, GoalNode, GoalLink, ToDoItem, TodoList, TodoGroup } from '../types';
 import {
   onAuthUpdate,
   getUserId,
   loadGoalData,
   loadTodos,
+  loadTodoLists,
   loadProfile,
   ensureCreatedAt,
   testFirestoreConnection,
@@ -28,6 +29,7 @@ export interface AuthState {
 export function useAuth(
   onGoalDataLoaded: (nodes: GoalNode[], links: GoalLink[]) => void,
   onTodosLoaded: (todos: ToDoItem[]) => void,
+  onTodoListsLoaded: (lists: TodoList[], groups: TodoGroup[]) => void,
 ): AuthState {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
@@ -37,12 +39,31 @@ export function useAuth(
   const userIdRef = useRef<string | null>(null);
   const loadedUserIdRef = useRef<string | null>(null);
   const isLoadingRef = useRef(false);
+  const isDevMode = import.meta.env.DEV && new URLSearchParams(window.location.search).has('dev');
 
-  // 1. Auth state listener
-  // 중요: onAuthStateChanged는 토큰 리프레시 시 재발동됨.
-  // 전체 profile을 덮어쓰면 Firestore/Polar에서 로드한 빌링 데이터가 소실됨.
-  // → 기존 프로필이 있으면 auth 필드만 merge.
+  // 0. Dev auto-login: ?dev=1 → mock user (dev only, UI testing)
   useEffect(() => {
+    if (!isDevMode) return;
+    const devId = 'dev_local_' + Date.now();
+    userIdRef.current = devId;
+    loadedUserIdRef.current = devId;
+    setUserProfile({
+      name: 'Dev User',
+      email: 'dev@localhost',
+      googleId: devId,
+      gender: 'Other',
+      age: '',
+      location: '',
+      bio: '',
+      gallery: [],
+    });
+    setIsInitializing(false);
+    setIsDataLoaded(true);
+  }, []);
+
+  // 1. Auth state listener (skip in dev mode)
+  useEffect(() => {
+    if (isDevMode) return;
     const unsubscribe = onAuthUpdate((authProfile) => {
       setUserProfile((prev) => {
         if (!authProfile) return null;
@@ -77,8 +98,9 @@ export function useAuth(
     return () => unsubscribe();
   }, []);
 
-  // 2. Load user data from Firestore when profile is available
+  // 2. Load user data from Firestore when profile is available (skip in dev mode)
   useEffect(() => {
+    if (isDevMode) return;
     if (!userProfile) {
       loadedUserIdRef.current = null;
       isLoadingRef.current = false;
@@ -112,9 +134,10 @@ export function useAuth(
       await ensureCreatedAt(userId);
 
       try {
-        const [goalData, todoData, savedProfile] = await Promise.all([
+        const [goalData, todoData, todoListsData, savedProfile] = await Promise.all([
           loadGoalData(userId),
           loadTodos(userId),
+          loadTodoLists(userId),
           loadProfile(userId),
         ]);
 
@@ -127,6 +150,10 @@ export function useAuth(
 
         if (todoData && todoData.length > 0) {
           onTodosLoaded(todoData);
+        }
+
+        if (todoListsData) {
+          onTodoListsLoaded(todoListsData.lists, todoListsData.groups);
         }
 
         // 온보딩 완료 여부 판단 (source of truth: Firestore onboardingCompleted 필드)
@@ -182,7 +209,7 @@ export function useAuth(
     };
 
     loadData();
-  }, [userProfile, isDataLoaded, onGoalDataLoaded, onTodosLoaded]);
+  }, [userProfile, isDataLoaded, onGoalDataLoaded, onTodosLoaded, onTodoListsLoaded]);
 
   const TRIAL_DAYS = 3;
   const isTrialExpired = (() => {

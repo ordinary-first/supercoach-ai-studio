@@ -40,10 +40,10 @@ const TodoItem: React.FC<TodoItemProps> = ({ todo, onToggle, onEdit, onDelete, i
       onClick={() => onEdit(todo)}
       className={`group relative flex items-center gap-4 p-4 rounded-2xl border cursor-pointer transition-all duration-300 ${
         isSelected
-          ? 'bg-white/10 border-neon-lime shadow-[0_0_20px_rgba(204,255,0,0.15)] scale-[1.01]'
+          ? 'bg-th-surface-hover border-th-accent shadow-[0_0_20px_var(--shadow-glow)] scale-[1.01]'
           : (todo.completed
-            ? 'bg-white/5 border-transparent opacity-60 hover:opacity-80'
-            : 'bg-white/5 border-white/5 hover:bg-white/10 hover:border-white/20')
+            ? 'bg-th-surface border-transparent opacity-60 hover:opacity-80'
+            : 'bg-th-surface border-th-border-subtle hover:bg-th-surface-hover hover:border-th-border-strong')
       }`}
     >
       {/* Priority indicator dot */}
@@ -57,8 +57,8 @@ const TodoItem: React.FC<TodoItemProps> = ({ todo, onToggle, onEdit, onDelete, i
           e.stopPropagation();
           onToggle(todo.id);
         }}
-        className={`flex-shrink-0 p-1 rounded-full transition-all hover:bg-white/10 hover:scale-110 ${
-          todo.completed ? 'text-neon-lime' : 'text-gray-500 hover:text-neon-lime'
+        className={`flex-shrink-0 p-1 rounded-full transition-all hover:bg-th-surface-hover hover:scale-110 ${
+          todo.completed ? 'text-th-accent' : 'text-th-text-tertiary hover:text-th-accent'
         }`}
       >
         {todo.completed ? (
@@ -72,8 +72,8 @@ const TodoItem: React.FC<TodoItemProps> = ({ todo, onToggle, onEdit, onDelete, i
       <div className="flex-1 min-w-0">
         <p className={`text-lg mb-1 transition-all ${
           todo.completed
-            ? 'line-through text-gray-500'
-            : 'text-white font-medium'
+            ? 'line-through text-th-text-tertiary'
+            : 'text-th-text font-medium'
         }`}>
           {todo.text}
         </p>
@@ -91,7 +91,7 @@ const TodoItem: React.FC<TodoItemProps> = ({ todo, onToggle, onEdit, onDelete, i
             <div className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full border ${
               isOverdue
                 ? 'text-red-400 bg-red-400/10 border-red-400/20 animate-pulse'
-                : 'text-gray-400 bg-white/5 border-white/10'
+                : 'text-th-text-secondary bg-th-surface border-th-border'
             }`}>
               <Calendar size={12} />
               <span>{formatDate(todo.dueDate)}</span>
@@ -117,12 +117,12 @@ const TodoItem: React.FC<TodoItemProps> = ({ todo, onToggle, onEdit, onDelete, i
           {todo.tags && todo.tags.length > 0 && (
             <>
               {todo.tags.slice(0, 2).map((tag, idx) => (
-                <div key={idx} className="text-xs text-neon-lime/70 bg-neon-lime/5 px-2 py-1 rounded-full border border-neon-lime/20">
+                <div key={idx} className="text-xs text-th-accent/70 bg-th-accent-muted px-2 py-1 rounded-full border border-th-accent-border">
                   #{tag}
                 </div>
               ))}
               {todo.tags.length > 2 && (
-                <div className="text-xs text-gray-500 bg-white/5 px-2 py-1 rounded-full">
+                <div className="text-xs text-th-text-tertiary bg-th-surface px-2 py-1 rounded-full">
                   +{todo.tags.length - 2}
                 </div>
               )}
@@ -138,7 +138,7 @@ const TodoItem: React.FC<TodoItemProps> = ({ todo, onToggle, onEdit, onDelete, i
             e.stopPropagation();
             onEdit(todo);
           }}
-          className="p-2 rounded-lg bg-white/5 hover:bg-neon-lime hover:text-black transition-all"
+          className="p-2 rounded-lg bg-th-surface hover:bg-th-accent hover:text-th-text-inverse transition-all"
           title="Edit"
         >
           <Edit3 size={16} />
@@ -149,7 +149,7 @@ const TodoItem: React.FC<TodoItemProps> = ({ todo, onToggle, onEdit, onDelete, i
             e.stopPropagation();
             onDelete(todo.id);
           }}
-          className="p-2 rounded-lg bg-white/5 hover:bg-red-500 hover:text-white transition-all"
+          className="p-2 rounded-lg bg-th-surface hover:bg-red-500 hover:text-white transition-all"
           title="Delete"
         >
           <Trash2 size={16} />

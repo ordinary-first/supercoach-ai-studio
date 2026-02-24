@@ -1,6 +1,6 @@
 
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
@@ -18,6 +18,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
     <script>
       tailwind.config = {
+        darkMode: 'class',
         theme: {
           extend: {
             colors: {
@@ -25,6 +26,26 @@
               'neon-lime': '#CCFF00',
               'electric-orange': '#FF4D00',
               'glass': 'rgba(255, 255, 255, 0.05)',
+              'th-base': 'var(--bg-base)',
+              'th-surface': 'var(--bg-surface)',
+              'th-surface-hover': 'var(--bg-surface-hover)',
+              'th-elevated': 'var(--bg-elevated)',
+              'th-overlay': 'var(--bg-overlay)',
+              'th-card': 'var(--bg-card)',
+              'th-input': 'var(--bg-input)',
+              'th-header': 'var(--bg-header)',
+              'th-text': 'var(--text-primary)',
+              'th-text-secondary': 'var(--text-secondary)',
+              'th-text-tertiary': 'var(--text-tertiary)',
+              'th-text-muted': 'var(--text-muted)',
+              'th-text-inverse': 'var(--text-inverse)',
+              'th-accent': 'var(--accent)',
+              'th-accent-hover': 'var(--accent-hover)',
+              'th-accent-muted': 'var(--accent-muted)',
+              'th-accent-border': 'var(--accent-border)',
+              'th-border': 'var(--border)',
+              'th-border-subtle': 'var(--border-subtle)',
+              'th-border-strong': 'var(--border-strong)',
             },
             fontFamily: {
               display: ['Orbitron', 'sans-serif'],
@@ -43,8 +64,8 @@
             },
             keyframes: {
               'pulse-glow': {
-                '0%, 100%': { opacity: 1, boxShadow: '0 0 10px #CCFF00' },
-                '50%': { opacity: .5, boxShadow: '0 0 20px #CCFF00' },
+                '0%, 100%': { opacity: 1, boxShadow: '0 0 10px var(--accent)' },
+                '50%': { opacity: .5, boxShadow: '0 0 20px var(--accent)' },
               },
               'float': {
                 '0%, 100%': { transform: 'translateY(0)' },
@@ -85,34 +106,10 @@
         },
       }
     </script>
+    <!-- Theme CSS variables loaded via theme.css (imported in index.tsx for Vite compatibility) -->
     <style>
-      :root {
-        --sat: env(safe-area-inset-top);
-        --sar: env(safe-area-inset-right);
-        --sab: env(safe-area-inset-bottom);
-        --sal: env(safe-area-inset-left);
-      }
-      body {
-        background-color: #050B14;
-        color: white;
-        overflow: hidden;
-        /* Mobile touch optimization */
-        -webkit-tap-highlight-color: transparent;
-        user-select: none;
-      }
-      .scrollbar-hide::-webkit-scrollbar {
-          display: none;
-      }
-      .scrollbar-hide {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-      }
-      /* Prevent scrolling on mobile */
-      html, body {
-        position: fixed;
-        width: 100%;
-        height: 100%;
-      }
+      .scrollbar-hide::-webkit-scrollbar { display: none; }
+      .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
   <body>

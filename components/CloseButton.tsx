@@ -18,8 +18,8 @@ const CloseButton: React.FC<CloseButtonProps> = ({ onClick, size = 'md', classNa
   return (
     <button
       onClick={onClick}
-      className={`${padding} rounded-full bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all hover:rotate-90 duration-300 ${className}`}
-      aria-label="Close"
+      className={`${padding} rounded-full bg-th-surface hover:bg-th-surface-hover text-th-text-secondary hover:text-th-text transition-all hover:rotate-90 duration-300 ${className}`}
+      aria-label="닫기"
     >
       <X size={icon} />
     </button>

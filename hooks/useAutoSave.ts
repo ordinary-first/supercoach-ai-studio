@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
-import { GoalNode, GoalLink, ToDoItem, UserProfile } from '../types';
-import { saveGoalData, saveTodos } from '../services/firebaseService';
+import { GoalNode, GoalLink, ToDoItem, TodoList, TodoGroup, UserProfile } from '../types';
+import { saveGoalData, saveTodos, saveTodoLists } from '../services/firebaseService';
 
 // Helper to safely get link source/target ID (D3 may store objects or strings)
 export const getLinkId = (ref: string | GoalNode | { id: string }): string => {
@@ -12,6 +12,8 @@ export function useAutoSave(
   nodes: GoalNode[],
   links: GoalLink[],
   todos: ToDoItem[],
+  todoLists: TodoList[],
+  todoGroups: TodoGroup[],
   userProfile: UserProfile | null,
   isDataLoaded: boolean,
   userId: string | null,
@@ -22,6 +24,7 @@ export function useAutoSave(
   // Debounce timers for auto-save
   const goalSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const todoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const listSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Internal loading guard - prevents saving during the render cycle
   // where isDataLoaded just became true alongside new data
@@ -70,6 +73,23 @@ export function useAutoSave(
       if (todoSaveTimerRef.current) clearTimeout(todoSaveTimerRef.current);
     };
   }, [todos, userProfile, isDataLoaded]);
+
+  // Auto-save todo lists & groups with debounce
+  useEffect(() => {
+    if (!userProfile || !isDataLoaded || isLoadingDataRef.current) return;
+
+    const currentUserId = userIdRef.current;
+    if (!currentUserId) return;
+
+    if (listSaveTimerRef.current) clearTimeout(listSaveTimerRef.current);
+    listSaveTimerRef.current = setTimeout(() => {
+      saveTodoLists(currentUserId, todoLists, todoGroups).catch(e => console.error('TodoLists save error:', e));
+    }, 1500);
+
+    return () => {
+      if (listSaveTimerRef.current) clearTimeout(listSaveTimerRef.current);
+    };
+  }, [todoLists, todoGroups, userProfile, isDataLoaded]);
 
   // No local persistence fallback: backend is the single source of truth.
 }

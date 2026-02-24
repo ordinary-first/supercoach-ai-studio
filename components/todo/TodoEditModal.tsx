@@ -100,27 +100,27 @@ const TodoEditModal: React.FC<TodoEditModalProps> = ({
   ];
 
   const priorityOptions: { value: TodoPriority; label: string; color: string }[] = [
-    { value: 'low', label: 'Low', color: 'text-gray-400' },
+    { value: 'low', label: 'Low', color: 'text-th-text-secondary' },
     { value: 'medium', label: 'Medium', color: 'text-electric-orange' },
     { value: 'high', label: 'High', color: 'text-red-400' },
   ];
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-th-elevated backdrop-blur-md animate-fade-in">
       {/* Modal Container */}
-      <div className="relative w-full max-w-2xl bg-deep-space border border-white/20 rounded-3xl shadow-[0_0_60px_rgba(204,255,0,0.1)] overflow-hidden">
+      <div className="relative w-full max-w-2xl bg-th-base border border-th-border-strong rounded-3xl shadow-[0_0_60px_var(--shadow-glow)] overflow-hidden">
         {/* Ambient glow */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1/2 h-1/2 bg-neon-lime/10 blur-[100px] pointer-events-none" />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1/2 h-1/2 bg-th-accent-muted blur-[100px] pointer-events-none" />
 
         {/* Header */}
-        <div className="relative p-6 border-b border-white/10 bg-black/40 backdrop-blur-xl">
+        <div className="relative p-6 border-b border-th-border bg-th-header backdrop-blur-xl">
           <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-display font-bold tracking-wider text-white">
+            <h2 className="text-2xl font-display font-bold tracking-wider text-th-text">
               {todo ? 'EDIT TASK' : 'NEW TASK'}
             </h2>
             <button
               onClick={onClose}
-              className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-all"
+              className="p-2 rounded-lg text-th-text-secondary hover:text-th-text hover:bg-th-surface-hover transition-all"
             >
               <X size={24} />
             </button>
@@ -131,7 +131,7 @@ const TodoEditModal: React.FC<TodoEditModalProps> = ({
         <div className="relative p-6 space-y-6 max-h-[70vh] overflow-y-auto scrollbar-hide">
           {/* Task Text */}
           <div className="space-y-2">
-            <label className="flex items-center gap-2 text-sm font-bold text-gray-400 tracking-wider uppercase">
+            <label className="flex items-center gap-2 text-sm font-bold text-th-text-secondary tracking-wider uppercase">
               <AlertCircle size={14} />
               Task Description *
             </label>
@@ -140,14 +140,14 @@ const TodoEditModal: React.FC<TodoEditModalProps> = ({
               value={formData.text || ''}
               onChange={(e) => setFormData({ ...formData, text: e.target.value })}
               placeholder="What needs to be done?"
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-neon-lime/50 focus:border-transparent transition-all"
+              className="w-full bg-th-surface border border-th-border rounded-xl px-4 py-3 text-th-text placeholder-th-text-tertiary focus:outline-none focus:ring-2 focus:ring-th-accent-border focus:border-transparent transition-all"
               autoFocus
             />
           </div>
 
           {/* Priority */}
           <div className="space-y-2">
-            <label className="flex items-center gap-2 text-sm font-bold text-gray-400 tracking-wider uppercase">
+            <label className="flex items-center gap-2 text-sm font-bold text-th-text-secondary tracking-wider uppercase">
               <AlertCircle size={14} />
               Priority
             </label>
@@ -159,7 +159,7 @@ const TodoEditModal: React.FC<TodoEditModalProps> = ({
                   className={`flex-1 px-4 py-3 rounded-xl border-2 font-bold text-sm transition-all ${
                     formData.priority === value
                       ? `${color} border-current bg-current/10 shadow-[0_0_15px_currentColor]`
-                      : 'text-gray-500 border-white/10 bg-white/5 hover:bg-white/10'
+                      : 'text-th-text-tertiary border-th-border bg-th-surface hover:bg-th-surface-hover'
                   }`}
                 >
                   {label}
@@ -170,7 +170,7 @@ const TodoEditModal: React.FC<TodoEditModalProps> = ({
 
           {/* Due Date */}
           <div className="space-y-2">
-            <label className="flex items-center gap-2 text-sm font-bold text-gray-400 tracking-wider uppercase">
+            <label className="flex items-center gap-2 text-sm font-bold text-th-text-secondary tracking-wider uppercase">
               <Calendar size={14} />
               Due Date
             </label>
@@ -181,20 +181,20 @@ const TodoEditModal: React.FC<TodoEditModalProps> = ({
                 const date = e.target.value ? new Date(e.target.value).getTime() : null;
                 setFormData({ ...formData, dueDate: date });
               }}
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-neon-lime/50 focus:border-transparent transition-all"
+              className="w-full bg-th-surface border border-th-border rounded-xl px-4 py-3 text-th-text focus:outline-none focus:ring-2 focus:ring-th-accent-border focus:border-transparent transition-all"
             />
           </div>
 
           {/* Linked Goal */}
           <div className="space-y-2">
-            <label className="flex items-center gap-2 text-sm font-bold text-gray-400 tracking-wider uppercase">
+            <label className="flex items-center gap-2 text-sm font-bold text-th-text-secondary tracking-wider uppercase">
               <Target size={14} />
               Link to Goal
             </label>
             <select
               value={formData.linkedGoalId || ''}
               onChange={(e) => setFormData({ ...formData, linkedGoalId: e.target.value || undefined })}
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-neon-lime/50 focus:border-transparent transition-all"
+              className="w-full bg-th-surface border border-th-border rounded-xl px-4 py-3 text-th-text focus:outline-none focus:ring-2 focus:ring-th-accent-border focus:border-transparent transition-all"
             >
               <option value="">No linked goal</option>
               {goals.filter(g => g.id !== 'root').map(goal => (
@@ -207,14 +207,14 @@ const TodoEditModal: React.FC<TodoEditModalProps> = ({
 
           {/* Repeat */}
           <div className="space-y-2">
-            <label className="flex items-center gap-2 text-sm font-bold text-gray-400 tracking-wider uppercase">
+            <label className="flex items-center gap-2 text-sm font-bold text-th-text-secondary tracking-wider uppercase">
               <Repeat size={14} />
               Repeat
             </label>
             <select
               value={formData.repeat || ''}
               onChange={(e) => setFormData({ ...formData, repeat: (e.target.value || null) as RepeatFrequency })}
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-neon-lime/50 focus:border-transparent transition-all"
+              className="w-full bg-th-surface border border-th-border rounded-xl px-4 py-3 text-th-text focus:outline-none focus:ring-2 focus:ring-th-accent-border focus:border-transparent transition-all"
             >
               {repeatOptions.map(({ value, label }) => (
                 <option key={value || 'none'} value={value || ''}>
@@ -226,7 +226,7 @@ const TodoEditModal: React.FC<TodoEditModalProps> = ({
 
           {/* Tags */}
           <div className="space-y-2">
-            <label className="flex items-center gap-2 text-sm font-bold text-gray-400 tracking-wider uppercase">
+            <label className="flex items-center gap-2 text-sm font-bold text-th-text-secondary tracking-wider uppercase">
               <Tag size={14} />
               Tags
             </label>
@@ -242,11 +242,11 @@ const TodoEditModal: React.FC<TodoEditModalProps> = ({
                   }
                 }}
                 placeholder="Add tag and press Enter"
-                className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-neon-lime/50 focus:border-transparent transition-all"
+                className="flex-1 bg-th-surface border border-th-border rounded-xl px-4 py-2 text-th-text placeholder-th-text-tertiary focus:outline-none focus:ring-2 focus:ring-th-accent-border focus:border-transparent transition-all"
               />
               <button
                 onClick={handleAddTag}
-                className="px-4 py-2 bg-neon-lime/10 border border-neon-lime/30 rounded-xl text-neon-lime font-bold hover:bg-neon-lime hover:text-black transition-all"
+                className="px-4 py-2 bg-th-accent-muted border border-th-accent-border rounded-xl text-th-accent font-bold hover:bg-th-accent hover:text-th-text-inverse transition-all"
               >
                 Add
               </button>
@@ -256,7 +256,7 @@ const TodoEditModal: React.FC<TodoEditModalProps> = ({
                 {formData.tags.map((tag, idx) => (
                   <div
                     key={idx}
-                    className="flex items-center gap-2 px-3 py-1 bg-neon-lime/10 border border-neon-lime/20 rounded-full text-sm text-neon-lime"
+                    className="flex items-center gap-2 px-3 py-1 bg-th-accent-muted border border-th-accent-border rounded-full text-sm text-th-accent"
                   >
                     <span>#{tag}</span>
                     <button
@@ -273,7 +273,7 @@ const TodoEditModal: React.FC<TodoEditModalProps> = ({
 
           {/* Notes */}
           <div className="space-y-2">
-            <label className="flex items-center gap-2 text-sm font-bold text-gray-400 tracking-wider uppercase">
+            <label className="flex items-center gap-2 text-sm font-bold text-th-text-secondary tracking-wider uppercase">
               Notes
             </label>
             <textarea
@@ -281,13 +281,13 @@ const TodoEditModal: React.FC<TodoEditModalProps> = ({
               onChange={(e) => setFormData({ ...formData, note: e.target.value })}
               placeholder="Additional notes..."
               rows={4}
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-neon-lime/50 focus:border-transparent transition-all resize-none"
+              className="w-full bg-th-surface border border-th-border rounded-xl px-4 py-3 text-th-text placeholder-th-text-tertiary focus:outline-none focus:ring-2 focus:ring-th-accent-border focus:border-transparent transition-all resize-none"
             />
           </div>
         </div>
 
         {/* Footer */}
-        <div className="relative p-6 border-t border-white/10 bg-black/40 backdrop-blur-xl flex items-center justify-between gap-4">
+        <div className="relative p-6 border-t border-th-border bg-th-header backdrop-blur-xl flex items-center justify-between gap-4">
           {todo && onDelete && (
             <button
               onClick={() => {
@@ -306,14 +306,14 @@ const TodoEditModal: React.FC<TodoEditModalProps> = ({
           <div className="flex gap-3">
             <button
               onClick={onClose}
-              className="px-6 py-2 bg-white/5 border border-white/10 rounded-xl text-gray-300 font-bold hover:bg-white/10 hover:text-white transition-all"
+              className="px-6 py-2 bg-th-surface border border-th-border rounded-xl text-th-text-secondary font-bold hover:bg-th-surface-hover hover:text-th-text transition-all"
             >
               Cancel
             </button>
             <button
               onClick={handleSave}
               disabled={!formData.text?.trim()}
-              className="px-6 py-2 bg-neon-lime border border-neon-lime rounded-xl text-black font-bold hover:shadow-[0_0_20px_rgba(204,255,0,0.5)] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="px-6 py-2 bg-th-accent border border-th-accent rounded-xl text-th-text-inverse font-bold hover:shadow-[0_0_20px_var(--shadow-glow)] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               <Save size={16} />
               {todo ? 'Update' : 'Create'}

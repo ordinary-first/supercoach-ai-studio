@@ -37,7 +37,6 @@ import {
   updateVisualization,
 } from '../services/firebaseService';
 import { useFocusTrap } from '../hooks/useFocusTrap';
-import { useTranslation } from '../i18n/useTranslation';
 
 interface VisualizationModalProps {
   isOpen: boolean;
@@ -95,8 +94,8 @@ const formatErrorMeta = (prefix: string, error?: ErrorMeta): string => {
   if (!error) return prefix;
   const parts: string[] = [];
   if (error.message) parts.push(error.message);
-  if (error.code) parts.push(`Code: ${error.code}`);
-  if (error.requestId) parts.push(`ID: ${error.requestId}`);
+  if (error.code) parts.push(`코드: ${error.code}`);
+  if (error.requestId) parts.push(`요청ID: ${error.requestId}`);
   return parts.length ? `${prefix} [${parts.join(' | ')}]` : prefix;
 };
 
@@ -156,7 +155,7 @@ const toStatusClass = (status: string): string => {
   if (status === 'completed' || status === 'ready') return 'bg-green-500/15 text-green-300 border-green-500/20';
   if (status === 'failed') return 'bg-red-500/15 text-red-300 border-red-500/20';
   if (status === 'pending') return 'bg-yellow-500/15 text-yellow-200 border-yellow-500/20';
-  return 'bg-white/5 text-gray-400 border-white/10';
+  return 'bg-th-surface text-th-text-secondary border-th-border';
 };
 
 const VisualizationModal: React.FC<VisualizationModalProps> = ({
@@ -165,7 +164,6 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
   userProfile,
   nodes,
 }) => {
-  const { t } = useTranslation();
   const focusTrapRef = useFocusTrap(isOpen);
   const activeUserId = getActiveUserId(userProfile);
 
@@ -292,7 +290,7 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
           prev.map((item) => (item.id === target.visualizationId ? { ...item, ...updates } : item)),
         );
         if (target.visualizationId) await updateVisualization(activeUserId, target.visualizationId, updates);
-        setInfoMessage(t.visualization.videoComplete);
+        setInfoMessage('영상 생성이 완료되었습니다.');
         return;
       }
 
@@ -309,13 +307,13 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
             videoId: target.videoId,
           });
         }
-        setErrorMessage(formatErrorMeta(t.visualization.videoFailed, videoError));
+        setErrorMessage(formatErrorMeta('영상 생성이 실패했습니다.', videoError));
         return;
       }
 
-      setInfoMessage(t.visualization.videoStillProcessing);
+      setInfoMessage('영상 생성이 아직 진행 중입니다. 잠시 후 다시 확인해 주세요.');
     } catch (error: unknown) {
-      setErrorMessage(formatErrorMeta(t.visualization.videoCheckFailed, toErrorMeta(error)));
+      setErrorMessage(formatErrorMeta('영상 상태 확인에 실패했습니다.', toErrorMeta(error)));
     } finally {
       setIsCheckingPendingVideo(false);
     }
@@ -334,7 +332,7 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
       })
       .catch((error: unknown) => {
         if (!cancelled) {
-          setErrorMessage(formatErrorMeta(t.visualization.loadFailed, toErrorMeta(error)));
+          setErrorMessage(formatErrorMeta('저장된 시각화를 불러오지 못했습니다.', toErrorMeta(error)));
         }
       });
 
@@ -365,13 +363,13 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
     stopAudio();
     if (currentResult.audioUrl) {
       prepareAudioFromUrl(currentResult.audioUrl).catch(() => {
-        setErrorMessage(t.visualization.audioPrepareFailed);
+        setErrorMessage('오디오 재생 준비에 실패했습니다.');
       });
       return;
     }
     if (currentResult.audioData) {
       prepareAudioFromPcm(currentResult.audioData).catch(() => {
-        setErrorMessage(t.visualization.audioPrepareFailed);
+        setErrorMessage('오디오 재생 준비에 실패했습니다.');
       });
     }
   }, [currentResult, prepareAudioFromPcm, prepareAudioFromUrl, stopAudio, viewMode]);
@@ -402,13 +400,13 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
       const generationId = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
       if (settings.text) {
-        setGeneratingStep(t.visualization.stepText);
+        setGeneratingStep('텍스트 생성 중...');
         result.text = await generateSuccessNarrative(fullPrompt, userProfile, activeUserId);
         result.textStatus = result.text ? 'completed' : 'failed';
       }
 
       if (settings.image) {
-        setGeneratingStep(t.visualization.stepImage);
+        setGeneratingStep('이미지 생성 중...');
         const imageResult = await generateVisualizationImage(
           fullPrompt,
           referenceImages,
@@ -432,7 +430,7 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
       }
 
       if (settings.audio) {
-        setGeneratingStep(t.visualization.stepAudio);
+        setGeneratingStep('오디오 생성 중...');
         const speechResult = await generateSpeech(
           result.text || fullPrompt,
           activeUserId,
@@ -453,7 +451,7 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
       }
 
       if (settings.video) {
-        setGeneratingStep(t.visualization.stepVideo);
+        setGeneratingStep('영상 생성 중...');
         const videoResult = await generateVideo(fullPrompt, userProfile, VIDEO_DURATION_SEC);
         result.videoId = videoResult.videoId;
         result.videoUrl = videoResult.videoUrl;
@@ -471,32 +469,32 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
       if (result.imageStatus === 'failed') {
         setErrorMessage((prev) =>
           prev
-            ? `${prev} ${formatErrorMeta(t.visualization.imageFailed, result.imageError)}`
-            : formatErrorMeta(t.visualization.imageFailed, result.imageError),
+            ? `${prev} ${formatErrorMeta('이미지 생성 실패.', result.imageError)}`
+            : formatErrorMeta('이미지 생성 실패.', result.imageError),
         );
       }
       if (result.audioStatus === 'failed') {
         setErrorMessage((prev) =>
           prev
-            ? `${prev} ${formatErrorMeta(t.visualization.audioFailed, result.audioError)}`
-            : formatErrorMeta(t.visualization.audioFailed, result.audioError),
+            ? `${prev} ${formatErrorMeta('오디오 생성 실패.', result.audioError)}`
+            : formatErrorMeta('오디오 생성 실패.', result.audioError),
         );
       }
       if (result.videoStatus === 'pending') {
-        setInfoMessage(t.visualization.videoQueued);
+        setInfoMessage('영상 생성 대기 중입니다. 저장 후 나중에 다시 확인할 수 있습니다.');
       }
       if (result.videoStatus === 'failed') {
         setErrorMessage((prev) =>
           prev
-            ? `${prev} ${formatErrorMeta(t.visualization.videoGenFailed, result.videoError)}`
-            : formatErrorMeta(t.visualization.videoGenFailed, result.videoError),
+            ? `${prev} ${formatErrorMeta('영상 생성 실패.', result.videoError)}`
+            : formatErrorMeta('영상 생성 실패.', result.videoError),
         );
       }
 
       setCurrentResult(result);
       setViewMode('result');
     } catch (error: unknown) {
-      setErrorMessage(formatErrorMeta(t.visualization.generationError, toErrorMeta(error)));
+      setErrorMessage(formatErrorMeta('시각화 생성 중 오류가 발생했습니다.', toErrorMeta(error)));
     } finally {
       setIsGenerating(false);
       setGeneratingStep('');
@@ -509,7 +507,7 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
   const handleSave = async () => {
     if (!currentResult || isSaved || isSaving) return;
     if (!activeUserId) {
-      setErrorMessage(t.visualization.loginRequired);
+      setErrorMessage('로그인 후 저장할 수 있습니다.');
       return;
     }
 
@@ -566,12 +564,12 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
         const primaryMeta = toErrorMeta(primaryError);
         try {
           saved = await saveVisualizationViaApi(payload, visualizationId);
-          setInfoMessage(formatErrorMeta(t.visualization.saveFallback, primaryMeta));
+          setInfoMessage(formatErrorMeta('클라이언트 저장 실패 후 서버 경로로 저장했습니다.', primaryMeta));
         } catch (fallbackError: unknown) {
           const fallbackMeta = toErrorMeta(fallbackError);
           setErrorMessage(
-            `${formatErrorMeta(t.visualization.saveFailed, primaryMeta)} ${formatErrorMeta(
-              t.visualization.serverFallbackFailed,
+            `${formatErrorMeta('시각화 저장에 실패했습니다.', primaryMeta)} ${formatErrorMeta(
+              '서버 fallback 저장도 실패했습니다.',
               fallbackMeta,
             )}`,
           );
@@ -595,7 +593,7 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
       setIsSaved(true);
 
       if (persistedVideoStatus === 'pending') {
-        setInfoMessage(t.visualization.videoSavePending);
+        setInfoMessage('영상은 아직 생성 중입니다. 저장 후 다시 열어 상태를 확인하세요.');
       }
     } finally {
       setIsSaving(false);
@@ -610,7 +608,7 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
     setIsSaved(true);
     setViewMode('result');
     if (loaded.videoStatus === 'pending' && loaded.videoId) {
-      setInfoMessage(t.visualization.videoLoadPending);
+      setInfoMessage('영상 생성 대기 상태입니다. 자동으로 상태를 확인합니다.');
       void refreshPendingVideo(loaded);
     }
   };
@@ -621,7 +619,7 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
       await deleteVisualization(activeUserId, id);
       setSavedItems((prev) => prev.filter((item) => item.id !== id));
     } catch (error: unknown) {
-      setErrorMessage(formatErrorMeta(t.visualization.deleteFailed, toErrorMeta(error)));
+      setErrorMessage(formatErrorMeta('저장 항목 삭제에 실패했습니다.', toErrorMeta(error)));
     }
   };
 
@@ -646,29 +644,29 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
 
   const hasAudio = Boolean(currentResult?.audioData || currentResult?.audioUrl);
   return (
-    <div ref={focusTrapRef} className="fixed inset-0 z-50 bg-deep-space flex flex-col">
-      <header className="h-14 md:h-20 px-4 md:px-6 border-b border-white/5 flex items-center justify-between">
+    <div ref={focusTrapRef} className="fixed inset-0 z-50 bg-th-base flex flex-col">
+      <header className="h-14 md:h-20 px-4 md:px-6 border-b border-th-border-subtle flex items-center justify-between">
         {viewMode === 'result' ? (
-          <button onClick={() => setViewMode('create')} className="p-2 rounded-full bg-white/5">
+          <button onClick={() => setViewMode('create')} className="p-2 rounded-full bg-th-surface">
             <ArrowLeft size={18} />
           </button>
         ) : (
-          <div className="flex items-center gap-2 text-white">
-            <Sparkles size={18} className="text-neon-lime" />
-            <span className="font-bold">{t.visualization.title}</span>
+          <div className="flex items-center gap-2 text-th-text">
+            <Sparkles size={18} className="text-th-accent" />
+            <span className="font-bold">시각화 스튜디오</span>
           </div>
         )}
         {viewMode === 'result' ? (
           <button
             onClick={handleSave}
             disabled={isSaved || isSaving}
-            className="px-3 py-1.5 rounded-full text-sm bg-neon-lime text-black disabled:opacity-60"
+            className="px-3 py-1.5 rounded-full text-sm bg-th-accent text-th-text-inverse disabled:opacity-60"
           >
             <Save size={14} className="inline mr-1" />
-            {isSaving ? t.visualization.saving : isSaved ? t.visualization.saved : t.common.save}
+            {isSaving ? '저장 중...' : isSaved ? '저장 완료' : '저장'}
           </button>
         ) : (
-          <button onClick={onClose} className="p-2 rounded-full bg-white/5">
+          <button onClick={onClose} className="p-2 rounded-full bg-th-surface">
             <X size={18} />
           </button>
         )}
@@ -682,7 +680,7 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
             </div>
           )}
           {infoMessage && (
-            <div className="rounded-xl border border-neon-lime/30 bg-neon-lime/10 p-3 text-sm text-neon-lime">
+            <div className="rounded-xl border border-th-accent-border bg-th-accent-muted p-3 text-sm text-th-accent">
               {infoMessage}
             </div>
           )}
@@ -692,17 +690,17 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
               <textarea
                 value={inputText}
                 onChange={(event) => setInputText(event.target.value)}
-                placeholder={t.visualization.placeholder}
+                placeholder="원하는 장면이나 감정을 구체적으로 입력해 주세요."
                 rows={4}
-                className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-sm"
+                className="w-full bg-th-surface border border-th-border rounded-xl p-4 text-sm"
               />
 
               <div className="grid grid-cols-3 gap-2">
                 {[0, 1, 2].map((index) => (
-                  <div key={index} className="relative aspect-square rounded-xl border border-white/10 overflow-hidden">
+                  <div key={index} className="relative aspect-square rounded-xl border border-th-border overflow-hidden">
                     {referenceImages[index] ? (
                       <>
-                        <img src={referenceImages[index]} alt={`${t.visualization.refImageAlt} ${index + 1}`} className="w-full h-full object-cover" />
+                        <img src={referenceImages[index]} alt={`참고 이미지 ${index + 1}`} className="w-full h-full object-cover" />
                         <button
                           onClick={() =>
                             setReferenceImages((prev) => prev.filter((_, imageIndex) => imageIndex !== index))
@@ -715,10 +713,10 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
                     ) : (
                       <button
                         onClick={() => fileInputRefs.current[index]?.click()}
-                        className="w-full h-full flex flex-col items-center justify-center text-gray-500"
+                        className="w-full h-full flex flex-col items-center justify-center text-th-text-tertiary"
                       >
                         <ImagePlus size={20} />
-                        <span className="text-xs mt-1">{t.visualization.addImage}</span>
+                        <span className="text-xs mt-1">추가</span>
                       </button>
                     )}
                     <input
@@ -735,17 +733,17 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
               </div>
 
               <div className="flex flex-wrap gap-2">
-                {([
-                  { key: 'text' as const, label: t.visualization.typeText, icon: FileText },
-                  { key: 'image' as const, label: t.visualization.typeImage, icon: ImageIcon },
-                  { key: 'video' as const, label: t.visualization.typeVideo, icon: Film },
-                  { key: 'audio' as const, label: t.visualization.typeAudio, icon: Headphones },
-                ] as const).map(({ key, label, icon: Icon }) => (
+                {[
+                  { key: 'text' as const, label: '텍스트', icon: FileText },
+                  { key: 'image' as const, label: '이미지', icon: ImageIcon },
+                  { key: 'video' as const, label: '영상', icon: Film },
+                  { key: 'audio' as const, label: '오디오', icon: Headphones },
+                ].map(({ key, label, icon: Icon }) => (
                   <button
                     key={key}
                     onClick={() => setSettings((prev) => ({ ...prev, [key]: !prev[key] }))}
                     className={`px-3 py-2 rounded-full text-xs flex items-center gap-1 ${
-                      settings[key] ? 'bg-neon-lime text-black' : 'bg-white/5 text-gray-300'
+                      settings[key] ? 'bg-th-accent text-th-text-inverse' : 'bg-th-surface text-th-text-secondary'
                     }`}
                   >
                     <Icon size={14} />
@@ -759,7 +757,7 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
                   <button
                     onClick={() => setVisualImageQuality('medium')}
                     className={`px-3 py-1 rounded-full text-xs ${
-                      visualImageQuality === 'medium' ? 'bg-neon-lime text-black' : 'bg-white/5'
+                      visualImageQuality === 'medium' ? 'bg-th-accent text-th-text-inverse' : 'bg-th-surface'
                     }`}
                   >
                     Medium
@@ -767,7 +765,7 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
                   <button
                     onClick={() => setVisualImageQuality('high')}
                     className={`px-3 py-1 rounded-full text-xs ${
-                      visualImageQuality === 'high' ? 'bg-neon-lime text-black' : 'bg-white/5'
+                      visualImageQuality === 'high' ? 'bg-th-accent text-th-text-inverse' : 'bg-th-surface'
                     }`}
                   >
                     High
@@ -778,24 +776,24 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
               <button
                 onClick={handleGenerate}
                 disabled={isGenerating}
-                className="w-full py-3 rounded-full bg-neon-lime text-black font-bold disabled:opacity-50"
+                className="w-full py-3 rounded-full bg-th-accent text-th-text-inverse font-bold disabled:opacity-50"
               >
                 {isGenerating ? (
                   <span className="inline-flex items-center gap-2">
                     <Loader2 size={16} className="animate-spin" />
-                    {generatingStep || t.visualization.generating}
+                    {generatingStep || '생성 중...'}
                   </span>
                 ) : (
                   <span className="inline-flex items-center gap-2">
                     <Wand2 size={16} />
-                    {t.visualization.generate}
+                    생성하기
                   </span>
                 )}
               </button>
 
               {savedItems.length > 0 && (
                 <div className="space-y-2">
-                  <div className="text-sm font-bold">{t.visualization.savedItems}</div>
+                  <div className="text-sm font-bold">저장한 시각화</div>
                   <div className="flex gap-3 overflow-x-auto">
                     {savedItems.map((item) => (
                       <div
@@ -814,21 +812,21 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
                           if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
                         }}
                       >
-                        <div className="aspect-[4/3] rounded-xl border border-white/10 overflow-hidden">
+                        <div className="aspect-[4/3] rounded-xl border border-th-border overflow-hidden">
                           {item.imageUrl ? (
                             <img src={item.imageUrl} alt="saved visualization" className="w-full h-full object-cover" />
                           ) : (
-                            <div className="w-full h-full bg-white/5" />
+                            <div className="w-full h-full bg-th-surface" />
                           )}
                         </div>
                         <p className="text-xs mt-1 truncate">{item.inputText || item.text || 'Visualization'}</p>
-                        <div className="flex items-center gap-1 text-[10px] text-gray-500 mt-0.5">
+                        <div className="flex items-center gap-1 text-[10px] text-th-text-tertiary mt-0.5">
                           <Clock size={10} />
                           <span>{new Date(item.timestamp).toLocaleDateString()}</span>
                         </div>
                         {item.videoStatus === 'pending' && (
-                          <span className="absolute top-1 left-1 text-[10px] px-1 py-0.5 rounded bg-black/70 text-neon-lime">
-                            {t.visualization.videoPendingBadge}
+                          <span className="absolute top-1 left-1 text-[10px] px-1 py-0.5 rounded bg-black/70 text-th-accent">
+                            영상 대기
                           </span>
                         )}
                         <button
@@ -849,19 +847,19 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
           ) : (
             <>
               <div className="flex flex-wrap gap-2">
-                <span className={`px-2 py-1 text-xs rounded border ${toStatusClass(currentResult?.textStatus || 'idle')}`}>{t.visualization.typeText}: {currentResult?.textStatus || 'idle'}</span>
-                <span className={`px-2 py-1 text-xs rounded border ${toStatusClass(currentResult?.imageStatus || 'idle')}`}>{t.visualization.typeImage}: {currentResult?.imageStatus || 'idle'}</span>
-                <span className={`px-2 py-1 text-xs rounded border ${toStatusClass(currentResult?.audioStatus || 'idle')}`}>{t.visualization.typeAudio}: {currentResult?.audioStatus || 'idle'}</span>
-                <span className={`px-2 py-1 text-xs rounded border ${toStatusClass(currentResult?.videoStatus || 'idle')}`}>{t.visualization.typeVideo}: {currentResult?.videoStatus || 'idle'}</span>
+                <span className={`px-2 py-1 text-xs rounded border ${toStatusClass(currentResult?.textStatus || 'idle')}`}>텍스트: {currentResult?.textStatus || 'idle'}</span>
+                <span className={`px-2 py-1 text-xs rounded border ${toStatusClass(currentResult?.imageStatus || 'idle')}`}>이미지: {currentResult?.imageStatus || 'idle'}</span>
+                <span className={`px-2 py-1 text-xs rounded border ${toStatusClass(currentResult?.audioStatus || 'idle')}`}>오디오: {currentResult?.audioStatus || 'idle'}</span>
+                <span className={`px-2 py-1 text-xs rounded border ${toStatusClass(currentResult?.videoStatus || 'idle')}`}>영상: {currentResult?.videoStatus || 'idle'}</span>
               </div>
 
-              <div className="rounded-2xl border border-white/10 overflow-hidden bg-black">
+              <div className="rounded-2xl border border-th-border overflow-hidden bg-th-base">
                 {currentResult?.videoUrl ? (
                   <video src={currentResult.videoUrl} controls autoPlay loop muted playsInline className="w-full aspect-video object-cover" />
                 ) : currentResult?.imageUrl ? (
                   <img
                     src={currentResult.imageUrl}
-                    alt={t.visualization.imageAlt}
+                    alt="시각화 이미지"
                     onError={(e) => {
                       const fallback = currentResult?.imageDataUrl;
                       if (fallback && e.currentTarget.src !== fallback) {
@@ -871,16 +869,16 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
                     className="w-full aspect-video object-cover"
                   />
                 ) : (
-                  <div className="aspect-video flex items-center justify-center text-gray-600">
+                  <div className="aspect-video flex items-center justify-center text-th-text-muted">
                     <ImageIcon size={36} />
                   </div>
                 )}
               </div>
               {currentResult?.videoUrl && currentResult?.imageUrl && (
-                <div className="rounded-2xl border border-white/10 overflow-hidden bg-black/40">
+                <div className="rounded-2xl border border-th-border overflow-hidden bg-th-header">
                   <img
                     src={currentResult.imageUrl}
-                    alt={t.visualization.generatedImageAlt}
+                    alt="생성 이미지"
                     onError={(e) => {
                       const fallback = currentResult?.imageDataUrl;
                       if (fallback && e.currentTarget.src !== fallback) {
@@ -893,27 +891,27 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
               )}
 
               {currentResult?.videoStatus === 'pending' && currentResult.videoId && (
-                <div className="p-3 rounded-xl border border-white/10 bg-white/5 flex items-center justify-between gap-3">
-                  <span className="text-sm">{t.visualization.videoPendingText}</span>
+                <div className="p-3 rounded-xl border border-th-border bg-th-surface flex items-center justify-between gap-3">
+                  <span className="text-sm">영상 생성 대기 중입니다.</span>
                   <button
                     onClick={() => void refreshPendingVideo(currentResult)}
                     disabled={isCheckingPendingVideo}
-                    className="px-3 py-1 rounded-full text-xs bg-neon-lime text-black disabled:opacity-50"
+                    className="px-3 py-1 rounded-full text-xs bg-th-accent text-th-text-inverse disabled:opacity-50"
                   >
-                    {isCheckingPendingVideo ? t.visualization.checking : t.visualization.checkNow}
+                    {isCheckingPendingVideo ? '확인 중...' : '지금 확인'}
                   </button>
                 </div>
               )}
 
               {currentResult?.text && (
-                <div className="p-4 rounded-xl border-l-2 border-neon-lime bg-white/5 whitespace-pre-wrap">
+                <div className="p-4 rounded-xl border-l-2 border-th-accent-border bg-th-surface whitespace-pre-wrap">
                   {currentResult.text}
                 </div>
               )}
 
               {hasAudio && (
-                <div className="p-4 rounded-xl border border-white/10 bg-white/5 flex items-center justify-between">
-                  <div className="text-sm">{t.visualization.audioPlayback}</div>
+                <div className="p-4 rounded-xl border border-th-border bg-th-surface flex items-center justify-between">
+                  <div className="text-sm">오디오 재생</div>
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => {
@@ -922,7 +920,7 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
                         if (sourceNodeRef.current) sourceNodeRef.current.loop = nextLoop;
                         if (htmlAudioRef.current) htmlAudioRef.current.loop = nextLoop;
                       }}
-                      className={`p-2 rounded-full ${isLooping ? 'bg-neon-lime text-black' : 'bg-white/10'}`}
+                      className={`p-2 rounded-full ${isLooping ? 'bg-th-accent text-th-text-inverse' : 'bg-th-surface-hover'}`}
                     >
                       <Repeat size={16} />
                     </button>
@@ -938,7 +936,7 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
                               await htmlAudioRef.current.play();
                               setIsPlaying(true);
                             } catch {
-                              setErrorMessage(t.visualization.audioPlayFailed);
+                              setErrorMessage('오디오 재생에 실패했습니다.');
                             }
                           }
                           return;
