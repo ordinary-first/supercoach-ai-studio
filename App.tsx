@@ -7,7 +7,7 @@ import CoachBubble from './components/CoachBubble';
 import ShortcutsPanel from './components/ShortcutsPanel';
 import ToDoList from './components/ToDoList';
 import BottomDock, { TabType } from './components/BottomDock';
-import VisualizationModal from './components/VisualizationModal';
+import VisualizationTab from './components/visualization/VisualizationTab';
 import CalendarView from './components/CalendarView';
 import MarketingLandingPage from './components/landing/MarketingLandingPage';
 import SettingsPage from './components/SettingsPage';
@@ -776,7 +776,7 @@ const App: React.FC = () => {
         onMessagesChange={setChatMessages}
         activeTab={activeTab}
       />
-      <VisualizationModal isOpen={activeTab === 'VISUALIZE'} onClose={() => setActiveTab('GOALS')} userProfile={userProfile} nodes={nodes} />
+      <VisualizationTab isOpen={activeTab === 'VISUALIZE'} onClose={() => setActiveTab('GOALS')} userProfile={userProfile} nodes={nodes} />
       <ShortcutsPanel isOpen={isShortcutsOpen} onClose={() => setIsShortcutsOpen(false)} />
       <BottomDock activeTab={activeTab} onTabChange={handleTabChange} calendarViewMode={calendarViewMode} onCalendarViewModeChange={setCalendarViewMode} />
       <CoachBubble
