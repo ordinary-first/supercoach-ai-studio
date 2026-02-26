@@ -216,10 +216,9 @@ export default function VisualizationTab({
       <div className="flex-1 overflow-y-auto">
         {viewState === 'tabs' && pillTab === 'create' && (
           <DreamChat
+            nodes={nodes}
             messages={chat.messages}
-            onSendMessage={(content) =>
-              chat.addMessage('user', content, 'user-input')
-            }
+            onAddMessage={chat.addMessage}
             onGenerate={handleGenerate}
             isGenerating={pipeline.isGenerating}
             settings={settings}
@@ -228,7 +227,7 @@ export default function VisualizationTab({
             onImageQualityChange={setImageQuality}
             referenceImages={referenceImages}
             onImageAttach={handleImageAttach}
-            onImageRemove={handleImageRemove}
+            onRemoveImage={handleImageRemove}
           />
         )}
 

@@ -38,7 +38,7 @@ const SuggestionBubbles: FC<SuggestionBubblesProps> = ({ nodes, onSelect }) => {
     items.push('✦ 당신의 데이터로 바로 생성');
 
     // Bubble 2-3: derived from root nodes
-    const roots = nodes.filter((n) => n.type === NodeType.ROOT);
+    const roots = (nodes ?? []).filter((n) => n.type === NodeType.ROOT);
     if (roots.length >= 1) {
       items.push(`🏙 ${roots[0].text}를 달성한 순간의 모습`);
     } else {
