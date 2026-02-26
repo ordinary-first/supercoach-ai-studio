@@ -47,7 +47,7 @@ const CoachChat: React.FC<CoachChatProps> = ({
     CALENDAR: t.coach.tabLabels.CALENDAR,
     TODO: t.coach.tabLabels.TODO,
     VISUALIZE: t.coach.tabLabels.VISUALIZE,
-    FEEDBACK: t.coach.tabLabels.FEEDBACK,
+    FEEDBACK: '피드백',
   };
 
   const scrollToBottom = () => {
