@@ -1,10 +1,47 @@
-import React, { useState, useMemo } from 'react';
-import { Check, Trash2, Plus, ListTodo, Circle, CheckCircle2, Target, Bell, Repeat, Sun, ArrowLeft, ChevronRight, ChevronDown, Layout, X, Calendar, Star, CalendarDays, Home, Menu } from 'lucide-react';
+import React, { useState, useMemo, useCallback } from 'react';
+import { Check, Trash2, Plus, ListTodo, Circle, CheckCircle2, Target, Bell, Repeat, Sun, ArrowLeft, ChevronRight, ChevronDown, Layout, X, Calendar, Star, CalendarDays, Home, Menu, GripVertical } from 'lucide-react';
 import { ToDoItem, TodoList, TodoGroup, SmartListId, RepeatFrequency } from '../types';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import TodoSidebar from './todo/TodoSidebar';
 import CreateListModal from './todo/CreateListModal';
 import CreateGroupModal from './todo/CreateGroupModal';
+import { DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors, DragEndEvent, DragOverlay, DragStartEvent } from '@dnd-kit/core';
+import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+
+// === Extracted outside ToDoList to avoid React 19 hooks identity issue ===
+interface SortableTodoItemProps {
+  id: string;
+  isSelected: boolean;
+  isCompleted: boolean;
+  onSelect: (id: string) => void;
+  children: React.ReactNode;
+}
+
+const SortableTodoItem: React.FC<SortableTodoItemProps> = ({ id, isSelected, isCompleted, onSelect, children }) => {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+    zIndex: isDragging ? 10 : undefined,
+  };
+  const cardClass = `group flex items-center gap-2.5 py-2.5 px-3 mx-2 mb-1.5 rounded-lg cursor-pointer transition-all duration-150 ${
+    isSelected
+      ? 'bg-white/15 ring-1 ring-neon-lime/30'
+      : (isCompleted ? 'bg-white/[0.04] opacity-50' : 'bg-white/[0.06] hover:bg-white/10')
+  }`;
+  return (
+    <div ref={setNodeRef} style={style} {...attributes} onClick={() => onSelect(id)} className={cardClass}>
+      {!isCompleted && (
+        <div {...listeners} className="flex-shrink-0 cursor-grab active:cursor-grabbing text-gray-600 hover:text-gray-400 touch-none opacity-0 group-hover:opacity-100 transition-opacity">
+          <GripVertical size={16} />
+        </div>
+      )}
+      {children}
+    </div>
+  );
+};
 
 interface ToDoListProps {
   isOpen: boolean;
@@ -16,13 +53,14 @@ interface ToDoListProps {
   onActiveListChange: (id: string) => void;
   onTodoListsChange: React.Dispatch<React.SetStateAction<TodoList[]>>;
   onTodoGroupsChange: React.Dispatch<React.SetStateAction<TodoGroup[]>>;
-  onAddToDo: (text: string, listId?: string) => void;
+  onAddToDo: (text: string, listId?: string, extras?: Partial<ToDoItem>) => void;
   onToggleToDo: (id: string) => void;
   onDeleteToDo: (id: string) => void;
   onUpdateToDo: (id: string, updates: Partial<ToDoItem>) => void;
+  onReorderTodos: (orderedIds: string[]) => void;
 }
 
-const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, todoGroups, activeListId, onActiveListChange, onTodoListsChange, onTodoGroupsChange, onAddToDo, onToggleToDo, onDeleteToDo, onUpdateToDo }) => {
+const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, todoGroups, activeListId, onActiveListChange, onTodoListsChange, onTodoGroupsChange, onAddToDo, onToggleToDo, onDeleteToDo, onUpdateToDo, onReorderTodos }) => {
   const [inputText, setInputText] = useState('');
   const [selectedToDoId, setSelectedToDoId] = useState<string | null>(null);
   const focusTrapRef = useFocusTrap(isOpen);
@@ -118,35 +156,79 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
     onTodoGroupsChange(prev => prev.map(g => g.id === id ? { ...g, isCollapsed: !g.isCollapsed } : g));
   };
 
+  // Quick action pending states
+  const [pendingDueDate, setPendingDueDate] = useState<number | null>(null);
+  const [pendingReminder, setPendingReminder] = useState<number | null>(null);
+  const [pendingRepeat, setPendingRepeat] = useState<RepeatFrequency>(null);
+  const [isInputFocused, setIsInputFocused] = useState(false);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (inputText.trim()) {
-      const listId = (['myDay', 'important', 'planned', 'tasks'] as string[]).includes(activeListId) ? undefined : activeListId;
-      onAddToDo(inputText, listId);
+      const isSmartList = (['myDay', 'important', 'planned', 'tasks'] as string[]).includes(activeListId);
+      const listId = isSmartList ? undefined : activeListId;
+
+      // Smart list별 속성 자동 설정
+      const extras: Partial<ToDoItem> = {};
+      if (activeListId === 'myDay') extras.isMyDay = true;
+      if (activeListId === 'important') extras.priority = 'high';
+
+      // 퀵 액션 값 머지
+      if (pendingDueDate) extras.dueDate = pendingDueDate;
+      if (pendingReminder) extras.reminder = pendingReminder;
+      if (pendingRepeat) extras.repeat = pendingRepeat;
+
+      onAddToDo(inputText, listId, Object.keys(extras).length > 0 ? extras : undefined);
       setInputText('');
+      setPendingDueDate(null);
+      setPendingReminder(null);
+      setPendingRepeat(null);
     }
   };
 
-  // Split into incomplete / completed, sort each by MyDay then createdAt
-  const sortByMyDayThenDate = (a: ToDoItem, b: ToDoItem) => {
+  // Sort: sortOrder 우선, 없으면 MyDay → createdAt
+  const sortTodos = (a: ToDoItem, b: ToDoItem) => {
+    if (a.sortOrder != null && b.sortOrder != null) return a.sortOrder - b.sortOrder;
+    if (a.sortOrder != null) return -1;
+    if (b.sortOrder != null) return 1;
     if (a.isMyDay === b.isMyDay) return b.createdAt - a.createdAt;
     return a.isMyDay ? -1 : 1;
   };
-  const incompleteTodos = [...filteredTodos].filter(t => !t.completed).sort(sortByMyDayThenDate);
-  const completedTodos = [...filteredTodos].filter(t => t.completed).sort(sortByMyDayThenDate);
+  const incompleteTodos = [...filteredTodos].filter(t => !t.completed).sort(sortTodos);
+  const completedTodos = [...filteredTodos].filter(t => t.completed).sort(sortTodos);
+
+  // DnD
+  const [activeDragId, setActiveDragId] = useState<string | null>(null);
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } })
+  );
+  const handleDragStart = useCallback((e: DragStartEvent) => setActiveDragId(e.active.id as string), []);
+  const handleDragEnd = useCallback((e: DragEndEvent) => {
+    setActiveDragId(null);
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    const oldIdx = incompleteTodos.findIndex(t => t.id === active.id);
+    const newIdx = incompleteTodos.findIndex(t => t.id === over.id);
+    if (oldIdx === -1 || newIdx === -1) return;
+    const reordered = arrayMove(incompleteTodos, oldIdx, newIdx);
+    onReorderTodos(reordered.map(t => t.id));
+  }, [incompleteTodos, onReorderTodos]);
+  const activeDragTodo = activeDragId ? incompleteTodos.find(t => t.id === activeDragId) : null;
 
   const selectedToDo = todos.find(t => t.id === selectedToDoId);
 
-  const renderTodoItem = (todo: ToDoItem) => (
-    <div
-      key={todo.id}
-      onClick={() => setSelectedToDoId(todo.id)}
-      className={`group flex items-center gap-2.5 py-2.5 px-3 border-b cursor-pointer transition-all duration-150 ${
-        selectedToDoId === todo.id
-          ? 'bg-white/10 border-white/10'
-          : (todo.completed ? 'border-white/5 opacity-50' : 'border-white/5 hover:bg-white/5')
-      }`}
-    >
+  // 카드형 기본 클래스
+  const getCardClass = (todo: ToDoItem) =>
+    `group flex items-center gap-2.5 py-2.5 px-3 mx-2 mb-1.5 rounded-lg cursor-pointer transition-all duration-150 ${
+      selectedToDoId === todo.id
+        ? 'bg-white/15 ring-1 ring-neon-lime/30'
+        : (todo.completed ? 'bg-white/[0.04] opacity-50' : 'bg-white/[0.06] hover:bg-white/10')
+    }`;
+
+  // 아이템 공통 콘텐츠 (체크박스 + 텍스트 + 메타 + 삭제 + 화살표)
+  const renderTodoItemContent = (todo: ToDoItem) => (
+    <>
       <button
         onClick={(e) => { e.stopPropagation(); onToggleToDo(todo.id); }}
         className={`transition-colors flex-shrink-0 ${todo.completed ? 'text-neon-lime' : 'text-gray-500 hover:text-neon-lime'}`}
@@ -176,6 +258,13 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
         <Trash2 size={14} />
       </button>
       <ChevronRight size={16} className={`text-gray-600 flex-shrink-0 transition-transform ${selectedToDoId === todo.id ? 'translate-x-0.5 text-neon-lime' : ''}`} />
+    </>
+  );
+
+  // Non-sortable for completed items
+  const renderTodoItem = (todo: ToDoItem) => (
+    <div key={todo.id} onClick={() => setSelectedToDoId(todo.id)} className={getCardClass(todo)}>
+      {renderTodoItemContent(todo)}
     </div>
   );
 
@@ -209,7 +298,7 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
   if (!isOpen) return null;
 
   return (
-    <div ref={focusTrapRef} className="fixed inset-0 z-50 bg-deep-space flex flex-row overflow-hidden text-white font-body">
+    <div ref={focusTrapRef} className="fixed inset-0 z-50 pb-16 bg-deep-space flex flex-row overflow-hidden text-white font-body">
       
       {/* Ambient Background */}
       <div className="absolute top-[-20%] right-[-10%] w-[50%] h-[50%] bg-blue-900/20 rounded-full blur-[120px] pointer-events-none"></div>
@@ -272,7 +361,22 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
                       </div>
                   ) : (
                     <>
-                      {incompleteTodos.map(todo => renderTodoItem(todo))}
+                      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+                        <SortableContext items={incompleteTodos.map(t => t.id)} strategy={verticalListSortingStrategy}>
+                          {incompleteTodos.map(todo => (
+                            <SortableTodoItem key={todo.id} id={todo.id} isSelected={selectedToDoId === todo.id} isCompleted={todo.completed} onSelect={setSelectedToDoId}>
+                              {renderTodoItemContent(todo)}
+                            </SortableTodoItem>
+                          ))}
+                        </SortableContext>
+                        <DragOverlay>
+                          {activeDragTodo && (
+                            <div className={`${getCardClass(activeDragTodo)} shadow-lg shadow-black/50 ring-1 ring-neon-lime/40`}>
+                              {renderTodoItemContent(activeDragTodo)}
+                            </div>
+                          )}
+                        </DragOverlay>
+                      </DndContext>
 
                       {/* Completed section */}
                       {completedTodos.length > 0 && (
@@ -296,20 +400,62 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
               </div>
           </div>
 
-          {/* Always-visible add task input */}
-          <form onSubmit={handleSubmit} className="flex items-center gap-2.5 py-2.5 px-3 mb-14 md:mb-0 border-t border-white/10 bg-white/5 flex-shrink-0">
-            <Plus size={20} className="text-neon-lime flex-shrink-0" />
-            <input
-              ref={inputRef}
-              type="text"
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Escape') { inputRef.current?.blur(); setInputText(''); } }}
-              placeholder="작업 추가"
-              className="flex-1 bg-transparent text-sm text-white placeholder-gray-500 focus:outline-none"
-              aria-label="새 할 일 입력"
-            />
-          </form>
+          {/* Add task input + quick actions */}
+          <div className="flex flex-col border-t border-white/10 bg-white/5 flex-shrink-0">
+            <form onSubmit={handleSubmit} className="flex items-center gap-2.5 py-2.5 px-3">
+              <Plus size={20} className="text-neon-lime flex-shrink-0" />
+              <input
+                ref={inputRef}
+                type="text"
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                onFocus={() => setIsInputFocused(true)}
+                onBlur={() => setTimeout(() => setIsInputFocused(false), 150)}
+                onKeyDown={(e) => { if (e.key === 'Escape') { inputRef.current?.blur(); setInputText(''); } }}
+                placeholder="작업 추가"
+                className="flex-1 bg-transparent text-sm text-white placeholder-gray-500 focus:outline-none"
+                aria-label="새 할 일 입력"
+              />
+            </form>
+
+            {/* Quick action buttons */}
+            {(isInputFocused || inputText) && (
+              <div className="flex items-center gap-1.5 px-3 pb-2 flex-wrap">
+                <label className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs cursor-pointer transition-colors ${pendingDueDate ? 'bg-neon-lime/20 text-neon-lime' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}>
+                  <Calendar size={12} />
+                  <span>{pendingDueDate ? formatDate(pendingDueDate) : '기한'}</span>
+                  <input type="date" className="absolute opacity-0 w-0 h-0" onChange={(e) => {
+                    const d = new Date(e.target.value);
+                    if (!isNaN(d.getTime())) setPendingDueDate(d.getTime());
+                  }} />
+                  {pendingDueDate && <button type="button" onClick={(e) => { e.preventDefault(); setPendingDueDate(null); }} className="ml-0.5"><X size={10} /></button>}
+                </label>
+
+                <label className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs cursor-pointer transition-colors ${pendingReminder ? 'bg-electric-orange/20 text-electric-orange' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}>
+                  <Bell size={12} />
+                  <span>{pendingReminder ? `${formatDate(pendingReminder)} ${formatTime(pendingReminder)}` : '알림'}</span>
+                  <input type="datetime-local" className="absolute opacity-0 w-0 h-0" onChange={(e) => {
+                    const d = new Date(e.target.value);
+                    if (!isNaN(d.getTime())) setPendingReminder(d.getTime());
+                  }} />
+                  {pendingReminder && <button type="button" onClick={(e) => { e.preventDefault(); setPendingReminder(null); }} className="ml-0.5"><X size={10} /></button>}
+                </label>
+
+                <label className={`relative flex items-center gap-1 px-2 py-1 rounded-md text-xs cursor-pointer transition-colors ${pendingRepeat ? 'bg-blue-400/20 text-blue-400' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}>
+                  <Repeat size={12} />
+                  <span>{pendingRepeat ? getRepeatLabel(pendingRepeat) : '반복'}</span>
+                  <select className="absolute inset-0 opacity-0 cursor-pointer" value={pendingRepeat || ''} onChange={(e) => setPendingRepeat((e.target.value || null) as RepeatFrequency)}>
+                    <option value="">반복 안 함</option>
+                    <option value="daily">매일</option>
+                    <option value="weekdays">평일 (월-금)</option>
+                    <option value="weekly">주 1회 (매주)</option>
+                    <option value="monthly">매월</option>
+                  </select>
+                  {pendingRepeat && <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setPendingRepeat(null); }} className="ml-0.5"><X size={10} /></button>}
+                </label>
+              </div>
+            )}
+          </div>
       </div>
 
       {/* === RIGHT DETAIL AREA (SIDEBAR) === */}
