@@ -750,6 +750,10 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
               </button>
             )}
           </section>
+
+          <p className="text-xs text-th-text-secondary text-center mt-6 pb-4">
+            {__APP_VERSION__}
+          </p>
         </div>
       </div>
     </div>

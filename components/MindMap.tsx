@@ -874,21 +874,8 @@ const MindMap: React.FC<MindMapProps> = ({
         .animate-fade-in-up { animation: fadeInUp 0.6s ease-out forwards; }
       `}</style>
 
-      {/* Header */}
-      <div className="absolute top-3 left-3 z-10 pointer-events-none select-none max-w-[calc(100%-72px)]">
-        <div className="flex items-baseline gap-2 flex-wrap">
-          <h1 className="text-lg sm:text-xl md:text-2xl font-display text-th-text tracking-[0.22em] md:tracking-widest leading-none drop-shadow-[0_0_10px_rgba(204,255,0,0.5)]">
-            SECRET COACH
-          </h1>
-          <span className="text-th-accent text-[10px] md:text-xs font-mono tracking-wide">
-            {__APP_VERSION__}
-          </span>
-        </div>
-        <p className="text-th-text-secondary text-[10px] md:text-xs font-body">Neural Interface Active</p>
-      </div>
-
       {/* Layout Switcher */}
-      <div className="absolute top-14 right-3 md:top-16 md:right-4 z-10 flex bg-th-overlay backdrop-blur-md border border-th-border rounded-full px-1 py-0.5 gap-0.5">
+      <div className="absolute top-3 right-3 md:top-4 md:right-4 z-10 flex bg-th-overlay backdrop-blur-md border border-th-border rounded-full px-1 py-0.5 gap-0.5">
         {LAYOUT_MODES.map(mode => (
           <button
             key={mode}

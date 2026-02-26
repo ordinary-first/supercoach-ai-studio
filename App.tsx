@@ -32,7 +32,7 @@ import { useToast } from './hooks/useToast';
 import { useThemeStore, useSystemThemeListener } from './stores/useThemeStore';
 import { appendAction } from './services/actionLogService';
 import ToastContainer from './components/ToastContainer';
-import { Crown, Settings as SettingsIcon } from 'lucide-react';
+import { Crown, Menu as MenuIcon } from 'lucide-react';
 import { LanguageContext } from './i18n/useTranslation';
 import { getTranslations } from './i18n';
 
@@ -714,7 +714,7 @@ const App: React.FC = () => {
             nodes={visibleNodes} links={visibleLinks} language={language} selectedNodeId={selectedNode?.id} onNodeClick={setSelectedNode} onEditNode={(nodeId) => setEditingNodeId(nodeId)} onUpdateNode={handleUpdateNode} onDeleteNode={handleDeleteNode} onReparentNode={handleReparentNode} onAddSubNode={handleAddSubNode} onAddParentNode={handleAddParentNode} onGenerateImage={handleGenerateNodeImage} onInsertImage={handleInsertNodeImage} onConvertNodeToTask={handleConvertNodeToTodo} onDecomposeGoal={handleDecomposeGoal} previewNodeIds={previewNodeIds} confirmedPreviewIds={confirmedPreviewIds} onTogglePreviewConfirm={handleTogglePreviewConfirm} onFinalizePreview={handleFinalizePreview} editingNodeId={editingNodeId} onEditEnd={() => setEditingNodeId(null)} width={dimensions.width} height={dimensions.height} imageLoadingNodes={imageLoadingNodes}
           />
 
-           <div className="absolute top-[64px] left-3 md:top-[72px] md:left-6 z-50">
+           <div className="absolute top-3 left-3 md:top-4 md:left-6 z-50">
                <button
                  onClick={() => setIsShortcutsOpen(prev => !prev)}
                  className="flex items-center gap-2 bg-th-header backdrop-blur-md border border-th-border px-3 py-1.5 md:px-4 md:py-2 rounded-full text-[10px] font-bold tracking-widest text-th-accent hover:bg-th-accent hover:text-th-text-inverse transition-all"
@@ -732,7 +732,7 @@ const App: React.FC = () => {
            className="w-10 h-10 rounded-full bg-th-header backdrop-blur-md border border-th-border text-th-text-secondary hover:bg-th-surface-hover transition-all flex items-center justify-center"
            aria-label="Open settings"
          >
-           <SettingsIcon size={18} />
+           <MenuIcon size={20} />
          </button>
        </div>
 
