@@ -21,7 +21,7 @@ import {
   query,
   setDoc,
 } from 'firebase/firestore';
-import type { ChatMessage, GoalLink, GoalNode, ToDoItem, TodoList, TodoGroup, UserProfile } from '../types';
+import type { ChatMessage, FeedbackCard, GoalLink, GoalNode, ToDoItem, TodoList, TodoGroup, UserProfile } from '../types';
 
 const isDev = typeof process !== 'undefined' && process.env.NODE_ENV === 'development';
 const log = isDev ? console.log : () => {};
@@ -646,4 +646,41 @@ export const loadUsage = async (
   } catch {
     return defaults;
   }
+};
+
+// ── FeedbackCard CRUD ──
+
+export const loadFeedbackCards = async (
+  userId: string,
+  startDate: string,
+  endDate: string,
+): Promise<FeedbackCard[]> => {
+  if (!db || !userId) return [];
+  try {
+    const colRef = collection(db, 'users', userId, 'feedbackCards');
+    const q = query(colRef, orderBy('date'), limit(100));
+    const snap = await getDocs(q);
+    const cards: FeedbackCard[] = [];
+    snap.forEach((d) => {
+      const card = d.data() as FeedbackCard;
+      if (card.date >= startDate && card.date <= endDate) {
+        cards.push(card);
+      }
+    });
+    return cards;
+  } catch (error: unknown) {
+    const e = error as { code?: string; message?: string };
+    log('[Load:FeedbackCards] failed:', e?.code || e?.message);
+    return [];
+  }
+};
+
+export const saveFeedbackCard = async (
+  userId: string,
+  card: FeedbackCard,
+): Promise<void> => {
+  if (!db || !userId) return;
+  const clean = JSON.parse(JSON.stringify(card));
+  const docRef = doc(db, 'users', userId, 'feedbackCards', card.date);
+  await setDoc(docRef, { ...clean, updatedAt: Date.now() });
 };
