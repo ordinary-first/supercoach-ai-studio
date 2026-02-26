@@ -21,7 +21,7 @@ import {
   query,
   setDoc,
 } from 'firebase/firestore';
-import type { ChatMessage, FeedbackCard, GoalLink, GoalNode, ToDoItem, TodoList, TodoGroup, UserProfile } from '../types';
+import type { ChatMessage, FeedbackCard, GoalLink, GoalNode, NotificationSettings, ToDoItem, TodoList, TodoGroup, UserProfile } from '../types';
 
 const isDev = typeof process !== 'undefined' && process.env.NODE_ENV === 'development';
 const log = isDev ? console.log : () => {};
@@ -683,4 +683,55 @@ export const saveFeedbackCard = async (
   const clean = JSON.parse(JSON.stringify(card));
   const docRef = doc(db, 'users', userId, 'feedbackCards', card.date);
   await setDoc(docRef, { ...clean, updatedAt: Date.now() });
+};
+
+// ── Notification Settings ──
+
+export const loadNotificationSettings = async (
+  userId: string,
+): Promise<NotificationSettings | null> => {
+  if (!db || !userId) return null;
+  try {
+    const docRef = doc(db, 'users', userId, 'settings', 'notifications');
+    const snap = await getDoc(docRef);
+    if (!snap.exists()) return null;
+    const d = snap.data() as Record<string, unknown>;
+    return {
+      morningEnabled: Boolean(d.morningEnabled),
+      morningTime: String(d.morningTime || '08:00'),
+      eveningEnabled: Boolean(d.eveningEnabled),
+      eveningTime: String(d.eveningTime || '21:00'),
+      notificationPermission: (d.notificationPermission as 'granted' | 'denied' | 'default') || 'default',
+      fcmToken: typeof d.fcmToken === 'string' ? d.fcmToken : undefined,
+      updatedAt: Number(d.updatedAt || 0),
+    };
+  } catch (error: unknown) {
+    const e = error as { code?: string; message?: string };
+    log('[Load:NotificationSettings] failed:', e?.code || e?.message);
+    return null;
+  }
+};
+
+export const saveNotificationSettings = async (
+  userId: string,
+  settings: NotificationSettings,
+): Promise<void> => {
+  if (!db || !userId) return;
+  const clean = JSON.parse(JSON.stringify(settings));
+  const docRef = doc(db, 'users', userId, 'settings', 'notifications');
+  await setDoc(docRef, { ...clean, updatedAt: Date.now() });
+};
+
+export const saveFcmToken = async (
+  userId: string,
+  token: string,
+): Promise<void> => {
+  if (!db || !userId || !token) return;
+  try {
+    const docRef = doc(db, 'users', userId, 'settings', 'notifications');
+    await setDoc(docRef, { fcmToken: token, updatedAt: Date.now() }, { merge: true });
+  } catch (error: unknown) {
+    const e = error as { code?: string; message?: string };
+    log('[Save:FcmToken] failed:', e?.code || e?.message);
+  }
 };

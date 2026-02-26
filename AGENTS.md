@@ -80,7 +80,35 @@ When one agent completes work that another agent will continue:
 3. Note any gotchas or decisions made
 
 ## Current Status
-_Last updated: 2026-02-16_
+_Last updated: 2026-02-27_
+
+### FeedbackView Phase 2 (V02.27r1)
+- **Notification Settings Firestore persistence** (`services/firebaseService.ts`)
+  - `loadNotificationSettings` / `saveNotificationSettings` / `saveFcmToken` CRUD
+  - Stored at `users/{uid}/settings/notifications`
+- **Browser Notification system** (`services/notificationService.ts`)
+  - 1-minute interval timer checks morning/evening triggers
+  - localStorage dedup prevents duplicate daily notifications
+  - FCM token registration via `registerFcmToken()` (infrastructure for future server push)
+- **Daily victory auto-generation** (`components/FeedbackView.tsx`)
+  - Evening time trigger → derive FeedbackCard from todos → AI coach comment → save
+  - Browser notification on generation + auto-open day detail
+- **AI Goal Adjustment** (`services/goalAdjustmentService.ts`, `components/feedback/GoalAdjustmentCard.tsx`)
+  - Analyzes per-goal completion rates over N weeks
+  - <50% → downward suggestion, ≥95% → upward suggestion
+  - Gold-bordered card UI with accept/dismiss + 5s undo window
+  - Accepted adjustments update GoalNode.text + linked ToDoItem.text
+- **FCM Infrastructure** (`public/firebase-messaging-sw.js`)
+  - Service worker for background message handling
+  - Token registered to Firestore on notification permission grant
+- **Settings Sheet** (`components/feedback/FeedbackSettingsSheet.tsx`)
+  - Firestore-backed settings with debounced save
+  - Notification permission request + FCM token registration
+- **App.tsx integration**: `onUpdateNode` / `onUpdateTodo` callbacks passed to FeedbackView
+- **New types**: `NotificationSettings`, `GoalAdjustment` in `types.ts`
+- **i18n**: 14+ keys added for notifications/adjustments (ko.ts, en.ts, types.ts)
+
+### Previous Status
 - Visualization save hardening r22 completed:
   - Added strict save-time sanitization for visualization payload strings (UTF-8 normalization, control-char removal, URL-only media fields, length limits) across client + service + API paths
   - Added server-side `invalid-argument` rescue write in `api/save-visualization.ts` (fallback to minimal text payload so save does not fully fail)

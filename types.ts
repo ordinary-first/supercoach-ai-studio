@@ -158,3 +158,24 @@ export interface FeedbackCard {
   createdAt: number;
   updatedAt: number;
 }
+
+export interface NotificationSettings {
+  morningEnabled: boolean;
+  morningTime: string; // "HH:mm"
+  eveningEnabled: boolean;
+  eveningTime: string; // "HH:mm"
+  notificationPermission: 'granted' | 'denied' | 'default';
+  fcmToken?: string;
+  updatedAt: number;
+}
+
+export interface GoalAdjustment {
+  goalId: string;
+  goalText: string;
+  currentMetric: string;
+  suggestedMetric: string;
+  reason: string;
+  avgCompletion: number;
+  weeks: number;
+  status: 'pending' | 'accepted' | 'dismissed';
+}
