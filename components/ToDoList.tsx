@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Check, Trash2, Plus, ListTodo, Circle, CheckCircle2, Target, Bell, Repeat, Sun, ArrowLeft, ChevronRight, Layout, X, Calendar, Star, CalendarDays, Home, Menu } from 'lucide-react';
+import { Check, Trash2, Plus, ListTodo, Circle, CheckCircle2, Target, Bell, Repeat, Sun, ArrowLeft, ChevronRight, ChevronDown, Layout, X, Calendar, Star, CalendarDays, Home, Menu } from 'lucide-react';
 import { ToDoItem, TodoList, TodoGroup, SmartListId, RepeatFrequency } from '../types';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import TodoSidebar from './todo/TodoSidebar';
@@ -29,7 +29,7 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
 
   const [searchQuery, setSearchQuery] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isInputVisible, setIsInputVisible] = useState(false);
+  const [showCompleted, setShowCompleted] = useState(false);
   const inputRef = React.useRef<HTMLInputElement>(null);
   const [showCreateList, setShowCreateList] = useState(false);
   const [showCreateGroup, setShowCreateGroup] = useState(false);
@@ -127,16 +127,57 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
     }
   };
 
-  // Sort: MyDay first, then Incomplete first, then by creation date
-  const sortedTodos = [...filteredTodos].sort((a, b) => {
-      if (a.completed === b.completed) {
-          if (a.isMyDay === b.isMyDay) return b.createdAt - a.createdAt;
-          return a.isMyDay ? -1 : 1;
-      }
-      return a.completed ? 1 : -1;
-  });
+  // Split into incomplete / completed, sort each by MyDay then createdAt
+  const sortByMyDayThenDate = (a: ToDoItem, b: ToDoItem) => {
+    if (a.isMyDay === b.isMyDay) return b.createdAt - a.createdAt;
+    return a.isMyDay ? -1 : 1;
+  };
+  const incompleteTodos = [...filteredTodos].filter(t => !t.completed).sort(sortByMyDayThenDate);
+  const completedTodos = [...filteredTodos].filter(t => t.completed).sort(sortByMyDayThenDate);
 
   const selectedToDo = todos.find(t => t.id === selectedToDoId);
+
+  const renderTodoItem = (todo: ToDoItem) => (
+    <div
+      key={todo.id}
+      onClick={() => setSelectedToDoId(todo.id)}
+      className={`group flex items-center gap-2.5 py-2.5 px-3 border-b cursor-pointer transition-all duration-150 ${
+        selectedToDoId === todo.id
+          ? 'bg-white/10 border-white/10'
+          : (todo.completed ? 'border-white/5 opacity-50' : 'border-white/5 hover:bg-white/5')
+      }`}
+    >
+      <button
+        onClick={(e) => { e.stopPropagation(); onToggleToDo(todo.id); }}
+        className={`transition-colors flex-shrink-0 ${todo.completed ? 'text-neon-lime' : 'text-gray-500 hover:text-neon-lime'}`}
+      >
+        {todo.completed ? <CheckCircle2 size={20} /> : <Circle size={20} />}
+      </button>
+      <div className="flex-1 min-w-0">
+        <p className={`text-sm truncate ${todo.completed ? 'line-through text-gray-500' : 'text-white'}`}>{todo.text}</p>
+        {(todo.isMyDay || todo.dueDate || todo.repeat || todo.linkedNodeText) && (
+          <div className="flex flex-wrap gap-1.5 mt-0.5">
+            {todo.isMyDay && <span className="flex items-center gap-0.5 text-[10px] text-yellow-400"><Sun size={10} /> 오늘 할 일</span>}
+            {todo.dueDate && (
+              <span className={`flex items-center gap-0.5 text-[10px] ${todo.dueDate < Date.now() && !todo.completed ? 'text-red-400' : 'text-gray-500'}`}>
+                <Calendar size={10} /> {formatDate(todo.dueDate)}
+              </span>
+            )}
+            {todo.repeat && <span className="flex items-center gap-0.5 text-[10px] text-blue-400"><Repeat size={10} /> {getRepeatLabel(todo.repeat)}</span>}
+            {todo.linkedNodeText && <span className="flex items-center gap-0.5 text-[10px] text-electric-orange/80"><Target size={10} /> {todo.linkedNodeText}</span>}
+          </div>
+        )}
+      </div>
+      <button
+        onClick={(e) => { e.stopPropagation(); onDeleteToDo(todo.id); }}
+        className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 p-1 rounded hover:bg-red-500/20 text-gray-500 hover:text-red-400"
+        title="삭제"
+      >
+        <Trash2 size={14} />
+      </button>
+      <ChevronRight size={16} className={`text-gray-600 flex-shrink-0 transition-transform ${selectedToDoId === todo.id ? 'translate-x-0.5 text-neon-lime' : ''}`} />
+    </div>
+  );
 
   // Date Format Helpers
   const formatDate = (timestamp?: number | null) => {
@@ -219,112 +260,56 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
           {/* List Content */}
           <div className="flex-1 overflow-y-auto px-0 pt-1 scrollbar-hide">
               <div className="max-w-4xl mx-auto">
-                  {sortedTodos.length === 0 && !isInputVisible ? (
+                  {incompleteTodos.length === 0 && completedTodos.length === 0 ? (
                       <div className="flex flex-col items-center justify-center py-12 text-gray-600 space-y-4">
                           <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center">
                               <Target size={32} className="opacity-30" />
                           </div>
                           <div className="text-center">
                             <p className="text-base font-bold text-gray-500">할 일이 없습니다</p>
-                            <p className="text-xs mt-1 text-gray-600">+ 버튼을 눌러 작업을 추가하세요</p>
+                            <p className="text-xs mt-1 text-gray-600">오늘의 승리를 위한 첫 번째 작업을 추가해보세요.</p>
                           </div>
                       </div>
                   ) : (
-                      sortedTodos.map(todo => (
-                          <div
-                            key={todo.id}
-                            onClick={() => setSelectedToDoId(todo.id)}
-                            className={`group flex items-center gap-2.5 py-2.5 px-3 border-b cursor-pointer transition-all duration-150 ${
-                                selectedToDoId === todo.id
-                                    ? 'bg-white/10 border-white/10'
-                                    : (todo.completed
-                                        ? 'border-white/5 opacity-50'
-                                        : 'border-white/5 hover:bg-white/5')
-                            }`}
+                    <>
+                      {incompleteTodos.map(todo => renderTodoItem(todo))}
+
+                      {/* Completed section */}
+                      {completedTodos.length > 0 && (
+                        <div className="mt-2">
+                          <button
+                            onClick={() => setShowCompleted(prev => !prev)}
+                            className="flex items-center gap-2 px-3 py-2 w-full text-left text-sm text-gray-400 hover:text-gray-300 transition-colors"
                           >
-                              <button
-                                onClick={(e) => { e.stopPropagation(); onToggleToDo(todo.id); }}
-                                className={`transition-colors flex-shrink-0 ${todo.completed ? 'text-neon-lime' : 'text-gray-500 hover:text-neon-lime'}`}
-                              >
-                                  {todo.completed ? <CheckCircle2 size={20} /> : <Circle size={20} />}
-                              </button>
-
-                              <div className="flex-1 min-w-0">
-                                  <p className={`text-sm truncate ${todo.completed ? 'line-through text-gray-500' : 'text-white'}`}>
-                                      {todo.text}
-                                  </p>
-                                  {(todo.isMyDay || todo.dueDate || todo.repeat || todo.linkedNodeText) && (
-                                    <div className="flex flex-wrap gap-1.5 mt-0.5">
-                                        {todo.isMyDay && (
-                                            <span className="flex items-center gap-0.5 text-[10px] text-yellow-400">
-                                                <Sun size={10} /> 오늘 할 일
-                                            </span>
-                                        )}
-                                        {todo.dueDate && (
-                                            <span className={`flex items-center gap-0.5 text-[10px] ${todo.dueDate < Date.now() && !todo.completed ? 'text-red-400' : 'text-gray-500'}`}>
-                                                <Calendar size={10} /> {formatDate(todo.dueDate)}
-                                            </span>
-                                        )}
-                                        {todo.repeat && (
-                                            <span className="flex items-center gap-0.5 text-[10px] text-blue-400">
-                                                <Repeat size={10} /> {getRepeatLabel(todo.repeat)}
-                                            </span>
-                                        )}
-                                        {todo.linkedNodeText && (
-                                            <span className="flex items-center gap-0.5 text-[10px] text-electric-orange/80">
-                                                <Target size={10} /> {todo.linkedNodeText}
-                                            </span>
-                                        )}
-                                    </div>
-                                  )}
-                              </div>
-                              <button
-                                onClick={(e) => { e.stopPropagation(); onDeleteToDo(todo.id); }}
-                                className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 p-1 rounded hover:bg-red-500/20 text-gray-500 hover:text-red-400"
-                                title="삭제"
-                              >
-                                  <Trash2 size={14} />
-                              </button>
-                              <ChevronRight size={16} className={`text-gray-600 flex-shrink-0 transition-transform ${selectedToDoId === todo.id ? 'translate-x-0.5 text-neon-lime' : ''}`} />
-                          </div>
-                      ))
+                            {showCompleted
+                              ? <ChevronDown size={16} className="flex-shrink-0" />
+                              : <ChevronRight size={16} className="flex-shrink-0" />
+                            }
+                            <span>완료됨</span>
+                            <span className="text-xs bg-white/10 px-1.5 py-0.5 rounded-full">{completedTodos.length}</span>
+                          </button>
+                          {showCompleted && completedTodos.map(todo => renderTodoItem(todo))}
+                        </div>
+                      )}
+                    </>
                   )}
-
-                  {/* Inline Input (shown when FAB is tapped) */}
-                  {isInputVisible && (
-                    <form onSubmit={(e) => { handleSubmit(e); if (!inputText.trim()) { setIsInputVisible(false); } }} className="flex items-center gap-2.5 py-2.5 px-3 border-b border-white/10 bg-white/5">
-                        <Plus size={20} className="text-neon-lime flex-shrink-0" />
-                        <input
-                            ref={inputRef}
-                            type="text"
-                            value={inputText}
-                            onChange={(e) => setInputText(e.target.value)}
-                            onKeyDown={(e) => { if (e.key === 'Escape') { setIsInputVisible(false); setInputText(''); } }}
-                            placeholder="새 작업 추가..."
-                            className="flex-1 bg-transparent text-sm text-white placeholder-gray-500 focus:outline-none"
-                            aria-label="새 할 일 입력"
-                            autoFocus
-                        />
-                        <button type="button" onClick={() => { setIsInputVisible(false); setInputText(''); }} className="text-gray-500 hover:text-white p-0.5">
-                          <X size={16} />
-                        </button>
-                    </form>
-                  )}
-
-                  <div className="h-20"></div>
               </div>
           </div>
 
-          {/* FAB Button */}
-          {!isInputVisible && (
-            <button
-              onClick={() => { setIsInputVisible(true); setTimeout(() => inputRef.current?.focus(), 50); }}
-              className="absolute bottom-20 right-4 md:bottom-6 md:right-6 z-20 w-12 h-12 rounded-full bg-neon-lime text-black flex items-center justify-center shadow-lg shadow-neon-lime/30 hover:scale-110 active:scale-95 transition-transform"
-              aria-label="새 할 일 추가"
-            >
-              <Plus size={24} strokeWidth={2.5} />
-            </button>
-          )}
+          {/* Always-visible add task input */}
+          <form onSubmit={handleSubmit} className="flex items-center gap-2.5 py-2.5 px-3 mb-14 md:mb-0 border-t border-white/10 bg-white/5 flex-shrink-0">
+            <Plus size={20} className="text-neon-lime flex-shrink-0" />
+            <input
+              ref={inputRef}
+              type="text"
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Escape') { inputRef.current?.blur(); setInputText(''); } }}
+              placeholder="작업 추가"
+              className="flex-1 bg-transparent text-sm text-white placeholder-gray-500 focus:outline-none"
+              aria-label="새 할 일 입력"
+            />
+          </form>
       </div>
 
       {/* === RIGHT DETAIL AREA (SIDEBAR) === */}

@@ -322,18 +322,19 @@ export default function TodoSidebar({
       </div>
 
       {/* Bottom action buttons */}
-      <div className="px-3 py-3 border-t border-white/10 space-y-1 flex-shrink-0">
+      <div className="flex items-center gap-1 px-3 py-2.5 border-t border-white/10 flex-shrink-0">
         <button
           onClick={onCreateList}
-          className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-gray-400 hover:bg-white/10 hover:text-neon-lime transition-colors"
+          className="flex-1 flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-400 hover:bg-white/10 hover:text-neon-lime transition-colors"
         >
           <ListPlus size={16} /> 새 목록
         </button>
         <button
           onClick={onCreateGroup}
-          className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-gray-400 hover:bg-white/10 hover:text-neon-lime transition-colors"
+          className="p-2 rounded-lg text-gray-400 hover:bg-white/10 hover:text-neon-lime transition-colors"
+          title="새 그룹"
         >
-          <FolderPlus size={16} /> 새 그룹
+          <FolderPlus size={16} />
         </button>
       </div>
     </div>
