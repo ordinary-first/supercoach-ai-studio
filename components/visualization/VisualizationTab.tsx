@@ -1,5 +1,4 @@
 import { useState, useCallback, useEffect } from 'react';
-import { X } from 'lucide-react';
 import {
   useGenerationPipeline,
   toResultFromSaved,
@@ -156,24 +155,11 @@ export default function VisualizationTab({
   return (
     <div
       ref={focusTrapRef}
-      className="fixed inset-0 z-50 flex flex-col"
+      className="fixed inset-0 z-50 flex flex-col pb-16"
       style={{ background: '#0A0A0A' }}
     >
-      {/* Header */}
-      <div className="flex items-center justify-end p-4">
-        <button
-          type="button"
-          onClick={onClose}
-          className="p-2 rounded-full cursor-pointer"
-          style={{ background: 'rgba(255,255,255,0.08)' }}
-          aria-label="Close"
-        >
-          <X size={20} color="rgba(255,255,255,0.7)" />
-        </button>
-      </div>
-
       {/* Pill Switcher */}
-      <div className="flex justify-center pb-3">
+      <div className="flex justify-center pt-14 pb-3">
         <DreamPillSwitcher
           activeTab={pillTab}
           onTabChange={setPillTab}
