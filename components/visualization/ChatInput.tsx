@@ -249,6 +249,16 @@ const ChatInput: FC<ChatInputProps> = ({
             fontSize: 13,
             fontWeight: 700,
             color: '#1a1a1a',
+            transition: 'transform 80ms ease',
+          }}
+          onPointerDown={(e) => {
+            (e.currentTarget as HTMLButtonElement).style.transform = 'scale(0.95)';
+          }}
+          onPointerUp={(e) => {
+            (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1)';
+          }}
+          onPointerLeave={(e) => {
+            (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1)';
           }}
         >
           {isGenerating ? (

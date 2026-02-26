@@ -21,14 +21,22 @@ interface DreamViewerProps {
   isCheckingVideo?: boolean;
 }
 
-const slideStyle = `
-@keyframes slideUp {
+const viewerStyles = `
+@keyframes sheetUp {
   from { transform: translateY(100%); }
   to { transform: translateY(0); }
 }
-@keyframes slideDown {
+@keyframes sheetDown {
   from { transform: translateY(0); }
   to { transform: translateY(100%); }
+}
+@keyframes sectionFadeIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes dimIn {
+  from { background-color: rgba(0,0,0,0); }
+  to { background-color: rgba(0,0,0,0.5); }
 }
 `;
 
@@ -98,11 +106,11 @@ function DreamViewer({
         zIndex: 9999,
         backgroundColor: '#0A0A0A',
         animation: isAnimating
-          ? 'slideUp 400ms cubic-bezier(0.32,0.72,0,1) forwards'
-          : 'slideDown 300ms ease-in forwards',
+          ? 'sheetUp 420ms cubic-bezier(0.32,0.72,0,1) forwards'
+          : 'sheetDown 300ms ease-in forwards',
       }}
     >
-      <style>{slideStyle}</style>
+      <style>{viewerStyles}</style>
 
       {/* Close button */}
       <button
@@ -137,39 +145,63 @@ function DreamViewer({
       >
         <div className="flex flex-col" style={{ gap: '2px' }}>
           {showVideo && (
-            <VideoSection
-              videoUrl={result.videoUrl}
-              videoStatus={result.videoStatus}
-              isLoading={
-                isGenerating ||
-                result.videoStatus === 'pending' ||
-                !!isCheckingVideo
-              }
-            />
+            <div style={{
+              opacity: 0,
+              animation: 'sectionFadeIn 400ms ease forwards',
+              animationDelay: '0ms',
+            }}>
+              <VideoSection
+                videoUrl={result.videoUrl}
+                videoStatus={result.videoStatus}
+                isLoading={
+                  isGenerating ||
+                  result.videoStatus === 'pending' ||
+                  !!isCheckingVideo
+                }
+              />
+            </div>
           )}
 
           {showImage && (
-            <ImageSection
-              imageUrl={result.imageUrl}
-              imageDataUrl={result.imageDataUrl}
-              isLoading={isGenerating && !result.imageUrl && !result.imageDataUrl}
-            />
+            <div style={{
+              opacity: 0,
+              animation: 'sectionFadeIn 400ms ease forwards',
+              animationDelay: showVideo ? '150ms' : '0ms',
+            }}>
+              <ImageSection
+                imageUrl={result.imageUrl}
+                imageDataUrl={result.imageDataUrl}
+                isLoading={isGenerating && !result.imageUrl && !result.imageDataUrl}
+              />
+            </div>
           )}
 
           {showAudio && (
-            <AudioSection
-              hasAudio={hasAudio}
-              isLoading={isGenerating && result.audioStatus === 'idle'}
-              isPlaying={isPlaying}
-              onTogglePlay={onTogglePlay}
-            />
+            <div style={{
+              opacity: 0,
+              animation: 'sectionFadeIn 400ms ease forwards',
+              animationDelay: `${(showVideo ? 150 : 0) + (showImage ? 150 : 0)}ms`,
+            }}>
+              <AudioSection
+                hasAudio={hasAudio}
+                isLoading={isGenerating && result.audioStatus === 'idle'}
+                isPlaying={isPlaying}
+                onTogglePlay={onTogglePlay}
+              />
+            </div>
           )}
 
           {showNarrative && (
-            <NarrativeSection
-              text={result.text}
-              isLoading={isGenerating && !result.text}
-            />
+            <div style={{
+              opacity: 0,
+              animation: 'sectionFadeIn 400ms ease forwards',
+              animationDelay: `${(showVideo ? 150 : 0) + (showImage ? 150 : 0) + (showAudio ? 150 : 0)}ms`,
+            }}>
+              <NarrativeSection
+                text={result.text}
+                isLoading={isGenerating && !result.text}
+              />
+            </div>
           )}
         </div>
       </div>

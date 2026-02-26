@@ -162,6 +162,9 @@ export function useGenerationPipeline({ userProfile, nodes, isOpen }: Generation
     setInfoMessage('');
   }, []);
 
+  // Ref for auto-save from handleGenerate (avoids circular dep)
+  const saveRef = useRef<(r: VisualizationResult) => Promise<void>>();
+
   // Load saved items on open
   useEffect(() => {
     if (!isOpen || !activeUserId) {
@@ -250,6 +253,7 @@ export function useGenerationPipeline({ userProfile, nodes, isOpen }: Generation
         setGeneratingStep(t.visualization.stepText);
         result.text = await generateSuccessNarrative(fullPrompt, userProfile, activeUserId);
         result.textStatus = result.text ? 'completed' : 'failed';
+        if (mountedRef.current) setCurrentResult({ ...result });
       }
 
       if (settings.image) {
@@ -263,6 +267,7 @@ export function useGenerationPipeline({ userProfile, nodes, isOpen }: Generation
           result.imageStatus = 'failed';
           result.imageError = { code: imageResult.errorCode, message: imageResult.errorMessage, requestId: imageResult.requestId };
         }
+        if (mountedRef.current) setCurrentResult({ ...result });
       }
 
       if (settings.audio) {
@@ -276,6 +281,7 @@ export function useGenerationPipeline({ userProfile, nodes, isOpen }: Generation
           result.audioStatus = 'failed';
           result.audioError = { code: speechResult.errorCode, message: speechResult.errorMessage, requestId: speechResult.requestId };
         }
+        if (mountedRef.current) setCurrentResult({ ...result });
       }
 
       if (settings.video) {
@@ -287,6 +293,7 @@ export function useGenerationPipeline({ userProfile, nodes, isOpen }: Generation
         if (videoResult.videoUrl) result.videoStatus = 'ready';
         else if (videoResult.status === 'queued' || videoResult.status === 'in_progress') result.videoStatus = 'pending';
         else result.videoStatus = 'failed';
+        if (mountedRef.current) setCurrentResult({ ...result });
       }
 
       // Aggregate error/info messages
@@ -302,6 +309,12 @@ export function useGenerationPipeline({ userProfile, nodes, isOpen }: Generation
       }
 
       setCurrentResult(result);
+
+      // 자동 저장
+      if (result.text || result.imageUrl || result.audioUrl || result.videoUrl) {
+        void saveRef.current?.(result);
+      }
+
       return result;
     } catch (error: unknown) {
       setErrorMessage(formatErrorMeta(t.visualization.generationError, toErrorMeta(error)));
@@ -380,6 +393,9 @@ export function useGenerationPipeline({ userProfile, nodes, isOpen }: Generation
       setIsSaving(false);
     }
   }, [activeUserId, currentResult, isSaving, t]);
+
+  // Keep saveRef in sync for auto-save from handleGenerate
+  saveRef.current = handleSave as (r: VisualizationResult) => Promise<void>;
 
   const handleLoadSaved = useCallback((item: SavedVisualization) => {
     clearMessages();
