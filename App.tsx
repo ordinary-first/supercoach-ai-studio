@@ -740,11 +740,11 @@ const App: React.FC = () => {
         todoLists={todoLists} todoGroups={todoGroups} activeListId={activeListId}
         onActiveListChange={setActiveListId}
         onTodoListsChange={setTodoLists} onTodoGroupsChange={setTodoGroups}
-        onAddToDo={(text, listId) => {
+        onAddToDo={(text, listId, extras) => {
   const trimmed = text.trim().slice(0, 500);
   if (!trimmed) return;
   const newId = Date.now().toString();
-  setTodos(prev => [{id: newId, text: trimmed, completed: false, createdAt: Date.now(), ...(listId ? { listId } : {})}, ...prev]);
+  setTodos(prev => [{id: newId, text: trimmed, completed: false, createdAt: Date.now(), ...extras, ...(listId ? { listId } : {})}, ...prev]);
   appendAction(getUserId(), 'ADD_TODO', `"${trimmed}" 추가`, { todoId: newId });
 }} onToggleToDo={handleToggleToDo} onDeleteToDo={(id) => {
   const todo = todos.find(t => t.id === id);
@@ -753,6 +753,14 @@ const App: React.FC = () => {
 }} onUpdateToDo={(id, up) => {
   setTodos(prev => prev.map(t => t.id === id ? {...t, ...up} : t));
   appendAction(getUserId(), 'UPDATE_TODO', `할일 수정`, { todoId: id });
+}} onReorderTodos={(orderedIds) => {
+  setTodos(prev => {
+    const updated = prev.map(t => {
+      const idx = orderedIds.indexOf(t.id);
+      return idx !== -1 ? { ...t, sortOrder: idx } : t;
+    });
+    return updated;
+  });
 }} />
       <CalendarView isOpen={activeTab === 'CALENDAR'} onClose={() => setActiveTab('GOALS')} todos={todos} onToggleToDo={handleToggleToDo} viewMode={calendarViewMode} onViewModeChange={setCalendarViewMode} />
       <CoachChat

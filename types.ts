@@ -108,6 +108,7 @@ export interface ToDoItem {
   priority?: TodoPriority;
   tags?: string[];
   listId?: string;
+  sortOrder?: number;
 }
 
 // Coach Memory System
