@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { Check, Trash2, Plus, ListTodo, Circle, CheckCircle2, Target, Bell, Repeat, Sun, ArrowLeft, ChevronRight, ChevronDown, Layout, X, Calendar, Star, CalendarDays, Home, Menu, GripVertical } from 'lucide-react';
 import { ToDoItem, TodoList, TodoGroup, SmartListId, RepeatFrequency } from '../types';
 import { useFocusTrap } from '../hooks/useFocusTrap';
@@ -156,6 +156,19 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
     onTodoGroupsChange(prev => prev.map(g => g.id === id ? { ...g, isCollapsed: !g.isCollapsed } : g));
   };
 
+  // Mobile keyboard height detection (interactive-widget=overlays-content)
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const onResize = () => {
+      const diff = Math.round(window.innerHeight - vv.height);
+      setKeyboardHeight(diff > 100 ? diff : 0);
+    };
+    vv.addEventListener('resize', onResize);
+    return () => vv.removeEventListener('resize', onResize);
+  }, []);
+
   // Quick action pending states
   const [pendingDueDate, setPendingDueDate] = useState<number | null>(null);
   const [pendingReminder, setPendingReminder] = useState<number | null>(null);
@@ -298,7 +311,7 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
   if (!isOpen) return null;
 
   return (
-    <div ref={focusTrapRef} className="fixed inset-0 z-50 pb-16 bg-deep-space flex flex-row overflow-hidden text-white font-body">
+    <div ref={focusTrapRef} className="fixed inset-0 z-50 bg-deep-space flex flex-row overflow-hidden text-white font-body" style={{ paddingBottom: keyboardHeight > 0 ? `${keyboardHeight}px` : '64px' }}>
       
       {/* Ambient Background */}
       <div className="absolute top-[-20%] right-[-10%] w-[50%] h-[50%] bg-blue-900/20 rounded-full blur-[120px] pointer-events-none"></div>
