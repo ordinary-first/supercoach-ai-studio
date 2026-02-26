@@ -156,31 +156,15 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
     onTodoGroupsChange(prev => prev.map(g => g.id === id ? { ...g, isCollapsed: !g.isCollapsed } : g));
   };
 
-  // Mobile keyboard height detection (interactive-widget=overlays-content)
+  // Mobile keyboard height via VirtualKeyboard API (overlays-content 모드)
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   useEffect(() => {
-    const vv = window.visualViewport;
-    if (!vv) return;
-    let rafId: number;
-    const update = () => {
-      const kh = Math.round(window.innerHeight - vv.height);
-      setKeyboardHeight(kh > 50 ? kh : 0);
-    };
-    const schedule = () => { cancelAnimationFrame(rafId); rafId = requestAnimationFrame(update); };
-    vv.addEventListener('resize', schedule);
-    vv.addEventListener('scroll', schedule);
-    // Fallback: poll on focus changes (keyboard animation ~300ms)
-    const onFocus = () => { setTimeout(update, 100); setTimeout(update, 300); setTimeout(update, 500); };
-    const onBlur = () => { setTimeout(update, 100); setTimeout(update, 300); };
-    window.addEventListener('focusin', onFocus);
-    window.addEventListener('focusout', onBlur);
-    return () => {
-      vv.removeEventListener('resize', schedule);
-      vv.removeEventListener('scroll', schedule);
-      window.removeEventListener('focusin', onFocus);
-      window.removeEventListener('focusout', onBlur);
-      cancelAnimationFrame(rafId);
-    };
+    const nav = navigator as unknown as { virtualKeyboard?: { overlaysContent: boolean; boundingRect: DOMRect; addEventListener: (e: string, fn: () => void) => void; removeEventListener: (e: string, fn: () => void) => void } };
+    if (!nav.virtualKeyboard) return;
+    nav.virtualKeyboard.overlaysContent = true;
+    const onChange = () => setKeyboardHeight(Math.round(nav.virtualKeyboard!.boundingRect.height));
+    nav.virtualKeyboard.addEventListener('geometrychange', onChange);
+    return () => nav.virtualKeyboard!.removeEventListener('geometrychange', onChange);
   }, []);
 
   // Quick action pending states
