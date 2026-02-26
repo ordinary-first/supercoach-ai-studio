@@ -159,7 +159,7 @@ export default function VisualizationTab({
       style={{ background: '#0A0A0A' }}
     >
       {/* Pill Switcher */}
-      <div className="flex justify-center pt-14 pb-3">
+      <div className="flex justify-center pt-3 pb-3">
         <DreamPillSwitcher
           activeTab={pillTab}
           onTabChange={setPillTab}

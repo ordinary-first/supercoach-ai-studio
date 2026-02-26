@@ -5,6 +5,7 @@ import {
   useState,
   useRef,
   useCallback,
+  useEffect,
 } from 'react';
 import {
   FileText,
@@ -54,6 +55,28 @@ const ChatInput: FC<ChatInputProps> = ({
   const [showQualityPopup, setShowQualityPopup] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // Mobile keyboard height via VirtualKeyboard API (overlays-content 모드)
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  useEffect(() => {
+    const nav = navigator as unknown as {
+      virtualKeyboard?: {
+        overlaysContent: boolean;
+        boundingRect: DOMRect;
+        addEventListener: (e: string, fn: () => void) => void;
+        removeEventListener: (e: string, fn: () => void) => void;
+      };
+    };
+    if (!nav.virtualKeyboard) return;
+    nav.virtualKeyboard.overlaysContent = true;
+    const onChange = () =>
+      setKeyboardHeight(
+        Math.round(nav.virtualKeyboard!.boundingRect.height),
+      );
+    nav.virtualKeyboard.addEventListener('geometrychange', onChange);
+    return () =>
+      nav.virtualKeyboard!.removeEventListener('geometrychange', onChange);
+  }, []);
 
   const handleToggle = useCallback(
     (key: keyof ChatInputProps['settings']) => {
@@ -111,7 +134,18 @@ const ChatInput: FC<ChatInputProps> = ({
   const hasText = text.trim().length > 0;
 
   return (
-    <div className="flex flex-col gap-2 px-3 pb-3 pt-2">
+    <div
+      className="flex flex-col gap-2 px-3 pb-3 pt-2"
+      style={keyboardHeight > 0 ? {
+        position: 'fixed',
+        bottom: `${keyboardHeight}px`,
+        left: 0,
+        right: 0,
+        zIndex: 60,
+        background: '#141414',
+        paddingBottom: 12,
+      } : undefined}
+    >
       {/* Reference image thumbnails */}
       {referenceImages.length > 0 && (
         <div className="flex gap-2 px-1">
