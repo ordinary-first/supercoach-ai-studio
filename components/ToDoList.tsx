@@ -161,12 +161,26 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
   useEffect(() => {
     const vv = window.visualViewport;
     if (!vv) return;
-    const onResize = () => {
-      const diff = Math.round(window.innerHeight - vv.height);
-      setKeyboardHeight(diff > 100 ? diff : 0);
+    let rafId: number;
+    const update = () => {
+      const kh = Math.round(window.innerHeight - vv.height);
+      setKeyboardHeight(kh > 50 ? kh : 0);
     };
-    vv.addEventListener('resize', onResize);
-    return () => vv.removeEventListener('resize', onResize);
+    const schedule = () => { cancelAnimationFrame(rafId); rafId = requestAnimationFrame(update); };
+    vv.addEventListener('resize', schedule);
+    vv.addEventListener('scroll', schedule);
+    // Fallback: poll on focus changes (keyboard animation ~300ms)
+    const onFocus = () => { setTimeout(update, 100); setTimeout(update, 300); setTimeout(update, 500); };
+    const onBlur = () => { setTimeout(update, 100); setTimeout(update, 300); };
+    window.addEventListener('focusin', onFocus);
+    window.addEventListener('focusout', onBlur);
+    return () => {
+      vv.removeEventListener('resize', schedule);
+      vv.removeEventListener('scroll', schedule);
+      window.removeEventListener('focusin', onFocus);
+      window.removeEventListener('focusout', onBlur);
+      cancelAnimationFrame(rafId);
+    };
   }, []);
 
   // Quick action pending states
@@ -311,7 +325,7 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
   if (!isOpen) return null;
 
   return (
-    <div ref={focusTrapRef} className="fixed inset-0 z-50 bg-deep-space flex flex-row overflow-hidden text-white font-body" style={{ paddingBottom: keyboardHeight > 0 ? `${keyboardHeight}px` : '64px' }}>
+    <div ref={focusTrapRef} className="fixed inset-0 z-50 pb-16 bg-deep-space flex flex-row overflow-hidden text-white font-body">
       
       {/* Ambient Background */}
       <div className="absolute top-[-20%] right-[-10%] w-[50%] h-[50%] bg-blue-900/20 rounded-full blur-[120px] pointer-events-none"></div>
@@ -414,7 +428,10 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
           </div>
 
           {/* Add task input + quick actions */}
-          <div className="flex flex-col border-t border-white/10 bg-white/5 flex-shrink-0">
+          <div
+            className="flex flex-col border-t border-white/10 bg-deep-space flex-shrink-0"
+            style={keyboardHeight > 0 ? { position: 'fixed', bottom: `${keyboardHeight}px`, left: 0, right: 0, zIndex: 60 } : undefined}
+          >
             <form onSubmit={handleSubmit} className="flex items-center gap-2.5 py-2.5 px-3">
               <Plus size={20} className="text-neon-lime flex-shrink-0" />
               <input
