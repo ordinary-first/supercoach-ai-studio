@@ -1,7 +1,8 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { ChatMessage, GoalNode, UserProfile, ToDoItem } from '../types';
 import { sendChatMessage } from '../services/aiService';
+import { saveFeedbackCard } from '../services/firebaseService';
 import { Send, MessageCircle, Sparkles } from 'lucide-react';
 import CloseButton from './CloseButton';
 import { useFocusTrap } from '../hooks/useFocusTrap';
@@ -12,6 +13,7 @@ import {
   buildGoalContext,
   buildTodoContext,
 } from '../hooks/useCoachMemory';
+import { useCoachFeedback } from '../hooks/useCoachFeedback';
 import { useTranslation } from '../i18n/useTranslation';
 
 interface CoachChatProps {
@@ -41,6 +43,33 @@ const CoachChat: React.FC<CoachChatProps> = ({
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const focusTrapRef = useFocusTrap(isOpen);
   const memory = useCoachMemory(userId, isOpen, nodes || [], todos);
+  const { pendingDirective, feedbackSlot, markFeedbackDone } =
+    useCoachFeedback(isOpen, todos);
+
+  const extractComment = useCallback((text: string) => {
+    const match = text.match(/<!-- COMMENT: (.+?) -->/);
+    if (!match) return { clean: text, comment: null };
+    return {
+      clean: text.replace(/\s*<!-- COMMENT: .+? -->/, '').trim(),
+      comment: match[1],
+    };
+  }, []);
+
+  const saveDailyComment = useCallback(async (comment: string) => {
+    if (!userId) return;
+    const d = new Date();
+    const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const completed = todos.filter(t => t.completed).map(t => t.text);
+    const incomplete = todos.filter(t => !t.completed).map(t => t.text);
+    await saveFeedbackCard(userId, {
+      date: dateKey,
+      completedTodos: completed,
+      incompleteTodos: incomplete,
+      coachComment: comment,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+  }, [userId, todos]);
 
   const tabLabels: Record<TabType, string> = {
     GOALS: t.coach.tabLabels.GOALS,
@@ -68,6 +97,59 @@ const CoachChat: React.FC<CoachChatProps> = ({
       requestAnimationFrame(() => scrollToBottom());
     }
   }, [isOpen]);
+
+  // 아침/저녁 피드백 디렉티브 자동 전송
+  useEffect(() => {
+    if (!isOpen || !pendingDirective || isLoading || selectedTopic) return;
+
+    let cancelled = false;
+    setIsLoading(true);
+    setShowTopicCards(false);
+
+    (async () => {
+      try {
+        const goalCtx = buildGoalContext(nodes || []);
+        const todoCtx = buildTodoContext(todos);
+        const subGoalCount = (nodes || []).filter(n => n.type !== 'ROOT').length;
+
+        const response = await sendChatMessage(
+          [], '', userProfile, memory,
+          goalCtx, todoCtx, tabLabels[activeTab],
+          userId || undefined, subGoalCount,
+          pendingDirective,
+        );
+
+        if (cancelled) return;
+
+        const rawText = response.candidates?.[0]?.content?.parts
+          ?.map(p => p.text).filter(Boolean).join('') || '';
+
+        const { clean, comment } = extractComment(rawText);
+
+        if (clean) {
+          onMessagesChange(prev => [...prev,
+            { id: Date.now().toString(), sender: 'ai', text: clean, timestamp: Date.now() },
+          ]);
+        }
+
+        if (comment && feedbackSlot === 'evening') {
+          saveDailyComment(comment).catch(() => {});
+        }
+
+        markFeedbackDone();
+      } catch {
+        if (!cancelled) {
+          onMessagesChange(prev => [...prev,
+            { id: 'err-' + Date.now(), sender: 'ai', text: t.coach.errorStart, timestamp: Date.now() },
+          ]);
+        }
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [isOpen, pendingDirective]);
 
   // 코칭 토픽 선택 시 AI 첫 메시지 자동 전송
   useEffect(() => {
@@ -165,16 +247,22 @@ const CoachChat: React.FC<CoachChatProps> = ({
         subGoalCount,
       );
 
-      const aiText = response.candidates?.[0]?.content?.parts
+      const rawText = response.candidates?.[0]?.content?.parts
         ?.map(p => p.text)
         .filter(Boolean)
         .join('') || '';
 
-      if (aiText) {
+      const { clean, comment } = extractComment(rawText);
+
+      if (clean) {
         onMessagesChange(prev => [
           ...prev,
-          { id: Date.now().toString(), sender: 'ai', text: aiText, timestamp: Date.now() },
+          { id: Date.now().toString(), sender: 'ai', text: clean, timestamp: Date.now() },
         ]);
+      }
+
+      if (comment && feedbackSlot === 'evening') {
+        saveDailyComment(comment).catch(() => {});
       }
     } catch {
       onMessagesChange(prev => [
