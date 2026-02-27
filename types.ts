@@ -38,6 +38,7 @@ export interface ChatMessage {
   sender: 'user' | 'ai';
   text: string;
   timestamp: number;
+  imageDataUrl?: string;
 }
 
 export interface UserProfile {
