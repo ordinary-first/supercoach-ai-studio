@@ -17,6 +17,7 @@ export function useAutoSave(
   userProfile: UserProfile | null,
   isDataLoaded: boolean,
   userId: string | null,
+  disableCloudSync = false,
 ): void {
   const userIdRef = useRef(userId);
   useEffect(() => { userIdRef.current = userId; }, [userId]);
@@ -42,6 +43,7 @@ export function useAutoSave(
 
   // Auto-save goals (nodes + links) with debounce
   useEffect(() => {
+    if (disableCloudSync) return;
     if (!userProfile || !isDataLoaded || isLoadingDataRef.current) return;
 
     const currentUserId = userIdRef.current;
@@ -55,10 +57,11 @@ export function useAutoSave(
     return () => {
       if (goalSaveTimerRef.current) clearTimeout(goalSaveTimerRef.current);
     };
-  }, [nodes, links, userProfile, isDataLoaded]);
+  }, [nodes, links, userProfile, isDataLoaded, disableCloudSync]);
 
   // Auto-save todos with debounce
   useEffect(() => {
+    if (disableCloudSync) return;
     if (!userProfile || !isDataLoaded || isLoadingDataRef.current) return;
 
     const currentUserId = userIdRef.current;
@@ -72,10 +75,11 @@ export function useAutoSave(
     return () => {
       if (todoSaveTimerRef.current) clearTimeout(todoSaveTimerRef.current);
     };
-  }, [todos, userProfile, isDataLoaded]);
+  }, [todos, userProfile, isDataLoaded, disableCloudSync]);
 
   // Auto-save todo lists & groups with debounce
   useEffect(() => {
+    if (disableCloudSync) return;
     if (!userProfile || !isDataLoaded || isLoadingDataRef.current) return;
 
     const currentUserId = userIdRef.current;
@@ -89,7 +93,7 @@ export function useAutoSave(
     return () => {
       if (listSaveTimerRef.current) clearTimeout(listSaveTimerRef.current);
     };
-  }, [todoLists, todoGroups, userProfile, isDataLoaded]);
+  }, [todoLists, todoGroups, userProfile, isDataLoaded, disableCloudSync]);
 
   // No local persistence fallback: backend is the single source of truth.
 }

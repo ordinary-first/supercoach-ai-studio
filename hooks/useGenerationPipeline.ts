@@ -145,6 +145,8 @@ interface GenerationPipelineOptions {
 export function useGenerationPipeline({ userProfile, nodes, isOpen }: GenerationPipelineOptions) {
   const { t } = useTranslation();
   const activeUserId = getActiveUserId(userProfile);
+  const isDevSession =
+    import.meta.env.DEV && new URLSearchParams(window.location.search).has('dev');
   const mountedRef = useRef(true);
 
   const [isGenerating, setIsGenerating] = useState(false);
@@ -167,7 +169,7 @@ export function useGenerationPipeline({ userProfile, nodes, isOpen }: Generation
 
   // Load saved items on open
   useEffect(() => {
-    if (!isOpen || !activeUserId) {
+    if (!isOpen || !activeUserId || isDevSession) {
       setSavedItems([]);
       return;
     }
@@ -178,7 +180,7 @@ export function useGenerationPipeline({ userProfile, nodes, isOpen }: Generation
         if (!cancelled) setErrorMessage(formatErrorMeta(t.visualization.loadFailed, toErrorMeta(error)));
       });
     return () => { cancelled = true; };
-  }, [activeUserId, isOpen, t.visualization.loadFailed]);
+  }, [activeUserId, isOpen, t.visualization.loadFailed, isDevSession]);
 
   // Reset on close
   useEffect(() => {
@@ -191,6 +193,7 @@ export function useGenerationPipeline({ userProfile, nodes, isOpen }: Generation
   }, []);
 
   const refreshPendingVideo = useCallback(async (target: VisualizationResult) => {
+    if (isDevSession) return;
     if (!activeUserId || !target.videoId || target.videoStatus !== 'pending') return;
     setIsCheckingPendingVideo(true);
     clearMessages();
@@ -219,7 +222,7 @@ export function useGenerationPipeline({ userProfile, nodes, isOpen }: Generation
     } finally {
       setIsCheckingPendingVideo(false);
     }
-  }, [activeUserId, clearMessages, t]);
+  }, [activeUserId, clearMessages, t, isDevSession]);
 
   const handleGenerate = useCallback(async (
     inputText: string,
@@ -329,6 +332,28 @@ export function useGenerationPipeline({ userProfile, nodes, isOpen }: Generation
   const handleSave = useCallback(async (resultToSave?: VisualizationResult | null) => {
     const target = resultToSave ?? currentResult;
     if (!target || isSaving) return;
+
+    if (isDevSession) {
+      const localSaved: SavedVisualization = {
+        id: `local_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        timestamp: Date.now(),
+        inputText: target.inputText || 'Visualization',
+        text: target.text,
+        imageUrl: target.imageUrl,
+        audioUrl: target.audioUrl,
+        videoUrl: target.videoUrl,
+        videoId: target.videoId,
+        videoStatus: toPersistedVideoStatus(target.videoStatus),
+        updatedAt: Date.now(),
+      };
+      setSavedItems((prev) => [localSaved, ...prev]);
+      setCurrentResult((prev) =>
+        prev ? { ...prev, visualizationId: localSaved.id } : prev,
+      );
+      setIsSaved(true);
+      return;
+    }
+
     if (!activeUserId) {
       setErrorMessage(t.visualization.loginRequired);
       return;
@@ -392,7 +417,7 @@ export function useGenerationPipeline({ userProfile, nodes, isOpen }: Generation
     } finally {
       setIsSaving(false);
     }
-  }, [activeUserId, currentResult, isSaving, t]);
+  }, [activeUserId, currentResult, isSaving, t, isDevSession]);
 
   // Keep saveRef in sync for auto-save from handleGenerate
   saveRef.current = handleSave as (r: VisualizationResult) => Promise<void>;
@@ -410,6 +435,10 @@ export function useGenerationPipeline({ userProfile, nodes, isOpen }: Generation
   }, [clearMessages, refreshPendingVideo, t]);
 
   const handleDeleteSaved = useCallback(async (id: string) => {
+    if (isDevSession) {
+      setSavedItems((prev) => prev.filter((item) => item.id !== id));
+      return;
+    }
     if (!activeUserId) return;
     try {
       await deleteVisualization(activeUserId, id);
@@ -417,7 +446,7 @@ export function useGenerationPipeline({ userProfile, nodes, isOpen }: Generation
     } catch (error: unknown) {
       setErrorMessage(formatErrorMeta(t.visualization.deleteFailed, toErrorMeta(error)));
     }
-  }, [activeUserId, t]);
+  }, [activeUserId, t, isDevSession]);
 
   return {
     // State

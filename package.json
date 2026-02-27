@@ -2,12 +2,15 @@
   "name": "secret-coach",
   "private": true,
   "version": "1.1.0",
-  "displayVersion": "V02.27r14",
+  "displayVersion": "V02.27r17",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
+    "beta:sim": "node scripts/beta/run-beta-sim.mjs",
+    "beta:sim:one": "node scripts/beta/run-beta-sim.mjs --users=1 --actions=32 --mode=journey-random --verbose=1",
+    "beta:sim:variety": "node scripts/beta/run-beta-sim.mjs --users=20 --actions=32 --mode=journey-random",
     "build:cap": "npm run build && npx cap sync",
     "cap:sync": "npx cap sync",
     "cap:add:android": "npx cap add android",
@@ -39,8 +42,8 @@
     "@types/node": "^22.14.0",
     "@vercel/node": "^5.1.8",
     "@vitejs/plugin-react": "^5.0.0",
+    "playwright": "^1.58.2",
     "typescript": "~5.8.2",
     "vite": "^6.2.0"
   }
 }
-

@@ -399,6 +399,7 @@ const MindMap: React.FC<MindMapProps> = ({
     'done';
 
   const labels = t.mindmap;
+  const isDestroyedRef = useRef(false);
 
   const getCurrentMindMapScale = useCallback(() => {
     const mindMap = mindMapRef.current;
@@ -417,16 +418,30 @@ const MindMap: React.FC<MindMapProps> = ({
     const mindMap = mindMapRef.current;
     const root = mindMap?.renderer?.root;
     if (!root) return null;
-    const allNodes = getAllRenderedNodes(root);
+    let allNodes: any[] = [];
+    try {
+      allNodes = getAllRenderedNodes(root);
+    } catch {
+      return null;
+    }
     return allNodes.find(
       (n: any) => n?.nodeData?.data?.goalId === goalId || n?.nodeData?.data?.uid === goalId,
     ) || null;
   }, []);
 
+  const safeGetNodeRectInSvg = useCallback((node: any) => {
+    if (!node || typeof node.getRectInSvg !== 'function') return null;
+    try {
+      return node.getRectInSvg();
+    } catch {
+      return null;
+    }
+  }, []);
+
   const computeActionBarFromRenderedNode = useCallback((node: any): Omit<ActionBarState, 'nodeId' | 'isMoreOpen'> | null => {
     const rect = containerRef.current?.getBoundingClientRect();
-    if (!rect || !node || typeof node.getRectInSvg !== 'function') return null;
-    const nodeRect = node.getRectInSvg();
+    if (!rect || !node) return null;
+    const nodeRect = safeGetNodeRectInSvg(node);
     if (!nodeRect) return null;
 
     const centerX = nodeRect.left + nodeRect.width / 2;
@@ -443,7 +458,7 @@ const MindMap: React.FC<MindMapProps> = ({
       scale: getCurrentMindMapScale(),
       placement,
     };
-  }, [getCurrentMindMapScale]);
+  }, [getCurrentMindMapScale, safeGetNodeRectInSvg]);
 
   const syncActionBarToNode = useCallback((nodeId: string) => {
     const renderedNode = getRenderedNodeByGoalId(nodeId);
@@ -502,13 +517,13 @@ const MindMap: React.FC<MindMapProps> = ({
     if (onboardingPhase === 'done') return;
     const timer = setTimeout(() => {
       const renderedRoot = getRenderedNodeByGoalId('root');
-      if (!renderedRoot || typeof renderedRoot.getRectInSvg !== 'function') return;
-      const rect = renderedRoot.getRectInSvg();
+      if (!renderedRoot) return;
+      const rect = safeGetNodeRectInSvg(renderedRoot);
       if (!rect) return;
       setRootNodeCenter({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
     }, 500);
     return () => clearTimeout(timer);
-  }, [nodes, onboardingPhase, getRenderedNodeByGoalId]);
+  }, [nodes, onboardingPhase, getRenderedNodeByGoalId, safeGetNodeRectInSvg]);
 
   // --- Onboarding: Phase 3 auto-dismiss ---
   useEffect(() => {
@@ -595,15 +610,18 @@ const MindMap: React.FC<MindMapProps> = ({
         fontSize: 12,
         strokeColor: isLight ? '#4D7C0F' : '#CCFF00',
       },
-      fit: true,
-      enableNodeTransitionMove: true,
+      fit: false,
+      // Library-level node transition can throw rbox errors during rapid tab unmount/remount.
+      enableNodeTransitionMove: false,
       nodeTransitionMoveDuration: 300,
     });
 
     mindMapRef.current = mindMap;
+    isDestroyedRef.current = false;
 
     // Track current zoom scale so overlay UI can match mind-map zoom level.
     const handleScale = (scale: number) => {
+      if (isDestroyedRef.current) return;
       if (typeof scale === 'number' && Number.isFinite(scale)) {
         setViewScale(scale);
       }
@@ -612,11 +630,13 @@ const MindMap: React.FC<MindMapProps> = ({
       syncActionBarToNode(current.nodeId);
     };
     const handleTranslate = () => {
+      if (isDestroyedRef.current) return;
       const current = actionBarRef.current;
       if (!current) return;
       syncActionBarToNode(current.nodeId);
     };
     const handleViewDataChange = () => {
+      if (isDestroyedRef.current) return;
       const current = actionBarRef.current;
       if (!current) return;
       syncActionBarToNode(current.nodeId);
@@ -625,6 +645,15 @@ const MindMap: React.FC<MindMapProps> = ({
     mindMap.on('translate', handleTranslate);
     mindMap.on('view_data_change', handleViewDataChange);
     handleScale(mindMap.view?.scale ?? 1);
+
+    // Keep initial viewport sane without relying on library auto-fit (which can throw on detached SVG state).
+    requestAnimationFrame(() => {
+      try {
+        mindMap.view?.reset?.();
+      } catch {
+        // ignore
+      }
+    });
 
     // Disable built-in keyboard shortcuts that conflict with our app
     // (We handle add/delete through App.tsx UI buttons)
@@ -732,11 +761,16 @@ const MindMap: React.FC<MindMapProps> = ({
     window.addEventListener('mindmap-center', handleCenter);
 
     return () => {
+      isDestroyedRef.current = true;
       window.removeEventListener('mindmap-center', handleCenter);
       mindMap.off?.('scale', handleScale);
       mindMap.off?.('translate', handleTranslate);
       mindMap.off?.('view_data_change', handleViewDataChange);
-      mindMap.destroy?.();
+      try {
+        mindMap.destroy?.();
+      } catch {
+        // ignore library teardown errors from detached SVG nodes
+      }
       mindMapRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -779,7 +813,11 @@ const MindMap: React.FC<MindMapProps> = ({
     }
 
     lastSetDataTimeRef.current = Date.now();
-    mindMap.setData(treeData);
+    try {
+      mindMap.setData(treeData);
+    } catch {
+      return;
+    }
 
     // CSS-based ghost styling fallback (in case SDK doesn't honor alpha colors)
     if (onboardingPhase === 'templates') {

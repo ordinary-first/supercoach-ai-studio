@@ -150,6 +150,8 @@ const App: React.FC = () => {
   const [language, setLanguage] = useState<AppLanguage>(getInitialLanguage);
   const [isLanguageLoaded, setIsLanguageLoaded] = useState(false);
   const [isSettingsPageOpen, setIsSettingsPageOpen] = useState(false);
+  const isDevSession =
+    import.meta.env.DEV && new URLSearchParams(window.location.search).has('dev');
 
   const [nodes, setNodes] = useState<GoalNode[]>(createInitialGoalNodes);
   const [links, setLinks] = useState<GoalLink[]>([]);
@@ -199,7 +201,17 @@ const App: React.FC = () => {
 
   const t = getTranslations(language);
 
-  useAutoSave(nodes, links, todos, todoLists, todoGroups, userProfile, isDataLoaded, userId);
+  useAutoSave(
+    nodes,
+    links,
+    todos,
+    todoLists,
+    todoGroups,
+    userProfile,
+    isDataLoaded,
+    userId,
+    isDevSession,
+  );
 
   // Prevent cross-account data bleed: reset in-memory state when the uid changes.
   const prevUserIdRef = useRef<string | null | undefined>(undefined);
@@ -221,29 +233,36 @@ const App: React.FC = () => {
 
   // 채팅 히스토리 Firestore 로딩
   useEffect(() => {
-    if (!userId) return;
+    if (isDevSession || !userId) return;
     let cancelled = false;
     loadChatHistory(userId).then((saved) => {
       if (cancelled) return;
       if (saved.length > 0) setChatMessages(saved);
     });
     return () => { cancelled = true; };
-  }, [userId]);
+  }, [userId, isDevSession]);
 
   // 채팅 히스토리 디바운스 자동저장 (2초)
   useEffect(() => {
-    if (!userId || chatMessages.length === 0) return;
+    if (isDevSession || !userId || chatMessages.length === 0) return;
     const timer = setTimeout(() => {
       saveChatHistory(userId, chatMessages);
     }, 2000);
     return () => clearTimeout(timer);
-  }, [chatMessages, userId]);
+  }, [chatMessages, userId, isDevSession]);
 
   useEffect(() => {
     document.documentElement.lang = language;
   }, [language]);
 
   useEffect(() => {
+    if (isDevSession) {
+      isLoadingSettingsRef.current = false;
+      setLanguage(getInitialLanguage());
+      setIsLanguageLoaded(true);
+      return;
+    }
+
     let cancelled = false;
     if (!userId) {
       isLoadingSettingsRef.current = false;
@@ -273,15 +292,15 @@ const App: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [userId]);
+  }, [userId, isDevSession]);
 
   useEffect(() => {
     localStorage.setItem('app_language', language);
-    if (!userId || !isLanguageLoaded || isLoadingSettingsRef.current) return;
+    if (isDevSession || !userId || !isLanguageLoaded || isLoadingSettingsRef.current) return;
     saveUserSettings(userId, { language }).catch(() => {
       addToast(t.app.toasts.languageSaveFailed, 'warning');
     });
-  }, [addToast, isLanguageLoaded, language, userId]);
+  }, [addToast, isLanguageLoaded, language, userId, isDevSession]);
 
   useEffect(() => {
     let cancelled = false;
@@ -715,23 +734,29 @@ const App: React.FC = () => {
   return (
     <LanguageContext.Provider value={langCtx}>
     <div className="apple-app-root relative w-screen h-screen text-th-text font-body overflow-hidden">
-      {activeTab === 'GOALS' && (
-        <>
-          <MindMap
-            nodes={visibleNodes} links={visibleLinks} language={language} selectedNodeId={selectedNode?.id} onNodeClick={setSelectedNode} onEditNode={(nodeId) => setEditingNodeId(nodeId)} onUpdateNode={handleUpdateNode} onDeleteNode={handleDeleteNode} onReparentNode={handleReparentNode} onAddSubNode={handleAddSubNode} onAddParentNode={handleAddParentNode} onGenerateImage={handleGenerateNodeImage} onInsertImage={handleInsertNodeImage} onConvertNodeToTask={handleConvertNodeToTodo} onDecomposeGoal={handleDecomposeGoal} previewNodeIds={previewNodeIds} confirmedPreviewIds={confirmedPreviewIds} onTogglePreviewConfirm={handleTogglePreviewConfirm} onFinalizePreview={handleFinalizePreview} editingNodeId={editingNodeId} onEditEnd={() => setEditingNodeId(null)} width={dimensions.width} height={dimensions.height} imageLoadingNodes={imageLoadingNodes}
-          />
+      <div
+        className={
+          activeTab === 'GOALS'
+            ? 'absolute inset-0 z-10 opacity-100'
+            : 'absolute inset-0 z-0 opacity-0 pointer-events-none'
+        }
+      >
+        <MindMap
+          nodes={visibleNodes} links={visibleLinks} language={language} selectedNodeId={selectedNode?.id} onNodeClick={setSelectedNode} onEditNode={(nodeId) => setEditingNodeId(nodeId)} onUpdateNode={handleUpdateNode} onDeleteNode={handleDeleteNode} onReparentNode={handleReparentNode} onAddSubNode={handleAddSubNode} onAddParentNode={handleAddParentNode} onGenerateImage={handleGenerateNodeImage} onInsertImage={handleInsertNodeImage} onConvertNodeToTask={handleConvertNodeToTodo} onDecomposeGoal={handleDecomposeGoal} previewNodeIds={previewNodeIds} confirmedPreviewIds={confirmedPreviewIds} onTogglePreviewConfirm={handleTogglePreviewConfirm} onFinalizePreview={handleFinalizePreview} editingNodeId={editingNodeId} onEditEnd={() => setEditingNodeId(null)} width={dimensions.width} height={dimensions.height} imageLoadingNodes={imageLoadingNodes}
+        />
+      </div>
 
-           <div className="absolute top-3 left-3 md:top-4 md:left-6 z-50">
-               <button
-                 onClick={() => setIsShortcutsOpen(prev => !prev)}
-                 className="apple-chip flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 text-[10px] font-bold tracking-widest text-th-accent hover:bg-th-accent hover:text-th-text-inverse transition-all"
-               >
-                   <span className="bg-th-accent/20 px-1.5 py-0.5 rounded text-[8px] border border-th-accent-border">K</span>
-                   {t.shortcuts.button}
-               </button>
-           </div>
-         </>
-       )}
+      {activeTab === 'GOALS' && (
+        <div className="absolute top-3 left-3 md:top-4 md:left-6 z-50">
+          <button
+            onClick={() => setIsShortcutsOpen(prev => !prev)}
+            className="apple-chip flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 text-[10px] font-bold tracking-widest text-th-accent hover:bg-th-accent hover:text-th-text-inverse transition-all"
+          >
+            <span className="bg-th-accent/20 px-1.5 py-0.5 rounded text-[8px] border border-th-accent-border">K</span>
+            {t.shortcuts.button}
+          </button>
+        </div>
+      )}
  
        <div className="absolute top-3 right-3 md:top-6 md:right-6 z-[60]">
          <button

@@ -81,6 +81,65 @@ When one agent completes work that another agent will continue:
 
 ## Current Status
 _Last updated: 2026-02-27_
+- Beta simulation expansion + large-scale run r17 completed:
+  - `displayVersion` bumped to `V02.27r17`.
+  - `scripts/beta/run-beta-sim.mjs` rewritten for scenario quality:
+    - Added expanded action set:
+      - todo add/toggle, settings open/close, language toggle, theme toggle,
+        feedback normal/heavy scroll, calendar interaction, visualize input,
+        coach open/close, rapid tab burst, viewport jitter.
+    - Added robust modes:
+      - `random`, `smoke`, `journey`, `journey-random`.
+    - Added anti-dup strategy:
+      - per-scenario action-name de-dup,
+      - cross-scenario signature uniqueness retry for `journey-random`.
+    - Added stronger diagnostics:
+      - pageerror stack capture, uniqueness metrics in summary.
+  - `package.json` scripts:
+    - `beta:sim:one` -> `journey-random` mode,
+    - `beta:sim:variety` added.
+  - Verification (all passed):
+    - `pnpm beta:sim:one` -> 0 errors.
+    - `pnpm beta:sim:variety` (20 users) -> 0 errors, unique signatures 20.
+    - `pnpm beta:sim -- --users=100 --actions=40 --mode=journey-random`
+      -> 0 errors, unique signatures 100.
+    - `pnpm beta:sim -- --users=100 --actions=40 --mode=random`
+      -> 0 errors, unique signatures 100.
+- Beta simulation variety + mindmap runtime stabilization r16 completed:
+  - `displayVersion` bumped to `V02.27r16`.
+  - `scripts/beta/run-beta-sim.mjs`
+    - Added `journey-random` mode for complex-but-varied user journeys.
+    - Enforced per-scenario action de-duplication (`uniqueByName`).
+    - Added cross-scenario uniqueness guard (signature-based retry) to avoid duplicate journeys.
+    - Added stack capture for `pageerror` in report.
+  - `package.json`
+    - `beta:sim:one` switched to `journey-random`.
+    - Added `beta:sim:variety`.
+  - `App.tsx`
+    - MindMap is now persist-mounted and visibility-toggled by tab (prevents rapid mount/unmount race).
+    - Dev-session (`?dev`) cloud sync/read paths are skipped for stable local fuzzing.
+  - `hooks/useAutoSave.ts`, `hooks/useGenerationPipeline.ts`
+    - Added dev-session cloud-sync bypass and local save flow for visualization.
+  - `components/MindMap.tsx`
+    - Root fix for `Getting rbox of element "g" is not possible`:
+      - Disabled library auto-fit (`fit: false`) that triggered uncaught `View.fit` rbox failures.
+      - Added safe viewport reset and defensive guards around SVG rect reads + teardown.
+  - Verification:
+    - `pnpm beta:sim:one` -> `scenariosWithErrors=0`.
+    - `pnpm beta:sim:variety` (20 users) -> `scenariosWithErrors=0`.
+- Beta simulation setup r15 completed:
+  - Added deterministic single-journey command:
+    - `pnpm beta:sim:one` (`--users=1 --actions=32 --mode=journey --verbose=1`)
+  - Added configurable simulator args:
+    - `--users`, `--actions`, `--mode` (`random|smoke|journey`), `--verbose`
+  - Added report output:
+    - `reports/beta-sim-report.json`
+  - Dev-session cloud-noise reduction:
+    - App + autosave + visualization pipeline now skip Firestore sync/read paths in `?dev` session
+      for local beta test stability.
+  - Known remaining issue:
+    - `MindMap` runtime exception `Getting rbox of element "g" is not possible` still reproduces in
+      journey mode and needs a dedicated fix cycle.
 - Mobile coach chat keyboard viewport hotfix r9 completed:
   - `components/CoachChat.tsx` now computes keyboard inset with dual path:
     `VirtualKeyboard.geometrychange` + `visualViewport` fallback
