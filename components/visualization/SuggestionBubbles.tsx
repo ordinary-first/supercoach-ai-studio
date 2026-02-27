@@ -7,13 +7,6 @@ interface SuggestionBubblesProps {
   onSelect: (text: string) => void;
 }
 
-const FADE_IN_KEYFRAMES = `
-@keyframes bubbleFadeIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-`;
-
 const GENERIC_SUGGESTIONS = [
   { emoji: '🏙', text: '꿈을 이룬 순간의 모습을 상상해보세요' },
   { emoji: '💫', text: '미래의 내가 되어있는 모습' },
@@ -57,50 +50,30 @@ const SuggestionBubbles: FC<SuggestionBubblesProps> = ({ nodes, onSelect }) => {
   }, [nodes]);
 
   return (
-    <>
-      {/* Inject keyframes once */}
-      <style>{FADE_IN_KEYFRAMES}</style>
-
-      <div className="flex flex-col gap-2 px-4 py-3">
-        {bubbles.map((text, i) => {
-          const isFirst = i === 0;
-          return (
-            <button
-              key={text}
-              type="button"
-              onClick={() => onSelect(text)}
-              className="text-left cursor-pointer self-start"
-              style={{
-                background: 'rgba(255,255,255,0.05)',
-                border: isFirst
-                  ? '1px solid rgba(255,215,0,0.25)'
-                  : '1px solid rgba(255,255,255,0.08)',
-                borderRadius: '4px 18px 18px 18px',
-                padding: '12px 16px',
-                fontSize: 14,
-                color: 'rgba(255,255,255,0.85)',
-                opacity: 0,
-                animation: 'bubbleFadeIn 300ms ease forwards',
-                animationDelay: `${i * 100}ms`,
-                transition: 'transform 80ms ease',
-                maxWidth: '85%',
-              }}
-              onPointerDown={(e) => {
-                (e.currentTarget as HTMLElement).style.transform = 'scale(0.97)';
-              }}
-              onPointerUp={(e) => {
-                (e.currentTarget as HTMLElement).style.transform = 'scale(1)';
-              }}
-              onPointerLeave={(e) => {
-                (e.currentTarget as HTMLElement).style.transform = 'scale(1)';
-              }}
-            >
-              {text}
-            </button>
-          );
-        })}
-      </div>
-    </>
+    <div className="flex flex-col gap-2 px-4 py-3">
+      {bubbles.map((text, i) => {
+        const isFirst = i === 0;
+        return (
+          <button
+            key={text}
+            type="button"
+            onClick={() => onSelect(text)}
+            className={`text-left cursor-pointer self-start max-w-[85%]
+              rounded-2xl rounded-tl-sm px-4 py-3 text-sm
+              bg-th-surface border text-th-text
+              transition-transform duration-75 active:scale-[0.97]
+              animate-[bubbleFadeIn_300ms_ease_forwards] opacity-0
+              ${isFirst
+                ? 'border-yellow-500/25'
+                : 'border-th-border'
+              }`}
+            style={{ animationDelay: `${i * 100}ms` }}
+          >
+            {text}
+          </button>
+        );
+      })}
+    </div>
   );
 };
 

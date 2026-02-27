@@ -94,3 +94,9 @@ html, body {
   animation: expand 200ms ease-out;
   overflow: hidden;
 }
+
+/* Dream chat suggestion bubble entrance */
+@keyframes bubbleFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
