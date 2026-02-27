@@ -6,6 +6,7 @@ import type {
   ToDoItem,
 } from '../types';
 import { NodeType, NodeStatus } from '../types';
+import type { AppLanguage } from '../i18n/types';
 import {
   loadMemory,
   loadMemoryTimestamps,
@@ -18,15 +19,16 @@ import {
 
 const API_BASE = '/api/chat';
 
-export const buildGoalContext = (nodes: GoalNode[]): string => {
-  if (!nodes.length) return '목표 없음';
+export const buildGoalContext = (nodes: GoalNode[], language: AppLanguage = 'ko'): string => {
+  if (!nodes.length) return language === 'ko' ? '목표 없음' : 'No goals';
 
   const root = nodes.find(n => n.type === NodeType.ROOT);
   const children = nodes.filter(n => n.type === NodeType.SUB);
+  const progressLabel = language === 'ko' ? '진행률' : 'progress';
 
   const lines: string[] = [];
   if (root) {
-    lines.push(`[ROOT] ${root.text} (진행률 ${root.progress}%)`);
+    lines.push(`[ROOT] ${root.text} (${progressLabel} ${root.progress}%)`);
   }
 
   for (const child of children) {
@@ -34,24 +36,25 @@ export const buildGoalContext = (nodes: GoalNode[]): string => {
       child.status === NodeStatus.COMPLETED ? ' ✓' :
       child.status === NodeStatus.STUCK ? ' ⚠' : '';
     lines.push(
-      `  ├ ${child.text} (진행률 ${child.progress}%, ${child.status}${statusTag})`,
+      `  ├ ${child.text} (${progressLabel} ${child.progress}%, ${child.status}${statusTag})`,
     );
   }
 
   return lines.join('\n');
 };
 
-export const buildTodoContext = (todos: ToDoItem[]): string => {
-  if (!todos.length) return '할일 없음';
+export const buildTodoContext = (todos: ToDoItem[], language: AppLanguage = 'ko'): string => {
+  if (!todos.length) return language === 'ko' ? '할일 없음' : 'No todos';
 
   const completed = todos.filter(t => t.completed).length;
-  const lines = [`오늘 할일: ${completed}/${todos.length} 완료`];
+  const header = language === 'ko'
+    ? `오늘 할일: ${completed}/${todos.length} 완료`
+    : `Today: ${completed}/${todos.length} completed`;
+  const lines = [header];
 
-  const priorityLabel: Record<string, string> = {
-    high: '높음',
-    medium: '보통',
-    low: '낮음',
-  };
+  const priorityLabel: Record<string, string> = language === 'ko'
+    ? { high: '높음', medium: '보통', low: '낮음' }
+    : { high: 'high', medium: 'medium', low: 'low' };
 
   for (const todo of todos) {
     const icon = todo.completed ? '✓' : '□';
@@ -73,6 +76,7 @@ export const useCoachMemory = (
   isOpen: boolean,
   nodes: GoalNode[],
   todos: ToDoItem[],
+  language: AppLanguage = 'ko',
 ) => {
   const [memory, setMemory] = useState<CoachMemoryContext>(EMPTY_MEMORY);
   const activeRef = useRef(false);
@@ -92,15 +96,15 @@ export const useCoachMemory = (
     }).catch(() => {});
 
     // Phase 2: 백그라운드 갱신 (느림, 2-3초)
-    const goalCtx = buildGoalContext(nodes);
-    const todoCtx = buildTodoContext(todos);
+    const goalCtx = buildGoalContext(nodes, language);
+    const todoCtx = buildTodoContext(todos, language);
 
     refreshInBackground(userId, goalCtx, todoCtx)
       .then(updated => {
         if (updated) setMemory(updated);
       })
       .catch(() => {});
-  }, [isOpen, userId, nodes, todos]);
+  }, [isOpen, userId, nodes, todos, language]);
 
   return memory;
 };

@@ -87,11 +87,11 @@ export const loginWithGoogle = async (): Promise<{ user: User; isNewUser: boolea
   } catch (error: any) {
     const code = error?.code || '';
     if (code === 'auth/unauthorized-domain') {
-      error.message = 'Firebase 승인 도메인을 확인해주세요.';
+      error.message = 'Please check Firebase authorized domains.';
     } else if (code === 'auth/popup-blocked') {
-      error.message = '브라우저 팝업 차단을 해제한 뒤 다시 시도해주세요.';
+      error.message = 'Please disable popup blocker and try again.';
     } else if (code === 'auth/popup-closed-by-user') {
-      error.message = '로그인 창이 닫혔습니다. 다시 시도해주세요.';
+      error.message = 'Login window closed. Please try again.';
     }
     console.error('[Auth] Google Login Error:', code, error);
     throw error;
@@ -525,7 +525,7 @@ export const saveVisualizationViaApi = async (
 ): Promise<SavedVisualization> => {
   const currentUser = auth.currentUser;
   if (!currentUser) {
-    throw createApiError('AUTH_REQUIRED', '로그인이 필요합니다.');
+    throw createApiError('AUTH_REQUIRED', 'Login required.');
   }
 
   const token = await currentUser.getIdToken();
@@ -543,7 +543,7 @@ export const saveVisualizationViaApi = async (
   const body = await parseApiJson(response);
   if (!response.ok) {
     const code = String(body.errorCode || `SAVE_API_${response.status}`);
-    const message = String(body.errorMessage || '시각화 저장 API 호출에 실패했습니다.');
+    const message = String(body.errorMessage || 'Visualization save API call failed.');
     const requestId = typeof body.requestId === 'string' ? body.requestId : undefined;
     throw createApiError(code, message, requestId);
   }

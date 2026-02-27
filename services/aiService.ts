@@ -123,7 +123,7 @@ export const sendChatMessage = async (
     });
     if (response.status === 429) {
       const data = await response.json();
-      throw new Error(data.message || '월간 사용량을 초과했습니다');
+      throw new Error(data.message || 'Monthly usage limit exceeded');
     }
     if (!response.ok) {
       const errorText = await response.text();
@@ -194,7 +194,7 @@ export const generateVisualizationImage = async (
         payload,
         response.status,
         'IMAGE_API_ERROR',
-        '이미지 생성에 실패했습니다.',
+        'Image generation failed.',
       );
       return {
         status: 'failed',
@@ -212,7 +212,7 @@ export const generateVisualizationImage = async (
         status: 'failed',
         errorCode: toOptionalString(payload.errorCode) || 'IMAGE_EMPTY_RESULT',
         errorMessage:
-          toOptionalString(payload.errorMessage) || '이미지 생성 결과가 비어 있습니다.',
+          toOptionalString(payload.errorMessage) || 'Image generation result is empty.',
         requestId: toOptionalString(payload.requestId),
       };
     }
@@ -240,7 +240,7 @@ export const generateVisualizationImage = async (
     return {
       status: 'failed',
       errorCode: 'IMAGE_NETWORK_ERROR',
-      errorMessage: `이미지 생성 실패: ${detail}`,
+      errorMessage: `Image generation failed: ${detail}`,
     };
   }
 };
@@ -258,13 +258,13 @@ export const generateSuccessNarrative = async (
     });
     if (response.status === 429) {
       const data = await response.json();
-      throw new Error(data.message || '월간 사용량을 초과했습니다');
+      throw new Error(data.message || 'Monthly usage limit exceeded');
     }
     if (!response.ok) return '';
     const data = await response.json();
     return data.text || '';
   } catch (err) {
-    if (err instanceof Error && err.message.includes('사용량')) throw err;
+    if (err instanceof Error && err.message.includes('usage limit')) throw err;
     return '';
   }
 };
@@ -305,7 +305,7 @@ export const generateSpeech = async (
         payload,
         response.status,
         'SPEECH_API_ERROR',
-        '오디오 생성에 실패했습니다.',
+        'Audio generation failed.',
       );
       return {
         status: 'failed',
@@ -321,7 +321,7 @@ export const generateSpeech = async (
       return {
         status: 'failed',
         errorCode: toOptionalString(payload.errorCode) || 'SPEECH_EMPTY_AUDIO',
-        errorMessage: toOptionalString(payload.errorMessage) || '오디오 생성 결과가 비어 있습니다.',
+        errorMessage: toOptionalString(payload.errorMessage) || 'Audio generation result is empty.',
         requestId: toOptionalString(payload.requestId),
       };
     }
@@ -348,7 +348,7 @@ export const generateSpeech = async (
     return {
       status: 'failed',
       errorCode: 'SPEECH_NETWORK_ERROR',
-      errorMessage: `오디오 생성 실패: ${detail}`,
+      errorMessage: `Audio generation failed: ${detail}`,
     };
   }
 };
@@ -418,7 +418,7 @@ export const pollVideoStatus = async (
         payload,
         response.status,
         'VIDEO_POLL_ERROR',
-        '영상 상태 확인에 실패했습니다.',
+        'Video status check failed.',
       );
       return {
         videoId,
@@ -440,7 +440,7 @@ export const pollVideoStatus = async (
       status: 'failed',
       durationSec,
       errorCode: 'VIDEO_POLL_NETWORK_ERROR',
-      errorMessage: `영상 상태 확인 실패: ${detail}`,
+      errorMessage: `Video status check failed: ${detail}`,
     };
   }
 };
@@ -465,7 +465,7 @@ export const generateVideo = async (
         createPayload,
         createResponse.status,
         'VIDEO_CREATE_ERROR',
-        '영상 생성 시작에 실패했습니다.',
+        'Video generation failed.',
       );
       return {
         status: 'failed',
@@ -484,7 +484,7 @@ export const generateVideo = async (
         ...created,
         status: 'failed',
         errorCode: created.errorCode || 'VIDEO_ID_MISSING',
-        errorMessage: created.errorMessage || '영상 ID를 받지 못했습니다.',
+        errorMessage: created.errorMessage || 'No video ID received.',
       };
     }
 
@@ -521,7 +521,7 @@ export const generateVideo = async (
       status: 'failed',
       durationSec,
       errorCode: 'VIDEO_CLIENT_EXCEPTION',
-      errorMessage: `영상 생성 요청 중 예외: ${detail}`,
+      errorMessage: `Video generation error: ${detail}`,
     };
   }
 };
@@ -542,13 +542,13 @@ export const generateFeedback = async (
     });
     if (response.status === 429) {
       const data = await response.json();
-      throw new Error(data.message || '사용량을 초과했습니다');
+      throw new Error(data.message || 'Usage limit exceeded');
     }
     if (!response.ok) return '';
     const data = await response.json();
     return data.text || '';
   } catch (err) {
-    if (err instanceof Error && err.message.includes('사용량')) throw err;
+    if (err instanceof Error && err.message.includes('usage limit')) throw err;
     return '';
   }
 };

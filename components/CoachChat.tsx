@@ -40,7 +40,7 @@ const CoachChat: React.FC<CoachChatProps> = ({
   const QUESTIONS_PER_PAGE = 3;
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const focusTrapRef = useFocusTrap(isOpen);
-  const memory = useCoachMemory(userId, isOpen, nodes || [], todos);
+  const memory = useCoachMemory(userId, isOpen, nodes || [], todos, language);
 
   const tabLabels: Record<TabType, string> = {
     GOALS: t.coach.tabLabels.GOALS,
@@ -78,8 +78,8 @@ const CoachChat: React.FC<CoachChatProps> = ({
 
     (async () => {
       try {
-        const goalCtx = buildGoalContext(nodes || []);
-        const todoCtx = buildTodoContext(todos);
+        const goalCtx = buildGoalContext(nodes || [], language);
+        const todoCtx = buildTodoContext(todos, language);
         const subGoalCount = (nodes || []).filter(n => n.type !== 'ROOT').length;
 
         const response = await sendChatMessage(
@@ -149,8 +149,8 @@ const CoachChat: React.FC<CoachChatProps> = ({
         role: m.sender === 'user' ? 'user' : 'model',
         parts: [{ text: m.text }],
       }));
-      const goalCtx = buildGoalContext(nodes || []);
-      const todoCtx = buildTodoContext(todos);
+      const goalCtx = buildGoalContext(nodes || [], language);
+      const todoCtx = buildTodoContext(todos, language);
 
       const subGoalCount = (nodes || []).filter(n => n.type !== 'ROOT').length;
       const response = await sendChatMessage(
