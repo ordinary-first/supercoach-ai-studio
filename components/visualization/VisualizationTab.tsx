@@ -221,7 +221,8 @@ export default function VisualizationTab({
           <DreamChat
             nodes={nodes}
             messages={chat.messages}
-            onAddMessage={chat.addMessage}
+            onSendMessage={chat.sendMessage}
+            isAiTyping={chat.isAiTyping}
             onGenerate={handleGenerate}
             isGenerating={pipeline.isGenerating}
             settings={settings}
