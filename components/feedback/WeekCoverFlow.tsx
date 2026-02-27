@@ -93,8 +93,10 @@ export const WeekCoverFlow: React.FC<WeekCoverFlowProps> = ({
       const reportedProgress = Number((slideEl as unknown as { progress?: number }).progress ?? NaN);
       const fallbackProgress = slideIndex - swiper.activeIndex;
       let rawProgress = Number.isFinite(reportedProgress) ? reportedProgress : fallbackProgress;
-      const isActive = slideEl.classList.contains('swiper-slide-active');
-      if (isActive && Math.abs(rawProgress) > 0.45) rawProgress = 0;
+      const isActive = slideIndex === swiper.activeIndex
+        || slideEl.classList.contains('swiper-slide-active');
+      if (isActive) rawProgress = 0;
+      if (!Number.isFinite(rawProgress)) rawProgress = fallbackProgress;
 
       const offsetAbs = Math.min(4.2, Math.abs(rawProgress));
       const preset = getStackPreset(offsetAbs);
@@ -103,9 +105,6 @@ export const WeekCoverFlow: React.FC<WeekCoverFlowProps> = ({
       const rotateX = direction === 0 ? 0 : direction > 0 ? -preset.rotateX : preset.rotateX;
       const scale = isLowPerf ? Math.max(0.54, preset.scale) : preset.scale;
       let opacity = preset.opacity;
-      if (swiper.activeIndex === 0 && rawProgress < -0.001) {
-        opacity = 0;
-      }
       if (isActive) opacity = 1;
 
       const zIndex = 220 - Math.round(offsetAbs * 26);
@@ -159,7 +158,8 @@ export const WeekCoverFlow: React.FC<WeekCoverFlowProps> = ({
         initialSlide={activeIndex}
         onSwiper={(swiper) => {
           swiperRef.current = swiper;
-          applySlideStyles(swiper);
+          requestAnimationFrame(() => applySlideStyles(swiper));
+          setTimeout(() => applySlideStyles(swiper), 0);
         }}
         onProgress={(swiper) => applySlideStyles(swiper)}
         onSetTransition={(swiper, duration) => applyTransition(swiper, duration)}

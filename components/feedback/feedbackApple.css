@@ -42,11 +42,6 @@
   transform: scale(0.985);
 }
 
-.fb-coverflow-entering {
-  transform: translateY(10px) scale(0.985);
-  opacity: 0.01;
-}
-
 .fb-summary-wrap {
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 22px;
@@ -214,11 +209,6 @@
   .fb-coverflow-swiper {
     transition-duration: 120ms !important;
     animation: none !important;
-  }
-
-  .fb-coverflow-entering {
-    transform: none;
-    opacity: 1;
   }
 }
 

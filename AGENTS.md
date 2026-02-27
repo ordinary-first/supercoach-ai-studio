@@ -82,13 +82,13 @@ When one agent completes work that another agent will continue:
 ## Current Status
 _Last updated: 2026-02-27_
 
-### CoverFlow UI Redesign (V02.27r10)
+### CoverFlow UI Redesign (V02.27r11)
 - **package.json**
-  - Bumped `displayVersion` to `V02.27r10`.
+  - Bumped `displayVersion` to `V02.27r11`.
 - **components/FeedbackView.tsx**
   - Expanded feedback history range from 12 weeks to 52 weeks (`index 0 = current week`, larger index = older week).
   - Kept `Detail then Pull` entry: week-detail default, pull down to enter coverflow.
-  - Added coverflow-enter transition state to reduce first-frame jump when switching modes.
+  - Removed coverflow-enter transition gate state because it could keep UI visually hidden on some mobile paths.
   - Coverflow card tap still returns to selected week detail view.
 - **components/feedback/WeekCoverFlow.tsx**
   - Rebuilt with `Swiper` stack-visible layout (`slidesPerView='auto'`, `centeredSlides`, negative `spaceBetween`).
@@ -96,11 +96,11 @@ _Last updated: 2026-02-27_
   - Gesture direction tuned for user expectation: pull down moves to older weeks, pull up moves toward current.
   - Boundary behavior kept as bounce-only at newest/oldest limits.
   - Hotfix: removed ready-gated opacity path that could leave coverflow blank on some mobile runs.
-  - Hotfix: active slide visibility is now hard-pinned even when reported Swiper progress is unstable.
+  - Hotfix: active slide visibility is hard-pinned and progress fallback uses index-based safety path.
 - **components/feedback/feedbackApple.css**
   - Added coverflow stage layer for depth emphasis in album mode.
   - Updated swiper slide sizing to card-height basis for simultaneous stack visibility.
-  - Added coverflow-entering transition and reduced-motion fallback for entry effect.
+  - Removed coverflow-entering transition style to avoid accidental visual blanking.
   - Hotfix: removed default `opacity: 0` from swiper container to prevent empty-screen rendering.
 - **components/feedback/WeekCoverCard.tsx**
   - Existing interaction contract preserved:
