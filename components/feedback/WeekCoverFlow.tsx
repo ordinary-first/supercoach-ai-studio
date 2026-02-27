@@ -136,14 +136,17 @@ export const WeekCoverFlow: React.FC<WeekCoverFlowProps> = ({
         direction="vertical"
         slidesPerView="auto"
         centeredSlides
-        centeredSlidesBounds
         speed={isReducedMotion ? 220 : 420}
-        threshold={10}
+        threshold={2}
         spaceBetween={isLowPerf ? -124 : -148}
         resistance
         resistanceRatio={0.82}
         watchSlidesProgress
         touchRatio={-1}
+        longSwipes
+        longSwipesRatio={0.12}
+        longSwipesMs={180}
+        shortSwipes
         className={className}
         initialSlide={activeIndex}
         onSwiper={(swiper) => {
