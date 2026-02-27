@@ -15,6 +15,7 @@ import {
   getRecentActions,
   cleanupOldActions,
 } from '../services/actionLogService';
+import { loadFeedbackCards } from '../services/firebaseService';
 
 const API_BASE = '/api/chat';
 
@@ -121,12 +122,13 @@ async function refreshInBackground(
 
     let changed = false;
 
-    // 단기 메모리 갱신
-    const latestAction = actions.length > 0
-      ? Math.max(...actions.map(a => a.timestamp))
-      : 0;
+    // 단기 메모리 갱신 — 새 로그 5개 이상일 때만 GPT 호출
+    const MIN_NEW_ACTIONS = 5;
+    const newActions = actions.filter(
+      a => a.timestamp > timestamps.shortTermUpdatedAt,
+    );
 
-    if (latestAction > timestamps.shortTermUpdatedAt && actions.length > 0) {
+    if (newActions.length >= MIN_NEW_ACTIONS) {
       try {
         const res = await fetch(API_BASE, {
           method: 'POST',
@@ -134,7 +136,7 @@ async function refreshInBackground(
           body: JSON.stringify({
             action: 'summarize-short',
             userId,
-            actionLogs: actions,
+            actionLogs: newActions,
             goalContext,
             todoContext,
             existingMemory: existing,
@@ -164,6 +166,19 @@ async function refreshInBackground(
           changed = true;
         }
 
+        // 최근 30일 피드백 카드 → 장기 메모리 enrichment
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        const fmt = (d: Date) =>
+          `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        let feedbackHistory: { date: string; completedTodos: string[]; comment: string }[] = [];
+        try {
+          const cards = await loadFeedbackCards(userId, fmt(thirtyDaysAgo), fmt(new Date()));
+          feedbackHistory = cards
+            .filter(c => c.completedTodos.length > 0)
+            .map(c => ({ date: c.date, completedTodos: c.completedTodos, comment: c.coachComment || '' }));
+        } catch { /* proceed without feedback */ }
+
         const longRes = await fetch(API_BASE, {
           method: 'POST',
           headers: await getAuthHeaders(),
@@ -171,6 +186,7 @@ async function refreshInBackground(
             action: 'promote-long',
             userId,
             existingMemory: existing,
+            feedbackHistory,
           }),
         });
         if (longRes.ok) {
