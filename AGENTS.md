@@ -88,7 +88,59 @@ _Last updated: 2026-02-27_
     messages and input move together in mobile web keyboard-open state
   - Removed keyboard-open input `position: fixed` dependency in coach chat to
     avoid message area being left behind
-- Bumped `displayVersion` to `V02.27r9` (`package.json`)
+
+### CoverFlow UI Redesign (V02.27r11)
+- **package.json**
+  - Bumped `displayVersion` to `V02.27r11`.
+- **components/FeedbackView.tsx**
+  - Expanded feedback history range from 12 weeks to 52 weeks (`index 0 = current week`, larger index = older week).
+  - Kept `Detail then Pull` entry: week-detail default, pull down to enter coverflow.
+  - Removed coverflow-enter transition gate state because it could keep UI visually hidden on some mobile paths.
+  - Coverflow card tap still returns to selected week detail view.
+- **components/feedback/WeekCoverFlow.tsx**
+  - Rebuilt with `Swiper` stack-visible layout (`slidesPerView='auto'`, `centeredSlides`, negative `spaceBetween`).
+  - Signed offset 3D transform logic now renders center hero + both-side stacks when available.
+  - Gesture direction tuned for user expectation: pull down moves to older weeks, pull up moves toward current.
+  - Boundary behavior kept as bounce-only at newest/oldest limits.
+  - Hotfix: removed ready-gated opacity path that could leave coverflow blank on some mobile runs.
+  - Hotfix: active slide visibility is hard-pinned and progress fallback uses index-based safety path.
+- **components/feedback/feedbackApple.css**
+  - Added coverflow stage layer for depth emphasis in album mode.
+  - Updated swiper slide sizing to card-height basis for simultaneous stack visibility.
+  - Removed coverflow-entering transition style to avoid accidental visual blanking.
+  - Hotfix: removed default `opacity: 0` from swiper container to prevent empty-screen rendering.
+- **components/feedback/WeekCoverCard.tsx**
+  - Existing interaction contract preserved:
+  - day mini-card tap opens `DayDetailSheet` with stopPropagation intact
+  - card tap returns to week-detail mode.
+
+### FeedbackView Phase 2 (V02.27r1)
+- **Notification Settings Firestore persistence** (`services/firebaseService.ts`)
+  - `loadNotificationSettings` / `saveNotificationSettings` / `saveFcmToken` CRUD
+  - Stored at `users/{uid}/settings/notifications`
+- **Browser Notification system** (`services/notificationService.ts`)
+  - 1-minute interval timer checks morning/evening triggers
+  - localStorage dedup prevents duplicate daily notifications
+  - FCM token registration via `registerFcmToken()` (infrastructure for future server push)
+- **Daily victory auto-generation** (`components/FeedbackView.tsx`)
+  - Evening time trigger → derive FeedbackCard from todos → AI coach comment → save
+  - Browser notification on generation + auto-open day detail
+- **AI Goal Adjustment** (`services/goalAdjustmentService.ts`, `components/feedback/GoalAdjustmentCard.tsx`)
+  - Analyzes per-goal completion rates over N weeks
+  - <50% → downward suggestion, ≥95% → upward suggestion
+  - Gold-bordered card UI with accept/dismiss + 5s undo window
+  - Accepted adjustments update GoalNode.text + linked ToDoItem.text
+- **FCM Infrastructure** (`public/firebase-messaging-sw.js`)
+  - Service worker for background message handling
+  - Token registered to Firestore on notification permission grant
+- **Settings Sheet** (`components/feedback/FeedbackSettingsSheet.tsx`)
+  - Firestore-backed settings with debounced save
+  - Notification permission request + FCM token registration
+- **App.tsx integration**: `onUpdateNode` / `onUpdateTodo` callbacks passed to FeedbackView
+- **New types**: `NotificationSettings`, `GoalAdjustment` in `types.ts`
+- **i18n**: 14+ keys added for notifications/adjustments (ko.ts, en.ts, types.ts)
+
+### Previous Status
 - Visualization save hardening r22 completed:
   - Added strict save-time sanitization for visualization payload strings (UTF-8 normalization, control-char removal, URL-only media fields, length limits) across client + service + API paths
   - Added server-side `invalid-argument` rescue write in `api/save-visualization.ts` (fallback to minimal text payload so save does not fully fail)

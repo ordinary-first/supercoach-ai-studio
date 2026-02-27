@@ -822,6 +822,10 @@ const App: React.FC = () => {
         todos={todos}
         userProfile={userProfile}
         userId={userId}
+        onUpdateNode={(id, updates) => handleUpdateNode(id, updates)}
+        onUpdateTodo={(id, updates) => {
+          setTodos(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
+        }}
       />
 
       <SettingsPage

@@ -26,6 +26,17 @@
   --border-strong: rgba(255,255,255,0.20);
   --shadow-glow: rgba(204,255,0,0.3);
   --shadow-card: none;
+
+  --fb-bg: #070a12;
+  --fb-surface: rgba(18, 24, 38, 0.84);
+  --fb-glass: rgba(255, 255, 255, 0.07);
+  --fb-stroke: rgba(255, 255, 255, 0.14);
+  --fb-highlight: rgba(255, 255, 255, 0.36);
+  --fb-shadow-ambient: rgba(0, 0, 0, 0.44);
+  --fb-shadow-key: rgba(6, 10, 18, 0.72);
+  --fb-depth-1: 10px;
+  --fb-depth-2: 26px;
+  --fb-depth-3: 40px;
 }
 .light {
   --bg-base: #F8FAFC;
@@ -50,6 +61,17 @@
   --border-strong: #CBD5E1;
   --shadow-glow: rgba(77,124,15,0.3);
   --shadow-card: 0 1px 3px rgba(0,0,0,0.08);
+
+  --fb-bg: #f4f7ff;
+  --fb-surface: rgba(255, 255, 255, 0.84);
+  --fb-glass: rgba(255, 255, 255, 0.72);
+  --fb-stroke: rgba(15, 23, 42, 0.12);
+  --fb-highlight: rgba(255, 255, 255, 0.9);
+  --fb-shadow-ambient: rgba(0, 0, 0, 0.08);
+  --fb-shadow-key: rgba(15, 23, 42, 0.1);
+  --fb-depth-1: 8px;
+  --fb-depth-2: 20px;
+  --fb-depth-3: 32px;
 }
 body {
   background-color: var(--bg-base);

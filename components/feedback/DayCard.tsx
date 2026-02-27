@@ -1,5 +1,5 @@
-import React from 'react';
-import { Check, Sprout } from 'lucide-react';
+﻿import React from 'react';
+import { Check, MessageCircle, Sprout } from 'lucide-react';
 import type { FeedbackCard } from '../../types';
 import type { TranslationStrings } from '../../i18n/types';
 
@@ -15,131 +15,96 @@ interface DayCardProps {
 }
 
 const formatDayLabel = (date: Date, t: TranslationStrings): string => {
-  const dayIndex = (date.getDay() + 6) % 7; // Mon=0
+  const dayIndex = (date.getDay() + 6) % 7;
   return t.feedback.dayNames[dayIndex];
 };
 
-const formatDateShort = (date: Date): string => {
-  return `${date.getMonth() + 1}.${date.getDate()}`;
-};
+const formatDateShort = (date: Date): string => `${date.getMonth() + 1}.${date.getDate()}`;
 
-export const DayCard: React.FC<DayCardProps> = ({
-  date,
-  state,
-  card,
-  t,
-  index,
-  onTap,
-}) => {
+export const DayCard: React.FC<DayCardProps> = ({ date, state, card, t, index, onTap }) => {
   const dayLabel = formatDayLabel(date, t);
   const dateShort = formatDateShort(date);
+  const delay = `${index * 42}ms`;
 
-  const baseClasses =
-    'flex-shrink-0 w-[140px] h-[180px] rounded-2xl p-3 flex flex-col cursor-pointer ' +
-    'transition-transform active:scale-[0.97] duration-75';
-
-  const staggerDelay = `${index * 50}ms`;
+  const base =
+    'fb-day-card flex-shrink-0 w-[146px] h-[186px] rounded-[20px] px-3.5 py-3 ' +
+    'flex flex-col cursor-pointer transition-transform active:scale-[0.985]';
 
   if (state === 'future') {
     return (
-      <div
-        className={`${baseClasses} bg-[#0D0D0D] border border-white/[0.04]`}
-        style={{ animationDelay: staggerDelay }}
-        onClick={onTap}
-      >
-        <div className="text-[11px] text-white/30 font-medium">
-          {dayLabel} <span className="text-white/20">{dateShort}</span>
+      <button className={`${base} fb-day-card-future`} style={{ animationDelay: delay }} onClick={onTap}>
+        <div className="text-[11px] text-white/40 font-medium">
+          {dayLabel} <span className="text-white/26">{dateShort}</span>
         </div>
-      </div>
+      </button>
     );
   }
 
   if (state === 'today-pending') {
     return (
-      <div
-        className={`${baseClasses} bg-[#111111] border border-white/[0.12]`}
-        style={{ animationDelay: staggerDelay }}
-        onClick={onTap}
-      >
-        <div className="text-[11px] text-white/50 font-semibold">
-          {t.feedback.today}
-        </div>
+      <button className={`${base} fb-day-card-today`} style={{ animationDelay: delay }} onClick={onTap}>
+        <div className="text-[11px] text-white/75 font-semibold">{t.feedback.today}</div>
         <div className="flex-1 flex flex-col items-center justify-center">
-          <p className="text-[11px] text-white/30 text-center whitespace-pre-line leading-relaxed">
+          <p className="text-[11px] text-white/46 text-center whitespace-pre-line leading-relaxed">
             {t.feedback.todayPending}
           </p>
           <div className="flex gap-1.5 mt-3">
             {[0, 1, 2].map((i) => (
-              <div
+              <span
                 key={i}
-                className="w-1.5 h-1.5 rounded-full bg-white/20 animate-pulse"
-                style={{ animationDelay: `${i * 300}ms` }}
+                className="fb-mini-dot"
+                style={{ animationDelay: `${i * 260}ms` }}
               />
             ))}
           </div>
         </div>
-      </div>
+      </button>
     );
   }
 
   if (state === 'empty-past') {
     return (
-      <div
-        className={`${baseClasses} bg-[#0D0D0D] border border-white/[0.04]`}
-        style={{ animationDelay: staggerDelay }}
-        onClick={onTap}
-      >
-        <div className="text-[11px] text-white/30 font-medium">
-          {dayLabel} <span className="text-white/20">{dateShort}</span>
+      <button className={`${base} fb-day-card-empty`} style={{ animationDelay: delay }} onClick={onTap}>
+        <div className="text-[11px] text-white/40 font-medium">
+          {dayLabel} <span className="text-white/26">{dateShort}</span>
         </div>
         <div className="flex-1 flex flex-col items-center justify-center">
-          <Sprout size={16} className="text-white/15 mb-1" />
-          <p className="text-[10px] text-white/20 text-center">
-            {t.feedback.emptyRecord}
-          </p>
+          <Sprout size={16} className="text-white/26 mb-1.5" />
+          <p className="text-[10px] text-white/30 text-center">{t.feedback.emptyRecord}</p>
         </div>
-      </div>
+      </button>
     );
   }
 
-  // state === 'completed'
   const completed = card?.completedTodos ?? [];
-  const maxItems = 3;
-  const visibleItems = completed.slice(0, maxItems);
+  const visibleItems = completed.slice(0, 3);
 
   return (
-    <div
-      className={`${baseClasses} bg-[#161616] border border-white/[0.08]`}
-      style={{ animationDelay: staggerDelay }}
-      onClick={onTap}
-    >
-      <div className="text-[11px] text-white/50 font-semibold mb-1.5">
-        {dayLabel} <span className="text-white/30">{dateShort}</span>
+    <button className={`${base} fb-day-card-completed`} style={{ animationDelay: delay }} onClick={onTap}>
+      <div className="text-[11px] text-white/66 font-semibold mb-1.5">
+        {dayLabel} <span className="text-white/34">{dateShort}</span>
       </div>
 
       <div className="flex-1 space-y-1 overflow-hidden">
         {visibleItems.map((item, i) => (
           <div key={i} className="flex items-start gap-1.5">
             <Check size={10} className="text-th-accent mt-0.5 shrink-0" />
-            <span className="text-[11px] text-white/75 leading-tight line-clamp-1">
-              {item}
-            </span>
+            <span className="text-[11px] text-white/82 leading-tight line-clamp-1">{item}</span>
           </div>
         ))}
-        {completed.length > maxItems && (
-          <span className="text-[10px] text-white/30">
-            +{completed.length - maxItems}
-          </span>
+        {completed.length > 3 && (
+          <span className="text-[10px] text-white/36">+{completed.length - 3}</span>
         )}
       </div>
 
       {card?.coachComment && (
-        <div className="mt-auto pt-1.5 border-t border-white/[0.04]">
-          <p className="text-[10px] text-white/50 italic line-clamp-2 leading-tight">
-            💬 {card.coachComment}
+        <div className="mt-auto pt-1.5 border-t border-white/[0.08]">
+          <p className="text-[10px] text-white/56 italic line-clamp-2 leading-tight flex items-start gap-1">
+            <MessageCircle size={10} className="shrink-0 mt-[1px] text-white/45" />
+            <span>{card.coachComment}</span>
           </p>
         </div>
       )}
-    </div>
+    </button>
   );
 };

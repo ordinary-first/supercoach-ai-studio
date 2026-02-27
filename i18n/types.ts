@@ -126,6 +126,24 @@ export interface TranslationStrings {
     alarmOn: string;
     alarmOff: string;
     dayNames: string[];
+    notificationPermission: string;
+    notificationGranted: string;
+    notificationDenied: string;
+    notificationRequest: string;
+    todayVictoryGenerated: string;
+    generatingVictory: string;
+    morningNotifTitle: string;
+    morningNotifBody: string;
+    eveningNotifTitle: string;
+    eveningNotifBody: string;
+    goalAdjustment: string;
+    adjustSuggestion: string;
+    keepCurrent: string;
+    adjustGoal: string;
+    adjusting: string;
+    adjustComplete: string;
+    undo: string;
+    adjustReason: string;
   };
   settings: {
     title: string;
