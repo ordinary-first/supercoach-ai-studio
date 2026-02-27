@@ -42,6 +42,11 @@
   transform: scale(0.985);
 }
 
+.fb-coverflow-entering {
+  transform: translateY(10px) scale(0.985);
+  opacity: 0.01;
+}
+
 .fb-summary-wrap {
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 22px;
@@ -78,11 +83,26 @@
   height: 100%;
   overflow: visible;
   perspective: 1400px;
-  perspective-origin: 50% 42%;
+  perspective-origin: 50% 50%;
+  opacity: 0;
+  transition: opacity 180ms ease;
+}
+
+.fb-coverflow-ready {
+  opacity: 1;
+}
+
+.fb-coverflow-stage {
+  background:
+    radial-gradient(80% 60% at 50% 45%, rgba(125, 148, 255, 0.14) 0%, transparent 66%),
+    linear-gradient(180deg, rgba(8, 11, 20, 0.2) 0%, rgba(8, 11, 20, 0.04) 100%);
 }
 
 .fb-coverflow-swiper .swiper-wrapper {
   align-items: center;
+  padding-top: min(24vh, 196px);
+  padding-bottom: min(24vh, 196px);
+  box-sizing: border-box;
 }
 
 .fb-coverflow-swiper .swiper-slide {
@@ -90,6 +110,7 @@
   align-items: center;
   justify-content: center;
   overflow: visible;
+  height: clamp(248px, 34vh, 320px);
 }
 
 .fb-coverflow-slide-shell {
@@ -102,7 +123,7 @@
 
 .fb-coverflow-card-host {
   width: 100%;
-  transform-origin: 50% 60%;
+  transform-origin: 50% 50%;
   transition: transform 420ms cubic-bezier(0.32, 0.72, 0, 1), opacity 280ms ease, filter 280ms ease;
   will-change: transform, opacity, filter;
 }
@@ -195,9 +216,15 @@
 @media (prefers-reduced-motion: reduce) {
   .fb-card-press,
   .fb-coverflow-card-host,
-  .fb-mini-day {
+  .fb-mini-day,
+  .fb-coverflow-swiper {
     transition-duration: 120ms !important;
     animation: none !important;
+  }
+
+  .fb-coverflow-entering {
+    transform: none;
+    opacity: 1;
   }
 }
 

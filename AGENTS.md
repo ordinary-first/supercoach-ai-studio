@@ -82,37 +82,27 @@ When one agent completes work that another agent will continue:
 ## Current Status
 _Last updated: 2026-02-27_
 
-### CoverFlow UI Redesign (V02.27r8)
-- **package.json / package-lock.json**
-  - Added `swiper` dependency and bumped `displayVersion` to `V02.27r8`.
-- **pnpm-lock.yaml**
-  - Synced lockfile with `swiper` spec to fix Vercel `frozen-lockfile` CI install failure.
-- **theme.css**
-  - Added feedback-specific visual tokens (`--fb-*`) for Apple-like depth, glass, stroke, and shadow.
-- **components/feedback/feedbackApple.css** (new)
-  - Added unified Apple-style feedback visual system:
-  - header glass layer, week-detail panel, coverflow/swiper shell, day cards, summary wrappers
-  - low-performance fallback and `prefers-reduced-motion` rules.
-- **components/feedback/WeekCoverFlow.tsx**
-  - Rebuilt engine from manual transform logic to `Swiper` vertical flow.
-  - Active week is centered; previous weeks use staged 3D transform/opacity/blur depth.
-  - iOS-like gesture tuning via `speed`, `threshold`, `resistanceRatio`, and bounce behavior.
-- **components/feedback/WeekCoverCard.tsx**
-  - Rewritten with Apple-style card shell and mini-day visual language.
-  - Existing day/week interactions preserved (day tap opens day detail; week tap returns to detail mode).
+### CoverFlow UI Redesign (V02.27r9)
+- **package.json**
+  - Bumped `displayVersion` to `V02.27r9`.
 - **components/FeedbackView.tsx**
-  - Main mode orchestration updated to `week-detail` / `coverflow`.
-  - Default entry is week-detail; downward gesture transitions into album mode.
-  - Coverflow card tap now resolves to selected-week detail return (no week overlay re-entry).
-  - Added low-perf/reduced-motion class switches without changing data/notification flows.
-- **components/feedback/DayCard.tsx**
-  - Rewritten to match new Apple tone while keeping original day-state behavior.
-- **components/feedback/WeeklySummaryCard.tsx**
-  - Rewritten with clean encoding and consistent visual structure.
-- **components/feedback/MonthlySummaryCard.tsx**
-  - Rewritten with clean encoding and consistent visual structure.
-- **components/feedback/WeekDetailSheet.tsx**
-  - Marked as deprecated in main feedback flow (kept for compatibility, no reintroduction).
+  - Expanded feedback history range from 12 weeks to 52 weeks (`index 0 = current week`, larger index = older week).
+  - Kept `Detail then Pull` entry: week-detail default, pull down to enter coverflow.
+  - Added coverflow-enter transition state to reduce first-frame jump when switching modes.
+  - Coverflow card tap still returns to selected week detail view.
+- **components/feedback/WeekCoverFlow.tsx**
+  - Rebuilt with `Swiper` stack-visible layout (`slidesPerView='auto'`, `centeredSlides`, negative `spaceBetween`).
+  - Signed offset 3D transform logic now renders center hero + both-side stacks when available.
+  - Gesture direction tuned for user expectation: pull down moves to older weeks, pull up moves toward current.
+  - Boundary behavior kept as bounce-only at newest/oldest limits.
+- **components/feedback/feedbackApple.css**
+  - Added coverflow stage layer and ready-state fade-in to prevent unstyled frame flash.
+  - Updated swiper slide sizing to card-height basis for simultaneous stack visibility.
+  - Added coverflow-entering transition and reduced-motion fallback for entry effect.
+- **components/feedback/WeekCoverCard.tsx**
+  - Existing interaction contract preserved:
+  - day mini-card tap opens `DayDetailSheet` with stopPropagation intact
+  - card tap returns to week-detail mode.
 
 ### FeedbackView Phase 2 (V02.27r1)
 - **Notification Settings Firestore persistence** (`services/firebaseService.ts`)

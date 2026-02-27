@@ -82,7 +82,7 @@ const getMonthWeekNumber = (date: Date): number => {
   return diff + (daysUntilMonday === 0 ? 1 : 2);
 };
 
-const MAX_PAST_WEEKS = 12;
+const MAX_PAST_WEEKS = 52;
 const TIMER_INTERVAL = 60000;
 const COLLAPSE_THRESHOLD = 72;
 const COLLAPSE_MAX_DRAG = 120;
@@ -136,6 +136,7 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
   const [viewMode, setViewMode] = useState<FeedbackViewMode>('week-detail');
   const [collapseDragY, setCollapseDragY] = useState(0);
   const [isCollapsingDrag, setIsCollapsingDrag] = useState(false);
+  const [isCoverflowEntering, setIsCoverflowEntering] = useState(false);
   const [isLowPerf, setIsLowPerf] = useState(false);
   const [isReducedMotion, setIsReducedMotion] = useState(false);
 
@@ -156,6 +157,7 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
   } | null>(null);
 
   const timerRef = useRef<ReturnType<typeof setInterval>>();
+  const coverflowEnterTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const collapseStartYRef = useRef(0);
 
   const currentMonday = useMemo(() => getMonday(new Date()), []);
@@ -177,7 +179,12 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
     setViewMode('week-detail');
     setCollapseDragY(0);
     setIsCollapsingDrag(false);
+    setIsCoverflowEntering(false);
   }, [isOpen]);
+
+  useEffect(() => () => {
+    if (coverflowEnterTimerRef.current) clearTimeout(coverflowEnterTimerRef.current);
+  }, []);
 
   const weeks = useMemo(
     () => Array.from({ length: MAX_PAST_WEEKS + 1 }, (_, i) => addWeeks(currentMonday, -i)),
@@ -306,10 +313,15 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
 
     setIsCollapsingDrag(false);
     if (collapseDragY >= COLLAPSE_THRESHOLD) {
+      setIsCoverflowEntering(true);
       setViewMode('coverflow');
+      if (coverflowEnterTimerRef.current) clearTimeout(coverflowEnterTimerRef.current);
+      coverflowEnterTimerRef.current = setTimeout(() => {
+        setIsCoverflowEntering(false);
+      }, isReducedMotion ? 200 : 420);
     }
     setCollapseDragY(0);
-  }, [isCollapsingDrag, viewMode, collapseDragY]);
+  }, [isCollapsingDrag, viewMode, collapseDragY, isReducedMotion]);
 
   const handleSaveCard = useCallback(
     async (card: FeedbackCard) => {
@@ -551,19 +563,28 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
       )}
 
       {viewMode === 'coverflow' ? (
-        <WeekCoverFlow
-          weeks={weeks}
-          activeIndex={activeWeekIndex}
-          todos={todos}
-          feedbackCards={mergedCards}
-          t={t}
-          onIndexChange={setActiveWeekIndex}
-          onDayTap={(date) => setSelectedDay(date)}
-          onWeekTap={(idx) => {
-            setActiveWeekIndex(idx);
-            setViewMode('week-detail');
+        <div
+          className={isCoverflowEntering ? 'fb-coverflow-entering' : ''}
+          style={{
+            transition: isReducedMotion
+              ? 'opacity 180ms ease'
+              : 'transform 420ms cubic-bezier(0.32, 0.72, 0, 1), opacity 320ms ease',
           }}
-        />
+        >
+          <WeekCoverFlow
+            weeks={weeks}
+            activeIndex={activeWeekIndex}
+            todos={todos}
+            feedbackCards={mergedCards}
+            t={t}
+            onIndexChange={setActiveWeekIndex}
+            onDayTap={(date) => setSelectedDay(date)}
+            onWeekTap={(idx) => {
+              setActiveWeekIndex(idx);
+              setViewMode('week-detail');
+            }}
+          />
+        </div>
       ) : (
         <div className="flex-1 overflow-y-auto">
           <div className="px-4 pt-3 pb-2 text-center">
