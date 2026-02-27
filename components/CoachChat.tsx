@@ -31,7 +31,7 @@ interface CoachChatProps {
 const CoachChat: React.FC<CoachChatProps> = ({
   isOpen, onClose, selectedNode, nodes, userProfile, userId, todos, onOpenVisualization, messages, onMessagesChange, activeTab
 }) => {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [selectedTopic, setSelectedTopic] = useState<CoachingQuestion | null>(null);
