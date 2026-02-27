@@ -59,6 +59,17 @@ const CoachChat: React.FC<CoachChatProps> = ({
     return () => nav.virtualKeyboard!.removeEventListener('geometrychange', onChange);
   }, []);
 
+  // Fallback: visualViewport resize → scroll to bottom (키보드 올라올 때)
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const onResize = () => {
+      requestAnimationFrame(() => scrollToBottom());
+    };
+    vv.addEventListener('resize', onResize);
+    return () => vv.removeEventListener('resize', onResize);
+  }, []);
+
   const extractComment = useCallback((text: string) => {
     const match = text.match(/<!-- COMMENT: (.+?) -->/);
     if (!match) return { clean: text, comment: null };
