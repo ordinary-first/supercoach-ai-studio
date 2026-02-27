@@ -84,12 +84,6 @@
   overflow: visible;
   perspective: 1400px;
   perspective-origin: 50% 50%;
-  opacity: 0;
-  transition: opacity 180ms ease;
-}
-
-.fb-coverflow-ready {
-  opacity: 1;
 }
 
 .fb-coverflow-stage {
