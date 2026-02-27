@@ -85,6 +85,8 @@ _Last updated: 2026-02-27_
 ### CoverFlow UI Redesign (V02.27r8)
 - **package.json / package-lock.json**
   - Added `swiper` dependency and bumped `displayVersion` to `V02.27r8`.
+- **pnpm-lock.yaml**
+  - Synced lockfile with `swiper` spec to fix Vercel `frozen-lockfile` CI install failure.
 - **theme.css**
   - Added feedback-specific visual tokens (`--fb-*`) for Apple-like depth, glass, stroke, and shadow.
 - **components/feedback/feedbackApple.css** (new)
