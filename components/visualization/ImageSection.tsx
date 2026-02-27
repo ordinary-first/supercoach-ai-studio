@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 
 interface ImageSectionProps {
   imageUrl?: string;
@@ -26,18 +26,11 @@ function ImageSection({ imageUrl, imageDataUrl, isLoading }: ImageSectionProps) 
   const hasImage = !!(imageUrl || imageDataUrl);
 
   return (
-    <section style={{ backgroundColor: '#111111' }}>
+    <section className="apple-card overflow-hidden rounded-[18px]">
       <style>{floatStyle}</style>
       <div className="px-6 pt-5 pb-2">
-        <span
-          className="font-medium uppercase"
-          style={{
-            color: '#444',
-            fontSize: '11px',
-            letterSpacing: '0.12em',
-          }}
-        >
-          SCENE &middot; IMAGE
+        <span className="font-medium uppercase text-[11px] tracking-[0.12em] text-white/35">
+          SCENE · IMAGE
         </span>
       </div>
 
@@ -53,23 +46,20 @@ function ImageSection({ imageUrl, imageDataUrl, isLoading }: ImageSectionProps) 
       )}
 
       {!hasImage && isLoading && (
-        <div
-          className="relative overflow-hidden"
-          style={{ height: '100vw', backgroundColor: '#0D0D0D' }}
-        >
-          {BLOB_COLORS.map((color, i) => (
+        <div className="relative overflow-hidden h-[100vw] bg-black/35">
+          {BLOB_COLORS.map((color, index) => (
             <div
-              key={i}
+              key={index}
               className="absolute rounded-full"
               style={{
                 width: '40%',
                 height: '40%',
-                top: `${20 + i * 15}%`,
-                left: `${10 + i * 20}%`,
+                top: `${20 + index * 15}%`,
+                left: `${10 + index * 20}%`,
                 backgroundColor: color,
                 filter: 'blur(40px)',
                 opacity: 0.3,
-                animation: `float 8s ease-in-out ${i * 2.5}s infinite`,
+                animation: `float 8s ease-in-out ${index * 2.5}s infinite`,
               }}
             />
           ))}

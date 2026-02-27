@@ -1,6 +1,7 @@
-import { type FC, useRef, useCallback } from 'react';
+﻿import { type FC, useRef, useCallback } from 'react';
 import { Sparkles, Play, Mic, Loader2 } from 'lucide-react';
 import { SavedVisualization } from '../../services/firebaseService';
+import { useTranslation } from '../../i18n/useTranslation';
 
 interface DreamGalleryProps {
   items: SavedVisualization[];
@@ -10,16 +11,17 @@ interface DreamGalleryProps {
 }
 
 const GRADIENTS = [
-  'from-purple-900 to-blue-900',
+  'from-slate-800 to-blue-900',
   'from-emerald-900 to-teal-900',
   'from-orange-900 to-red-900',
-  'from-indigo-900 to-violet-900',
+  'from-indigo-900 to-slate-800',
   'from-cyan-900 to-blue-900',
-  'from-pink-900 to-rose-900',
+  'from-zinc-800 to-neutral-900',
 ];
 
-const pickGradient = (id: string): string =>
-  GRADIENTS[id.charCodeAt(0) % GRADIENTS.length];
+const pickGradient = (id: string): string => {
+  return GRADIENTS[id.charCodeAt(0) % GRADIENTS.length];
+};
 
 const DreamGallery: FC<DreamGalleryProps> = ({
   items,
@@ -27,6 +29,7 @@ const DreamGallery: FC<DreamGalleryProps> = ({
   onItemDelete,
   onCreateDream,
 }) => {
+  const { t } = useTranslation();
   const longPressRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pressedIdRef = useRef<string | null>(null);
 
@@ -34,9 +37,7 @@ const DreamGallery: FC<DreamGalleryProps> = ({
     (item: SavedVisualization) => {
       pressedIdRef.current = item.id;
       longPressRef.current = setTimeout(() => {
-        if (pressedIdRef.current === item.id) {
-          onItemDelete(item.id);
-        }
+        if (pressedIdRef.current === item.id) onItemDelete(item.id);
         pressedIdRef.current = null;
       }, 800);
     },
@@ -54,115 +55,78 @@ const DreamGallery: FC<DreamGalleryProps> = ({
   if (items.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
-        <Sparkles size={32} style={{ color: 'rgba(255,255,255,0.2)' }} />
-        <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.4)' }}>
-          아직 드림이 없어요
-        </p>
-        <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.3)' }}>
-          첫 번째 드림을 만들어보세요
-        </p>
+        <Sparkles size={32} className="text-white/20" />
+        <p className="text-[15px] text-white/60">{t.visualization.noDreamsYet}</p>
+        <p className="text-[13px] text-white/40">{t.visualization.noDreamsDesc}</p>
         <button
           type="button"
           onClick={onCreateDream}
-          className="mt-2 px-5 py-2 rounded-full cursor-pointer"
-          style={{
-            fontSize: 14,
-            fontWeight: 600,
-            color: '#fff',
-            background: 'linear-gradient(135deg, #7c3aed, #6366f1)',
-          }}
+          className="apple-card mt-2 px-5 py-2 rounded-full text-sm font-semibold text-white
+            hover:bg-white/10 transition-colors"
         >
-          + 드림 만들기
+          + {t.visualization.createFirstDream}
         </button>
       </div>
     );
   }
 
   return (
-    <div
-      className="grid grid-cols-3 w-full"
-      style={{ gap: 2 }}
-    >
+    <div className="grid grid-cols-3 w-full gap-0.5 px-0.5 pb-3">
       {items.map((item) => {
         const hasImage = !!item.imageUrl;
         const hasVideo = !!item.videoUrl || item.videoStatus === 'ready';
         const isPending = item.videoStatus === 'pending';
-        const hasAudioOnly =
-          !!item.audioUrl && !hasImage && !hasVideo;
+        const hasAudioOnly = !!item.audioUrl && !hasImage && !hasVideo;
 
         return (
           <button
             key={item.id}
             type="button"
-            className={`relative aspect-square overflow-hidden cursor-pointer ${
+            className={`relative aspect-square overflow-hidden cursor-pointer rounded-[10px] ${
               !hasImage ? `bg-gradient-to-br ${pickGradient(item.id)}` : ''
             }`}
             onClick={() => onItemTap(item)}
             onTouchStart={() => handleTouchStart(item)}
             onTouchEnd={cancelLongPress}
             onTouchCancel={cancelLongPress}
-            onContextMenu={(e) => {
-              e.preventDefault();
+            onContextMenu={(event) => {
+              event.preventDefault();
               onItemDelete(item.id);
             }}
-            style={{ border: 'none', padding: 0 }}
           >
-            {/* Thumbnail image */}
             {hasImage && (
               <img
                 src={item.imageUrl}
-                alt=""
+                alt={t.visualization.imageAlt}
                 className="absolute inset-0 w-full h-full object-cover"
                 loading="lazy"
               />
             )}
 
-            {/* Text fallback (no image) */}
             {!hasImage && (
-              <span
-                className="absolute inset-0 flex items-center justify-center px-1 text-center"
-                style={{
-                  fontSize: 11,
-                  color: '#fff',
-                  lineHeight: 1.3,
-                  overflow: 'hidden',
-                  display: '-webkit-box',
-                  WebkitLineClamp: 3,
-                  WebkitBoxOrient: 'vertical',
-                }}
+              <span className="absolute inset-0 flex items-center justify-center px-1 text-center text-[11px]
+                text-white leading-[1.3] line-clamp-3"
               >
                 {(item.text || item.inputText || '').split('\n')[0]}
               </span>
             )}
 
-            {/* Video badge */}
             {hasVideo && !isPending && (
-              <span
-                className="absolute bottom-1 right-1 flex items-center justify-center"
-                style={{
-                  width: 22,
-                  height: 22,
-                  borderRadius: 999,
-                  background: 'rgba(0,0,0,0.5)',
-                }}
+              <span className="absolute bottom-1 right-1 flex items-center justify-center w-[22px] h-[22px]
+                rounded-full bg-black/50"
               >
                 <Play size={14} color="#fff" fill="#fff" />
               </span>
             )}
 
-            {/* Audio-only badge */}
             {hasAudioOnly && (
               <span className="absolute inset-0 flex items-center justify-center">
                 <Mic size={20} color="rgba(255,255,255,0.6)" />
               </span>
             )}
 
-            {/* Pending / generating shimmer */}
             {isPending && (
-              <span
-                className="absolute inset-0 flex items-center justify-center animate-pulse"
-                style={{ background: 'rgba(0,0,0,0.35)' }}
-              >
+              <span className="absolute inset-0 flex items-center justify-center bg-black/35">
                 <Loader2 size={20} color="#fff" className="animate-spin" />
               </span>
             )}

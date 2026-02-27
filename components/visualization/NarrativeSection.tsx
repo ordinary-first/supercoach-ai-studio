@@ -1,5 +1,6 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
+import { useTranslation } from '../../i18n/useTranslation';
 
 interface NarrativeSectionProps {
   text?: string;
@@ -17,27 +18,23 @@ const SHIMMER_BG =
   'linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.03) 75%)';
 
 function NarrativeSection({ text, isLoading }: NarrativeSectionProps) {
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
 
   if (isLoading) {
     return (
-      <section style={{ backgroundColor: '#111111', padding: '20px 24px' }}>
+      <section className="apple-card rounded-[18px] px-6 py-5">
         <style>{shimmerStyle}</style>
         <div className="mb-3">
-          <span
-            className="font-medium uppercase"
-            style={{ color: '#444', fontSize: '11px', letterSpacing: '0.12em' }}
-          >
-            NARRATIVE
-          </span>
+          <span className="font-medium uppercase text-[11px] tracking-[0.12em] text-white/35">NARRATIVE</span>
         </div>
         <div className="flex flex-col gap-3">
-          {[100, 85, 60].map((w, i) => (
+          {[100, 85, 60].map((width, index) => (
             <div
-              key={i}
+              key={index}
               className="h-4 rounded"
               style={{
-                width: `${w}%`,
+                width: `${width}%`,
                 background: SHIMMER_BG,
                 backgroundSize: '200% 100%',
                 animation: 'shimmer 2s infinite',
@@ -52,44 +49,20 @@ function NarrativeSection({ text, isLoading }: NarrativeSectionProps) {
   if (!text) return null;
 
   return (
-    <section style={{ backgroundColor: '#111111', padding: '20px 24px' }}>
+    <section className="apple-card rounded-[18px] px-6 py-5">
       <div className="mb-3">
-        <span
-          className="font-medium uppercase"
-          style={{ color: '#444', fontSize: '11px', letterSpacing: '0.12em' }}
-        >
-          NARRATIVE
-        </span>
+        <span className="font-medium uppercase text-[11px] tracking-[0.12em] text-white/35">NARRATIVE</span>
       </div>
 
       <div className="relative">
-        <div
-          className="overflow-hidden transition-all duration-300 ease-in-out"
-          style={{
-            maxHeight: expanded ? '2000px' : '4.5em',
-          }}
-        >
-          <p
-            style={{
-              fontSize: '16px',
-              lineHeight: 1.75,
-              color: 'rgba(255,255,255,0.8)',
-              letterSpacing: '0.01em',
-              whiteSpace: 'pre-wrap',
-            }}
-          >
-            {text}
-          </p>
+        <div className="overflow-hidden transition-all duration-300 ease-in-out" style={{ maxHeight: expanded ? '2000px' : '4.5em' }}>
+          <p className="text-base leading-7 text-white/80 tracking-[0.01em] whitespace-pre-wrap">{text}</p>
         </div>
 
-        {/* Fade gradient when collapsed */}
         {!expanded && text.length > 120 && (
           <div
             className="absolute bottom-0 left-0 right-0 h-12 pointer-events-none"
-            style={{
-              background:
-                'linear-gradient(to top, #111111 0%, transparent 100%)',
-            }}
+            style={{ background: 'linear-gradient(to top, rgba(16,20,28,1) 0%, transparent 100%)' }}
           />
         )}
       </div>
@@ -97,16 +70,15 @@ function NarrativeSection({ text, isLoading }: NarrativeSectionProps) {
       {text.length > 120 && (
         <button
           onClick={() => setExpanded((prev) => !prev)}
-          className="mt-2 flex items-center gap-1"
-          style={{ color: 'rgba(255,255,255,0.5)', fontSize: '13px' }}
+          className="mt-2 flex items-center gap-1 text-white/60 text-[13px]"
         >
           {expanded ? (
             <>
-              {'\uC811\uAE30'} <ChevronUp size={14} />
+              {t.visualization.foldUp} <ChevronUp size={14} />
             </>
           ) : (
             <>
-              {'\uB354 \uBCF4\uAE30'} <ChevronDown size={14} />
+              {t.visualization.moreSee} <ChevronDown size={14} />
             </>
           )}
         </button>

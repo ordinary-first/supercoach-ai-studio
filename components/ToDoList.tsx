@@ -1,7 +1,8 @@
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+﻿import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { Check, Trash2, Plus, ListTodo, Circle, CheckCircle2, Target, Bell, Repeat, Sun, ArrowLeft, ChevronRight, ChevronDown, Layout, X, Calendar, Star, CalendarDays, Home, Menu, GripVertical } from 'lucide-react';
 import { ToDoItem, TodoList, TodoGroup, SmartListId, RepeatFrequency } from '../types';
 import { useFocusTrap } from '../hooks/useFocusTrap';
+import { useTranslation } from '../i18n/useTranslation';
 import TodoSidebar from './todo/TodoSidebar';
 import CreateListModal from './todo/CreateListModal';
 import CreateGroupModal from './todo/CreateGroupModal';
@@ -26,7 +27,7 @@ const SortableTodoItem: React.FC<SortableTodoItemProps> = ({ id, isSelected, isC
     opacity: isDragging ? 0.4 : 1,
     zIndex: isDragging ? 10 : undefined,
   };
-  const cardClass = `group flex items-center gap-2.5 py-2.5 px-3 mx-2 mb-1.5 rounded-lg cursor-pointer transition-all duration-150 ${
+  const cardClass = `apple-card group flex items-center gap-2.5 py-2.5 px-3 mx-2 mb-1.5 rounded-lg cursor-pointer transition-all duration-150 ${
     isSelected
       ? 'bg-white/15 ring-1 ring-neon-lime/30'
       : (isCompleted ? 'bg-white/[0.04] opacity-50' : 'bg-white/[0.06] hover:bg-white/10')
@@ -61,6 +62,7 @@ interface ToDoListProps {
 }
 
 const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, todoGroups, activeListId, onActiveListChange, onTodoListsChange, onTodoGroupsChange, onAddToDo, onToggleToDo, onDeleteToDo, onUpdateToDo, onReorderTodos }) => {
+  const { t, language } = useTranslation();
   const [inputText, setInputText] = useState('');
   const [selectedToDoId, setSelectedToDoId] = useState<string | null>(null);
   const focusTrapRef = useFocusTrap(isOpen);
@@ -74,12 +76,37 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
   const [editingListId, setEditingListId] = useState<string | null>(null);
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
 
+  const uiText = useMemo(() => {
+    if (language === 'ko') {
+      return {
+        smartMyDay: '오늘 할 일',
+        smartImportant: '중요',
+        smartPlanned: '계획된 일정',
+        smartTasks: '작업',
+        searchResults: '검색 결과',
+        completedSection: '완료',
+        createdLabel: '생성일',
+        idLabel: 'ID',
+      };
+    }
+    return {
+      smartMyDay: 'My Day',
+      smartImportant: 'Important',
+      smartPlanned: 'Planned',
+      smartTasks: 'Tasks',
+      searchResults: 'Search results',
+      completedSection: 'Completed',
+      createdLabel: 'Created',
+      idLabel: 'ID',
+    };
+  }, [language]);
+
   // Smart list definitions
   const SMART_LIST_META: Record<SmartListId, { name: string; icon: React.ReactNode; color: string }> = {
-    myDay: { name: '오늘 할 일', icon: <Sun size={20} />, color: 'text-yellow-400' },
-    important: { name: '중요', icon: <Star size={20} />, color: 'text-red-400' },
-    planned: { name: '계획된 일정', icon: <CalendarDays size={20} />, color: 'text-blue-400' },
-    tasks: { name: '작업', icon: <Home size={20} />, color: 'text-neon-lime' },
+    myDay: { name: uiText.smartMyDay, icon: <Sun size={20} />, color: 'text-yellow-400' },
+    important: { name: uiText.smartImportant, icon: <Star size={20} />, color: 'text-red-400' },
+    planned: { name: uiText.smartPlanned, icon: <CalendarDays size={20} />, color: 'text-blue-400' },
+    tasks: { name: uiText.smartTasks, icon: <Home size={20} />, color: 'text-neon-lime' },
   };
 
   // Filter todos based on active list or search
@@ -107,8 +134,8 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
     if (smart) return smart;
     const customList = todoLists.find(l => l.id === activeListId);
     if (customList) return { name: customList.name, icon: <ListTodo size={20} />, color: `text-[${customList.color || '#CCFF00'}]` };
-    return { name: '작업', icon: <Home size={20} />, color: 'text-neon-lime' };
-  }, [activeListId, todoLists]);
+    return { name: uiText.smartTasks, icon: <Home size={20} />, color: 'text-neon-lime' };
+  }, [activeListId, todoLists, uiText.smartTasks]);
 
   // CRUD handlers
   const handleCreateList = (name: string, color: string, groupId?: string) => {
@@ -179,7 +206,7 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
       const isSmartList = (['myDay', 'important', 'planned', 'tasks'] as string[]).includes(activeListId);
       const listId = isSmartList ? undefined : activeListId;
 
-      // Smart list별 속성 자동 설정
+      // Smart list 속성 자동 설정
       const extras: Partial<ToDoItem> = {};
       if (activeListId === 'myDay') extras.isMyDay = true;
       if (activeListId === 'important') extras.priority = 'high';
@@ -197,7 +224,7 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
     }
   };
 
-  // Sort: sortOrder 우선, 없으면 MyDay → createdAt
+  // Sort: sortOrder 우선, 없으면 MyDay -> createdAt 순서
   const sortTodos = (a: ToDoItem, b: ToDoItem) => {
     if (a.sortOrder != null && b.sortOrder != null) return a.sortOrder - b.sortOrder;
     if (a.sortOrder != null) return -1;
@@ -231,13 +258,13 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
 
   // 카드형 기본 클래스
   const getCardClass = (todo: ToDoItem) =>
-    `group flex items-center gap-2.5 py-2.5 px-3 mx-2 mb-1.5 rounded-lg cursor-pointer transition-all duration-150 ${
+    `apple-card group flex items-center gap-2.5 py-2.5 px-3 mx-2 mb-1.5 rounded-lg cursor-pointer transition-all duration-150 ${
       selectedToDoId === todo.id
         ? 'bg-white/15 ring-1 ring-neon-lime/30'
         : (todo.completed ? 'bg-white/[0.04] opacity-50' : 'bg-white/[0.06] hover:bg-white/10')
     }`;
 
-  // 아이템 공통 콘텐츠 (체크박스 + 텍스트 + 메타 + 삭제 + 화살표)
+  // 아이템 공통 콘텐츠 (체크박스 + 텍스트 + 메타 + 삭제 + 상세)
   const renderTodoItemContent = (todo: ToDoItem) => (
     <>
       <button
@@ -250,7 +277,11 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
         <p className={`text-sm truncate ${todo.completed ? 'line-through text-gray-500' : 'text-white'}`}>{todo.text}</p>
         {(todo.isMyDay || todo.dueDate || todo.repeat || todo.linkedNodeText) && (
           <div className="flex flex-wrap gap-1.5 mt-0.5">
-            {todo.isMyDay && <span className="flex items-center gap-0.5 text-[10px] text-yellow-400"><Sun size={10} /> 오늘 할 일</span>}
+            {todo.isMyDay && (
+              <span className="flex items-center gap-0.5 text-[10px] text-yellow-400">
+                <Sun size={10} /> {uiText.smartMyDay}
+              </span>
+            )}
             {todo.dueDate && (
               <span className={`flex items-center gap-0.5 text-[10px] ${todo.dueDate < Date.now() && !todo.completed ? 'text-red-400' : 'text-gray-500'}`}>
                 <Calendar size={10} /> {formatDate(todo.dueDate)}
@@ -264,7 +295,7 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
       <button
         onClick={(e) => { e.stopPropagation(); onDeleteToDo(todo.id); }}
         className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 p-1 rounded hover:bg-red-500/20 text-gray-500 hover:text-red-400"
-        title="삭제"
+        title={t.todo.deleteTitle}
       >
         <Trash2 size={14} />
       </button>
@@ -282,34 +313,32 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
   // Date Format Helpers
   const formatDate = (timestamp?: number | null) => {
       if (!timestamp) return null;
-      return new Date(timestamp).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', weekday: 'short' });
+      const locale = language === 'ko' ? 'ko-KR' : 'en-US';
+      return new Date(timestamp).toLocaleDateString(locale, {
+        month: 'short',
+        day: 'numeric',
+        weekday: 'short',
+      });
   };
 
   const formatTime = (timestamp?: number | null) => {
       if (!timestamp) return null;
-      return new Date(timestamp).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+      const locale = language === 'ko' ? 'ko-KR' : 'en-US';
+      return new Date(timestamp).toLocaleTimeString(locale, {
+        hour: '2-digit',
+        minute: '2-digit',
+      });
   };
 
   const getRepeatLabel = (freq: RepeatFrequency | undefined) => {
       if (!freq) return null;
-      const labels: Record<string, string> = {
-          'daily': '매일',
-          'weekdays': '평일(월~금)',
-          'weekly': '매주(주 1회)',
-          'monthly': '매월',
-          'weekly-2': '주 2회',
-          'weekly-3': '주 3회',
-          'weekly-4': '주 4회',
-          'weekly-5': '주 5회',
-          'weekly-6': '주 6회',
-      };
-      return labels[freq] || freq;
+      return t.todo.repeatOptions[freq] || freq;
   };
 
   if (!isOpen) return null;
 
   return (
-    <div ref={focusTrapRef} className="fixed inset-0 z-50 pb-16 bg-deep-space flex flex-row overflow-hidden text-white font-body">
+    <div ref={focusTrapRef} className="apple-tab-shell fixed inset-0 z-50 pb-16 flex flex-row overflow-hidden text-white font-body">
       
       {/* Ambient Background */}
       <div className="absolute top-[-20%] right-[-10%] w-[50%] h-[50%] bg-blue-900/20 rounded-full blur-[120px] pointer-events-none"></div>
@@ -343,7 +372,7 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
       <div className="flex-1 flex flex-col min-w-0 relative z-10">
           
           {/* Header */}
-          <div className="h-11 md:h-12 border-b border-white/10 flex items-center justify-between px-3 md:px-6 bg-black/20 backdrop-blur-md shrink-0">
+          <div className="apple-glass-header h-11 md:h-12 flex items-center justify-between px-3 md:px-6 shrink-0">
               <div className="flex items-center gap-2.5">
                   <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="md:hidden p-1.5 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-colors">
                     <Menu size={18} />
@@ -352,7 +381,7 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
                     <span className={activeListInfo.color}>{activeListInfo.icon}</span>
                   </div>
                   <div>
-                      <h1 className="text-base md:text-lg font-display font-bold tracking-wider text-white">{searchQuery ? '검색 결과' : activeListInfo.name}</h1>
+                      <h1 className="text-base md:text-lg font-display font-bold tracking-wider text-white">{searchQuery ? uiText.searchResults : activeListInfo.name}</h1>
                   </div>
               </div>
           </div>
@@ -366,8 +395,8 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
                               <Target size={32} className="opacity-30" />
                           </div>
                           <div className="text-center">
-                            <p className="text-base font-bold text-gray-500">할 일이 없습니다</p>
-                            <p className="text-xs mt-1 text-gray-600">오늘의 승리를 위한 첫 번째 작업을 추가해보세요.</p>
+                            <p className="text-base font-bold text-gray-500">{t.todo.empty}</p>
+                            <p className="text-xs mt-1 text-gray-600">{t.todo.emptyHint}</p>
                           </div>
                       </div>
                   ) : (
@@ -400,7 +429,7 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
                               ? <ChevronDown size={16} className="flex-shrink-0" />
                               : <ChevronRight size={16} className="flex-shrink-0" />
                             }
-                            <span>완료됨</span>
+                            <span>{uiText.completedSection}</span>
                             <span className="text-xs bg-white/10 px-1.5 py-0.5 rounded-full">{completedTodos.length}</span>
                           </button>
                           {showCompleted && completedTodos.map(todo => renderTodoItem(todo))}
@@ -413,7 +442,7 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
 
           {/* Add task input + quick actions */}
           <div
-            className="flex flex-col border-t border-white/10 bg-deep-space flex-shrink-0"
+            className="apple-glass-header flex flex-col border-t border-white/10 flex-shrink-0"
             style={keyboardHeight > 0 ? { position: 'fixed', bottom: `${keyboardHeight}px`, left: 0, right: 0, zIndex: 60 } : undefined}
           >
             <form onSubmit={handleSubmit} className="flex items-center gap-2.5 py-2.5 px-3">
@@ -426,9 +455,9 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
                 onFocus={() => setIsInputFocused(true)}
                 onBlur={() => setTimeout(() => setIsInputFocused(false), 150)}
                 onKeyDown={(e) => { if (e.key === 'Escape') { inputRef.current?.blur(); setInputText(''); } }}
-                placeholder="작업 추가"
+                placeholder={t.todo.addLabel}
                 className="flex-1 bg-transparent text-sm text-white placeholder-gray-500 focus:outline-none"
-                aria-label="새 할 일 입력"
+                aria-label={t.todo.inputLabel}
               />
             </form>
 
@@ -437,7 +466,7 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
               <div className="flex items-center gap-1.5 px-3 pb-2 flex-wrap">
                 <label className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs cursor-pointer transition-colors ${pendingDueDate ? 'bg-neon-lime/20 text-neon-lime' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}>
                   <Calendar size={12} />
-                  <span>{pendingDueDate ? formatDate(pendingDueDate) : '기한'}</span>
+                  <span>{pendingDueDate ? formatDate(pendingDueDate) : t.todo.dueDate}</span>
                   <input type="date" className="absolute opacity-0 w-0 h-0" onChange={(e) => {
                     const d = new Date(e.target.value);
                     if (!isNaN(d.getTime())) setPendingDueDate(d.getTime());
@@ -447,7 +476,7 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
 
                 <label className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs cursor-pointer transition-colors ${pendingReminder ? 'bg-electric-orange/20 text-electric-orange' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}>
                   <Bell size={12} />
-                  <span>{pendingReminder ? `${formatDate(pendingReminder)} ${formatTime(pendingReminder)}` : '알림'}</span>
+                  <span>{pendingReminder ? `${formatDate(pendingReminder)} ${formatTime(pendingReminder)}` : t.todo.reminder}</span>
                   <input type="datetime-local" className="absolute opacity-0 w-0 h-0" onChange={(e) => {
                     const d = new Date(e.target.value);
                     if (!isNaN(d.getTime())) setPendingReminder(d.getTime());
@@ -457,13 +486,13 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
 
                 <label className={`relative flex items-center gap-1 px-2 py-1 rounded-md text-xs cursor-pointer transition-colors ${pendingRepeat ? 'bg-blue-400/20 text-blue-400' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}>
                   <Repeat size={12} />
-                  <span>{pendingRepeat ? getRepeatLabel(pendingRepeat) : '반복'}</span>
+                  <span>{pendingRepeat ? getRepeatLabel(pendingRepeat) : t.todo.repeatLabel}</span>
                   <select className="absolute inset-0 opacity-0 cursor-pointer" value={pendingRepeat || ''} onChange={(e) => setPendingRepeat((e.target.value || null) as RepeatFrequency)}>
-                    <option value="">반복 안 함</option>
-                    <option value="daily">매일</option>
-                    <option value="weekdays">평일 (월-금)</option>
-                    <option value="weekly">주 1회 (매주)</option>
-                    <option value="monthly">매월</option>
+                    <option value="">{t.todo.repeatOptions.none}</option>
+                    <option value="daily">{t.todo.repeatOptions.daily}</option>
+                    <option value="weekdays">{t.todo.repeatOptions.weekdays}</option>
+                    <option value="weekly">{t.todo.repeatOptions.weekly}</option>
+                    <option value="monthly">{t.todo.repeatOptions.monthly}</option>
                   </select>
                   {pendingRepeat && <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setPendingRepeat(null); }} className="ml-0.5"><X size={10} /></button>}
                 </label>
@@ -480,18 +509,18 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
           />
       )}
       <div
-        className={`fixed inset-y-0 right-0 w-full md:w-[380px] bg-[#0a0a10]/95 backdrop-blur-2xl border-l border-white/10 shadow-[-20px_0_50px_rgba(0,0,0,0.5)] z-20 transform transition-transform duration-300 ease-out flex flex-col ${selectedToDoId ? 'translate-x-0' : 'translate-x-full'}`}
+        className={`apple-glass-panel fixed inset-y-0 right-0 w-full md:w-[380px] border-l border-white/10 shadow-[-20px_0_50px_rgba(0,0,0,0.5)] z-20 transform transition-transform duration-300 ease-out flex flex-col ${selectedToDoId ? 'translate-x-0' : 'translate-x-full'}`}
       >
           {selectedToDo ? (
               <>
                   {/* Detail Header */}
-                  <div className="py-3 px-4 border-b border-white/10 flex items-center justify-between bg-black/20">
+                  <div className="apple-glass-header py-3 px-4 flex items-center justify-between">
                       <div className="flex items-center gap-2">
                           <button onClick={() => setSelectedToDoId(null)} className="md:hidden p-1.5 -ml-1 rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-all">
                               <ArrowLeft size={18} />
                           </button>
                           <h3 className="text-gray-400 font-bold text-sm tracking-wider flex items-center gap-2">
-                            <Layout size={14}/> 세부 정보
+                            <Layout size={14}/> {t.todo.detail}
                           </h3>
                       </div>
                       <button onClick={() => setSelectedToDoId(null)} className="text-gray-500 hover:text-white transition-colors">
@@ -524,7 +553,7 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
                             onClick={() => onUpdateToDo(selectedToDo.id, { isMyDay: !selectedToDo.isMyDay })}
                         >
                             <Sun size={16} />
-                            <span className="text-sm font-medium flex-1">나의 하루에 추가</span>
+                            <span className="text-sm font-medium flex-1">{t.todo.myDay}</span>
                             {selectedToDo.isMyDay && <Check size={14} />}
                         </div>
                       </div>
@@ -536,7 +565,7 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
                           <div className="py-2.5 px-3 flex items-center gap-3 hover:bg-white/5 relative group transition-colors">
                               <Bell size={16} className={selectedToDo.reminder ? 'text-electric-orange' : 'text-gray-500'} />
                               <div className="flex-1">
-                                  <p className="text-sm font-medium text-gray-200">미리 알림</p>
+                                  <p className="text-sm font-medium text-gray-200">{t.todo.reminder}</p>
                                   {selectedToDo.reminder && <p className="text-xs text-electric-orange mt-0.5">{formatDate(selectedToDo.reminder)} {formatTime(selectedToDo.reminder)}</p>}
                               </div>
                               <input
@@ -554,7 +583,7 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
                           <div className="py-2.5 px-3 flex items-center gap-3 hover:bg-white/5 relative group transition-colors">
                               <Calendar size={16} className={selectedToDo.dueDate ? 'text-neon-lime' : 'text-gray-500'} />
                               <div className="flex-1">
-                                  <p className="text-sm font-medium text-gray-200">기한 설정</p>
+                                  <p className="text-sm font-medium text-gray-200">{t.todo.dueDate}</p>
                                   {selectedToDo.dueDate && <p className="text-xs text-neon-lime mt-0.5">{formatDate(selectedToDo.dueDate)}</p>}
                               </div>
                               <input
@@ -572,24 +601,24 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
                           <div className="py-2.5 px-3 flex items-center gap-3 hover:bg-white/5 relative group transition-colors">
                               <Repeat size={16} className={selectedToDo.repeat ? 'text-blue-400' : 'text-gray-500'} />
                               <div className="flex-1">
-                                  <p className="text-sm font-medium text-gray-200">반복</p>
+                                  <p className="text-sm font-medium text-gray-200">{t.todo.repeatLabel}</p>
                                   {selectedToDo.repeat && <p className="text-xs text-blue-400 capitalize mt-0.5">{getRepeatLabel(selectedToDo.repeat)}</p>}
                               </div>
                               <select
                                 value={selectedToDo.repeat || ''}
                                 onChange={(e) => onUpdateToDo(selectedToDo.id, { repeat: e.target.value as RepeatFrequency || null })}
-                                className="absolute inset-0 opacity-0 cursor-pointer bg-deep-space text-white"
+                                className="absolute inset-0 opacity-0 cursor-pointer bg-th-base text-white"
                               >
-                                  <option value="">반복 안 함</option>
-                                  <option value="daily">매일</option>
-                                  <option value="weekdays">평일 (월-금)</option>
-                                  <option value="weekly">주 1회 (매주)</option>
-                                  <option value="weekly-2">주 2회</option>
-                                  <option value="weekly-3">주 3회</option>
-                                  <option value="weekly-4">주 4회</option>
-                                  <option value="weekly-5">주 5회</option>
-                                  <option value="weekly-6">주 6회</option>
-                                  <option value="monthly">매월</option>
+                                  <option value="">{t.todo.repeatOptions.none}</option>
+                                  <option value="daily">{t.todo.repeatOptions.daily}</option>
+                                  <option value="weekdays">{t.todo.repeatOptions.weekdays}</option>
+                                  <option value="weekly">{t.todo.repeatOptions.weekly}</option>
+                                  <option value="weekly-2">{t.todo.repeatOptions['weekly-2']}</option>
+                                  <option value="weekly-3">{t.todo.repeatOptions['weekly-3']}</option>
+                                  <option value="weekly-4">{t.todo.repeatOptions['weekly-4']}</option>
+                                  <option value="weekly-5">{t.todo.repeatOptions['weekly-5']}</option>
+                                  <option value="weekly-6">{t.todo.repeatOptions['weekly-6']}</option>
+                                  <option value="monthly">{t.todo.repeatOptions.monthly}</option>
                               </select>
                               {selectedToDo.repeat && <button onClick={() => onUpdateToDo(selectedToDo.id, { repeat: null })} className="p-1 hover:text-red-500 text-gray-500 z-10"><X size={14}/></button>}
                           </div>
@@ -598,7 +627,7 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
                       {/* Notes */}
                       <div className="bg-white/5 rounded-xl p-3 h-36 ring-1 ring-white/5 focus-within:ring-neon-lime/30 transition-all flex flex-col">
                           <textarea 
-                              placeholder="메모 추가..."
+                              placeholder={t.todo.notePlaceholder}
                               value={selectedToDo.note || ''}
                               onChange={(e) => onUpdateToDo(selectedToDo.id, { note: e.target.value })}
                               className="w-full h-full bg-transparent text-sm text-gray-300 resize-none focus:outline-none placeholder-gray-600"
@@ -606,27 +635,29 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
                       </div>
                       
                       <div className="text-xs text-gray-600 text-center font-mono">
-                          CREATED: {new Date(selectedToDo.createdAt).toLocaleString()}
+                          {uiText.createdLabel}: {new Date(selectedToDo.createdAt).toLocaleString(
+                            language === 'ko' ? 'ko-KR' : 'en-US'
+                          )}
                       </div>
                   </div>
 
                   {/* Footer */}
                   <div className="py-3 px-4 border-t border-white/10 flex justify-between items-center bg-black/40">
                       <div className="text-xs text-gray-500">
-                          ID: {selectedToDo.id.slice(-6)}
+                          {uiText.idLabel}: {selectedToDo.id.slice(-6)}
                       </div>
                       <button
                         onClick={() => { onDeleteToDo(selectedToDo.id); setSelectedToDoId(null); }}
                         className="text-gray-400 hover:text-red-500 transition-colors flex items-center gap-2 hover:bg-red-500/10 px-3 py-1.5 rounded-lg"
                       >
                           <Trash2 size={16} />
-                          <span className="text-sm">삭제</span>
+                          <span className="text-sm">{t.todo.deleteTitle}</span>
                       </button>
                   </div>
               </>
           ) : (
               <div className="flex-1 flex items-center justify-center text-gray-600">
-                  선택된 작업이 없습니다
+                  {t.todo.noSelection}
               </div>
           )}
       </div>
@@ -652,3 +683,4 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
 };
 
 export default ToDoList;
+

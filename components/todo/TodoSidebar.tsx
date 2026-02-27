@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useMemo, useState } from 'react';
 import {
   Sun,
   Star,
@@ -14,44 +14,8 @@ import {
   MoreHorizontal,
 } from 'lucide-react';
 import { ToDoItem, TodoList, TodoGroup, SmartListId } from '../../types';
+import { useTranslation } from '../../i18n/useTranslation';
 import TodoSearchBar from './TodoSearchBar';
-
-const SMART_LISTS: {
-  id: SmartListId;
-  name: string;
-  icon: React.ReactNode;
-  color: string;
-  filter: (t: ToDoItem) => boolean;
-}[] = [
-  {
-    id: 'myDay',
-    name: '오늘 할 일',
-    icon: <Sun size={18} />,
-    color: 'text-yellow-400',
-    filter: (t) => !!t.isMyDay && !t.completed,
-  },
-  {
-    id: 'important',
-    name: '중요',
-    icon: <Star size={18} />,
-    color: 'text-red-400',
-    filter: (t) => t.priority === 'high' && !t.completed,
-  },
-  {
-    id: 'planned',
-    name: '계획된 일정',
-    icon: <CalendarDays size={18} />,
-    color: 'text-blue-400',
-    filter: (t) => t.dueDate != null && !t.completed,
-  },
-  {
-    id: 'tasks',
-    name: '작업',
-    icon: <Home size={18} />,
-    color: 'text-neon-lime',
-    filter: (t) => (!t.listId || t.listId === 'tasks') && !t.completed,
-  },
-];
 
 interface TodoSidebarProps {
   todos: ToDoItem[];
@@ -86,19 +50,94 @@ export default function TodoSidebar({
   onRenameGroup,
   onToggleGroupCollapse,
 }: TodoSidebarProps) {
+  const { language } = useTranslation();
   const [contextMenuId, setContextMenuId] = useState<string | null>(null);
 
-  const ungroupedLists = lists
-    .filter((l) => !l.groupId)
-    .sort((a, b) => a.sortOrder - b.sortOrder);
+  const ui = useMemo(() => {
+    if (language === 'ko') {
+      return {
+        smartSection: '스마트 목록',
+        customSection: '내 목록',
+        rename: '이름 변경',
+        delete: '삭제',
+        createList: '새 목록',
+        createGroup: '새 그룹',
+      };
+    }
 
+    return {
+      smartSection: 'Smart Lists',
+      customSection: 'My Lists',
+      rename: 'Rename',
+      delete: 'Delete',
+      createList: 'New List',
+      createGroup: 'New Group',
+    };
+  }, [language]);
+
+  const smartLists: {
+    id: SmartListId;
+    name: string;
+    icon: React.ReactNode;
+    color: string;
+    filter: (todo: ToDoItem) => boolean;
+  }[] = useMemo(() => {
+    const names = language === 'ko'
+      ? {
+          myDay: '오늘 할 일',
+          important: '중요',
+          planned: '계획된 일정',
+          tasks: '작업',
+        }
+      : {
+          myDay: 'My Day',
+          important: 'Important',
+          planned: 'Planned',
+          tasks: 'Tasks',
+        };
+
+    return [
+      {
+        id: 'myDay',
+        name: names.myDay,
+        icon: <Sun size={18} />,
+        color: 'text-yellow-400',
+        filter: (todo) => !!todo.isMyDay && !todo.completed,
+      },
+      {
+        id: 'important',
+        name: names.important,
+        icon: <Star size={18} />,
+        color: 'text-red-400',
+        filter: (todo) => todo.priority === 'high' && !todo.completed,
+      },
+      {
+        id: 'planned',
+        name: names.planned,
+        icon: <CalendarDays size={18} />,
+        color: 'text-blue-400',
+        filter: (todo) => todo.dueDate != null && !todo.completed,
+      },
+      {
+        id: 'tasks',
+        name: names.tasks,
+        icon: <Home size={18} />,
+        color: 'text-neon-lime',
+        filter: (todo) => (!todo.listId || todo.listId === 'tasks') && !todo.completed,
+      },
+    ];
+  }, [language]);
+
+  const ungroupedLists = lists
+    .filter((list) => !list.groupId)
+    .sort((a, b) => a.sortOrder - b.sortOrder);
   const sortedGroups = [...groups].sort((a, b) => a.sortOrder - b.sortOrder);
 
-  function getListCount(listId: string): number {
-    return todos.filter((t) => t.listId === listId && !t.completed).length;
-  }
+  const getListCount = (listId: string): number => {
+    return todos.filter((todo) => todo.listId === listId && !todo.completed).length;
+  };
 
-  function renderListItem(list: TodoList, indented = false) {
+  const renderListItem = (list: TodoList, indented = false) => {
     const count = getListCount(list.id);
     const isActive = activeListId === list.id;
     const isContextOpen = contextMenuId === list.id;
@@ -110,16 +149,17 @@ export default function TodoSidebar({
         onClick={() => setContextMenuId(null)}
       >
         <button
-          onClick={(e) => {
-            e.stopPropagation();
+          onClick={(event) => {
+            event.stopPropagation();
             onSelectList(list.id);
             setContextMenuId(null);
           }}
-          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all group/list ${
-            isActive
-              ? 'bg-white/10 border-l-2 border-neon-lime text-white'
-              : 'text-gray-400 hover:bg-white/10 hover:text-white'
-          }`}
+          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all
+            group/list ${
+              isActive
+                ? 'bg-white/12 border-l-2 border-neon-lime text-white'
+                : 'text-gray-400 hover:bg-white/10 hover:text-white'
+            }`}
         >
           <span
             className="w-3 h-3 rounded-full flex-shrink-0"
@@ -132,11 +172,12 @@ export default function TodoSidebar({
             </span>
           )}
           <button
-            onClick={(e) => {
-              e.stopPropagation();
+            onClick={(event) => {
+              event.stopPropagation();
               setContextMenuId(isContextOpen ? null : list.id);
             }}
-            className="opacity-0 group-hover/list:opacity-100 flex-shrink-0 text-gray-500 hover:text-white transition-opacity rounded-lg p-0.5 hover:bg-white/10"
+            className="opacity-0 group-hover/list:opacity-100 flex-shrink-0 text-gray-500
+              hover:text-white transition-opacity rounded-lg p-0.5 hover:bg-white/10"
           >
             <MoreHorizontal size={14} />
           </button>
@@ -144,63 +185,63 @@ export default function TodoSidebar({
 
         {isContextOpen && (
           <div
-            className="absolute right-0 top-full mt-1 bg-[#0a0a10] border border-white/10 rounded-xl shadow-xl z-50 py-1 min-w-[120px]"
-            onClick={(e) => e.stopPropagation()}
+            className="apple-glass-panel absolute right-0 top-full mt-1 rounded-xl shadow-xl z-50 py-1
+              min-w-[120px]"
+            onClick={(event) => event.stopPropagation()}
           >
             <button
               onClick={() => {
                 onRenameList(list.id);
                 setContextMenuId(null);
               }}
-              className="w-full px-3 py-2 text-left text-sm text-gray-300 hover:bg-white/10 flex items-center gap-2"
+              className="w-full px-3 py-2 text-left text-sm text-gray-300 hover:bg-white/10
+                flex items-center gap-2"
             >
-              <Pencil size={14} /> 이름 변경
+              <Pencil size={14} /> {ui.rename}
             </button>
             <button
               onClick={() => {
                 onDeleteList(list.id);
                 setContextMenuId(null);
               }}
-              className="w-full px-3 py-2 text-left text-sm text-red-400 hover:bg-red-400/10 flex items-center gap-2"
+              className="w-full px-3 py-2 text-left text-sm text-red-400 hover:bg-red-400/10
+                flex items-center gap-2"
             >
-              <Trash2 size={14} /> 삭제
+              <Trash2 size={14} /> {ui.delete}
             </button>
           </div>
         )}
       </div>
     );
-  }
+  };
 
-  function renderGroupItem(group: TodoGroup) {
+  const renderGroupItem = (group: TodoGroup) => {
     const groupLists = lists
-      .filter((l) => l.groupId === group.id)
+      .filter((list) => list.groupId === group.id)
       .sort((a, b) => a.sortOrder - b.sortOrder);
-
     const isContextOpen = contextMenuId === `group-${group.id}`;
 
     return (
       <div key={group.id} onClick={() => setContextMenuId(null)}>
-        <div className="relative flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-white/10 cursor-pointer transition-colors group/grp">
+        <div className="relative flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-white/10
+          cursor-pointer transition-colors group/grp"
+        >
           <button
-            onClick={(e) => {
-              e.stopPropagation();
+            onClick={(event) => {
+              event.stopPropagation();
               onToggleGroupCollapse(group.id);
             }}
             className="flex-shrink-0 text-gray-500 hover:text-white transition-colors"
           >
-            {group.isCollapsed ? (
-              <ChevronRight size={16} />
-            ) : (
-              <ChevronDown size={16} />
-            )}
+            {group.isCollapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
           </button>
 
           <FolderOpen size={16} className="text-gray-500 flex-shrink-0" />
 
           <span
             className="flex-1 text-sm text-gray-300 truncate"
-            onClick={(e) => {
-              e.stopPropagation();
+            onClick={(event) => {
+              event.stopPropagation();
               onToggleGroupCollapse(group.id);
             }}
           >
@@ -208,90 +249,82 @@ export default function TodoSidebar({
           </span>
 
           <button
-            onClick={(e) => {
-              e.stopPropagation();
+            onClick={(event) => {
+              event.stopPropagation();
               setContextMenuId(isContextOpen ? null : `group-${group.id}`);
             }}
-            className="opacity-0 group-hover/grp:opacity-100 flex-shrink-0 text-gray-500 hover:text-white transition-opacity rounded-lg p-0.5 hover:bg-white/10"
+            className="opacity-0 group-hover/grp:opacity-100 flex-shrink-0 text-gray-500
+              hover:text-white transition-opacity rounded-lg p-0.5 hover:bg-white/10"
           >
             <MoreHorizontal size={14} />
           </button>
 
           {isContextOpen && (
             <div
-              className="absolute right-0 top-full mt-1 bg-[#0a0a10] border border-white/10 rounded-xl shadow-xl z-50 py-1 min-w-[120px]"
-              onClick={(e) => e.stopPropagation()}
+              className="apple-glass-panel absolute right-0 top-full mt-1 rounded-xl shadow-xl z-50
+                py-1 min-w-[120px]"
+              onClick={(event) => event.stopPropagation()}
             >
               <button
                 onClick={() => {
                   onRenameGroup(group.id);
                   setContextMenuId(null);
                 }}
-                className="w-full px-3 py-2 text-left text-sm text-gray-300 hover:bg-white/10 flex items-center gap-2"
+                className="w-full px-3 py-2 text-left text-sm text-gray-300 hover:bg-white/10
+                  flex items-center gap-2"
               >
-                <Pencil size={14} /> 이름 변경
+                <Pencil size={14} /> {ui.rename}
               </button>
               <button
                 onClick={() => {
                   onDeleteGroup(group.id);
                   setContextMenuId(null);
                 }}
-                className="w-full px-3 py-2 text-left text-sm text-red-400 hover:bg-red-400/10 flex items-center gap-2"
+                className="w-full px-3 py-2 text-left text-sm text-red-400 hover:bg-red-400/10
+                  flex items-center gap-2"
               >
-                <Trash2 size={14} /> 삭제
+                <Trash2 size={14} /> {ui.delete}
               </button>
             </div>
           )}
         </div>
 
-        {!group.isCollapsed && (
-          <div className="ml-4">
-            {groupLists.map((list) => renderListItem(list, false))}
-          </div>
-        )}
+        {!group.isCollapsed && <div className="ml-4">{groupLists.map((list) => renderListItem(list))}</div>}
       </div>
     );
-  }
+  };
 
   return (
-    <div
-      className="h-full flex flex-col bg-[#050B14] border-r border-white/10"
-      onClick={() => setContextMenuId(null)}
-    >
-      {/* Search */}
+    <div className="apple-glass-panel h-full flex flex-col border-r border-white/10" onClick={() => {
+      setContextMenuId(null);
+    }}>
       <div className="px-3 pt-4 pb-2 flex-shrink-0">
         <TodoSearchBar value={searchQuery} onChange={onSearchChange} />
       </div>
 
-      {/* Scrollable list area */}
       <div className="flex-1 overflow-y-auto py-2 scrollbar-hide">
-        {/* Smart Lists */}
         <div className="px-3 mb-1">
-          <p className="font-display text-[10px] tracking-widest uppercase text-gray-600 px-3 mb-1">
-            스마트 목록
+          <p className="font-display text-[10px] tracking-widest uppercase text-gray-500 px-3 mb-1">
+            {ui.smartSection}
           </p>
-          {SMART_LISTS.map((sl) => {
-            const count = todos.filter(sl.filter).length;
-            const isActive = activeListId === sl.id;
+          {smartLists.map((list) => {
+            const count = todos.filter(list.filter).length;
+            const isActive = activeListId === list.id;
             return (
               <button
-                key={sl.id}
+                key={list.id}
                 onClick={() => {
-                  onSelectList(sl.id);
+                  onSelectList(list.id);
                   setContextMenuId(null);
                 }}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all ${
                   isActive
-                    ? 'bg-white/10 text-white'
+                    ? 'bg-white/12 text-white'
                     : 'text-gray-400 hover:bg-white/10 hover:text-white'
                 }`}
               >
-                <span
-                  className={`flex-shrink-0 ${isActive ? sl.color : ''}`}
-                >
-                  {sl.icon}
-                </span>
-                <span className="flex-1 text-left truncate">{sl.name}</span>
+                <span className={`flex-shrink-0 ${isActive ? list.color : ''}`}>{list.icon}</span>
+                <span className="flex-1 text-left truncate">{list.name}</span>
                 {count > 0 && (
                   <span className="bg-white/10 text-gray-400 text-xs px-1.5 py-0.5 rounded-full font-mono">
                     {count}
@@ -302,37 +335,31 @@ export default function TodoSidebar({
           })}
         </div>
 
-        {/* Divider */}
         <div className="border-t border-white/10 mx-3 my-2" />
 
-        {/* Custom Lists */}
         {(ungroupedLists.length > 0 || sortedGroups.length > 0) && (
           <div className="px-3">
-            <p className="font-display text-[10px] tracking-widest uppercase text-gray-600 px-3 mb-1">
-              내 목록
+            <p className="font-display text-[10px] tracking-widest uppercase text-gray-500 px-3 mb-1">
+              {ui.customSection}
             </p>
-
-            {/* Ungrouped lists */}
             {ungroupedLists.map((list) => renderListItem(list))}
-
-            {/* Groups */}
             {sortedGroups.map((group) => renderGroupItem(group))}
           </div>
         )}
       </div>
 
-      {/* Bottom action buttons */}
       <div className="flex items-center gap-1 px-3 py-2.5 border-t border-white/10 flex-shrink-0">
         <button
           onClick={onCreateList}
-          className="flex-1 flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-400 hover:bg-white/10 hover:text-neon-lime transition-colors"
+          className="flex-1 flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-400
+            hover:bg-white/10 hover:text-neon-lime transition-colors"
         >
-          <ListPlus size={16} /> 새 목록
+          <ListPlus size={16} /> {ui.createList}
         </button>
         <button
           onClick={onCreateGroup}
           className="p-2 rounded-lg text-gray-400 hover:bg-white/10 hover:text-neon-lime transition-colors"
-          title="새 그룹"
+          title={ui.createGroup}
         >
           <FolderPlus size={16} />
         </button>

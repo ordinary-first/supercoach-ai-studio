@@ -242,7 +242,7 @@ const DARK_THEME_CONFIG = {
     borderRadius: 24,
     fontSize: 18,
     fontWeight: 'bold',
-    fontFamily: 'Inter, system-ui, sans-serif',
+    fontFamily: 'SF Pro Display, SF Pro Text, -apple-system, BlinkMacSystemFont, Apple SD Gothic Neo, Pretendard, sans-serif',
     shape: 'roundedRectangle',
     paddingX: 30,
     paddingY: 20,
@@ -255,7 +255,7 @@ const DARK_THEME_CONFIG = {
     borderRadius: 12,
     fontSize: 14,
     fontWeight: '600',
-    fontFamily: 'Inter, system-ui, sans-serif',
+    fontFamily: 'SF Pro Display, SF Pro Text, -apple-system, BlinkMacSystemFont, Apple SD Gothic Neo, Pretendard, sans-serif',
     shape: 'roundedRectangle',
     marginX: 80,
     marginY: 30,
@@ -270,7 +270,7 @@ const DARK_THEME_CONFIG = {
     borderRadius: 8,
     fontSize: 13,
     fontWeight: '500',
-    fontFamily: 'Inter, system-ui, sans-serif',
+    fontFamily: 'SF Pro Display, SF Pro Text, -apple-system, BlinkMacSystemFont, Apple SD Gothic Neo, Pretendard, sans-serif',
     shape: 'roundedRectangle',
     marginX: 60,
     marginY: 20,
@@ -284,7 +284,7 @@ const DARK_THEME_CONFIG = {
     borderWidth: 1,
     borderRadius: 6,
     fontSize: 12,
-    fontFamily: 'Inter, system-ui, sans-serif',
+    fontFamily: 'SF Pro Display, SF Pro Text, -apple-system, BlinkMacSystemFont, Apple SD Gothic Neo, Pretendard, sans-serif',
   },
 };
 
@@ -303,7 +303,7 @@ const LIGHT_THEME_CONFIG = {
     borderRadius: 24,
     fontSize: 18,
     fontWeight: 'bold',
-    fontFamily: 'Inter, system-ui, sans-serif',
+    fontFamily: 'SF Pro Display, SF Pro Text, -apple-system, BlinkMacSystemFont, Apple SD Gothic Neo, Pretendard, sans-serif',
     shape: 'roundedRectangle',
     paddingX: 30,
     paddingY: 20,
@@ -316,7 +316,7 @@ const LIGHT_THEME_CONFIG = {
     borderRadius: 12,
     fontSize: 14,
     fontWeight: '600',
-    fontFamily: 'Inter, system-ui, sans-serif',
+    fontFamily: 'SF Pro Display, SF Pro Text, -apple-system, BlinkMacSystemFont, Apple SD Gothic Neo, Pretendard, sans-serif',
     shape: 'roundedRectangle',
     marginX: 80,
     marginY: 30,
@@ -331,7 +331,7 @@ const LIGHT_THEME_CONFIG = {
     borderRadius: 8,
     fontSize: 13,
     fontWeight: '500',
-    fontFamily: 'Inter, system-ui, sans-serif',
+    fontFamily: 'SF Pro Display, SF Pro Text, -apple-system, BlinkMacSystemFont, Apple SD Gothic Neo, Pretendard, sans-serif',
     shape: 'roundedRectangle',
     marginX: 60,
     marginY: 20,
@@ -345,7 +345,7 @@ const LIGHT_THEME_CONFIG = {
     borderWidth: 1,
     borderRadius: 6,
     fontSize: 12,
-    fontFamily: 'Inter, system-ui, sans-serif',
+    fontFamily: 'SF Pro Display, SF Pro Text, -apple-system, BlinkMacSystemFont, Apple SD Gothic Neo, Pretendard, sans-serif',
   },
 };
 
@@ -866,7 +866,7 @@ const MindMap: React.FC<MindMapProps> = ({
   const isRootActionNode = actionNode?.type === NodeType.ROOT;
 
   return (
-    <div className="w-full h-full bg-th-base relative overflow-hidden">
+    <div className="apple-tab-shell w-full h-full relative overflow-hidden">
       <style>{`
         @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
         .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
@@ -875,7 +875,7 @@ const MindMap: React.FC<MindMapProps> = ({
       `}</style>
 
       {/* Layout Switcher */}
-      <div className="absolute top-3 right-3 md:top-4 md:right-4 z-10 flex bg-th-overlay backdrop-blur-md border border-th-border rounded-full px-1 py-0.5 gap-0.5">
+      <div className="apple-chip absolute top-3 right-3 md:top-4 md:right-4 z-10 flex rounded-full px-1 py-0.5 gap-0.5">
         {LAYOUT_MODES.map(mode => (
           <button
             key={mode}
@@ -1136,4 +1136,6 @@ export default React.memo(MindMap, (prev, next) => {
     prev.imageLoadingNodes === next.imageLoadingNodes
   );
 });
+
+
 

@@ -1,13 +1,13 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+﻿import { useState, useCallback, useEffect, useRef } from 'react';
 import {
   useGenerationPipeline,
-  toResultFromSaved,
   type GenerationSettings,
   type VisualizationResult,
 } from '../../hooks/useGenerationPipeline';
 import { useVisualizationAudio } from '../../hooks/useVisualizationAudio';
 import { useDreamChat } from '../../hooks/useDreamChat';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
+import { useTranslation } from '../../i18n/useTranslation';
 import DreamPillSwitcher from './DreamPillSwitcher';
 import DreamChat from './DreamChat';
 import DreamGallery from './DreamGallery';
@@ -31,11 +31,11 @@ export default function VisualizationTab({
   userProfile,
   nodes,
 }: VisualizationTabProps) {
+  const { language, t } = useTranslation();
   const [pillTab, setPillTab] = useState<PillTab>('create');
   const [viewState, setViewState] = useState<ViewState>('tabs');
   const viewStateRef = useRef<ViewState>('tabs');
-  const [viewingResult, setViewingResult] =
-    useState<VisualizationResult | null>(null);
+  const [viewingResult, setViewingResult] = useState<VisualizationResult | null>(null);
   const [backgroundComplete, setBackgroundComplete] = useState(false);
   const [settings, setSettings] = useState<GenerationSettings>({
     text: true,
@@ -43,14 +43,12 @@ export default function VisualizationTab({
     video: false,
     audio: false,
   });
-  const [imageQuality, setImageQuality] = useState<'medium' | 'high'>(
-    'medium',
-  );
+  const [imageQuality, setImageQuality] = useState<'medium' | 'high'>('medium');
   const [referenceImages, setReferenceImages] = useState<string[]>([]);
 
-  const setView = useCallback((v: ViewState) => {
-    setViewState(v);
-    viewStateRef.current = v;
+  const setView = useCallback((nextView: ViewState) => {
+    setViewState(nextView);
+    viewStateRef.current = nextView;
   }, []);
 
   const pipeline = useGenerationPipeline({ userProfile, nodes, isOpen });
@@ -58,7 +56,6 @@ export default function VisualizationTab({
   const chat = useDreamChat();
   const focusTrapRef = useFocusTrap(isOpen);
 
-  // Reset state when modal closes
   useEffect(() => {
     if (!isOpen) {
       setView('tabs');
@@ -83,39 +80,19 @@ export default function VisualizationTab({
   );
 
   const handleGenerate = useCallback(async () => {
-    const prompt =
-      chat.getLastScene() ||
-      nodes.map((n) => `- ${n.text}`).join('\n');
+    const prompt = chat.getLastScene() || nodes.map((node) => `- ${node.text}`).join('\n');
     if (!prompt) return;
 
-    // Viewer 즉시 오픈 (생성 전)
     setBackgroundComplete(false);
     setView('viewer');
 
-    const result = await pipeline.handleGenerate(
-      prompt,
-      settings,
-      referenceImages,
-      imageQuality,
-    );
-    if (result) {
-      setViewingResult(result);
-      prepareAudio(result);
-      // 생성 중 viewer 닫았으면 복귀 배너 표시
-      if (viewStateRef.current !== 'viewer') {
-        setBackgroundComplete(true);
-      }
-    }
-  }, [
-    chat,
-    nodes,
-    pipeline,
-    settings,
-    referenceImages,
-    imageQuality,
-    prepareAudio,
-    setView,
-  ]);
+    const result = await pipeline.handleGenerate(prompt, settings, referenceImages, imageQuality);
+    if (!result) return;
+
+    setViewingResult(result);
+    prepareAudio(result);
+    if (viewStateRef.current !== 'viewer') setBackgroundComplete(true);
+  }, [chat, imageQuality, nodes, pipeline, prepareAudio, referenceImages, setView, settings]);
 
   const handleGalleryItemTap = useCallback(
     (item: SavedVisualization) => {
@@ -141,19 +118,12 @@ export default function VisualizationTab({
 
   const handleSave = useCallback(() => {
     const target = pipeline.currentResult || viewingResult;
-    if (target) {
-      void pipeline.handleSave(target);
-    }
+    if (target) void pipeline.handleSave(target);
   }, [pipeline, viewingResult]);
 
-  const handleImageAttach = useCallback(
-    (dataUrl: string) => {
-      setReferenceImages((prev) =>
-        prev.length >= 3 ? prev : [...prev, dataUrl],
-      );
-    },
-    [],
-  );
+  const handleImageAttach = useCallback((dataUrl: string) => {
+    setReferenceImages((prev) => (prev.length >= 3 ? prev : [...prev, dataUrl]));
+  }, []);
 
   const handleImageRemove = useCallback((index: number) => {
     setReferenceImages((prev) => prev.filter((_, i) => i !== index));
@@ -166,56 +136,36 @@ export default function VisualizationTab({
   if (!isOpen) return null;
 
   const isGeneratingBanner =
-    pipeline.isGenerating ||
-    pipeline.currentResult?.videoStatus === 'pending';
+    pipeline.isGenerating || pipeline.currentResult?.videoStatus === 'pending';
+
+  const completeBannerLabel = language === 'ko'
+    ? '✨ 드림이 완성되었습니다 — 결과 보기'
+    : '✨ Dream is ready — View result';
 
   return (
-    <div
-      ref={focusTrapRef}
-      className="fixed inset-0 z-50 flex flex-col pb-16"
-      style={{ background: '#0A0A0A' }}
-    >
-      {/* Pill Switcher */}
-      <div className="flex justify-center pt-3 pb-3">
-        <DreamPillSwitcher
-          activeTab={pillTab}
-          onTabChange={setPillTab}
-        />
+    <div ref={focusTrapRef} className="apple-tab-shell fixed inset-0 z-50 flex flex-col pb-16 font-body">
+      <div className="apple-glass-header flex justify-center pt-3 pb-3">
+        <DreamPillSwitcher activeTab={pillTab} onTabChange={setPillTab} />
       </div>
 
-      {/* Generating banner */}
       {isGeneratingBanner && (
-        <div
-          className="text-center py-2"
-          style={{
-            fontSize: 13,
-            color: 'rgba(255,255,255,0.6)',
-            background: 'rgba(124,58,237,0.15)',
-          }}
-        >
-          {pipeline.generatingStep || '생성 중...'}
+        <div className="apple-card text-center py-2 mx-4 mt-2 text-[13px] text-white/70">
+          {pipeline.generatingStep || t.visualization.generating}
         </div>
       )}
 
-      {/* Error / Info messages */}
       {pipeline.errorMessage && (
-        <div
-          className="text-center py-2 px-4"
-          style={{ fontSize: 12, color: '#f87171' }}
-        >
+        <div className="apple-card text-center py-2 px-4 mx-4 mt-2 text-xs text-red-400">
           {pipeline.errorMessage}
         </div>
       )}
+
       {pipeline.infoMessage && (
-        <div
-          className="text-center py-2 px-4"
-          style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)' }}
-        >
+        <div className="apple-card text-center py-2 px-4 mx-4 mt-2 text-xs text-white/60">
           {pipeline.infoMessage}
         </div>
       )}
 
-      {/* Tab content */}
       <div className="flex-1 overflow-y-auto">
         {viewState === 'tabs' && pillTab === 'create' && (
           <DreamChat
@@ -243,27 +193,21 @@ export default function VisualizationTab({
             onCreateDream={handleCreateDream}
           />
         )}
-
       </div>
 
-      {/* Background complete banner */}
       {backgroundComplete && viewState === 'tabs' && (
         <button
           onClick={() => {
             setView('viewer');
             setBackgroundComplete(false);
           }}
-          className="absolute top-14 left-4 right-4 rounded-xl px-4 py-3 text-sm text-white z-10"
-          style={{
-            background: 'rgba(124,58,237,0.2)',
-            border: '1px solid rgba(124,58,237,0.3)',
-          }}
+          className="apple-glass-panel absolute top-14 left-4 right-4 rounded-xl px-4 py-3 text-sm
+            text-white z-10 bg-[rgba(76,96,196,0.22)] border-[rgba(165,184,255,0.34)]"
         >
-          ✨ 드림이 완성되었습니다 — 결과 보기
+          {completeBannerLabel}
         </button>
       )}
 
-      {/* DreamViewer — 항상 렌더링, isOpen으로 제어 */}
       <DreamViewer
         isOpen={viewState === 'viewer'}
         result={pipeline.currentResult || viewingResult || {
@@ -277,16 +221,16 @@ export default function VisualizationTab({
         generatingStep={pipeline.generatingStep}
         isPlaying={audio.isPlaying}
         onTogglePlay={() => {
-          const r = pipeline.currentResult || viewingResult;
-          void audio.togglePlay(r?.audioUrl, r?.audioData);
+          const result = pipeline.currentResult || viewingResult;
+          void audio.togglePlay(result?.audioUrl, result?.audioData);
         }}
         isSaving={pipeline.isSaving}
         isSaved={pipeline.isSaved}
         onSave={handleSave}
         onClose={handleViewerClose}
         onRefreshVideo={() => {
-          const r = pipeline.currentResult || viewingResult;
-          if (r) void pipeline.refreshPendingVideo(r);
+          const result = pipeline.currentResult || viewingResult;
+          if (result) void pipeline.refreshPendingVideo(result);
         }}
         isCheckingVideo={pipeline.isCheckingPendingVideo}
       />
