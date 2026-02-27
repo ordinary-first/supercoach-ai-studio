@@ -80,7 +80,15 @@ When one agent completes work that another agent will continue:
 3. Note any gotchas or decisions made
 
 ## Current Status
-_Last updated: 2026-02-16_
+_Last updated: 2026-02-27_
+- Mobile coach chat keyboard viewport hotfix r9 completed:
+  - `components/CoachChat.tsx` now computes keyboard inset with dual path:
+    `VirtualKeyboard.geometrychange` + `visualViewport` fallback
+  - Chat modal now shrinks container height by effective keyboard inset so
+    messages and input move together in mobile web keyboard-open state
+  - Removed keyboard-open input `position: fixed` dependency in coach chat to
+    avoid message area being left behind
+- Bumped `displayVersion` to `V02.27r9` (`package.json`)
 - Visualization save hardening r22 completed:
   - Added strict save-time sanitization for visualization payload strings (UTF-8 normalization, control-char removal, URL-only media fields, length limits) across client + service + API paths
   - Added server-side `invalid-argument` rescue write in `api/save-visualization.ts` (fallback to minimal text payload so save does not fully fail)

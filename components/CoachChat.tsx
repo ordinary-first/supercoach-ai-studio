@@ -40,6 +40,7 @@ const CoachChat: React.FC<CoachChatProps> = ({
   const [showTopicCards, setShowTopicCards] = useState(true);
   const [questionPage, setQuestionPage] = useState(0);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [viewportKeyboardInset, setViewportKeyboardInset] = useState(0);
   const [pendingImage, setPendingImage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const QUESTIONS_PER_PAGE = 3;
@@ -48,6 +49,7 @@ const CoachChat: React.FC<CoachChatProps> = ({
   const memory = useCoachMemory(userId, isOpen, nodes || [], todos);
   const { pendingDirective, feedbackSlot, markFeedbackDone } =
     useCoachFeedback(isOpen, todos);
+  const effectiveKeyboardHeight = Math.max(keyboardHeight, viewportKeyboardInset);
 
   // Mobile keyboard height via VirtualKeyboard API (overlays-content 모드)
   useEffect(() => {
@@ -57,6 +59,28 @@ const CoachChat: React.FC<CoachChatProps> = ({
     const onChange = () => setKeyboardHeight(Math.round(nav.virtualKeyboard!.boundingRect.height));
     nav.virtualKeyboard.addEventListener('geometrychange', onChange);
     return () => nav.virtualKeyboard!.removeEventListener('geometrychange', onChange);
+  }, []);
+
+  // Fallback: derive keyboard inset from visualViewport for browsers without VirtualKeyboard API.
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+
+    const syncViewportInset = () => {
+      const inset = Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop));
+      setViewportKeyboardInset(inset);
+    };
+
+    syncViewportInset();
+    vv.addEventListener('resize', syncViewportInset);
+    vv.addEventListener('scroll', syncViewportInset);
+    window.addEventListener('resize', syncViewportInset);
+
+    return () => {
+      vv.removeEventListener('resize', syncViewportInset);
+      vv.removeEventListener('scroll', syncViewportInset);
+      window.removeEventListener('resize', syncViewportInset);
+    };
   }, []);
 
   // 키보드 올라올 때 최신 메시지로 스크롤 (다단계 타이밍)
@@ -124,7 +148,7 @@ const CoachChat: React.FC<CoachChatProps> = ({
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, isLoading, keyboardHeight]);
+  }, [messages, isLoading, effectiveKeyboardHeight]);
 
   // 채팅 열릴 때 질문 상태 리셋 + 스크롤
   useEffect(() => {
@@ -329,7 +353,11 @@ const CoachChat: React.FC<CoachChatProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div ref={focusTrapRef} className="fixed inset-0 z-[60] bg-th-base flex flex-col overflow-hidden text-th-text font-body">
+    <div
+      ref={focusTrapRef}
+      className="fixed inset-0 z-[60] bg-th-base flex flex-col overflow-hidden text-th-text font-body"
+      style={effectiveKeyboardHeight > 0 ? { height: `calc(100% - ${effectiveKeyboardHeight}px)` } : undefined}
+    >
 
       {/* Ambient Background */}
       <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-th-accent-muted rounded-full blur-[120px] pointer-events-none"></div>
@@ -352,7 +380,7 @@ const CoachChat: React.FC<CoachChatProps> = ({
       </div>
 
       {/* Chat Messages */}
-      <div ref={messagesContainerRef} className="flex-1 overflow-y-auto px-4 lg:px-0 scrollbar-hide relative z-10" style={keyboardHeight > 0 ? { paddingBottom: '72px' } : undefined}>
+      <div ref={messagesContainerRef} className="flex-1 overflow-y-auto px-4 lg:px-0 scrollbar-hide relative z-10">
         <div className="max-w-2xl mx-auto py-3 space-y-2">
           {messages.map((msg) => (
             <div key={msg.id} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
@@ -460,10 +488,9 @@ const CoachChat: React.FC<CoachChatProps> = ({
         </div>
       </div>
 
-      {/* Input — fixed above keyboard when open */}
+      {/* Input */}
       <div
         className="shrink-0 px-3 pb-[max(6px,env(safe-area-inset-bottom))] pt-1.5 flex justify-center z-20 bg-th-base border-t border-th-border"
-        style={keyboardHeight > 0 ? { position: 'fixed', bottom: `${keyboardHeight}px`, left: 0, right: 0 } : undefined}
       >
         <div className="w-full max-w-2xl">
           {/* 이미지 미리보기 */}
