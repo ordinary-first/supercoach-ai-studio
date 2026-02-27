@@ -7,6 +7,7 @@ import { GoalAdjustmentCard } from './GoalAdjustmentCard';
 import type { FeedbackCard, ToDoItem, GoalAdjustment } from '../../types';
 import type { TranslationStrings } from '../../i18n/types';
 
+// Deprecated: main feedback flow now renders week detail inline in FeedbackView.
 interface WeekDetailSheetProps {
   weekStart: Date;
   todos: ToDoItem[];

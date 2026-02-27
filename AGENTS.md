@@ -82,31 +82,35 @@ When one agent completes work that another agent will continue:
 ## Current Status
 _Last updated: 2026-02-27_
 
-### CoverFlow UI Redesign (V02.27r7)
-- **WeekCoverFlow.tsx** — 3D vertical cover flow with CSS perspective + touch gestures
-  - `perspective: 1200px`, `rotateX` transforms per card offset
-  - Swipe up=past, down=current, bounce at boundaries
-  - Drag interpolation fixed (continuous transform while dragging, no jump)
-  - Snap threshold updated to half-card gesture (`~110px`), 350ms spring easing
-  - Removed top dot hint; stack peek now comes from the real previous-week card
-- **WeekCoverCard.tsx** — Week card with 7 inline mini DayCards
-  - Mini cards show completed(✓)/today-pending(pulse)/future/empty states
-  - Tap mini card → DayDetailSheet, tap card → expand selected week in main view
-- **WeekDetailSheet.tsx** — Bottom sheet for week details
-  - Contains WeeklyCardScroll, GoalAdjustmentCard, WeeklySummaryCard, MonthlySummaryCard
-  - Added swipe-down-to-close gesture on the top handle (X/backdrop close preserved)
-- **FeedbackView.tsx** — Refactored: WeekNavigator removed, CoverFlow integrated
-  - `weekOffset` → `activeWeekIndex`
-  - Renders weekly detail screen by default, and switches to WeekCoverFlow in album mode
-  - Notification settings now load regardless of active tab
-  - Notification timer now runs with `userId + notifSettings` (not blocked by feedback tab open)
-  - Daily victory write flow now marks `victory` after successful save (prevents false dedup on fail)
-- **FeedbackView.tsx** — UX transition update for weekly wins album flow
-  - Default view is weekly detail (week label + 7-day card strip + summaries in same screen)
-  - Swipe down on weekly strip collapses into week-card album mode (`isCoverFlowMode`)
-  - In album mode, `WeekCoverFlow` is used for past-week browsing; tapping a week card expands back
-  - `WeekDetailSheet` overlay path removed from the main flow (detail now in primary screen)
-- WeekNavigator.tsx import removed (file preserved)
+### CoverFlow UI Redesign (V02.27r8)
+- **package.json / package-lock.json**
+  - Added `swiper` dependency and bumped `displayVersion` to `V02.27r8`.
+- **theme.css**
+  - Added feedback-specific visual tokens (`--fb-*`) for Apple-like depth, glass, stroke, and shadow.
+- **components/feedback/feedbackApple.css** (new)
+  - Added unified Apple-style feedback visual system:
+  - header glass layer, week-detail panel, coverflow/swiper shell, day cards, summary wrappers
+  - low-performance fallback and `prefers-reduced-motion` rules.
+- **components/feedback/WeekCoverFlow.tsx**
+  - Rebuilt engine from manual transform logic to `Swiper` vertical flow.
+  - Active week is centered; previous weeks use staged 3D transform/opacity/blur depth.
+  - iOS-like gesture tuning via `speed`, `threshold`, `resistanceRatio`, and bounce behavior.
+- **components/feedback/WeekCoverCard.tsx**
+  - Rewritten with Apple-style card shell and mini-day visual language.
+  - Existing day/week interactions preserved (day tap opens day detail; week tap returns to detail mode).
+- **components/FeedbackView.tsx**
+  - Main mode orchestration updated to `week-detail` / `coverflow`.
+  - Default entry is week-detail; downward gesture transitions into album mode.
+  - Coverflow card tap now resolves to selected-week detail return (no week overlay re-entry).
+  - Added low-perf/reduced-motion class switches without changing data/notification flows.
+- **components/feedback/DayCard.tsx**
+  - Rewritten to match new Apple tone while keeping original day-state behavior.
+- **components/feedback/WeeklySummaryCard.tsx**
+  - Rewritten with clean encoding and consistent visual structure.
+- **components/feedback/MonthlySummaryCard.tsx**
+  - Rewritten with clean encoding and consistent visual structure.
+- **components/feedback/WeekDetailSheet.tsx**
+  - Marked as deprecated in main feedback flow (kept for compatibility, no reintroduction).
 
 ### FeedbackView Phase 2 (V02.27r1)
 - **Notification Settings Firestore persistence** (`services/firebaseService.ts`)

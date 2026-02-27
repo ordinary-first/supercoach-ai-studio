@@ -32,6 +32,7 @@ import { MonthlySummaryCard } from './feedback/MonthlySummaryCard';
 import { WeekCoverFlow } from './feedback/WeekCoverFlow';
 import { WeeklyCardScroll } from './feedback/WeeklyCardScroll';
 import { WeeklySummaryCard } from './feedback/WeeklySummaryCard';
+import './feedback/feedbackApple.css';
 
 interface FeedbackViewProps {
   isOpen: boolean;
@@ -85,6 +86,7 @@ const MAX_PAST_WEEKS = 12;
 const TIMER_INTERVAL = 60000;
 const COLLAPSE_THRESHOLD = 72;
 const COLLAPSE_MAX_DRAG = 120;
+type FeedbackViewMode = 'week-detail' | 'coverflow';
 
 const getDayStart = (d: Date): number =>
   new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
@@ -131,9 +133,11 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
   const [showSettings, setShowSettings] = useState(false);
 
-  const [isCoverFlowMode, setIsCoverFlowMode] = useState(false);
+  const [viewMode, setViewMode] = useState<FeedbackViewMode>('week-detail');
   const [collapseDragY, setCollapseDragY] = useState(0);
   const [isCollapsingDrag, setIsCollapsingDrag] = useState(false);
+  const [isLowPerf, setIsLowPerf] = useState(false);
+  const [isReducedMotion, setIsReducedMotion] = useState(false);
 
   const [weeklySummaries, setWeeklySummaries] = useState<Map<string, string>>(new Map());
   const [monthlySummaries, setMonthlySummaries] = useState<Map<string, string>>(new Map());
@@ -155,6 +159,25 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
   const collapseStartYRef = useRef(0);
 
   const currentMonday = useMemo(() => getMonday(new Date()), []);
+
+  useEffect(() => {
+    const cores = typeof navigator !== 'undefined' ? navigator.hardwareConcurrency ?? 8 : 8;
+    setIsLowPerf(cores <= 4);
+
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
+    const media = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const sync = () => setIsReducedMotion(media.matches);
+    sync();
+    media.addEventListener('change', sync);
+    return () => media.removeEventListener('change', sync);
+  }, []);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setViewMode('week-detail');
+    setCollapseDragY(0);
+    setIsCollapsingDrag(false);
+  }, [isOpen]);
 
   const weeks = useMemo(
     () => Array.from({ length: MAX_PAST_WEEKS + 1 }, (_, i) => addWeeks(currentMonday, -i)),
@@ -261,32 +284,32 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
 
   const handleCollapseStart = useCallback(
     (clientY: number) => {
-      if (isCoverFlowMode) return;
+      if (viewMode === 'coverflow') return;
       collapseStartYRef.current = clientY;
       setIsCollapsingDrag(true);
       setCollapseDragY(0);
     },
-    [isCoverFlowMode],
+    [viewMode],
   );
 
   const handleCollapseMove = useCallback(
     (clientY: number) => {
-      if (!isCollapsingDrag || isCoverFlowMode) return;
+      if (!isCollapsingDrag || viewMode === 'coverflow') return;
       const delta = Math.max(0, clientY - collapseStartYRef.current);
       setCollapseDragY(Math.min(delta, COLLAPSE_MAX_DRAG));
     },
-    [isCollapsingDrag, isCoverFlowMode],
+    [isCollapsingDrag, viewMode],
   );
 
   const handleCollapseEnd = useCallback(() => {
-    if (!isCollapsingDrag || isCoverFlowMode) return;
+    if (!isCollapsingDrag || viewMode === 'coverflow') return;
 
     setIsCollapsingDrag(false);
     if (collapseDragY >= COLLAPSE_THRESHOLD) {
-      setIsCoverFlowMode(true);
+      setViewMode('coverflow');
     }
     setCollapseDragY(0);
-  }, [isCollapsingDrag, isCoverFlowMode, collapseDragY]);
+  }, [isCollapsingDrag, viewMode, collapseDragY]);
 
   const handleSaveCard = useCallback(
     async (card: FeedbackCard) => {
@@ -496,22 +519,28 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#0A0A0A] flex flex-col overflow-hidden font-body text-white">
-      <div className="h-14 border-b border-white/[0.06] bg-[#0A0A0A]/90 backdrop-blur-md px-4 flex items-center justify-between shrink-0">
+    <div
+      className={`fb-feedback-root fixed inset-0 z-50 flex flex-col overflow-hidden font-body text-white ${
+        isLowPerf ? 'fb-coverflow-lowperf' : ''
+      }`}
+    >
+      <div className="fb-feedback-header h-14 px-4 flex items-center justify-between shrink-0">
         <button
           onClick={() => setShowSettings(true)}
-          className="p-2 rounded-full hover:bg-white/5 transition-colors"
+          className="p-2 rounded-full hover:bg-white/10 transition-colors"
         >
-          <Settings size={16} className="text-white/50" />
+          <Settings size={16} className="text-white/65" />
         </button>
 
-        <h1 className="text-sm font-semibold tracking-wide text-white/90">{t.feedback.title}</h1>
+        <h1 className="fb-feedback-header-title text-sm font-semibold text-white/92">
+          {t.feedback.title}
+        </h1>
 
         <button
           onClick={onClose}
-          className="p-2 rounded-full hover:bg-white/5 transition-colors"
+          className="p-2 rounded-full hover:bg-white/10 transition-colors"
         >
-          <Menu size={16} className="text-white/40" />
+          <Menu size={16} className="text-white/55" />
         </button>
       </div>
 
@@ -521,7 +550,7 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
         </div>
       )}
 
-      {isCoverFlowMode ? (
+      {viewMode === 'coverflow' ? (
         <WeekCoverFlow
           weeks={weeks}
           activeIndex={activeWeekIndex}
@@ -532,28 +561,34 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
           onDayTap={(date) => setSelectedDay(date)}
           onWeekTap={(idx) => {
             setActiveWeekIndex(idx);
-            setIsCoverFlowMode(false);
+            setViewMode('week-detail');
           }}
         />
       ) : (
         <div className="flex-1 overflow-y-auto">
           <div className="px-4 pt-3 pb-2 text-center">
-            <p className="text-[16px] font-semibold text-white/90">{activeWeekLabel}</p>
-            <p className="text-[12px] text-white/40 mt-0.5">{activeWeekRange}</p>
+            <p className="fb-week-label text-[17px] font-semibold text-white/93">{activeWeekLabel}</p>
+            <p className="fb-week-range text-[12px] text-white/52 mt-0.5">{activeWeekRange}</p>
           </div>
 
           <div className="px-4 pb-3">
             <div
-              className="rounded-2xl bg-[#141414] border border-white/[0.06] transition-transform"
+              className="fb-week-detail-panel fb-card-press"
               style={{
-                transform: `translateY(${collapseDragY * 0.45}px) scale(${1 - collapseProgress * 0.15})`,
-                opacity: 1 - collapseProgress * 0.35,
+                transform: `translateY(${collapseDragY * 0.45}px) scale(${
+                  1 - collapseProgress * (isLowPerf ? 0.1 : 0.15)
+                })`,
+                opacity: 1 - collapseProgress * (isLowPerf ? 0.26 : 0.35),
                 transition: isCollapsingDrag
                   ? 'none'
-                  : 'transform 350ms cubic-bezier(0.32, 0.72, 0, 1), opacity 220ms ease',
+                  : `transform ${isReducedMotion ? 220 : 360}ms cubic-bezier(0.32, 0.72, 0, 1), opacity 220ms ease`,
               }}
               onTouchStart={(e) => handleCollapseStart(e.touches[0].clientY)}
-              onTouchMove={(e) => handleCollapseMove(e.touches[0].clientY)}
+              onTouchMove={(e) => {
+                const delta = e.touches[0].clientY - collapseStartYRef.current;
+                if (delta > 0 && e.cancelable) e.preventDefault();
+                handleCollapseMove(e.touches[0].clientY);
+              }}
               onTouchEnd={handleCollapseEnd}
               onTouchCancel={handleCollapseEnd}
               onPointerDown={(e) => {
@@ -593,7 +628,7 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
             ))}
 
             {recentAccepted && undoData && (
-              <div className="mx-4 px-4 py-3 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center justify-between animate-fade-in">
+              <div className="mx-4 px-4 py-3 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center justify-between animate-fade-in fb-card-press">
                 <span className="text-[12px] text-green-400">{t.feedback.adjustComplete}</span>
                 <button
                   onClick={handleUndo}
@@ -605,36 +640,40 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
             )}
 
             <div className="px-4">
-              <WeeklySummaryCard
-                weekStart={activeWeekStart}
-                weekCards={getWeekCards(activeWeekStart)}
-                summaryText={weeklySummaries.get(toDateKey(activeWeekStart)) ?? ''}
-                isGenerating={generatingWeek === toDateKey(activeWeekStart)}
-                t={t}
-                onGenerate={() => handleGenerateWeekly(activeWeekStart)}
-                onTap={() => {}}
-              />
+              <div className="fb-summary-wrap">
+                <WeeklySummaryCard
+                  weekStart={activeWeekStart}
+                  weekCards={getWeekCards(activeWeekStart)}
+                  summaryText={weeklySummaries.get(toDateKey(activeWeekStart)) ?? ''}
+                  isGenerating={generatingWeek === toDateKey(activeWeekStart)}
+                  t={t}
+                  onGenerate={() => handleGenerateWeekly(activeWeekStart)}
+                  onTap={() => {}}
+                />
+              </div>
             </div>
 
             {isLastWeekOfMonth(activeWeekStart) && (
               <div className="px-4">
-                <MonthlySummaryCard
-                  month={activeWeekStart.getMonth() + 1}
-                  year={activeWeekStart.getFullYear()}
-                  monthCards={getMonthCards(activeWeekStart)}
-                  summaryText={
-                    monthlySummaries.get(
-                      `${activeWeekStart.getFullYear()}-${activeWeekStart.getMonth() + 1}`,
-                    ) ?? ''
-                  }
-                  isGenerating={
-                    generatingMonth ===
-                    `${activeWeekStart.getFullYear()}-${activeWeekStart.getMonth() + 1}`
-                  }
-                  t={t}
-                  onGenerate={() => handleGenerateMonthly(activeWeekStart)}
-                  onTap={() => {}}
-                />
+                <div className="fb-summary-wrap">
+                  <MonthlySummaryCard
+                    month={activeWeekStart.getMonth() + 1}
+                    year={activeWeekStart.getFullYear()}
+                    monthCards={getMonthCards(activeWeekStart)}
+                    summaryText={
+                      monthlySummaries.get(
+                        `${activeWeekStart.getFullYear()}-${activeWeekStart.getMonth() + 1}`,
+                      ) ?? ''
+                    }
+                    isGenerating={
+                      generatingMonth ===
+                      `${activeWeekStart.getFullYear()}-${activeWeekStart.getMonth() + 1}`
+                    }
+                    t={t}
+                    onGenerate={() => handleGenerateMonthly(activeWeekStart)}
+                    onTap={() => {}}
+                  />
+                </div>
               </div>
             )}
           </div>

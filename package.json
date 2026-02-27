@@ -2,7 +2,7 @@
   "name": "secret-coach",
   "private": true,
   "version": "1.1.0",
-  "displayVersion": "V02.27r7",
+  "displayVersion": "V02.27r8",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -31,6 +31,7 @@
     "react-dom": "^19.2.1",
     "sharp": "^0.34.5",
     "simple-mind-map": "^0.14.0-fix.1",
+    "swiper": "^12.1.2",
     "zustand": "^5.0.10"
   },
   "devDependencies": {

@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { Check, MessageCircle } from 'lucide-react';
 import type { FeedbackCard, ToDoItem } from '../../types';
 import type { TranslationStrings } from '../../i18n/types';
@@ -13,7 +13,7 @@ interface WeekCoverCardProps {
   onCardTap: () => void;
 }
 
-// ── Helpers (from WeekNavigator) ──
+type MiniCardState = 'completed' | 'today-pending' | 'future' | 'empty-past';
 
 const getMonthWeekNumber = (date: Date): number => {
   const firstOfMonth = new Date(date.getFullYear(), date.getMonth(), 1);
@@ -38,7 +38,14 @@ const getDayStart = (d: Date): number =>
 
 const getDayEnd = (d: Date): number => getDayStart(d) + 86400000 - 1;
 
-type MiniCardState = 'completed' | 'today-pending' | 'future' | 'empty-past';
+const getTodosForDay = (todos: ToDoItem[], date: Date): ToDoItem[] => {
+  const start = getDayStart(date);
+  const end = getDayEnd(date);
+  return todos.filter((todo) => {
+    const ref = todo.dueDate || todo.createdAt;
+    return ref >= start && ref <= end;
+  });
+};
 
 const deriveMiniState = (
   date: Date,
@@ -47,6 +54,7 @@ const deriveMiniState = (
 ): MiniCardState => {
   const todayKey = toDateKey(new Date());
   const dateKey = toDateKey(date);
+
   if (dateKey > todayKey) return 'future';
   if (dateKey === todayKey) {
     return card && card.completedTodos.length > 0 ? 'completed' : 'today-pending';
@@ -58,74 +66,51 @@ const deriveMiniState = (
   return 'empty-past';
 };
 
-const getTodosForDay = (todos: ToDoItem[], date: Date): ToDoItem[] => {
-  const start = getDayStart(date);
-  const end = getDayEnd(date);
-  return todos.filter((td) => {
-    const ref = td.dueDate || td.createdAt;
-    return ref >= start && ref <= end;
-  });
-};
-
-// ── Mini Day Card (inline) ──
-
 const MiniDayCard: React.FC<{
-  date: Date;
   state: MiniCardState;
   hasComment: boolean;
   dayLabel: string;
   onTap: () => void;
-}> = ({ date, state, hasComment, dayLabel, onTap }) => {
-  const bgMap: Record<MiniCardState, string> = {
-    'completed': 'bg-[#1E1E1E]',
-    'today-pending': 'bg-[#111111] border-th-accent/30',
-    'future': 'bg-[#0D0D0D]',
-    'empty-past': 'bg-[#0D0D0D]',
-  };
-
-  const borderMap: Record<MiniCardState, string> = {
-    'completed': 'border-white/[0.08]',
-    'today-pending': 'border-white/[0.12]',
-    'future': 'border-white/[0.04]',
-    'empty-past': 'border-white/[0.04]',
+}> = ({ state, hasComment, dayLabel, onTap }) => {
+  const classByState: Record<MiniCardState, string> = {
+    completed: 'fb-mini-day fb-mini-day-completed',
+    'today-pending': 'fb-mini-day fb-mini-day-today',
+    future: 'fb-mini-day fb-mini-day-future',
+    'empty-past': 'fb-mini-day fb-mini-day-future',
   };
 
   return (
     <button
-      onClick={(e) => { e.stopPropagation(); onTap(); }}
-      className={`flex-1 min-w-0 h-[48px] rounded-lg border flex flex-col items-center justify-center gap-0.5
-        ${bgMap[state]} ${borderMap[state]}
-        transition-transform active:scale-[0.93] duration-75`}
+      onClick={(event) => {
+        event.stopPropagation();
+        onTap();
+      }}
+      className={`${classByState[state]} flex-1 min-w-0 h-[52px] px-1.5
+        flex flex-col items-center justify-center gap-0.5`}
     >
-      <span className={`text-[9px] font-medium leading-none ${
-        state === 'today-pending' ? 'text-th-accent' : 'text-white/40'
+      <span className={`text-[9px] font-medium ${
+        state === 'today-pending' ? 'text-th-accent' : 'text-white/55'
       }`}>
         {dayLabel}
       </span>
 
       {state === 'completed' && (
-        <div className="flex items-center gap-0.5">
+        <div className="flex items-center gap-1">
           <Check size={10} className="text-th-accent" />
-          {hasComment && <MessageCircle size={8} className="text-white/30" />}
+          {hasComment && <MessageCircle size={8} className="text-white/45" />}
         </div>
       )}
 
       {state === 'today-pending' && (
-        <div className="flex gap-0.5">
-          {[0, 1, 2].map((i) => (
-            <div
-              key={i}
-              className="w-1 h-1 rounded-full bg-th-accent/40 animate-pulse"
-              style={{ animationDelay: `${i * 300}ms` }}
-            />
-          ))}
+        <div className="flex items-center gap-1">
+          <span className="fb-mini-dot" />
+          <span className="fb-mini-dot" style={{ animationDelay: '280ms' }} />
+          <span className="fb-mini-dot" style={{ animationDelay: '560ms' }} />
         </div>
       )}
     </button>
   );
 };
-
-// ── Week Cover Card ──
 
 export const WeekCoverCard: React.FC<WeekCoverCardProps> = ({
   weekStart,
@@ -153,42 +138,36 @@ export const WeekCoverCard: React.FC<WeekCoverCardProps> = ({
   });
 
   return (
-    <div
+    <article
       onClick={onCardTap}
-      className={`w-full rounded-2xl border p-4 cursor-pointer
-        transition-transform active:scale-[0.97] duration-75
-        ${isActive
-          ? 'bg-[#161616] border-white/[0.08]'
-          : 'bg-[#121212] border-white/[0.06]'}`}
+      className={`fb-coverflow-card-shell fb-card-press p-4 md:p-5
+        ${isActive ? '' : 'fb-coverflow-card-shell-inactive'}`}
     >
-      {/* Header */}
-      <div className="mb-3">
-        <p className="text-[16px] font-semibold text-white/90">{label}</p>
-        <p className="text-[12px] text-white/40 mt-0.5">{range}</p>
-      </div>
+      <header className="mb-3.5">
+        <p className="fb-coverflow-week-title text-[17px] font-semibold text-white/95">{label}</p>
+        <p className="fb-coverflow-week-range text-[12px] text-white/55 mt-0.5">{range}</p>
+      </header>
 
-      {/* Mini day cards row */}
-      <div className="flex gap-1.5">
-        {days.map((date, i) => {
+      <section className="flex gap-1.5">
+        {days.map((date) => {
           const dateKey = toDateKey(date);
           const card = feedbackCards.get(dateKey) ?? null;
           const dayTodos = getTodosForDay(todos, date);
           const state = deriveMiniState(date, card, dayTodos);
-          const dayIndex = (date.getDay() + 6) % 7; // Mon=0
+          const dayIndex = (date.getDay() + 6) % 7;
           const dayLabel = t.feedback.dayNames[dayIndex];
 
           return (
             <MiniDayCard
               key={dateKey}
-              date={date}
               state={state}
-              hasComment={!!card?.coachComment}
+              hasComment={Boolean(card?.coachComment)}
               dayLabel={dayLabel}
               onTap={() => onDayTap(date)}
             />
           );
         })}
-      </div>
-    </div>
+      </section>
+    </article>
   );
 };

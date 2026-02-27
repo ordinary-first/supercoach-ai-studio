@@ -1,4 +1,8 @@
-import React, { useRef, useState, useCallback, useMemo } from 'react';
+﻿import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Swiper, SwiperSlide } from 'swiper/react';
+import type { Swiper as SwiperInstance } from 'swiper';
+import 'swiper/css';
+
 import { WeekCoverCard } from './WeekCoverCard';
 import type { FeedbackCard, ToDoItem } from '../../types';
 import type { TranslationStrings } from '../../i18n/types';
@@ -14,43 +18,35 @@ interface WeekCoverFlowProps {
   onWeekTap: (weekIndex: number) => void;
 }
 
-interface CardTransform {
+interface VisualPreset {
   rotateX: number;
   scale: number;
   opacity: number;
   translateY: number;
+  blur: number;
 }
 
-const PRESETS: CardTransform[] = [
-  { rotateX: 0, scale: 1.0, opacity: 1.0, translateY: 0 },
-  { rotateX: 45, scale: 0.75, opacity: 0.6, translateY: -120 },
-  { rotateX: 55, scale: 0.6, opacity: 0.4, translateY: -180 },
-  { rotateX: 60, scale: 0.5, opacity: 0.25, translateY: -220 },
-  { rotateX: 65, scale: 0.4, opacity: 0.15, translateY: -250 },
+const PRESETS: VisualPreset[] = [
+  { rotateX: 0, scale: 1, opacity: 1, translateY: 0, blur: 0 },
+  { rotateX: 44, scale: 0.82, opacity: 0.72, translateY: -104, blur: 0.6 },
+  { rotateX: 54, scale: 0.68, opacity: 0.48, translateY: -164, blur: 1.1 },
+  { rotateX: 60, scale: 0.56, opacity: 0.31, translateY: -214, blur: 1.6 },
+  { rotateX: 64, scale: 0.48, opacity: 0.18, translateY: -244, blur: 2.2 },
 ];
-
-const DRAG_STEP = 220;
-const SNAP_THRESHOLD = DRAG_STEP / 2;
-const BOUNCE_PROGRESS = 0.18;
-const VISIBLE_RANGE = 5;
-const SPRING_EASING = 'cubic-bezier(0.32, 0.72, 0, 1)';
-const SNAP_DURATION = 350;
 
 const lerp = (a: number, b: number, t: number): number => a + (b - a) * t;
 
-const getTransformAtOffset = (offset: number): CardTransform => {
+const getPreset = (offset: number): VisualPreset => {
   const normalized = Math.max(0, offset);
-  const lowerIndex = Math.min(Math.floor(normalized), PRESETS.length - 1);
-  const upperIndex = Math.min(lowerIndex + 1, PRESETS.length - 1);
-  const mix = normalized - lowerIndex;
-  const lower = PRESETS[lowerIndex];
-  const upper = PRESETS[upperIndex];
-
+  const lower = Math.min(Math.floor(normalized), PRESETS.length - 1);
+  const upper = Math.min(lower + 1, PRESETS.length - 1);
+  const mix = normalized - lower;
   return {
-    rotateX: lerp(lower.rotateX, upper.rotateX, mix),
-    scale: lerp(lower.scale, upper.scale, mix),
-    opacity: lerp(lower.opacity, upper.opacity, mix),
-    translateY: lerp(lower.translateY, upper.translateY, mix),
+    rotateX: lerp(PRESETS[lower].rotateX, PRESETS[upper].rotateX, mix),
+    scale: lerp(PRESETS[lower].scale, PRESETS[upper].scale, mix),
+    opacity: lerp(PRESETS[lower].opacity, PRESETS[upper].opacity, mix),
+    translateY: lerp(PRESETS[lower].translateY, PRESETS[upper].translateY, mix),
+    blur: lerp(PRESETS[lower].blur, PRESETS[upper].blur, mix),
   };
 };
 
@@ -64,166 +60,129 @@ export const WeekCoverFlow: React.FC<WeekCoverFlowProps> = ({
   onDayTap,
   onWeekTap,
 }) => {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [dragDelta, setDragDelta] = useState(0);
-  const [isDragging, setIsDragging] = useState(false);
-  const [isAnimating, setIsAnimating] = useState(false);
-  const startY = useRef(0);
+  const swiperRef = useRef<SwiperInstance | null>(null);
+  const [isLowPerf, setIsLowPerf] = useState(false);
+  const [isReducedMotion, setIsReducedMotion] = useState(false);
 
-  const maxIndex = weeks.length - 1;
+  useEffect(() => {
+    const cores = typeof navigator !== 'undefined' ? navigator.hardwareConcurrency ?? 8 : 8;
+    setIsLowPerf(cores <= 4);
 
-  const dragProgress = useMemo(() => {
-    if (!isDragging && dragDelta === 0) return 0;
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
 
-    const raw = dragDelta / DRAG_STEP;
+    const media = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const sync = () => setIsReducedMotion(media.matches);
+    sync();
+    media.addEventListener('change', sync);
+    return () => media.removeEventListener('change', sync);
+  }, []);
 
-    if (activeIndex === 0 && raw < 0) return Math.max(raw, -BOUNCE_PROGRESS);
-    if (activeIndex >= maxIndex && raw > 0) return Math.min(raw, BOUNCE_PROGRESS);
+  const flowClassName = useMemo(() => {
+    const flags: string[] = ['fb-coverflow-swiper'];
+    if (isLowPerf) flags.push('fb-coverflow-lowperf');
+    if (isReducedMotion) flags.push('fb-coverflow-reduced');
+    return flags.join(' ');
+  }, [isLowPerf, isReducedMotion]);
 
-    return Math.max(-1, Math.min(1, raw));
-  }, [dragDelta, isDragging, activeIndex, maxIndex]);
+  const applySlideStyles = useCallback((swiper: SwiperInstance) => {
+    swiper.slides.forEach((slideEl) => {
+      const host = slideEl.querySelector<HTMLElement>('.fb-coverflow-card-host');
+      if (!host) return;
 
-  const activePosition = activeIndex + dragProgress;
+      const raw = Number((slideEl as unknown as { progress?: number }).progress ?? 0);
+      const visualOffset = raw >= 0 ? raw : Math.abs(raw) * 0.55;
+      const preset = getPreset(visualOffset);
 
-  const handleStart = useCallback((clientY: number) => {
-    if (isAnimating) return;
-    startY.current = clientY;
-    setIsDragging(true);
-    setDragDelta(0);
-  }, [isAnimating]);
+      let translateY = preset.translateY;
+      let rotateX = preset.rotateX;
+      let scale = preset.scale;
+      let opacity = preset.opacity;
+      let blur = preset.blur;
 
-  const handleMove = useCallback((clientY: number) => {
-    if (!isDragging) return;
-    setDragDelta(startY.current - clientY);
-  }, [isDragging]);
-
-  const handleEnd = useCallback(() => {
-    if (!isDragging) return;
-    setIsDragging(false);
-
-    const delta = dragDelta;
-
-    if (Math.abs(delta) >= SNAP_THRESHOLD) {
-      if (delta > 0 && activeIndex < maxIndex) {
-        setIsAnimating(true);
-        onIndexChange(activeIndex + 1);
-        setTimeout(() => {
-          setIsAnimating(false);
-          setDragDelta(0);
-        }, SNAP_DURATION);
-        return;
+      if (raw < 0) {
+        const backward = Math.min(2.4, Math.abs(raw));
+        translateY = 56 * backward;
+        rotateX = -20;
+        scale = 0.88 - backward * 0.09;
+        opacity = Math.max(0.08, 0.38 - backward * 0.14);
+        blur = Math.min(2, backward * 0.8);
       }
 
-      if (delta < 0 && activeIndex > 0) {
-        setIsAnimating(true);
-        onIndexChange(activeIndex - 1);
-        setTimeout(() => {
-          setIsAnimating(false);
-          setDragDelta(0);
-        }, SNAP_DURATION);
-        return;
-      }
+      const z = 120 - Math.round(Math.max(0, visualOffset) * 15);
+      host.style.transform =
+        `translate3d(0, ${translateY}px, 0) rotateX(${rotateX}deg) scale(${scale})`;
+      host.style.opacity = String(opacity);
+      host.style.zIndex = String(z);
+      host.style.filter = isLowPerf || isReducedMotion
+        ? 'none'
+        : `blur(${blur.toFixed(2)}px) saturate(${(1.04 - visualOffset * 0.03).toFixed(2)})`;
+      host.style.pointerEvents = Math.abs(raw) < 0.35 ? 'auto' : 'none';
+    });
+  }, [isLowPerf, isReducedMotion]);
+
+  const applyTransition = useCallback((swiper: SwiperInstance, durationMs: number) => {
+    swiper.slides.forEach((slideEl) => {
+      const host = slideEl.querySelector<HTMLElement>('.fb-coverflow-card-host');
+      if (!host) return;
+      host.style.transitionDuration = `${durationMs}ms`;
+    });
+  }, []);
+
+  useEffect(() => {
+    const swiper = swiperRef.current;
+    if (!swiper) return;
+    if (swiper.activeIndex !== activeIndex) {
+      swiper.slideTo(activeIndex, isReducedMotion ? 220 : 420);
     }
-
-    setDragDelta(0);
-  }, [isDragging, dragDelta, activeIndex, maxIndex, onIndexChange]);
-
-  const onTouchStart = useCallback((e: React.TouchEvent) => {
-    handleStart(e.touches[0].clientY);
-  }, [handleStart]);
-
-  const onTouchMove = useCallback((e: React.TouchEvent) => {
-    if (e.cancelable) e.preventDefault();
-    handleMove(e.touches[0].clientY);
-  }, [handleMove]);
-
-  const onTouchEnd = useCallback(() => {
-    handleEnd();
-  }, [handleEnd]);
-
-  const onTouchCancel = useCallback(() => {
-    handleEnd();
-  }, [handleEnd]);
-
-  const onPointerDown = useCallback((e: React.PointerEvent) => {
-    if (e.pointerType === 'touch') return;
-    handleStart(e.clientY);
-    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
-  }, [handleStart]);
-
-  const onPointerMove = useCallback((e: React.PointerEvent) => {
-    if (e.pointerType === 'touch') return;
-    handleMove(e.clientY);
-  }, [handleMove]);
-
-  const onPointerUp = useCallback((e: React.PointerEvent) => {
-    if (e.pointerType === 'touch') return;
-    handleEnd();
-  }, [handleEnd]);
-
-  const getCardStyle = useCallback((weekIndex: number): React.CSSProperties => {
-    const visualOffset = weekIndex - activePosition;
-    if (visualOffset < -0.2 || visualOffset > VISIBLE_RANGE) {
-      return { display: 'none' };
-    }
-
-    const tf = getTransformAtOffset(visualOffset);
-    const isFrontCard = Math.abs(visualOffset) < 0.35;
-    const zIndex = Math.max(1, 100 - Math.round(Math.max(0, visualOffset) * 10));
-
-    return {
-      position: 'absolute' as const,
-      left: '16px',
-      right: '16px',
-      bottom: '72px',
-      transformStyle: 'preserve-3d' as const,
-      transformOrigin: 'center bottom',
-      transform: `rotateX(${tf.rotateX}deg) scale(${tf.scale}) translateY(${tf.translateY}px)`,
-      opacity: tf.opacity,
-      zIndex,
-      transition: !isDragging
-        ? `transform ${SNAP_DURATION}ms ${SPRING_EASING}, opacity ${SNAP_DURATION}ms ease`
-        : 'none',
-      pointerEvents: isFrontCard && !isDragging ? 'auto' as const : 'none' as const,
-      willChange: 'transform, opacity',
-    };
-  }, [activePosition, isDragging]);
+    applySlideStyles(swiper);
+  }, [activeIndex, isReducedMotion, applySlideStyles]);
 
   return (
-    <div
-      ref={containerRef}
-      className="flex-1 relative overflow-hidden select-none"
-      style={{
-        perspective: '1200px',
-        perspectiveOrigin: '50% 30%',
-        touchAction: 'none',
-      }}
-      onTouchStart={onTouchStart}
-      onTouchMove={onTouchMove}
-      onTouchEnd={onTouchEnd}
-      onTouchCancel={onTouchCancel}
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={onPointerUp}
-    >
-      {weeks.map((weekStart, i) => {
-        const offset = i - Math.floor(activePosition);
-        if (offset < -1 || offset > VISIBLE_RANGE) return null;
-
-        return (
-          <div key={i} style={getCardStyle(i)}>
-            <WeekCoverCard
-              weekStart={weekStart}
-              todos={todos}
-              feedbackCards={feedbackCards}
-              t={t}
-              isActive={i === activeIndex}
-              onDayTap={onDayTap}
-              onCardTap={() => onWeekTap(i)}
-            />
-          </div>
-        );
-      })}
+    <div className="flex-1 relative overflow-hidden px-1 pb-4">
+      <Swiper
+        direction="vertical"
+        slidesPerView={1}
+        centeredSlides
+        speed={isReducedMotion ? 220 : 420}
+        threshold={8}
+        resistance
+        resistanceRatio={0.76}
+        watchSlidesProgress
+        className={flowClassName}
+        initialSlide={activeIndex}
+        onSwiper={(swiper) => {
+          swiperRef.current = swiper;
+          applySlideStyles(swiper);
+        }}
+        onProgress={(swiper) => applySlideStyles(swiper)}
+        onSetTransition={(swiper, duration) => applyTransition(swiper, duration)}
+        onSlideChange={(swiper) => onIndexChange(swiper.activeIndex)}
+      >
+        {weeks.map((weekStart, index) => (
+          <SwiperSlide key={toDateKey(weekStart)}>
+            <div className="fb-coverflow-slide-shell">
+              <div className="fb-coverflow-card-host">
+                <WeekCoverCard
+                  weekStart={weekStart}
+                  todos={todos}
+                  feedbackCards={feedbackCards}
+                  t={t}
+                  isActive={index === activeIndex}
+                  onDayTap={onDayTap}
+                  onCardTap={() => onWeekTap(index)}
+                />
+              </div>
+            </div>
+          </SwiperSlide>
+        ))}
+      </Swiper>
     </div>
   );
+};
+
+const toDateKey = (d: Date): string => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${dd}`;
 };

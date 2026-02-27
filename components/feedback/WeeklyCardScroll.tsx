@@ -90,7 +90,7 @@ export const WeeklyCardScroll: React.FC<WeeklyCardScrollProps> = ({
   return (
     <div
       ref={scrollRef}
-      className="flex gap-2 overflow-x-auto pl-4 pr-4 pb-2 snap-x snap-mandatory scrollbar-hide"
+      className="flex gap-2.5 overflow-x-auto px-4 pb-3 pt-3 snap-x snap-mandatory scrollbar-hide"
       style={{ scrollSnapType: 'x mandatory' }}
     >
       {days.map((date, i) => {
