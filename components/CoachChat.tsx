@@ -39,12 +39,23 @@ const CoachChat: React.FC<CoachChatProps> = ({
   const [selectedTopic, setSelectedTopic] = useState<CoachingQuestion | null>(null);
   const [showTopicCards, setShowTopicCards] = useState(true);
   const [questionPage, setQuestionPage] = useState(0);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
   const QUESTIONS_PER_PAGE = 3;
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const focusTrapRef = useFocusTrap(isOpen);
   const memory = useCoachMemory(userId, isOpen, nodes || [], todos);
   const { pendingDirective, feedbackSlot, markFeedbackDone } =
     useCoachFeedback(isOpen, todos);
+
+  // Mobile keyboard height via VirtualKeyboard API (overlays-content 모드)
+  useEffect(() => {
+    const nav = navigator as unknown as { virtualKeyboard?: { overlaysContent: boolean; boundingRect: DOMRect; addEventListener: (e: string, fn: () => void) => void; removeEventListener: (e: string, fn: () => void) => void } };
+    if (!nav.virtualKeyboard) return;
+    nav.virtualKeyboard.overlaysContent = true;
+    const onChange = () => setKeyboardHeight(Math.round(nav.virtualKeyboard!.boundingRect.height));
+    nav.virtualKeyboard.addEventListener('geometrychange', onChange);
+    return () => nav.virtualKeyboard!.removeEventListener('geometrychange', onChange);
+  }, []);
 
   const extractComment = useCallback((text: string) => {
     const match = text.match(/<!-- COMMENT: (.+?) -->/);
@@ -300,7 +311,7 @@ const CoachChat: React.FC<CoachChatProps> = ({
       </div>
 
       {/* Chat Messages */}
-      <div ref={messagesContainerRef} className="flex-1 overflow-y-auto px-4 lg:px-0 scrollbar-hide relative z-10">
+      <div ref={messagesContainerRef} className="flex-1 overflow-y-auto px-4 lg:px-0 scrollbar-hide relative z-10" style={keyboardHeight > 0 ? { paddingBottom: '72px' } : undefined}>
         <div className="max-w-2xl mx-auto py-4 space-y-3">
           {messages.map((msg) => (
             <div key={msg.id} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
@@ -405,8 +416,11 @@ const CoachChat: React.FC<CoachChatProps> = ({
         </div>
       </div>
 
-      {/* Input */}
-      <div className="shrink-0 px-4 pb-[max(8px,env(safe-area-inset-bottom))] pt-2 flex justify-center z-20">
+      {/* Input — fixed above keyboard when open */}
+      <div
+        className="shrink-0 px-4 pb-[max(8px,env(safe-area-inset-bottom))] pt-2 flex justify-center z-20 bg-th-base"
+        style={keyboardHeight > 0 ? { position: 'fixed', bottom: `${keyboardHeight}px`, left: 0, right: 0 } : undefined}
+      >
         <div className="w-full max-w-2xl">
           <div className="relative group">
             <div className="absolute inset-0 bg-th-accent/20 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
