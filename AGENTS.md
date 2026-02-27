@@ -82,7 +82,7 @@ When one agent completes work that another agent will continue:
 ## Current Status
 _Last updated: 2026-02-27_
 
-### CoverFlow UI Redesign (V02.27r6)
+### CoverFlow UI Redesign (V02.27r7)
 - **WeekCoverFlow.tsx** — 3D vertical cover flow with CSS perspective + touch gestures
   - `perspective: 1200px`, `rotateX` transforms per card offset
   - Swipe up=past, down=current, bounce at boundaries
@@ -91,16 +91,21 @@ _Last updated: 2026-02-27_
   - Removed top dot hint; stack peek now comes from the real previous-week card
 - **WeekCoverCard.tsx** — Week card with 7 inline mini DayCards
   - Mini cards show completed(✓)/today-pending(pulse)/future/empty states
-  - Tap mini card → DayDetailSheet, tap card → WeekDetailSheet
+  - Tap mini card → DayDetailSheet, tap card → expand selected week in main view
 - **WeekDetailSheet.tsx** — Bottom sheet for week details
   - Contains WeeklyCardScroll, GoalAdjustmentCard, WeeklySummaryCard, MonthlySummaryCard
   - Added swipe-down-to-close gesture on the top handle (X/backdrop close preserved)
 - **FeedbackView.tsx** — Refactored: WeekNavigator removed, CoverFlow integrated
-  - `weekOffset` → `activeWeekIndex`, new `selectedWeek` state
-  - Renders WeekCoverFlow (flex-1) + conditional WeekDetailSheet overlay
+  - `weekOffset` → `activeWeekIndex`
+  - Renders weekly detail screen by default, and switches to WeekCoverFlow in album mode
   - Notification settings now load regardless of active tab
   - Notification timer now runs with `userId + notifSettings` (not blocked by feedback tab open)
   - Daily victory write flow now marks `victory` after successful save (prevents false dedup on fail)
+- **FeedbackView.tsx** — UX transition update for weekly wins album flow
+  - Default view is weekly detail (week label + 7-day card strip + summaries in same screen)
+  - Swipe down on weekly strip collapses into week-card album mode (`isCoverFlowMode`)
+  - In album mode, `WeekCoverFlow` is used for past-week browsing; tapping a week card expands back
+  - `WeekDetailSheet` overlay path removed from the main flow (detail now in primary screen)
 - WeekNavigator.tsx import removed (file preserved)
 
 ### FeedbackView Phase 2 (V02.27r1)
