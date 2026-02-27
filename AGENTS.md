@@ -82,6 +82,22 @@ When one agent completes work that another agent will continue:
 ## Current Status
 _Last updated: 2026-02-27_
 
+### CoverFlow UI Redesign (V02.27r5)
+- **WeekCoverFlow.tsx** — 3D vertical cover flow with CSS perspective + touch gestures
+  - `perspective: 1200px`, `rotateX` transforms per card offset
+  - Swipe up=past, down=current, bounce at boundaries
+  - Snap threshold 80px, 350ms spring easing
+- **WeekCoverCard.tsx** — Week card with 7 inline mini DayCards
+  - Mini cards show completed(✓)/today-pending(pulse)/future/empty states
+  - Tap mini card → DayDetailSheet, tap card → WeekDetailSheet
+- **WeekDetailSheet.tsx** — Bottom sheet for week details
+  - Contains WeeklyCardScroll, GoalAdjustmentCard, WeeklySummaryCard, MonthlySummaryCard
+  - Reuses DayDetailSheet pattern (backdrop + slide-up)
+- **FeedbackView.tsx** — Refactored: WeekNavigator removed, CoverFlow integrated
+  - `weekOffset` → `activeWeekIndex`, new `selectedWeek` state
+  - Renders WeekCoverFlow (flex-1) + conditional WeekDetailSheet overlay
+- WeekNavigator.tsx import removed (file preserved)
+
 ### FeedbackView Phase 2 (V02.27r1)
 - **Notification Settings Firestore persistence** (`services/firebaseService.ts`)
   - `loadNotificationSettings` / `saveNotificationSettings` / `saveFcmToken` CRUD

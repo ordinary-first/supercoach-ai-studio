@@ -14,13 +14,10 @@ import {
 } from '../services/notificationService';
 import { analyzeGoalCompletionRates } from '../services/goalAdjustmentService';
 import { useTranslation } from '../i18n/useTranslation';
-import { WeekNavigator } from './feedback/WeekNavigator';
-import { WeeklyCardScroll } from './feedback/WeeklyCardScroll';
+import { WeekCoverFlow } from './feedback/WeekCoverFlow';
+import { WeekDetailSheet } from './feedback/WeekDetailSheet';
 import { DayDetailSheet } from './feedback/DayDetailSheet';
-import { WeeklySummaryCard } from './feedback/WeeklySummaryCard';
-import { MonthlySummaryCard } from './feedback/MonthlySummaryCard';
 import { FeedbackSettingsSheet } from './feedback/FeedbackSettingsSheet';
-import { GoalAdjustmentCard } from './feedback/GoalAdjustmentCard';
 
 interface FeedbackViewProps {
   isOpen: boolean;
@@ -62,7 +59,7 @@ const isLastWeekOfMonth = (weekStart: Date): boolean => {
 };
 
 const MAX_PAST_WEEKS = 12;
-const TIMER_INTERVAL = 60000; // 1 minute
+const TIMER_INTERVAL = 60000;
 
 // ── Derive card from todos ──
 
@@ -103,14 +100,15 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
 }) => {
   const { t } = useTranslation();
 
-  // Current week offset (0 = current week, -1 = last week, etc.)
-  const [weekOffset, setWeekOffset] = useState(0);
+  // ── CoverFlow state ──
+  const [activeWeekIndex, setActiveWeekIndex] = useState(0);
 
   // Firestore feedback cards
   const [firestoreCards, setFirestoreCards] = useState<Map<string, FeedbackCard>>(new Map());
 
   // Sheets
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
+  const [selectedWeek, setSelectedWeek] = useState<number | null>(null);
   const [showSettings, setShowSettings] = useState(false);
 
   // Weekly/monthly summary
@@ -134,12 +132,20 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
 
   const currentMonday = useMemo(() => getMonday(new Date()), []);
 
-  const activeWeekStart = useMemo(
-    () => addWeeks(currentMonday, weekOffset),
-    [currentMonday, weekOffset],
+  // Weeks array: [currentMonday, -1w, -2w, ..., -12w]
+  const weeks = useMemo(() =>
+    Array.from({ length: MAX_PAST_WEEKS + 1 }, (_, i) =>
+      addWeeks(currentMonday, -i)),
+    [currentMonday],
   );
 
-  // Load Firestore cards + notification settings when opening
+  // Active week start (derived from index)
+  const activeWeekStart = useMemo(
+    () => weeks[activeWeekIndex] ?? currentMonday,
+    [weeks, activeWeekIndex, currentMonday],
+  );
+
+  // Load Firestore cards + notification settings
   useEffect(() => {
     if (!isOpen || !userId) return;
     const oldest = addWeeks(currentMonday, -MAX_PAST_WEEKS);
@@ -219,7 +225,7 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
     setSelectedDay(null);
   }, [userId]);
 
-  // ── 오늘의 승리 자동 생성 ──
+  // ── Victory auto-generation ──
   const generateDailyVictory = useCallback(async () => {
     if (generatingVictory || wasVictoryGenerated()) return;
     const todayCard = deriveFeedbackCardFromTodos(todos, new Date());
@@ -247,7 +253,6 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
     if (userId) await saveFeedbackCard(userId, card);
     setGeneratingVictory(false);
 
-    // Show evening notification
     if (canShowNotification()) {
       showBrowserNotification(
         t.feedback.eveningNotifTitle,
@@ -257,7 +262,6 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
       markEveningSent();
     }
 
-    // Auto-open today's card
     setSelectedDay(new Date());
   }, [todos, userProfile, userId, generatingVictory, t]);
 
@@ -276,7 +280,6 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
       if (triggers.shouldGenerateVictory) {
         generateDailyVictory();
       } else if (triggers.shouldNotifyEvening && canShowNotification()) {
-        // Evening notif without victory generation (already generated)
         const todayCard = deriveFeedbackCardFromTodos(todos, new Date());
         const count = todayCard?.completedTodos.length ?? 0;
         showBrowserNotification(
@@ -288,7 +291,6 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
       }
     };
 
-    // Check immediately on mount
     tick();
     timerRef.current = setInterval(tick, TIMER_INTERVAL);
     return () => clearInterval(timerRef.current);
@@ -310,7 +312,6 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
     const oldText = node?.text || '';
     const newText = oldText.replace(adj.currentMetric, adj.suggestedMetric);
 
-    // Save undo data
     const todoUpdates: { id: string; oldText: string }[] = [];
     todos.forEach((td) => {
       if (td.linkedNodeId === adj.goalId && td.text.includes(adj.currentMetric)) {
@@ -319,21 +320,16 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
     });
     setUndoData({ goalId: adj.goalId, oldText, todoUpdates });
 
-    // Apply changes
     onUpdateNode(adj.goalId, { text: newText, progress: 0 });
     todoUpdates.forEach(({ id }) => {
       onUpdateTodo?.(id, { text: todos.find((t) => t.id === id)!.text.replace(adj.currentMetric, adj.suggestedMetric) });
     });
 
-    // Update adjustment status
     setAdjustments((prev) =>
       prev.map((a) => a.goalId === adj.goalId ? { ...a, status: 'accepted' } : a),
     );
 
-    // Clear adjusting state after animation
     setTimeout(() => setAdjustingId(null), 2000);
-
-    // Auto-clear undo after 5 seconds
     setTimeout(() => setUndoData(null), 5000);
   }, [nodes, todos, onUpdateNode, onUpdateTodo]);
 
@@ -396,7 +392,7 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
     setGeneratingMonth(null);
   }, [getMonthCards, userProfile, userId, generatingMonth]);
 
-  // Pending adjustments to show
+  // Pending adjustments
   const pendingAdjustments = useMemo(
     () => adjustments.filter((a) => a.status === 'pending'),
     [adjustments],
@@ -405,6 +401,9 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
     () => adjustments.find((a) => a.status === 'accepted' && a.goalId === undoData?.goalId),
     [adjustments, undoData],
   );
+
+  // WeekDetailSheet data for selected week
+  const selectedWeekStart = selectedWeek !== null ? weeks[selectedWeek] : null;
 
   if (!isOpen) return null;
 
@@ -429,15 +428,6 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
         </button>
       </div>
 
-      {/* Week Navigator */}
-      <WeekNavigator
-        weekStart={activeWeekStart}
-        t={t}
-        onPrev={() => setWeekOffset((o) => Math.max(o - 1, -MAX_PAST_WEEKS))}
-        onNext={() => setWeekOffset((o) => Math.min(o + 1, 0))}
-        canNext={weekOffset < 0}
-      />
-
       {/* Victory generating banner */}
       {generatingVictory && (
         <div className="mx-4 mt-2 px-4 py-2 rounded-xl bg-th-accent/10 text-th-accent text-[12px] font-medium text-center animate-fade-in">
@@ -445,76 +435,54 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
         </div>
       )}
 
-      {/* Scrollable Feed */}
-      <div className="flex-1 overflow-y-auto pb-[120px]">
-        <div className="max-w-lg mx-auto space-y-5 pt-4">
-          {/* Weekly Card Scroll */}
-          <WeeklyCardScroll
-            weekStart={activeWeekStart}
-            todos={todos}
-            feedbackCards={mergedCards}
-            t={t}
-            onDayTap={(date) => setSelectedDay(date)}
-          />
+      {/* CoverFlow — 커버플로우 영역 */}
+      <WeekCoverFlow
+        weeks={weeks}
+        activeIndex={activeWeekIndex}
+        todos={todos}
+        feedbackCards={mergedCards}
+        t={t}
+        onIndexChange={setActiveWeekIndex}
+        onDayTap={(date) => setSelectedDay(date)}
+        onWeekTap={(idx) => setSelectedWeek(idx)}
+      />
 
-          {/* Goal Adjustment Cards */}
-          {pendingAdjustments.map((adj) => (
-            <GoalAdjustmentCard
-              key={adj.goalId}
-              adjustment={adj}
-              isAdjusting={adjustingId === adj.goalId}
-              t={t}
-              onAccept={() => handleAcceptAdjustment(adj)}
-              onDismiss={() => handleDismissAdjustment(adj.goalId)}
-            />
-          ))}
-
-          {/* Undo toast for recently accepted adjustment */}
-          {recentAccepted && undoData && (
-            <div className="mx-4 px-4 py-3 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center justify-between animate-fade-in">
-              <span className="text-[12px] text-green-400">{t.feedback.adjustComplete}</span>
-              <button
-                onClick={handleUndo}
-                className="text-[11px] font-semibold text-white/70 px-3 py-1 rounded-full bg-white/10 hover:bg-white/15 transition-colors"
-              >
-                {t.feedback.undo}
-              </button>
-            </div>
-          )}
-
-          {/* Weekly Summary Card */}
-          <WeeklySummaryCard
-            weekStart={activeWeekStart}
-            weekCards={getWeekCards(activeWeekStart)}
-            summaryText={weeklySummaries.get(toDateKey(activeWeekStart)) ?? ''}
-            isGenerating={generatingWeek === toDateKey(activeWeekStart)}
-            t={t}
-            onGenerate={() => handleGenerateWeekly(activeWeekStart)}
-            onTap={() => {}}
-          />
-
-          {/* Monthly Summary Card (only on last week of month) */}
-          {isLastWeekOfMonth(activeWeekStart) && (
-            <MonthlySummaryCard
-              month={activeWeekStart.getMonth() + 1}
-              year={activeWeekStart.getFullYear()}
-              monthCards={getMonthCards(activeWeekStart)}
-              summaryText={
-                monthlySummaries.get(
-                  `${activeWeekStart.getFullYear()}-${activeWeekStart.getMonth() + 1}`,
-                ) ?? ''
-              }
-              isGenerating={
-                generatingMonth ===
-                `${activeWeekStart.getFullYear()}-${activeWeekStart.getMonth() + 1}`
-              }
-              t={t}
-              onGenerate={() => handleGenerateMonthly(activeWeekStart)}
-              onTap={() => {}}
-            />
-          )}
-        </div>
-      </div>
+      {/* WeekDetailSheet */}
+      {selectedWeekStart && selectedWeek !== null && (
+        <WeekDetailSheet
+          weekStart={selectedWeekStart}
+          todos={todos}
+          feedbackCards={mergedCards}
+          t={t}
+          onClose={() => setSelectedWeek(null)}
+          onDayTap={(date) => setSelectedDay(date)}
+          weekCards={getWeekCards(selectedWeekStart)}
+          weeklySummary={weeklySummaries.get(toDateKey(selectedWeekStart)) ?? ''}
+          isGeneratingWeekly={generatingWeek === toDateKey(selectedWeekStart)}
+          onGenerateWeekly={() => handleGenerateWeekly(selectedWeekStart)}
+          isLastWeekOfMonth={isLastWeekOfMonth(selectedWeekStart)}
+          month={selectedWeekStart.getMonth() + 1}
+          year={selectedWeekStart.getFullYear()}
+          monthCards={getMonthCards(selectedWeekStart)}
+          monthlySummary={
+            monthlySummaries.get(
+              `${selectedWeekStart.getFullYear()}-${selectedWeekStart.getMonth() + 1}`,
+            ) ?? ''
+          }
+          isGeneratingMonthly={
+            generatingMonth ===
+            `${selectedWeekStart.getFullYear()}-${selectedWeekStart.getMonth() + 1}`
+          }
+          onGenerateMonthly={() => handleGenerateMonthly(selectedWeekStart)}
+          pendingAdjustments={pendingAdjustments}
+          adjustingId={adjustingId}
+          onAcceptAdjustment={handleAcceptAdjustment}
+          onDismissAdjustment={handleDismissAdjustment}
+          undoData={undoData}
+          recentAccepted={recentAccepted}
+          onUndo={handleUndo}
+        />
+      )}
 
       {/* Day Detail Sheet */}
       {selectedDay && (
