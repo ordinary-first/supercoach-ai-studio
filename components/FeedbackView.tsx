@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import { Settings } from 'lucide-react';
+import { Menu, Settings } from 'lucide-react';
 import type { GoalNode, ToDoItem, UserProfile, FeedbackCard, NotificationSettings, GoalAdjustment } from '../types';
 import { generateFeedback } from '../services/aiService';
 import { loadFeedbackCards, saveFeedbackCard, loadNotificationSettings } from '../services/firebaseService';
@@ -30,7 +30,7 @@ interface FeedbackViewProps {
   onUpdateTodo?: (todoId: string, updates: Partial<ToDoItem>) => void;
 }
 
-// ── Week helpers ──
+// Week helpers
 
 const getMonday = (d: Date): Date => {
   const date = new Date(d.getFullYear(), d.getMonth(), d.getDate());
@@ -61,7 +61,7 @@ const isLastWeekOfMonth = (weekStart: Date): boolean => {
 const MAX_PAST_WEEKS = 12;
 const TIMER_INTERVAL = 60000;
 
-// ── Derive card from todos ──
+// Derive card from todos
 
 const getDayStart = (d: Date): number =>
   new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
@@ -100,7 +100,7 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
 }) => {
   const { t } = useTranslation();
 
-  // ── CoverFlow state ──
+  // CoverFlow state
   const [activeWeekIndex, setActiveWeekIndex] = useState(0);
 
   // Firestore feedback cards
@@ -139,13 +139,7 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
     [currentMonday],
   );
 
-  // Active week start (derived from index)
-  const activeWeekStart = useMemo(
-    () => weeks[activeWeekIndex] ?? currentMonday,
-    [weeks, activeWeekIndex, currentMonday],
-  );
-
-  // Load Firestore cards + notification settings
+  // Load Firestore cards
   useEffect(() => {
     if (!isOpen || !userId) return;
     const oldest = addWeeks(currentMonday, -MAX_PAST_WEEKS);
@@ -157,11 +151,18 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
       cards.forEach((c) => map.set(c.date, c));
       setFirestoreCards(map);
     });
+  }, [isOpen, userId, currentMonday]);
 
+  // Load notification settings regardless of active tab
+  useEffect(() => {
+    if (!userId) {
+      setNotifSettings(null);
+      return;
+    }
     loadNotificationSettings(userId).then((s) => {
       if (s) setNotifSettings(s);
     });
-  }, [isOpen, userId, currentMonday]);
+  }, [userId]);
 
   // Merged cards: Firestore first, then derive from todos
   const mergedCards = useMemo(() => {
@@ -225,49 +226,55 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
     setSelectedDay(null);
   }, [userId]);
 
-  // ── Victory auto-generation ──
+  // Victory auto-generation
   const generateDailyVictory = useCallback(async () => {
     if (generatingVictory || wasVictoryGenerated()) return;
     const todayCard = deriveFeedbackCardFromTodos(todos, new Date());
     if (!todayCard || todayCard.completedTodos.length === 0) return;
 
     setGeneratingVictory(true);
-    markVictoryGenerated();
-
-    const todoContext = todayCard.completedTodos.map((t) => `- [O] ${t}`).join('\n');
-    const coachComment = await generateFeedback(
-      'daily', userProfile, '', todoContext, '', userId,
-    );
-
-    const card: FeedbackCard = {
-      ...todayCard,
-      coachComment: coachComment || undefined,
-      updatedAt: Date.now(),
-    };
-
-    setFirestoreCards((prev) => {
-      const next = new Map(prev);
-      next.set(card.date, card);
-      return next;
-    });
-    if (userId) await saveFeedbackCard(userId, card);
-    setGeneratingVictory(false);
-
-    if (canShowNotification()) {
-      showBrowserNotification(
-        t.feedback.eveningNotifTitle,
-        t.feedback.eveningNotifBody.replace('{count}', String(todayCard.completedTodos.length)),
-        'evening-victory',
+    try {
+      const todoContext = todayCard.completedTodos.map((item) => `- [O] ${item}`).join('\n');
+      const coachComment = await generateFeedback(
+        'daily', userProfile, '', todoContext, '', userId,
       );
-      markEveningSent();
-    }
 
-    setSelectedDay(new Date());
+      const card: FeedbackCard = {
+        ...todayCard,
+        coachComment: coachComment || undefined,
+        updatedAt: Date.now(),
+      };
+
+      setFirestoreCards((prev) => {
+        const next = new Map(prev);
+        next.set(card.date, card);
+        return next;
+      });
+
+      if (userId) await saveFeedbackCard(userId, card);
+      markVictoryGenerated();
+
+      if (canShowNotification()) {
+        showBrowserNotification(
+          t.feedback.eveningNotifTitle,
+          t.feedback.eveningNotifBody.replace(
+            '{count}',
+            String(todayCard.completedTodos.length),
+          ),
+          'evening-victory',
+        );
+        markEveningSent();
+      }
+
+      setSelectedDay(new Date());
+    } finally {
+      setGeneratingVictory(false);
+    }
   }, [todos, userProfile, userId, generatingVictory, t]);
 
-  // ── Notification timer ──
+  // Notification timer
   useEffect(() => {
-    if (!isOpen || !notifSettings) return;
+    if (!userId || !notifSettings) return;
 
     const tick = () => {
       const triggers = checkNotificationTriggers(notifSettings);
@@ -294,9 +301,9 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
     tick();
     timerRef.current = setInterval(tick, TIMER_INTERVAL);
     return () => clearInterval(timerRef.current);
-  }, [isOpen, notifSettings, generateDailyVictory, todos, t]);
+  }, [userId, notifSettings, generateDailyVictory, todos, t]);
 
-  // ── Goal adjustment analysis ──
+  // Goal adjustment analysis
   useEffect(() => {
     if (!isOpen || mergedCards.size === 0 || nodes.length === 0) return;
     const results = analyzeGoalCompletionRates(todos, nodes, mergedCards, 3);
@@ -422,9 +429,9 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
         </h1>
         <button
           onClick={onClose}
-          className="text-xs text-white/40 hover:text-white/70 transition-colors px-2 py-1"
+          className="p-2 rounded-full hover:bg-white/5 transition-colors"
         >
-          {t.common.close}
+          <Menu size={16} className="text-white/40" />
         </button>
       </div>
 
@@ -435,7 +442,7 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
         </div>
       )}
 
-      {/* CoverFlow — 커버플로우 영역 */}
+      {/* CoverFlow */}
       <WeekCoverFlow
         weeks={weeks}
         activeIndex={activeWeekIndex}
@@ -509,3 +516,4 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
 };
 
 export default FeedbackView;
+

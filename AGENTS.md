@@ -82,20 +82,25 @@ When one agent completes work that another agent will continue:
 ## Current Status
 _Last updated: 2026-02-27_
 
-### CoverFlow UI Redesign (V02.27r5)
+### CoverFlow UI Redesign (V02.27r6)
 - **WeekCoverFlow.tsx** — 3D vertical cover flow with CSS perspective + touch gestures
   - `perspective: 1200px`, `rotateX` transforms per card offset
   - Swipe up=past, down=current, bounce at boundaries
-  - Snap threshold 80px, 350ms spring easing
+  - Drag interpolation fixed (continuous transform while dragging, no jump)
+  - Snap threshold updated to half-card gesture (`~110px`), 350ms spring easing
+  - Removed top dot hint; stack peek now comes from the real previous-week card
 - **WeekCoverCard.tsx** — Week card with 7 inline mini DayCards
   - Mini cards show completed(✓)/today-pending(pulse)/future/empty states
   - Tap mini card → DayDetailSheet, tap card → WeekDetailSheet
 - **WeekDetailSheet.tsx** — Bottom sheet for week details
   - Contains WeeklyCardScroll, GoalAdjustmentCard, WeeklySummaryCard, MonthlySummaryCard
-  - Reuses DayDetailSheet pattern (backdrop + slide-up)
+  - Added swipe-down-to-close gesture on the top handle (X/backdrop close preserved)
 - **FeedbackView.tsx** — Refactored: WeekNavigator removed, CoverFlow integrated
   - `weekOffset` → `activeWeekIndex`, new `selectedWeek` state
   - Renders WeekCoverFlow (flex-1) + conditional WeekDetailSheet overlay
+  - Notification settings now load regardless of active tab
+  - Notification timer now runs with `userId + notifSettings` (not blocked by feedback tab open)
+  - Daily victory write flow now marks `victory` after successful save (prevents false dedup on fail)
 - WeekNavigator.tsx import removed (file preserved)
 
 ### FeedbackView Phase 2 (V02.27r1)

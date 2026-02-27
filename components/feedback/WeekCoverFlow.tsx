@@ -14,56 +14,43 @@ interface WeekCoverFlowProps {
   onWeekTap: (weekIndex: number) => void;
 }
 
-// ── Transform presets (spec §4.3) ──
-
 interface CardTransform {
   rotateX: number;
   scale: number;
   opacity: number;
   translateY: number;
-  zIndex: number;
 }
 
 const PRESETS: CardTransform[] = [
-  { rotateX: 0,  scale: 1.0,  opacity: 1.0,  translateY: 0,    zIndex: 10 },  // active
-  { rotateX: 45, scale: 0.75, opacity: 0.6,  translateY: -120, zIndex: 9 },   // prev-1
-  { rotateX: 55, scale: 0.6,  opacity: 0.4,  translateY: -180, zIndex: 8 },   // prev-2
-  { rotateX: 60, scale: 0.5,  opacity: 0.25, translateY: -220, zIndex: 7 },   // prev-3
-  { rotateX: 65, scale: 0.4,  opacity: 0.15, translateY: -250, zIndex: 6 },   // prev-4+
+  { rotateX: 0, scale: 1.0, opacity: 1.0, translateY: 0 },
+  { rotateX: 45, scale: 0.75, opacity: 0.6, translateY: -120 },
+  { rotateX: 55, scale: 0.6, opacity: 0.4, translateY: -180 },
+  { rotateX: 60, scale: 0.5, opacity: 0.25, translateY: -220 },
+  { rotateX: 65, scale: 0.4, opacity: 0.15, translateY: -250 },
 ];
 
-const SNAP_THRESHOLD = 80;      // px to trigger snap
-const BOUNCE_MAX = 25;          // px max bounce
-const VISIBLE_RANGE = 5;        // render active ± 5
+const DRAG_STEP = 220;
+const SNAP_THRESHOLD = DRAG_STEP / 2;
+const BOUNCE_PROGRESS = 0.18;
+const VISIBLE_RANGE = 5;
 const SPRING_EASING = 'cubic-bezier(0.32, 0.72, 0, 1)';
-const SNAP_DURATION = 350;      // ms
+const SNAP_DURATION = 350;
 
 const lerp = (a: number, b: number, t: number): number => a + (b - a) * t;
 
-const getPreset = (offset: number): CardTransform => {
-  const idx = Math.min(Math.abs(offset), PRESETS.length - 1);
-  return PRESETS[idx];
-};
-
-const interpolateTransform = (
-  offset: number,
-  dragProgress: number,
-): CardTransform => {
-  // offset = visual distance from active (0=active, 1=prev-1, etc.)
-  // dragProgress = -1..1 fractional progress toward next/prev
-  const currentPreset = getPreset(Math.round(offset));
-
-  // Target preset if we fully snap
-  const targetOffset = offset + (dragProgress > 0 ? -1 : 1);
-  const targetPreset = getPreset(Math.round(Math.max(0, targetOffset)));
-  const t = Math.abs(dragProgress);
+const getTransformAtOffset = (offset: number): CardTransform => {
+  const normalized = Math.max(0, offset);
+  const lowerIndex = Math.min(Math.floor(normalized), PRESETS.length - 1);
+  const upperIndex = Math.min(lowerIndex + 1, PRESETS.length - 1);
+  const mix = normalized - lowerIndex;
+  const lower = PRESETS[lowerIndex];
+  const upper = PRESETS[upperIndex];
 
   return {
-    rotateX: lerp(currentPreset.rotateX, targetPreset.rotateX, t),
-    scale: lerp(currentPreset.scale, targetPreset.scale, t),
-    opacity: lerp(currentPreset.opacity, targetPreset.opacity, t),
-    translateY: lerp(currentPreset.translateY, targetPreset.translateY, t),
-    zIndex: currentPreset.zIndex,
+    rotateX: lerp(lower.rotateX, upper.rotateX, mix),
+    scale: lerp(lower.scale, upper.scale, mix),
+    opacity: lerp(lower.opacity, upper.opacity, mix),
+    translateY: lerp(lower.translateY, upper.translateY, mix),
   };
 };
 
@@ -82,43 +69,32 @@ export const WeekCoverFlow: React.FC<WeekCoverFlowProps> = ({
   const [isDragging, setIsDragging] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
   const startY = useRef(0);
-  const lastY = useRef(0);
 
   const maxIndex = weeks.length - 1;
 
-  // Compute drag progress as fraction (-1 to 1)
   const dragProgress = useMemo(() => {
     if (!isDragging && dragDelta === 0) return 0;
 
-    // Positive dragDelta = swiped up = go to past (increase index)
-    // Negative dragDelta = swiped down = go to current (decrease index)
+    const raw = dragDelta / DRAG_STEP;
 
-    // Bounce at boundaries
-    if (activeIndex === 0 && dragDelta < 0) {
-      // At current week, swiping down → bounce
-      return -(Math.min(Math.abs(dragDelta), BOUNCE_MAX) / BOUNCE_MAX) * 0.15;
-    }
-    if (activeIndex >= maxIndex && dragDelta > 0) {
-      // At oldest week, swiping up → bounce
-      return (Math.min(Math.abs(dragDelta), BOUNCE_MAX) / BOUNCE_MAX) * 0.15;
-    }
+    if (activeIndex === 0 && raw < 0) return Math.max(raw, -BOUNCE_PROGRESS);
+    if (activeIndex >= maxIndex && raw > 0) return Math.min(raw, BOUNCE_PROGRESS);
 
-    return Math.max(-1, Math.min(1, dragDelta / 200));
+    return Math.max(-1, Math.min(1, raw));
   }, [dragDelta, isDragging, activeIndex, maxIndex]);
+
+  const activePosition = activeIndex + dragProgress;
 
   const handleStart = useCallback((clientY: number) => {
     if (isAnimating) return;
     startY.current = clientY;
-    lastY.current = clientY;
     setIsDragging(true);
     setDragDelta(0);
   }, [isAnimating]);
 
   const handleMove = useCallback((clientY: number) => {
     if (!isDragging) return;
-    const delta = startY.current - clientY; // positive = swipe up
-    lastY.current = clientY;
-    setDragDelta(delta);
+    setDragDelta(startY.current - clientY);
   }, [isDragging]);
 
   const handleEnd = useCallback(() => {
@@ -127,34 +103,37 @@ export const WeekCoverFlow: React.FC<WeekCoverFlowProps> = ({
 
     const delta = dragDelta;
 
-    // Check if we should snap to next/prev
-    if (Math.abs(delta) > SNAP_THRESHOLD) {
+    if (Math.abs(delta) >= SNAP_THRESHOLD) {
       if (delta > 0 && activeIndex < maxIndex) {
-        // Swipe up → past
         setIsAnimating(true);
         onIndexChange(activeIndex + 1);
-        setTimeout(() => { setIsAnimating(false); setDragDelta(0); }, SNAP_DURATION);
+        setTimeout(() => {
+          setIsAnimating(false);
+          setDragDelta(0);
+        }, SNAP_DURATION);
         return;
       }
+
       if (delta < 0 && activeIndex > 0) {
-        // Swipe down → current
         setIsAnimating(true);
         onIndexChange(activeIndex - 1);
-        setTimeout(() => { setIsAnimating(false); setDragDelta(0); }, SNAP_DURATION);
+        setTimeout(() => {
+          setIsAnimating(false);
+          setDragDelta(0);
+        }, SNAP_DURATION);
         return;
       }
     }
 
-    // Snap back
     setDragDelta(0);
   }, [isDragging, dragDelta, activeIndex, maxIndex, onIndexChange]);
 
-  // Touch handlers
   const onTouchStart = useCallback((e: React.TouchEvent) => {
     handleStart(e.touches[0].clientY);
   }, [handleStart]);
 
   const onTouchMove = useCallback((e: React.TouchEvent) => {
+    if (e.cancelable) e.preventDefault();
     handleMove(e.touches[0].clientY);
   }, [handleMove]);
 
@@ -162,9 +141,12 @@ export const WeekCoverFlow: React.FC<WeekCoverFlowProps> = ({
     handleEnd();
   }, [handleEnd]);
 
-  // Pointer handlers (desktop fallback)
+  const onTouchCancel = useCallback(() => {
+    handleEnd();
+  }, [handleEnd]);
+
   const onPointerDown = useCallback((e: React.PointerEvent) => {
-    if (e.pointerType === 'touch') return; // avoid double handling
+    if (e.pointerType === 'touch') return;
     handleStart(e.clientY);
     (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
   }, [handleStart]);
@@ -179,25 +161,15 @@ export const WeekCoverFlow: React.FC<WeekCoverFlowProps> = ({
     handleEnd();
   }, [handleEnd]);
 
-  // Compute card styles
   const getCardStyle = useCallback((weekIndex: number): React.CSSProperties => {
-    const offset = weekIndex - activeIndex;
-    const useTransition = !isDragging;
-
-    let tf: CardTransform;
-
-    if (isDragging && dragProgress !== 0) {
-      // During drag: interpolate based on drag progress
-      const visualOffset = offset - dragProgress;
-      tf = interpolateTransform(Math.max(0, visualOffset), 0);
-    } else {
-      tf = getPreset(Math.max(0, offset));
-    }
-
-    // Cards below active (future) should be hidden
-    if (offset < 0) {
+    const visualOffset = weekIndex - activePosition;
+    if (visualOffset < -0.2 || visualOffset > VISIBLE_RANGE) {
       return { display: 'none' };
     }
+
+    const tf = getTransformAtOffset(visualOffset);
+    const isFrontCard = Math.abs(visualOffset) < 0.35;
+    const zIndex = Math.max(1, 100 - Math.round(Math.max(0, visualOffset) * 10));
 
     return {
       position: 'absolute' as const,
@@ -208,14 +180,14 @@ export const WeekCoverFlow: React.FC<WeekCoverFlowProps> = ({
       transformOrigin: 'center bottom',
       transform: `rotateX(${tf.rotateX}deg) scale(${tf.scale}) translateY(${tf.translateY}px)`,
       opacity: tf.opacity,
-      zIndex: tf.zIndex,
-      transition: useTransition
+      zIndex,
+      transition: !isDragging
         ? `transform ${SNAP_DURATION}ms ${SPRING_EASING}, opacity ${SNAP_DURATION}ms ease`
         : 'none',
-      pointerEvents: offset === 0 ? 'auto' as const : 'none' as const,
+      pointerEvents: isFrontCard && !isDragging ? 'auto' as const : 'none' as const,
       willChange: 'transform, opacity',
     };
-  }, [activeIndex, isDragging, dragProgress]);
+  }, [activePosition, isDragging]);
 
   return (
     <div
@@ -224,18 +196,19 @@ export const WeekCoverFlow: React.FC<WeekCoverFlowProps> = ({
       style={{
         perspective: '1200px',
         perspectiveOrigin: '50% 30%',
+        touchAction: 'none',
       }}
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
+      onTouchCancel={onTouchCancel}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
     >
       {weeks.map((weekStart, i) => {
-        // Only render visible cards
-        const offset = i - activeIndex;
-        if (offset < 0 || offset > VISIBLE_RANGE) return null;
+        const offset = i - Math.floor(activePosition);
+        if (offset < -1 || offset > VISIBLE_RANGE) return null;
 
         return (
           <div key={i} style={getCardStyle(i)}>
@@ -251,13 +224,6 @@ export const WeekCoverFlow: React.FC<WeekCoverFlowProps> = ({
           </div>
         );
       })}
-
-      {/* Swipe hint (subtle peek of prev card at top) */}
-      {activeIndex === 0 && weeks.length > 1 && (
-        <div className="absolute top-4 left-0 right-0 flex justify-center pointer-events-none">
-          <div className="w-8 h-1 rounded-full bg-white/10" />
-        </div>
-      )}
     </div>
   );
 };

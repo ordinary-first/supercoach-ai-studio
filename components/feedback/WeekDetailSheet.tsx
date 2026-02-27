@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { X } from 'lucide-react';
 import { WeeklyCardScroll } from './WeeklyCardScroll';
 import { WeeklySummaryCard } from './WeeklySummaryCard';
@@ -90,6 +90,31 @@ export const WeekDetailSheet: React.FC<WeekDetailSheetProps> = ({
     .replace('{month}', String(weekMonth))
     .replace('{week}', String(weekNum));
   const range = `${weekMonth}.${weekStart.getDate()} - ${weekEnd.getMonth() + 1}.${weekEnd.getDate()}`;
+  const swipeStartY = useRef(0);
+  const [swipeDelta, setSwipeDelta] = useState(0);
+  const [isSwiping, setIsSwiping] = useState(false);
+
+  const handleSwipeStart = useCallback((clientY: number) => {
+    swipeStartY.current = clientY;
+    setIsSwiping(true);
+    setSwipeDelta(0);
+  }, []);
+
+  const handleSwipeMove = useCallback((clientY: number) => {
+    if (!isSwiping) return;
+    const delta = Math.max(0, clientY - swipeStartY.current);
+    setSwipeDelta(Math.min(delta, 220));
+  }, [isSwiping]);
+
+  const handleSwipeEnd = useCallback(() => {
+    if (!isSwiping) return;
+    setIsSwiping(false);
+    if (swipeDelta > 110) {
+      onClose();
+      return;
+    }
+    setSwipeDelta(0);
+  }, [isSwiping, swipeDelta, onClose]);
 
   return (
     <div className="fixed inset-0 z-[60] flex items-end justify-center">
@@ -100,9 +125,38 @@ export const WeekDetailSheet: React.FC<WeekDetailSheetProps> = ({
       />
 
       {/* Sheet */}
-      <div className="relative w-full max-w-lg bg-[#141414] rounded-t-3xl max-h-[85vh] flex flex-col animate-slide-up">
+      <div
+        className="relative w-full max-w-lg bg-[#141414] rounded-t-3xl max-h-[85vh] flex flex-col"
+        style={{
+          transform: `translateY(${swipeDelta}px)`,
+          transition: isSwiping
+            ? 'none'
+            : 'transform 350ms cubic-bezier(0.32, 0.72, 0, 1)',
+        }}
+      >
         {/* Handle */}
-        <div className="flex justify-center pt-3 pb-1">
+        <div
+          className="flex justify-center pt-3 pb-1 touch-none"
+          onTouchStart={(e) => handleSwipeStart(e.touches[0].clientY)}
+          onTouchMove={(e) => {
+            if (e.cancelable) e.preventDefault();
+            handleSwipeMove(e.touches[0].clientY);
+          }}
+          onTouchEnd={handleSwipeEnd}
+          onTouchCancel={handleSwipeEnd}
+          onPointerDown={(e) => {
+            if (e.pointerType === 'touch') return;
+            handleSwipeStart(e.clientY);
+          }}
+          onPointerMove={(e) => {
+            if (e.pointerType === 'touch') return;
+            handleSwipeMove(e.clientY);
+          }}
+          onPointerUp={(e) => {
+            if (e.pointerType === 'touch') return;
+            handleSwipeEnd();
+          }}
+        >
           <div className="w-10 h-1 rounded-full bg-white/20" />
         </div>
 
