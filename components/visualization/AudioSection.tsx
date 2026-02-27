@@ -1,0 +1,117 @@
+import { Play, Pause } from 'lucide-react';
+
+interface AudioSectionProps {
+  hasAudio: boolean;
+  isLoading: boolean;
+  isPlaying: boolean;
+  onTogglePlay: () => void;
+}
+
+const waveBarStyle = `
+@keyframes waveBar {
+  0%, 100% { height: 4px; }
+  50% { height: var(--max-h); }
+}
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+`;
+
+const BAR_CONFIGS = [
+  { maxH: '20px', delay: '0s' },
+  { maxH: '28px', delay: '0.15s' },
+  { maxH: '16px', delay: '0.3s' },
+  { maxH: '32px', delay: '0.1s' },
+  { maxH: '12px', delay: '0.25s' },
+  { maxH: '24px', delay: '0.05s' },
+  { maxH: '18px', delay: '0.2s' },
+];
+
+function AudioSection({
+  hasAudio,
+  isLoading,
+  isPlaying,
+  onTogglePlay,
+}: AudioSectionProps) {
+  return (
+    <section
+      className="flex flex-col"
+      style={{ backgroundColor: '#111111' }}
+    >
+      <style>{waveBarStyle}</style>
+      <div className="px-6 pt-5 pb-2">
+        <span
+          className="font-medium uppercase"
+          style={{
+            color: '#444',
+            fontSize: '11px',
+            letterSpacing: '0.12em',
+          }}
+        >
+          AUDIO
+        </span>
+      </div>
+
+      <div
+        className="flex items-center px-6 pb-4"
+        style={{ height: '52px' }}
+      >
+        {/* Waveform / Shimmer */}
+        <div className="flex-1 flex items-center gap-[3px] h-8">
+          {isLoading ? (
+            <div
+              className="w-full h-3 rounded-full"
+              style={{
+                background:
+                  'linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.03) 75%)',
+                backgroundSize: '200% 100%',
+                animation: 'shimmer 2s infinite',
+              }}
+            />
+          ) : (
+            BAR_CONFIGS.map((cfg, i) => (
+              <div
+                key={i}
+                className="rounded-full"
+                style={{
+                  width: '3px',
+                  minHeight: '4px',
+                  height: isPlaying ? undefined : '4px',
+                  backgroundColor: 'rgba(255,255,255,0.6)',
+                  ['--max-h' as string]: cfg.maxH,
+                  ...(isPlaying
+                    ? {
+                        animation: `waveBar 0.8s ease-in-out ${cfg.delay} infinite`,
+                      }
+                    : {}),
+                }}
+              />
+            ))
+          )}
+        </div>
+
+        {/* Play/Pause Button */}
+        {hasAudio && !isLoading && (
+          <button
+            onClick={onTogglePlay}
+            className="ml-4 flex items-center justify-center rounded-full shrink-0"
+            style={{
+              width: '40px',
+              height: '40px',
+              backgroundColor: '#fff',
+            }}
+          >
+            {isPlaying ? (
+              <Pause size={18} color="#000" fill="#000" />
+            ) : (
+              <Play size={18} color="#000" fill="#000" />
+            )}
+          </button>
+        )}
+      </div>
+    </section>
+  );
+}
+
+export default AudioSection;
