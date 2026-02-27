@@ -619,6 +619,30 @@ export const uploadVisualizationAsset = async (
   }
 };
 
+/* ── 드림챗 (시각화 장면 구체화) ── */
+
+export interface DreamChatResponse {
+  reply: string;
+  prompt: string | null;
+}
+
+export const sendDreamChatMessage = async (
+  history: { role: string; content: string }[],
+  message: string,
+  goals: string[] = [],
+): Promise<DreamChatResponse> => {
+  const response = await fetch('/api/dream-chat', {
+    method: 'POST',
+    headers: await authHeaders(),
+    body: JSON.stringify({ history, message, goals }),
+  });
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(text || 'Dream chat request failed');
+  }
+  return response.json();
+};
+
 /* ── 목표 분해 ── */
 
 export const decomposeGoal = async (

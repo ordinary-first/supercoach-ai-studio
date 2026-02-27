@@ -286,6 +286,24 @@ export interface TranslationStrings {
     videoLoadPending: string;
     deleteFailed: string;
     audioPlayFailed: string;
+    // Dream UI keys
+    dreamCreate: string;
+    myDreams: string;
+    generateButton: string;
+    dreamBeingCreated: string;
+    viewButton: string;
+    suggestFromData: string;
+    scenePlaceholder: string;
+    moreSee: string;
+    foldUp: string;
+    noDreamsYet: string;
+    noDreamsDesc: string;
+    createFirstDream: string;
+    dreamMakingLabel: string;
+    saveButton: string;
+    shareButton: string;
+    savedLabel: string;
+    aiSceneResponse: string;
   };
   app: {
     initializing: string;

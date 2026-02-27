@@ -320,7 +320,7 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
       {isSidebarOpen && (
         <div className="fixed inset-0 bg-black/50 z-30 md:hidden" onClick={() => setIsSidebarOpen(false)} />
       )}
-      <div className={`fixed inset-y-0 left-0 w-[260px] z-40 md:relative md:z-10 transform transition-transform duration-300 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
+      <div className={`fixed inset-y-0 left-0 w-[260px] z-40 pb-16 md:pb-0 md:relative md:z-10 transform transition-transform duration-300 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
         <TodoSidebar
           todos={todos}
           lists={todoLists}

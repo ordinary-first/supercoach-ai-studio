@@ -7,7 +7,7 @@ import CoachBubble from './components/CoachBubble';
 import ShortcutsPanel from './components/ShortcutsPanel';
 import ToDoList from './components/ToDoList';
 import BottomDock, { TabType } from './components/BottomDock';
-import VisualizationModal from './components/VisualizationModal';
+import VisualizationTab from './components/visualization/VisualizationTab';
 import CalendarView from './components/CalendarView';
 import MarketingLandingPage from './components/landing/MarketingLandingPage';
 import SettingsPage from './components/SettingsPage';
@@ -138,6 +138,8 @@ const createInitialGoalNodes = (): GoalNode[] => [
 ];
 
 const getInitialLanguage = (): AppLanguage => {
+  const cached = localStorage.getItem('app_language');
+  if (cached === 'ko' || cached === 'en') return cached;
   return navigator.language.toLowerCase().startsWith('ko') ? 'ko' : 'en';
 };
 
@@ -168,6 +170,7 @@ const App: React.FC = () => {
   const [confirmedPreviewIds, setConfirmedPreviewIds] = useState<string[]>([]);
   const insertImageInputRef = useRef<HTMLInputElement>(null);
   const insertImageTargetNodeRef = useRef<string | null>(null);
+  const isLoadingSettingsRef = useRef(false);
 
   // Stable callbacks for useAuth to avoid re-triggering data load effect
   const handleGoalDataLoaded = useCallback((loadedNodes: GoalNode[], loadedLinks: GoalLink[]) => {
@@ -243,6 +246,7 @@ const App: React.FC = () => {
   useEffect(() => {
     let cancelled = false;
     if (!userId) {
+      isLoadingSettingsRef.current = false;
       setLanguage(getInitialLanguage());
       setIsLanguageLoaded(true);
       return () => {
@@ -250,6 +254,7 @@ const App: React.FC = () => {
       };
     }
 
+    isLoadingSettingsRef.current = true;
     setIsLanguageLoaded(false);
     loadUserSettings(userId)
       .then((settings) => {
@@ -261,6 +266,7 @@ const App: React.FC = () => {
         }
       })
       .finally(() => {
+        isLoadingSettingsRef.current = false;
         if (!cancelled) setIsLanguageLoaded(true);
       });
 
@@ -270,7 +276,8 @@ const App: React.FC = () => {
   }, [userId]);
 
   useEffect(() => {
-    if (!userId || !isLanguageLoaded) return;
+    localStorage.setItem('app_language', language);
+    if (!userId || !isLanguageLoaded || isLoadingSettingsRef.current) return;
     saveUserSettings(userId, { language }).catch(() => {
       addToast(t.app.toasts.languageSaveFailed, 'warning');
     });
@@ -776,7 +783,7 @@ const App: React.FC = () => {
         onMessagesChange={setChatMessages}
         activeTab={activeTab}
       />
-      <VisualizationModal isOpen={activeTab === 'VISUALIZE'} onClose={() => setActiveTab('GOALS')} userProfile={userProfile} nodes={nodes} />
+      <VisualizationTab isOpen={activeTab === 'VISUALIZE'} onClose={() => setActiveTab('GOALS')} userProfile={userProfile} nodes={nodes} />
       <ShortcutsPanel isOpen={isShortcutsOpen} onClose={() => setIsShortcutsOpen(false)} />
       <BottomDock activeTab={activeTab} onTabChange={handleTabChange} calendarViewMode={calendarViewMode} onCalendarViewModeChange={setCalendarViewMode} />
       <CoachBubble
