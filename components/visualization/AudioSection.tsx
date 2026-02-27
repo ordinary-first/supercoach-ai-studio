@@ -1,4 +1,4 @@
-import { Play, Pause } from 'lucide-react';
+﻿import { Play, Pause } from 'lucide-react';
 
 interface AudioSectionProps {
   hasAudio: boolean;
@@ -28,36 +28,15 @@ const BAR_CONFIGS = [
   { maxH: '18px', delay: '0.2s' },
 ];
 
-function AudioSection({
-  hasAudio,
-  isLoading,
-  isPlaying,
-  onTogglePlay,
-}: AudioSectionProps) {
+function AudioSection({ hasAudio, isLoading, isPlaying, onTogglePlay }: AudioSectionProps) {
   return (
-    <section
-      className="flex flex-col"
-      style={{ backgroundColor: '#111111' }}
-    >
+    <section className="apple-card flex flex-col rounded-[18px]">
       <style>{waveBarStyle}</style>
       <div className="px-6 pt-5 pb-2">
-        <span
-          className="font-medium uppercase"
-          style={{
-            color: '#444',
-            fontSize: '11px',
-            letterSpacing: '0.12em',
-          }}
-        >
-          AUDIO
-        </span>
+        <span className="font-medium uppercase text-[11px] tracking-[0.12em] text-white/35">AUDIO</span>
       </div>
 
-      <div
-        className="flex items-center px-6 pb-4"
-        style={{ height: '52px' }}
-      >
-        {/* Waveform / Shimmer */}
+      <div className="flex items-center px-6 pb-4 h-[52px]">
         <div className="flex-1 flex items-center gap-[3px] h-8">
           {isLoading ? (
             <div
@@ -70,20 +49,18 @@ function AudioSection({
               }}
             />
           ) : (
-            BAR_CONFIGS.map((cfg, i) => (
+            BAR_CONFIGS.map((config, index) => (
               <div
-                key={i}
+                key={index}
                 className="rounded-full"
                 style={{
                   width: '3px',
                   minHeight: '4px',
                   height: isPlaying ? undefined : '4px',
                   backgroundColor: 'rgba(255,255,255,0.6)',
-                  ['--max-h' as string]: cfg.maxH,
+                  ['--max-h' as string]: config.maxH,
                   ...(isPlaying
-                    ? {
-                        animation: `waveBar 0.8s ease-in-out ${cfg.delay} infinite`,
-                      }
+                    ? { animation: `waveBar 0.8s ease-in-out ${config.delay} infinite` }
                     : {}),
                 }}
               />
@@ -91,22 +68,12 @@ function AudioSection({
           )}
         </div>
 
-        {/* Play/Pause Button */}
         {hasAudio && !isLoading && (
           <button
             onClick={onTogglePlay}
-            className="ml-4 flex items-center justify-center rounded-full shrink-0"
-            style={{
-              width: '40px',
-              height: '40px',
-              backgroundColor: '#fff',
-            }}
+            className="ml-4 flex items-center justify-center rounded-full shrink-0 w-10 h-10 bg-white"
           >
-            {isPlaying ? (
-              <Pause size={18} color="#000" fill="#000" />
-            ) : (
-              <Play size={18} color="#000" fill="#000" />
-            )}
+            {isPlaying ? <Pause size={18} color="#000" fill="#000" /> : <Play size={18} color="#000" fill="#000" />}
           </button>
         )}
       </div>

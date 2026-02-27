@@ -413,7 +413,7 @@ const App: React.FC = () => {
     setEditingNodeId(newNodeId);
   }, [nodes]);
 
-  // 紐낆떆???대?吏 ?앹꽦 (濡깊봽?덉뒪 硫붾돱?먯꽌 ?몄텧)
+  // 명시적 이미지 생성 (액션 메뉴에서 호출)
   const handleGenerateNodeImage = useCallback(async (nodeId: string) => {
     const node = nodes.find(n => n.id === nodeId);
     if (!node) return;
@@ -436,7 +436,7 @@ const App: React.FC = () => {
     }
   }, [nodes, handleUpdateNode, userProfile, addToast]);
 
-  // ?몃뱶瑜??щ몢濡?蹂??(濡깊봽?덉뒪 硫붾돱?먯꽌 ?몄텧)
+  // 노드를 할일로 변환 (액션 메뉴에서 호출)
   const handleConvertNodeToTodo = useCallback((nodeId: string) => {
     const node = nodes.find(n => n.id === nodeId);
     if (!node || !node.text) return;
@@ -714,7 +714,7 @@ const App: React.FC = () => {
 
   return (
     <LanguageContext.Provider value={langCtx}>
-    <div className="relative w-screen h-screen bg-th-base text-th-text font-body overflow-hidden">
+    <div className="apple-app-root relative w-screen h-screen text-th-text font-body overflow-hidden">
       {activeTab === 'GOALS' && (
         <>
           <MindMap
@@ -724,7 +724,7 @@ const App: React.FC = () => {
            <div className="absolute top-3 left-3 md:top-4 md:left-6 z-50">
                <button
                  onClick={() => setIsShortcutsOpen(prev => !prev)}
-                 className="flex items-center gap-2 bg-th-header backdrop-blur-md border border-th-border px-3 py-1.5 md:px-4 md:py-2 rounded-full text-[10px] font-bold tracking-widest text-th-accent hover:bg-th-accent hover:text-th-text-inverse transition-all"
+                 className="apple-chip flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 text-[10px] font-bold tracking-widest text-th-accent hover:bg-th-accent hover:text-th-text-inverse transition-all"
                >
                    <span className="bg-th-accent/20 px-1.5 py-0.5 rounded text-[8px] border border-th-accent-border">K</span>
                    {t.shortcuts.button}
@@ -736,7 +736,7 @@ const App: React.FC = () => {
        <div className="absolute top-3 right-3 md:top-6 md:right-6 z-[60]">
          <button
            onClick={() => setIsSettingsPageOpen(true)}
-           className="w-10 h-10 rounded-full bg-th-header backdrop-blur-md border border-th-border text-th-text-secondary hover:bg-th-surface-hover transition-all flex items-center justify-center"
+           className="apple-chip w-10 h-10 rounded-full text-th-text-secondary hover:bg-th-surface-hover transition-all flex items-center justify-center"
            aria-label="Open settings"
          >
            <MenuIcon size={20} />

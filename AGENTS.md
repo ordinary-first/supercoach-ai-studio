@@ -89,9 +89,77 @@ _Last updated: 2026-02-27_
   - Removed keyboard-open input `position: fixed` dependency in coach chat to
     avoid message area being left behind
 
-### CoverFlow UI Redesign (V02.27r11)
+### ToDo 하드코딩 문구 추가 정리 (V02.27r14)
+- **displayVersion**
+  - `package.json`을 `V02.27r14`로 갱신.
+- **ToDoList 문자열 i18n 정리**
+  - `components/ToDoList.tsx`
+    - 하드코딩 UI 문구(빈 상태, 검색 결과, 완료 섹션, 삭제/세부정보/메모/반복 옵션 등)를 `t.todo`/`uiText`로 일원화.
+    - 반복 라벨을 `t.todo.repeatOptions` 기반으로 통일.
+    - 날짜/시간/생성일 locale을 `language` 기준(`ko-KR`/`en-US`)으로 전환.
+- **빌드 안정화**
+  - `package.json` UTF-8 BOM 제거(빌드 시 JSON parse 에러 원인 제거).
+- **검증**
+  - `pnpm build` 통과.
+
+### Apple Design 2차 마감 (V02.27r13)
+- **displayVersion**
+  - `package.json`을 `V02.27r13`으로 갱신.
+- **한글 깨짐 복구**
+  - `i18n/ko.ts`를 UTF-8 기준으로 재작성(모지바케 제거, 전 섹션 정상 문자열 복구).
+  - `i18n/en.ts`의 깨진 문자(`?셽`, `?룇`, `Skip ??`) 정리.
+- **Todo 탭 2차 정리**
+  - `components/todo/TodoSidebar.tsx`
+    - 스마트리스트/커스텀리스트/컨텍스트 메뉴 문구 복구.
+    - `apple-glass-panel` 톤으로 사이드바/컨텍스트 패널 통일.
+  - `components/todo/CreateListModal.tsx`, `components/todo/CreateGroupModal.tsx`
+    - 모달 타이틀/필드/버튼 문구 복구.
+    - Apple glass panel/header 스타일로 통일.
+  - `components/todo/TodoSearchBar.tsx`
+    - 검색 placeholder 깨짐 제거.
+  - `components/ToDoList.tsx`
+    - 깨진 라벨/placeholder/반복 옵션 문자열 전면 복구.
+    - JSX 손상 구간(span/option 닫힘 누락) 복구하여 빌드 가능 상태로 수정.
+- **Visualization 탭 2차 정리**
+  - `components/visualization/VisualizationTab.tsx`
+    - 배너/완료 문구 깨짐 제거, 공통 Apple shell 기준으로 정리.
+  - `components/visualization/DreamPillSwitcher.tsx`
+    - 탭 라벨을 i18n(`dreamCreate`, `myDreams`)로 연결.
+  - `components/visualization/DreamChat.tsx`, `SuggestionBubbles.tsx`, `ChatInput.tsx`
+    - 생성 배너/제안 버블/입력 placeholder 깨짐 제거.
+    - 상호작용 요소를 Apple card/chip 톤으로 재정렬.
+  - `components/visualization/DreamGallery.tsx`, `DreamViewer.tsx`
+    - 빈 상태/버튼 라벨 깨짐 제거.
+    - 저장/공유 액션을 i18n key(`saveButton`, `savedLabel`, `shareButton`)로 통일.
+  - `components/visualization/VideoSection.tsx`, `ImageSection.tsx`, `AudioSection.tsx`, `NarrativeSection.tsx`
+    - 섹션 패널을 Apple card 톤으로 맞춤.
+- **Goals 탭 폰트 일관성**
+  - `components/MindMap.tsx`의 simple-mind-map theme `fontFamily`를 SF 기반 스택으로 통일.
+- **검증**
+  - `npm run build` 통과.
+
+### CoverFlow UI Redesign (V02.27r12)
 - **package.json**
-  - Bumped `displayVersion` to `V02.27r11`.
+  - Bumped `displayVersion` to `V02.27r12`.
+- **theme.css**
+  - Added shared Apple-like shell classes for all tabs (`apple-app-root`, `apple-tab-shell`, `apple-glass-header`, `apple-glass-panel`, `apple-dock-shell`, `apple-card`).
+  - Added global typography tokens and forced class alignment (`font-body`, `font-display`, `font-mono`) with SF-based stack for consistent tab-wide tone.
+- **App.tsx**
+  - Applied Apple shell at app root and unified top utility buttons to glass chip style.
+- **components/BottomDock.tsx**
+  - Reworked dock to Apple-style glass dock shell and updated active/inactive button visuals for consistency with feedback tab.
+- **components/ToDoList.tsx**
+  - Applied Apple shell/header/panel classes to Todo tab and detail pane.
+  - Updated task card base styling to shared `apple-card` style.
+- **components/CalendarView.tsx**
+  - Applied Apple shell and glass header/panel classes across month/week/day/list calendar views.
+- **components/visualization/VisualizationTab.tsx**
+  - Switched from isolated dark inline background to shared Apple tab shell.
+  - Updated tab header and status banners to glass panel/card styles.
+- **components/MindMap.tsx**
+  - Applied Apple shell to goals tab canvas container and switched layout switcher to chip style.
+- **components/feedback/feedbackApple.css**
+  - Replaced hardcoded SF stacks with shared typography token (`var(--font-display)`) to keep feedback and other tabs typographically aligned.
 - **components/FeedbackView.tsx**
   - Expanded feedback history range from 12 weeks to 52 weeks (`index 0 = current week`, larger index = older week).
   - Kept `Detail then Pull` entry: week-detail default, pull down to enter coverflow.

@@ -1,4 +1,4 @@
-import {
+﻿import {
   type FC,
   useRef,
   useEffect,
@@ -8,6 +8,7 @@ import {
 import type { ChatMessage } from '../../hooks/useDreamChat';
 import type { GoalNode } from '../../types';
 import { NodeType } from '../../types';
+import { useTranslation } from '../../i18n/useTranslation';
 import SuggestionBubbles from './SuggestionBubbles';
 import ChatInput from './ChatInput';
 
@@ -55,6 +56,7 @@ const DreamChat: FC<DreamChatProps> = ({
   generatingBanner,
   onBannerTap,
 }) => {
+  const { t } = useTranslation();
   const scrollRef = useRef<HTMLDivElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
 
@@ -62,15 +64,13 @@ const DreamChat: FC<DreamChatProps> = ({
     endRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages.length, isAiTyping]);
 
-  // 목표 텍스트 추출
   const goalTexts = useMemo(
-    () => (nodes ?? []).filter((n) => n.type === NodeType.ROOT).map((n) => n.text),
+    () => (nodes ?? []).filter((node) => node.type === NodeType.ROOT).map((node) => node.text),
     [nodes],
   );
 
-  // 유저 메시지 존재 여부 (환영 메시지 후 첫 선택 전)
   const hasUserMessages = useMemo(
-    () => messages.some((m) => m.role === 'user'),
+    () => messages.some((message) => message.role === 'user'),
     [messages],
   );
 
@@ -85,68 +85,51 @@ const DreamChat: FC<DreamChatProps> = ({
   );
 
   return (
-    <div
-      className="flex flex-col overflow-hidden h-full bg-th-base border border-th-border rounded-[20px]"
-    >
+    <div className="apple-glass-panel flex flex-col overflow-hidden h-full rounded-[20px]">
       <style>{SHIMMER_KEYFRAMES}</style>
 
-      {/* Generating banner */}
       {generatingBanner && (
         <button
           type="button"
           onClick={onBannerTap}
-          className="flex items-center justify-between mx-3 mt-3 px-4 h-10 rounded-xl border border-yellow-500/30 cursor-pointer"
+          className="flex items-center justify-between mx-3 mt-3 px-4 h-10 rounded-xl border
+            border-th-accent/30 cursor-pointer"
           style={{
             background:
-              'linear-gradient(90deg, rgba(255,215,0,0.08) 0%, rgba(255,215,0,0.04) 50%, rgba(255,215,0,0.08) 100%)',
+              'linear-gradient(90deg, rgba(204,255,0,0.12) 0%, rgba(204,255,0,0.05) 50%, rgba(204,255,0,0.12) 100%)',
             backgroundSize: '200% 100%',
             animation: 'shimmerSlide 2s linear infinite',
           }}
         >
-          <span className="text-[13px] text-yellow-500/80">
-            ✦ 드림이 생성되고 있어요
-          </span>
-          <span className="text-[13px] text-yellow-500/95 font-medium">
-            보기
-          </span>
+          <span className="text-[13px] text-th-accent/85">{t.visualization.dreamBeingCreated}</span>
+          <span className="text-[13px] text-th-accent font-medium">{t.visualization.viewButton}</span>
         </button>
       )}
 
-      {/* Scrollable message area */}
-      <div
-        ref={scrollRef}
-        className="flex-1 overflow-y-auto py-3"
-      >
+      <div ref={scrollRef} className="flex-1 overflow-y-auto py-3">
         <div className="flex flex-col gap-2.5 px-4">
-          {messages.map((msg) => {
-            const isUser = msg.role === 'user';
+          {messages.map((message) => {
+            const isUser = message.role === 'user';
             return (
-              <div
-                key={msg.id}
-                className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}
-              >
+              <div key={message.id} className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
                 <div
                   className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
                     isUser
-                      ? 'bg-emerald-700 text-white rounded-tr-sm'
-                      : 'bg-th-surface text-th-text rounded-tl-sm border border-th-border'
+                      ? 'bg-th-accent/90 text-black rounded-tr-sm'
+                      : 'apple-card text-th-text rounded-tl-sm'
                   }`}
                 >
-                  <span className="whitespace-pre-wrap">{msg.content}</span>
+                  <span className="whitespace-pre-wrap">{message.content}</span>
                 </div>
               </div>
             );
           })}
 
-          {/* Suggestion bubbles: AI 환영 메시지 후, 유저 메시지 없을 때만 */}
-          {!hasUserMessages && (
-            <SuggestionBubbles nodes={nodes} onSelect={handleBubbleSelect} />
-          )}
+          {!hasUserMessages && <SuggestionBubbles nodes={nodes} onSelect={handleBubbleSelect} />}
 
-          {/* Typing indicator */}
           {isAiTyping && (
             <div className="flex justify-start">
-              <div className="bg-th-surface border border-th-border rounded-2xl rounded-tl-sm px-4 py-3">
+              <div className="apple-card rounded-2xl rounded-tl-sm px-4 py-3">
                 <div className="flex items-center gap-2">
                   <span className="w-2 h-2 bg-th-accent rounded-full animate-pulse" />
                   <span className="w-2 h-2 bg-th-accent rounded-full animate-pulse" style={{ animationDelay: '0.2s' }} />
@@ -159,7 +142,6 @@ const DreamChat: FC<DreamChatProps> = ({
         <div ref={endRef} />
       </div>
 
-      {/* Chat input */}
       <ChatInput
         settings={settings}
         onSettingsChange={onSettingsChange}

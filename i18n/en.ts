@@ -1,4 +1,4 @@
-import type { TranslationStrings } from './types';
+﻿import type { TranslationStrings } from './types';
 
 const en: TranslationStrings = {
   common: {
@@ -33,7 +33,7 @@ const en: TranslationStrings = {
     placeholder: 'Ask your coach...',
     sendLabel: 'Send',
     sendMessage: 'Send message to coach',
-    selectQuestion: 'Pick a question you\'re curious about 🙂',
+    selectQuestion: 'Pick a question you\'re curious about.',
     emptyTitle: 'Waiting for input',
     emptyDesc: 'Ask for advice on your goals and vision.',
     errorStart: 'An error occurred while starting coaching.',
@@ -283,7 +283,7 @@ const en: TranslationStrings = {
       identityPrompt: 'Write your ultimate desired self here.',
       identityMotivation: 'All change starts here.',
       doubleTapToEdit: 'Double-tap to edit',
-      skip: 'Skip →',
+      skip: 'Skip',
       tooltipDoubleTap: 'Double-tap: Rename',
       tooltipTap: 'Tap: Add sub-goal',
     },
@@ -398,3 +398,6 @@ const en: TranslationStrings = {
 };
 
 export default en;
+
+
+

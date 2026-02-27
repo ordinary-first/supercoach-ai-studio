@@ -1,60 +1,37 @@
-import { type FC } from 'react';
+﻿import { type FC, useMemo } from 'react';
+import { useTranslation } from '../../i18n/useTranslation';
 
 interface DreamPillSwitcherProps {
   activeTab: 'create' | 'gallery';
   onTabChange: (tab: 'create' | 'gallery') => void;
 }
 
-const TABS = [
-  { key: 'create' as const, label: '드림생성' },
-  { key: 'gallery' as const, label: '내 드림' },
-];
-
 const DreamPillSwitcher: FC<DreamPillSwitcherProps> = ({ activeTab, onTabChange }) => {
+  const { t } = useTranslation();
+  const tabs = useMemo(() => {
+    return [
+      { key: 'create' as const, label: t.visualization.dreamCreate },
+      { key: 'gallery' as const, label: t.visualization.myDreams },
+    ];
+  }, [t]);
+
   const activeIndex = activeTab === 'create' ? 0 : 1;
 
   return (
-    <div
-      className="relative flex items-center mx-auto"
-      style={{
-        height: 32,
-        borderRadius: 999,
-        background: 'rgba(255,255,255,0.08)',
-        padding: 2,
-        width: 'fit-content',
-      }}
-    >
-      {/* Sliding indicator */}
+    <div className="apple-chip relative flex items-center mx-auto h-8 px-0.5">
       <div
-        className="absolute top-0.5 bottom-0.5"
-        style={{
-          width: 'calc(50% - 2px)',
-          borderRadius: 999,
-          background: 'rgba(255,255,255,0.16)',
-          transform: `translateX(${activeIndex * 100}%)`,
-          transition: 'transform 150ms ease',
-          left: 2,
-        }}
+        className="absolute top-0.5 bottom-0.5 left-0.5 rounded-full bg-white/20 transition-transform duration-200"
+        style={{ width: 'calc(50% - 2px)', transform: `translateX(${activeIndex * 100}%)` }}
       />
 
-      {TABS.map((tab) => (
+      {tabs.map((tab) => (
         <button
           key={tab.key}
           type="button"
           onClick={() => onTabChange(tab.key)}
-          className="relative z-10 flex items-center justify-center cursor-pointer"
-          style={{
-            fontSize: 13,
-            fontWeight: 500,
-            color: activeTab === tab.key
-              ? 'rgba(255,255,255,0.95)'
-              : 'rgba(255,255,255,0.45)',
-            padding: '0 20px',
-            height: '100%',
-            background: 'transparent',
-            border: 'none',
-            transition: 'color 150ms ease',
-          }}
+          className={`relative z-10 px-5 h-full text-[13px] transition-colors ${
+            activeTab === tab.key ? 'text-white font-semibold' : 'text-white/50'
+          }`}
         >
           {tab.label}
         </button>
