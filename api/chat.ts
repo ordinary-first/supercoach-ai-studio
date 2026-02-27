@@ -199,7 +199,8 @@ const COACH_SYSTEM_PROMPT = `[최우선 원칙 - 현실의 재배열]
 `.trim();
 
 type InputRole = 'user' | 'assistant' | 'system' | 'developer';
-type EasyInputMessage = { role: InputRole; content: string };
+type ContentPart = { type: 'input_text'; text: string } | { type: 'input_image'; image_url: string };
+type EasyInputMessage = { role: InputRole; content: string | ContentPart[] };
 
 function mapHistoryToInput(history: unknown): EasyInputMessage[] {
   if (!Array.isArray(history)) return [];
@@ -319,10 +320,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         ? '코칭을 시작해주세요.'
         : '';
 
+    // 이미지가 있으면 multimodal content 배열로 빌드
+    const userContent: string | ContentPart[] = body.imageDataUrl
+      ? [
+          { type: 'input_text' as const, text: userMessage || '이 이미지를 봐주세요.' },
+          { type: 'input_image' as const, image_url: body.imageDataUrl },
+        ]
+      : userMessage;
+
     const input: EasyInputMessage[] = [
       { role: 'system', content: systemContent },
       ...mapHistoryToInput(body.history),
-      { role: 'user', content: userMessage },
+      { role: 'user', content: userContent },
     ];
 
     const response = await openai.responses.create({

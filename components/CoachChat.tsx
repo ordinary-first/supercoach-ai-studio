@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { ChatMessage, GoalNode, UserProfile, ToDoItem } from '../types';
 import { sendChatMessage } from '../services/aiService';
 import { saveFeedbackCard } from '../services/firebaseService';
-import { Send, MessageCircle, Sparkles } from 'lucide-react';
+import { Send, MessageCircle, Sparkles, Plus, X, ImageIcon } from 'lucide-react';
 import CloseButton from './CloseButton';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { TabType } from './BottomDock';
@@ -39,12 +39,74 @@ const CoachChat: React.FC<CoachChatProps> = ({
   const [selectedTopic, setSelectedTopic] = useState<CoachingQuestion | null>(null);
   const [showTopicCards, setShowTopicCards] = useState(true);
   const [questionPage, setQuestionPage] = useState(0);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [viewportKeyboardInset, setViewportKeyboardInset] = useState(0);
+  const [pendingImage, setPendingImage] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const QUESTIONS_PER_PAGE = 3;
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const focusTrapRef = useFocusTrap(isOpen);
   const memory = useCoachMemory(userId, isOpen, nodes || [], todos);
   const { pendingDirective, feedbackSlot, markFeedbackDone } =
     useCoachFeedback(isOpen, todos);
+  const effectiveKeyboardHeight = Math.max(keyboardHeight, viewportKeyboardInset);
+
+  // Mobile keyboard height via VirtualKeyboard API (overlays-content 모드)
+  useEffect(() => {
+    const nav = navigator as unknown as { virtualKeyboard?: { overlaysContent: boolean; boundingRect: DOMRect; addEventListener: (e: string, fn: () => void) => void; removeEventListener: (e: string, fn: () => void) => void } };
+    if (!nav.virtualKeyboard) return;
+    nav.virtualKeyboard.overlaysContent = true;
+    const onChange = () => setKeyboardHeight(Math.round(nav.virtualKeyboard!.boundingRect.height));
+    nav.virtualKeyboard.addEventListener('geometrychange', onChange);
+    return () => nav.virtualKeyboard!.removeEventListener('geometrychange', onChange);
+  }, []);
+
+  // Fallback: derive keyboard inset from visualViewport for browsers without VirtualKeyboard API.
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+
+    const syncViewportInset = () => {
+      const inset = Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop));
+      setViewportKeyboardInset(inset);
+    };
+
+    syncViewportInset();
+    vv.addEventListener('resize', syncViewportInset);
+    vv.addEventListener('scroll', syncViewportInset);
+    window.addEventListener('resize', syncViewportInset);
+
+    return () => {
+      vv.removeEventListener('resize', syncViewportInset);
+      vv.removeEventListener('scroll', syncViewportInset);
+      window.removeEventListener('resize', syncViewportInset);
+    };
+  }, []);
+
+  // 키보드 올라올 때 최신 메시지로 스크롤 (다단계 타이밍)
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    let timers: ReturnType<typeof setTimeout>[] = [];
+    let prevHeight = vv.height;
+    const onResize = () => {
+      const shrunk = vv.height < prevHeight;
+      prevHeight = vv.height;
+      if (!shrunk) return;
+      // 키보드 애니메이션 완료까지 다단계 스크롤
+      timers.forEach(clearTimeout);
+      timers = [
+        setTimeout(() => scrollToBottom(), 50),
+        setTimeout(() => scrollToBottom(), 200),
+        setTimeout(() => scrollToBottom(), 400),
+      ];
+    };
+    vv.addEventListener('resize', onResize);
+    return () => {
+      vv.removeEventListener('resize', onResize);
+      timers.forEach(clearTimeout);
+    };
+  }, []);
 
   const extractComment = useCallback((text: string) => {
     const match = text.match(/<!-- COMMENT: (.+?) -->/);
@@ -86,7 +148,7 @@ const CoachChat: React.FC<CoachChatProps> = ({
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, isLoading]);
+  }, [messages, isLoading, effectiveKeyboardHeight]);
 
   // 채팅 열릴 때 질문 상태 리셋 + 스크롤
   useEffect(() => {
@@ -213,17 +275,29 @@ const CoachChat: React.FC<CoachChatProps> = ({
     }
   };
 
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setPendingImage(reader.result as string);
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
   const handleSend = async () => {
-    if (!inputText.trim()) return;
+    if (!inputText.trim() && !pendingImage) return;
     setShowTopicCards(false);
+    const imageToSend = pendingImage;
     const userMsg: ChatMessage = {
       id: Date.now().toString(),
       sender: 'user',
-      text: inputText,
+      text: inputText || (imageToSend ? '📷 이미지' : ''),
       timestamp: Date.now(),
+      ...(imageToSend && { imageDataUrl: imageToSend }),
     };
     onMessagesChange(prev => [...prev, userMsg]);
     setInputText('');
+    setPendingImage(null);
     setIsLoading(true);
 
     try {
@@ -245,6 +319,8 @@ const CoachChat: React.FC<CoachChatProps> = ({
         tabLabels[activeTab],
         userId || undefined,
         subGoalCount,
+        undefined,
+        imageToSend || undefined,
       );
 
       const rawText = response.candidates?.[0]?.content?.parts
@@ -277,7 +353,11 @@ const CoachChat: React.FC<CoachChatProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div ref={focusTrapRef} className="fixed inset-0 z-[60] bg-th-base flex flex-col overflow-hidden text-th-text font-body">
+    <div
+      ref={focusTrapRef}
+      className="fixed inset-0 z-[60] bg-th-base flex flex-col overflow-hidden text-th-text font-body"
+      style={effectiveKeyboardHeight > 0 ? { height: `calc(100% - ${effectiveKeyboardHeight}px)` } : undefined}
+    >
 
       {/* Ambient Background */}
       <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-th-accent-muted rounded-full blur-[120px] pointer-events-none"></div>
@@ -301,14 +381,17 @@ const CoachChat: React.FC<CoachChatProps> = ({
 
       {/* Chat Messages */}
       <div ref={messagesContainerRef} className="flex-1 overflow-y-auto px-4 lg:px-0 scrollbar-hide relative z-10">
-        <div className="max-w-2xl mx-auto py-4 space-y-3">
+        <div className="max-w-2xl mx-auto py-3 space-y-2">
           {messages.map((msg) => (
             <div key={msg.id} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+              <div className={`max-w-[78%] rounded-xl px-3 py-2 text-[13px] leading-relaxed ${
                 msg.sender === 'user'
                   ? 'bg-emerald-700 text-white rounded-tr-sm'
-                  : 'bg-th-surface text-gray-100 rounded-tl-sm border border-th-border shadow-xl backdrop-blur-sm'
+                  : 'bg-th-surface text-gray-100 rounded-tl-sm border border-th-border shadow-lg backdrop-blur-sm'
               }`}>
+                {msg.imageDataUrl && (
+                  <img src={msg.imageDataUrl} alt="" className="max-w-full rounded-lg mb-1.5" />
+                )}
                 <span className="whitespace-pre-wrap">
                   {msg.text.split(/(\*\*[^*]+\*\*)/).map((segment, i) =>
                     segment.startsWith('**') && segment.endsWith('**')
@@ -321,7 +404,7 @@ const CoachChat: React.FC<CoachChatProps> = ({
           ))}
           {isLoading && (
             <div className="flex justify-start">
-              <div className="bg-th-surface border border-th-border rounded-2xl rounded-tl-sm px-4 py-3 backdrop-blur-sm">
+              <div className="bg-th-surface border border-th-border rounded-xl rounded-tl-sm px-3 py-2 backdrop-blur-sm">
                 <div className="flex items-center gap-2">
                   <span className="w-2 h-2 bg-th-accent rounded-full animate-pulse"></span>
                   <span className="w-2 h-2 bg-th-accent rounded-full animate-pulse" style={{animationDelay: '0.2s'}}></span>
@@ -342,8 +425,8 @@ const CoachChat: React.FC<CoachChatProps> = ({
             );
             return (
               <div className="flex justify-start">
-                <div className="max-w-[85%] rounded-2xl rounded-tl-sm bg-th-surface border border-th-border shadow-xl backdrop-blur-sm px-5 py-4">
-                  <p className="text-sm text-gray-100 leading-relaxed mb-3">
+                <div className="max-w-[85%] rounded-xl rounded-tl-sm bg-th-surface border border-th-border shadow-lg backdrop-blur-sm px-4 py-3">
+                  <p className="text-[13px] text-gray-100 leading-relaxed mb-2.5">
                     {t.coach.selectQuestion}
                   </p>
                   <div className="space-y-2">
@@ -351,7 +434,7 @@ const CoachChat: React.FC<CoachChatProps> = ({
                       <button
                         key={q.id}
                         onClick={() => handleTopicSelect(q)}
-                        className="w-full text-left px-4 py-3 rounded-xl bg-th-surface border border-th-border hover:border-th-accent-border hover:bg-th-accent-muted transition-all duration-200 group"
+                        className="w-full text-left px-3 py-2.5 rounded-lg bg-th-surface border border-th-border hover:border-th-accent-border hover:bg-th-accent-muted transition-all duration-200 group"
                       >
                         <div className="flex items-center gap-3">
                           <span className="text-lg">{q.icon}</span>
@@ -406,29 +489,50 @@ const CoachChat: React.FC<CoachChatProps> = ({
       </div>
 
       {/* Input */}
-      <div className="shrink-0 px-4 pb-[max(8px,env(safe-area-inset-bottom))] pt-2 flex justify-center z-20">
+      <div
+        className="shrink-0 px-3 pb-[max(6px,env(safe-area-inset-bottom))] pt-1.5 flex justify-center z-20 bg-th-base border-t border-th-border"
+      >
         <div className="w-full max-w-2xl">
-          <div className="relative group">
-            <div className="absolute inset-0 bg-th-accent/20 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-            <div className="relative flex items-center bg-th-elevated backdrop-blur-xl border border-th-border rounded-full shadow-2xl overflow-hidden transition-colors hover:border-th-accent-border">
+          {/* 이미지 미리보기 */}
+          {pendingImage && (
+            <div className="flex items-center gap-2 mb-1.5 px-1">
+              <div className="relative">
+                <img src={pendingImage} alt="preview" className="w-14 h-14 object-cover rounded-lg border border-th-border" />
+                <button onClick={() => setPendingImage(null)} className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center">
+                  <X size={10} className="text-white" />
+                </button>
+              </div>
+            </div>
+          )}
+          <div className="flex items-center gap-2">
+            <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageSelect} />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="shrink-0 p-2 text-th-text-tertiary hover:text-th-accent transition-colors"
+              aria-label="이미지 첨부"
+            >
+              <Plus size={20} />
+            </button>
+            <div className="flex-1 flex items-center bg-th-elevated border border-th-border rounded-full shadow-lg overflow-hidden transition-colors hover:border-th-accent-border">
               <input
                 type="text"
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && !e.nativeEvent.isComposing && handleSend()}
+                onFocus={() => { setTimeout(() => scrollToBottom(), 300); setTimeout(() => scrollToBottom(), 600); }}
                 placeholder={t.coach.placeholder}
-                className="w-full bg-transparent border-none py-4 px-6 text-lg text-th-text placeholder-th-text-tertiary focus:outline-none focus:ring-0"
+                className="w-full bg-transparent border-none py-2.5 px-4 text-sm text-th-text placeholder-th-text-tertiary focus:outline-none focus:ring-0"
                 aria-label={t.coach.sendMessage}
               />
-              <button
-                onClick={handleSend}
-                disabled={!inputText.trim()}
-                className="mr-2 p-3 bg-th-accent rounded-full text-th-text-inverse hover:bg-white transition-all disabled:opacity-0 disabled:scale-95"
-                aria-label={t.coach.sendLabel}
-              >
-                <Send size={18} />
-              </button>
             </div>
+            <button
+              onClick={handleSend}
+              disabled={!inputText.trim() && !pendingImage}
+              className="shrink-0 p-2.5 bg-th-accent rounded-full text-th-text-inverse hover:bg-white transition-all disabled:opacity-0 disabled:scale-95"
+              aria-label={t.coach.sendLabel}
+            >
+              <Send size={16} />
+            </button>
           </div>
         </div>
       </div>

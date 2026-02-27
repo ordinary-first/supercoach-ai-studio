@@ -103,6 +103,7 @@ export const sendChatMessage = async (
   userId?: string,
   goalCount?: number,
   topicDirective?: string,
+  imageDataUrl?: string,
 ): Promise<ChatApiResponse> => {
   try {
     const response = await fetch('/api/chat', {
@@ -119,6 +120,7 @@ export const sendChatMessage = async (
         userId,
         goalCount,
         topicDirective,
+        ...(imageDataUrl && { imageDataUrl }),
       }),
     });
     if (response.status === 429) {
