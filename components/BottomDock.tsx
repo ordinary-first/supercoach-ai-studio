@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+﻿import React, { useState, useRef, useEffect } from 'react';
 import { Target, ListTodo, Eye, Calendar, BarChart3 } from 'lucide-react';
 import { useTranslation } from '../i18n/useTranslation';
 
@@ -18,7 +18,7 @@ const BottomDock: React.FC<BottomDockProps> = ({
   calendarViewMode,
   onCalendarViewModeChange,
 }) => {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const [showPopup, setShowPopup] = useState(false);
   const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressTriggered = useRef(false);
@@ -50,8 +50,8 @@ const BottomDock: React.FC<BottomDockProps> = ({
 
   useEffect(() => {
     if (!showPopup) return;
-    const handleClickOutside = (e: MouseEvent) => {
-      if (popupRef.current && !popupRef.current.contains(e.target as Node)) {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (popupRef.current && !popupRef.current.contains(event.target as Node)) {
         setShowPopup(false);
       }
     };
@@ -59,10 +59,16 @@ const BottomDock: React.FC<BottomDockProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showPopup]);
 
+  const calendarModes = [
+    { mode: 'month' as const, label: t.calendar.monthView },
+    { mode: 'week' as const, label: t.calendar.weekView },
+    { mode: 'list' as const, label: language === 'ko' ? '리스트' : 'List' },
+  ];
+
   return (
     <div className="fixed bottom-0 left-1/2 transform -translate-x-1/2 z-[55] w-full">
       <div
-        className="flex items-center justify-around gap-1 px-2 py-1.5 bg-th-elevated backdrop-blur-xl border-t border-x border-th-border rounded-t-xl shadow-[0_0_20px_rgba(0,0,0,0.5)]"
+        className="apple-dock-shell flex items-center justify-around gap-1 px-2 py-1.5 rounded-t-2xl mx-2"
         style={{ marginBottom: 'env(safe-area-inset-bottom)' }}
         role="navigation"
         aria-label={t.nav.mainNav}
@@ -91,41 +97,43 @@ const BottomDock: React.FC<BottomDockProps> = ({
                 onTouchEnd: cancelPress,
                 onMouseUp: cancelPress,
                 onTouchMove: cancelPress,
-                onContextMenu: (e: React.MouseEvent) => e.preventDefault(),
+                onContextMenu: (event: React.MouseEvent) => event.preventDefault(),
               })}
-              className={`relative group flex flex-col items-center justify-center w-11 h-11 rounded-xl transition-all duration-300 ${
-                isActive
-                  ? 'bg-th-surface-hover text-th-accent shadow-[0_0_15px_var(--shadow-glow)]'
-                  : 'text-th-text-secondary hover:text-th-text hover:bg-th-surface'
-              }`}
+              className={`relative group flex flex-col items-center justify-center w-11 h-11 rounded-xl
+                transition-all duration-300 ${
+                  isActive
+                    ? 'bg-white/12 text-th-accent shadow-[0_0_18px_var(--shadow-glow)]'
+                    : 'text-th-text-secondary hover:text-th-text hover:bg-white/8'
+                }`}
               aria-label={tab.label}
               aria-current={isActive ? 'page' : undefined}
             >
               <div className={`transition-transform duration-300 ${isActive ? 'scale-110' : 'group-hover:scale-110'}`}>
                 {tab.icon}
               </div>
-              <span className={`text-[9px] font-display mt-0.5 tracking-wider transition-opacity duration-300 ${isActive ? 'opacity-100 font-bold' : 'opacity-70'}`}>
+              <span
+                className={`text-[9px] font-display mt-0.5 tracking-wide transition-opacity duration-300 ${
+                  isActive ? 'opacity-100 font-bold' : 'opacity-70'
+                }`}
+              >
                 {tab.label}
               </span>
 
               {isActive && (
-                <div className="absolute -bottom-1 w-1 h-1 bg-th-accent rounded-full shadow-[0_0_5px_var(--shadow-glow)]"></div>
+                <div className="absolute -bottom-1 w-1 h-1 bg-th-accent rounded-full shadow-[0_0_5px_var(--shadow-glow)]" />
               )}
 
               {showPopup && isCalendar && (
                 <div
                   ref={popupRef}
-                  className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-th-elevated backdrop-blur-xl border border-th-border rounded-xl shadow-2xl overflow-hidden min-w-[120px] z-[60]"
+                  className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 apple-glass-panel
+                    rounded-xl shadow-2xl overflow-hidden min-w-[120px] z-[60]"
                 >
-                  {[
-                    { mode: 'month' as const, label: '월간' },
-                    { mode: 'week' as const, label: '주간' },
-                    { mode: 'list' as const, label: '리스트' },
-                  ].map((item) => (
+                  {calendarModes.map((item) => (
                     <button
                       key={item.mode}
-                      onClick={(e) => {
-                        e.stopPropagation();
+                      onClick={(event) => {
+                        event.stopPropagation();
                         onCalendarViewModeChange?.(item.mode);
                         onTabChange('CALENDAR');
                         setShowPopup(false);

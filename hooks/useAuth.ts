@@ -183,6 +183,7 @@ export function useAuth(
             if (!prev) return savedProfile;
             return {
               ...prev,
+              avatarUrl: savedProfile.avatarUrl || prev.avatarUrl,
               bio: savedProfile.bio,
               gallery: savedProfile.gallery,
               age: savedProfile.age,

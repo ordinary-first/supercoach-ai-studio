@@ -1,0 +1,90 @@
+﻿import { useState } from 'react';
+import { ChevronDown, ChevronUp } from 'lucide-react';
+import { useTranslation } from '../../i18n/useTranslation';
+
+interface NarrativeSectionProps {
+  text?: string;
+  isLoading: boolean;
+}
+
+const shimmerStyle = `
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+`;
+
+const SHIMMER_BG =
+  'linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.03) 75%)';
+
+function NarrativeSection({ text, isLoading }: NarrativeSectionProps) {
+  const { t } = useTranslation();
+  const [expanded, setExpanded] = useState(false);
+
+  if (isLoading) {
+    return (
+      <section className="apple-card rounded-[18px] px-6 py-5">
+        <style>{shimmerStyle}</style>
+        <div className="mb-3">
+          <span className="font-medium uppercase text-[11px] tracking-[0.12em] text-white/35">NARRATIVE</span>
+        </div>
+        <div className="flex flex-col gap-3">
+          {[100, 85, 60].map((width, index) => (
+            <div
+              key={index}
+              className="h-4 rounded"
+              style={{
+                width: `${width}%`,
+                background: SHIMMER_BG,
+                backgroundSize: '200% 100%',
+                animation: 'shimmer 2s infinite',
+              }}
+            />
+          ))}
+        </div>
+      </section>
+    );
+  }
+
+  if (!text) return null;
+
+  return (
+    <section className="apple-card rounded-[18px] px-6 py-5">
+      <div className="mb-3">
+        <span className="font-medium uppercase text-[11px] tracking-[0.12em] text-white/35">NARRATIVE</span>
+      </div>
+
+      <div className="relative">
+        <div className="overflow-hidden transition-all duration-300 ease-in-out" style={{ maxHeight: expanded ? '2000px' : '4.5em' }}>
+          <p className="text-base leading-7 text-white/80 tracking-[0.01em] whitespace-pre-wrap">{text}</p>
+        </div>
+
+        {!expanded && text.length > 120 && (
+          <div
+            className="absolute bottom-0 left-0 right-0 h-12 pointer-events-none"
+            style={{ background: 'linear-gradient(to top, rgba(16,20,28,1) 0%, transparent 100%)' }}
+          />
+        )}
+      </div>
+
+      {text.length > 120 && (
+        <button
+          onClick={() => setExpanded((prev) => !prev)}
+          className="mt-2 flex items-center gap-1 text-white/60 text-[13px]"
+        >
+          {expanded ? (
+            <>
+              {t.visualization.foldUp} <ChevronUp size={14} />
+            </>
+          ) : (
+            <>
+              {t.visualization.moreSee} <ChevronDown size={14} />
+            </>
+          )}
+        </button>
+      )}
+    </section>
+  );
+}
+
+export default NarrativeSection;

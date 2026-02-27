@@ -7,7 +7,7 @@ import CoachBubble from './components/CoachBubble';
 import ShortcutsPanel from './components/ShortcutsPanel';
 import ToDoList from './components/ToDoList';
 import BottomDock, { TabType } from './components/BottomDock';
-import VisualizationModal from './components/VisualizationModal';
+import VisualizationTab from './components/visualization/VisualizationTab';
 import CalendarView from './components/CalendarView';
 import MarketingLandingPage from './components/landing/MarketingLandingPage';
 import SettingsPage from './components/SettingsPage';
@@ -32,7 +32,7 @@ import { useToast } from './hooks/useToast';
 import { useThemeStore, useSystemThemeListener } from './stores/useThemeStore';
 import { appendAction } from './services/actionLogService';
 import ToastContainer from './components/ToastContainer';
-import { Crown, Settings as SettingsIcon } from 'lucide-react';
+import { Crown, Menu as MenuIcon } from 'lucide-react';
 import { LanguageContext } from './i18n/useTranslation';
 import { getTranslations } from './i18n';
 
@@ -138,6 +138,8 @@ const createInitialGoalNodes = (): GoalNode[] => [
 ];
 
 const getInitialLanguage = (): AppLanguage => {
+  const cached = localStorage.getItem('app_language');
+  if (cached === 'ko' || cached === 'en') return cached;
   return navigator.language.toLowerCase().startsWith('ko') ? 'ko' : 'en';
 };
 
@@ -168,6 +170,7 @@ const App: React.FC = () => {
   const [confirmedPreviewIds, setConfirmedPreviewIds] = useState<string[]>([]);
   const insertImageInputRef = useRef<HTMLInputElement>(null);
   const insertImageTargetNodeRef = useRef<string | null>(null);
+  const isLoadingSettingsRef = useRef(false);
 
   // Stable callbacks for useAuth to avoid re-triggering data load effect
   const handleGoalDataLoaded = useCallback((loadedNodes: GoalNode[], loadedLinks: GoalLink[]) => {
@@ -243,6 +246,7 @@ const App: React.FC = () => {
   useEffect(() => {
     let cancelled = false;
     if (!userId) {
+      isLoadingSettingsRef.current = false;
       setLanguage(getInitialLanguage());
       setIsLanguageLoaded(true);
       return () => {
@@ -250,6 +254,7 @@ const App: React.FC = () => {
       };
     }
 
+    isLoadingSettingsRef.current = true;
     setIsLanguageLoaded(false);
     loadUserSettings(userId)
       .then((settings) => {
@@ -261,6 +266,7 @@ const App: React.FC = () => {
         }
       })
       .finally(() => {
+        isLoadingSettingsRef.current = false;
         if (!cancelled) setIsLanguageLoaded(true);
       });
 
@@ -270,7 +276,8 @@ const App: React.FC = () => {
   }, [userId]);
 
   useEffect(() => {
-    if (!userId || !isLanguageLoaded) return;
+    localStorage.setItem('app_language', language);
+    if (!userId || !isLanguageLoaded || isLoadingSettingsRef.current) return;
     saveUserSettings(userId, { language }).catch(() => {
       addToast(t.app.toasts.languageSaveFailed, 'warning');
     });
@@ -406,7 +413,7 @@ const App: React.FC = () => {
     setEditingNodeId(newNodeId);
   }, [nodes]);
 
-  // 紐낆떆???대?吏 ?앹꽦 (濡깊봽?덉뒪 硫붾돱?먯꽌 ?몄텧)
+  // 명시적 이미지 생성 (액션 메뉴에서 호출)
   const handleGenerateNodeImage = useCallback(async (nodeId: string) => {
     const node = nodes.find(n => n.id === nodeId);
     if (!node) return;
@@ -429,7 +436,7 @@ const App: React.FC = () => {
     }
   }, [nodes, handleUpdateNode, userProfile, addToast]);
 
-  // ?몃뱶瑜??щ몢濡?蹂??(濡깊봽?덉뒪 硫붾돱?먯꽌 ?몄텧)
+  // 노드를 할일로 변환 (액션 메뉴에서 호출)
   const handleConvertNodeToTodo = useCallback((nodeId: string) => {
     const node = nodes.find(n => n.id === nodeId);
     if (!node || !node.text) return;
@@ -707,17 +714,17 @@ const App: React.FC = () => {
 
   return (
     <LanguageContext.Provider value={langCtx}>
-    <div className="relative w-screen h-screen bg-th-base text-th-text font-body overflow-hidden">
+    <div className="apple-app-root relative w-screen h-screen text-th-text font-body overflow-hidden">
       {activeTab === 'GOALS' && (
         <>
           <MindMap
             nodes={visibleNodes} links={visibleLinks} language={language} selectedNodeId={selectedNode?.id} onNodeClick={setSelectedNode} onEditNode={(nodeId) => setEditingNodeId(nodeId)} onUpdateNode={handleUpdateNode} onDeleteNode={handleDeleteNode} onReparentNode={handleReparentNode} onAddSubNode={handleAddSubNode} onAddParentNode={handleAddParentNode} onGenerateImage={handleGenerateNodeImage} onInsertImage={handleInsertNodeImage} onConvertNodeToTask={handleConvertNodeToTodo} onDecomposeGoal={handleDecomposeGoal} previewNodeIds={previewNodeIds} confirmedPreviewIds={confirmedPreviewIds} onTogglePreviewConfirm={handleTogglePreviewConfirm} onFinalizePreview={handleFinalizePreview} editingNodeId={editingNodeId} onEditEnd={() => setEditingNodeId(null)} width={dimensions.width} height={dimensions.height} imageLoadingNodes={imageLoadingNodes}
           />
 
-           <div className="absolute top-[64px] left-3 md:top-[72px] md:left-6 z-50">
+           <div className="absolute top-3 left-3 md:top-4 md:left-6 z-50">
                <button
                  onClick={() => setIsShortcutsOpen(prev => !prev)}
-                 className="flex items-center gap-2 bg-th-header backdrop-blur-md border border-th-border px-3 py-1.5 md:px-4 md:py-2 rounded-full text-[10px] font-bold tracking-widest text-th-accent hover:bg-th-accent hover:text-th-text-inverse transition-all"
+                 className="apple-chip flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 text-[10px] font-bold tracking-widest text-th-accent hover:bg-th-accent hover:text-th-text-inverse transition-all"
                >
                    <span className="bg-th-accent/20 px-1.5 py-0.5 rounded text-[8px] border border-th-accent-border">K</span>
                    {t.shortcuts.button}
@@ -729,10 +736,10 @@ const App: React.FC = () => {
        <div className="absolute top-3 right-3 md:top-6 md:right-6 z-[60]">
          <button
            onClick={() => setIsSettingsPageOpen(true)}
-           className="w-10 h-10 rounded-full bg-th-header backdrop-blur-md border border-th-border text-th-text-secondary hover:bg-th-surface-hover transition-all flex items-center justify-center"
+           className="apple-chip w-10 h-10 rounded-full text-th-text-secondary hover:bg-th-surface-hover transition-all flex items-center justify-center"
            aria-label="Open settings"
          >
-           <SettingsIcon size={18} />
+           <MenuIcon size={20} />
          </button>
        </div>
 
@@ -740,11 +747,11 @@ const App: React.FC = () => {
         todoLists={todoLists} todoGroups={todoGroups} activeListId={activeListId}
         onActiveListChange={setActiveListId}
         onTodoListsChange={setTodoLists} onTodoGroupsChange={setTodoGroups}
-        onAddToDo={(text, listId) => {
+        onAddToDo={(text, listId, extras) => {
   const trimmed = text.trim().slice(0, 500);
   if (!trimmed) return;
   const newId = Date.now().toString();
-  setTodos(prev => [{id: newId, text: trimmed, completed: false, createdAt: Date.now(), ...(listId ? { listId } : {})}, ...prev]);
+  setTodos(prev => [{id: newId, text: trimmed, completed: false, createdAt: Date.now(), ...extras, ...(listId ? { listId } : {})}, ...prev]);
   appendAction(getUserId(), 'ADD_TODO', `"${trimmed}" 추가`, { todoId: newId });
 }} onToggleToDo={handleToggleToDo} onDeleteToDo={(id) => {
   const todo = todos.find(t => t.id === id);
@@ -753,6 +760,14 @@ const App: React.FC = () => {
 }} onUpdateToDo={(id, up) => {
   setTodos(prev => prev.map(t => t.id === id ? {...t, ...up} : t));
   appendAction(getUserId(), 'UPDATE_TODO', `할일 수정`, { todoId: id });
+}} onReorderTodos={(orderedIds) => {
+  setTodos(prev => {
+    const updated = prev.map(t => {
+      const idx = orderedIds.indexOf(t.id);
+      return idx !== -1 ? { ...t, sortOrder: idx } : t;
+    });
+    return updated;
+  });
 }} />
       <CalendarView isOpen={activeTab === 'CALENDAR'} onClose={() => setActiveTab('GOALS')} todos={todos} onToggleToDo={handleToggleToDo} viewMode={calendarViewMode} onViewModeChange={setCalendarViewMode} />
       <CoachChat
@@ -768,7 +783,7 @@ const App: React.FC = () => {
         onMessagesChange={setChatMessages}
         activeTab={activeTab}
       />
-      <VisualizationModal isOpen={activeTab === 'VISUALIZE'} onClose={() => setActiveTab('GOALS')} userProfile={userProfile} nodes={nodes} />
+      <VisualizationTab isOpen={activeTab === 'VISUALIZE'} onClose={() => setActiveTab('GOALS')} userProfile={userProfile} nodes={nodes} />
       <ShortcutsPanel isOpen={isShortcutsOpen} onClose={() => setIsShortcutsOpen(false)} />
       <BottomDock activeTab={activeTab} onTabChange={handleTabChange} calendarViewMode={calendarViewMode} onCalendarViewModeChange={setCalendarViewMode} />
       <CoachBubble
@@ -807,6 +822,10 @@ const App: React.FC = () => {
         todos={todos}
         userProfile={userProfile}
         userId={userId}
+        onUpdateNode={(id, updates) => handleUpdateNode(id, updates)}
+        onUpdateTodo={(id, updates) => {
+          setTodos(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
+        }}
       />
 
       <SettingsPage

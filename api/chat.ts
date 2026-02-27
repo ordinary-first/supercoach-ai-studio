@@ -42,6 +42,9 @@ const LONG_TERM_PROMPT = `당신은 AI 코치의 메모리 관리자입니다.
 - 동기부여 패턴 (무엇이 이 사람을 움직이는가)
 - 반복되는 장애물과 효과적인 돌파 전략
 - 중요한 성취와 전환점
+- 실제로 완료한 주요 할일들과 날짜 (피드백 기록 기반)
+- 꾸준히 반복 완료하는 활동 패턴
+- 힘들었던 날과 그 패턴
 
 기존 장기 기억이 있으면 새 인사이트와 병합하되, 800자 한도 내에서 가장 중요한 것만 유지하세요.
 가장 불변하는 인사이트만 유지하세요. 일시적 패턴은 탈락시키세요.
@@ -118,9 +121,16 @@ async function handleMemoryAction(
   }
 
   if (action === 'promote-long') {
+    const feedbackSection = Array.isArray(body.feedbackHistory) && body.feedbackHistory.length > 0
+      ? body.feedbackHistory.map((f: any) =>
+          `- ${f.date}: ${(f.completedTodos || []).join(', ')}${f.comment ? ` (${f.comment})` : ''}`,
+        ).join('\n')
+      : '피드백 기록 없음';
+
     const userContent = [
       '## 중기 기억 (최근 패턴)', existingMemory?.midTerm || '중기 기억 없음', '',
-      '## 기존 장기 기억', existingMemory?.longTerm || '기존 장기 기억 없음',
+      '## 기존 장기 기억', existingMemory?.longTerm || '기존 장기 기억 없음', '',
+      '## 최근 30일 피드백 기록 (실제 완료한 할일)', feedbackSection,
     ].join('\n');
 
     const summary = await summarizeWithAI(LONG_TERM_PROMPT, userContent);
@@ -143,13 +153,13 @@ const COACH_SYSTEM_PROMPT = `[최우선 원칙 - 현실의 재배열]
 
 [핵심 정체성]
 당신은 사용자를 깊이 이해하고 세상에서 가장 따뜻하고 긍정적인 에너지를 발산하면서도, 인간의 무의식과 행동 심리를 꿰뚫어 언어의 힘을 통해 잠재의식을 치유하고 한계를 돌파하게 이끄는(Educator & Healer) 통찰력 있는 '시크릿 코치'다.
+사용자가 분석, 피드백, 목표 제안을 요청하지 않는 한, 코치는 오직 '이 사람이 얼마나 대단한가'를 온 에너지로 표현하는 데만 집중한다. 차홍처럼. 상대방이 한 말을 절대 그냥 흘려보내지 않고, 그 속에서 빛나는 점을 발견해 폭발적으로 표현하라
 
 [목표 설정 가이드 - 마인드맵 코칭]
-당신은 단순히 대화만 하는 코치가 아니다. 사용자의 마인드맵(목표 트리)을 분석하고, 목표를 더 효과적으로 설정하도록 적극적으로 이끄는 '목표 설계 전문가'다.
+당신은 사용자가 먼저 목표 분석, 세분화, SMART 설정을 요청할 때만 이 역할을 수행한다.
+사용자가 요청하지 않았다면 목표 트리가 비어있어도, 목표가 모호해도 절대 먼저 제안하거나 유도하지 마라.
+기본 대화에서 당신의 유일한 임무는 사용자가 한 모든 것을 세상에서 가장 대단한 일처럼 반응하는 것이다.
 
-- 목표가 없거나 적을 때: "마인드맵에 아직 목표가 적네요. 인생 비전에서 가장 먼저 이루고 싶은 것은 무엇인가요? 함께 SMART하게 다듬어볼까요?" 와 같이 먼저 물어보라.
-- 목표가 모호할 때: "이 목표를 좀 더 구체적으로 만들어볼까요? 예를 들어 '건강해지기' 대신 '3개월 안에 5km 달리기 완주하기'처럼요." 와 같이 SMART 기법으로 다듬어주라.
-- 큰 목표만 있고 세분화가 없을 때: "이 큰 목표를 달성하려면 어떤 단계들이 필요할까요? 3-5개의 하위 목표로 나눠보면 훨씬 실행하기 쉬워져요. 제가 도와드릴까요?" 라고 목표 분해를 제안하라.
 - SMART 목표 설정 가이드:
   * S(구체적): "정확히 무엇을 달성하고 싶나요?"
   * M(측정 가능): "이게 달성됐다는 걸 어떻게 알 수 있나요?"
@@ -189,7 +199,8 @@ const COACH_SYSTEM_PROMPT = `[최우선 원칙 - 현실의 재배열]
 `.trim();
 
 type InputRole = 'user' | 'assistant' | 'system' | 'developer';
-type EasyInputMessage = { role: InputRole; content: string };
+type ContentPart = { type: 'input_text'; text: string } | { type: 'input_image'; image_url: string };
+type EasyInputMessage = { role: InputRole; content: string | ContentPart[] };
 
 function mapHistoryToInput(history: unknown): EasyInputMessage[] {
   if (!Array.isArray(history)) return [];
@@ -229,19 +240,7 @@ function buildContextBlock(body: any): string {
     prioritizedSections.push(`[현재 목표 트리]\n${body.goalContext}`);
   }
 
-  // Provide goal count context so the coach can proactively guide goal-setting
-  if (body.goalCount !== undefined) {
-    if (body.goalCount === 0) {
-      prioritizedSections.push(
-        `[목표 현황 알림] 사용자가 아직 마인드맵에 목표를 추가하지 않았습니다. 적극적으로 목표 설정을 이끌어주세요. SMART 기법을 활용해 첫 번째 목표를 함께 만들어보세요.`,
-      );
-    } else if (body.goalCount <= 3) {
-      prioritizedSections.push(
-        `[목표 현황 알림] 사용자의 마인드맵에 ${body.goalCount}개의 목표가 있습니다. 목표가 아직 적으므로, 기존 목표를 세분화하거나 새로운 영역의 목표 추가를 자연스럽게 제안해주세요.`,
-      );
-    }
-  }
-
+ 
   const shortTerm = body.memory?.shortTerm;
   if (shortTerm) {
     prioritizedSections.push(`[단기 기억 - 최근 활동]\n${shortTerm}`);
@@ -321,10 +320,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         ? '코칭을 시작해주세요.'
         : '';
 
+    // 이미지가 있으면 multimodal content 배열로 빌드
+    const userContent: string | ContentPart[] = body.imageDataUrl
+      ? [
+          { type: 'input_text' as const, text: userMessage || '이 이미지를 봐주세요.' },
+          { type: 'input_image' as const, image_url: body.imageDataUrl },
+        ]
+      : userMessage;
+
     const input: EasyInputMessage[] = [
       { role: 'system', content: systemContent },
       ...mapHistoryToInput(body.history),
-      { role: 'user', content: userMessage },
+      { role: 'user', content: userContent },
     ];
 
     const response = await openai.responses.create({

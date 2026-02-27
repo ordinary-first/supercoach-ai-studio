@@ -242,7 +242,7 @@ const DARK_THEME_CONFIG = {
     borderRadius: 24,
     fontSize: 18,
     fontWeight: 'bold',
-    fontFamily: 'Inter, system-ui, sans-serif',
+    fontFamily: 'SF Pro Display, SF Pro Text, -apple-system, BlinkMacSystemFont, Apple SD Gothic Neo, Pretendard, sans-serif',
     shape: 'roundedRectangle',
     paddingX: 30,
     paddingY: 20,
@@ -255,7 +255,7 @@ const DARK_THEME_CONFIG = {
     borderRadius: 12,
     fontSize: 14,
     fontWeight: '600',
-    fontFamily: 'Inter, system-ui, sans-serif',
+    fontFamily: 'SF Pro Display, SF Pro Text, -apple-system, BlinkMacSystemFont, Apple SD Gothic Neo, Pretendard, sans-serif',
     shape: 'roundedRectangle',
     marginX: 80,
     marginY: 30,
@@ -270,7 +270,7 @@ const DARK_THEME_CONFIG = {
     borderRadius: 8,
     fontSize: 13,
     fontWeight: '500',
-    fontFamily: 'Inter, system-ui, sans-serif',
+    fontFamily: 'SF Pro Display, SF Pro Text, -apple-system, BlinkMacSystemFont, Apple SD Gothic Neo, Pretendard, sans-serif',
     shape: 'roundedRectangle',
     marginX: 60,
     marginY: 20,
@@ -284,7 +284,7 @@ const DARK_THEME_CONFIG = {
     borderWidth: 1,
     borderRadius: 6,
     fontSize: 12,
-    fontFamily: 'Inter, system-ui, sans-serif',
+    fontFamily: 'SF Pro Display, SF Pro Text, -apple-system, BlinkMacSystemFont, Apple SD Gothic Neo, Pretendard, sans-serif',
   },
 };
 
@@ -303,7 +303,7 @@ const LIGHT_THEME_CONFIG = {
     borderRadius: 24,
     fontSize: 18,
     fontWeight: 'bold',
-    fontFamily: 'Inter, system-ui, sans-serif',
+    fontFamily: 'SF Pro Display, SF Pro Text, -apple-system, BlinkMacSystemFont, Apple SD Gothic Neo, Pretendard, sans-serif',
     shape: 'roundedRectangle',
     paddingX: 30,
     paddingY: 20,
@@ -316,7 +316,7 @@ const LIGHT_THEME_CONFIG = {
     borderRadius: 12,
     fontSize: 14,
     fontWeight: '600',
-    fontFamily: 'Inter, system-ui, sans-serif',
+    fontFamily: 'SF Pro Display, SF Pro Text, -apple-system, BlinkMacSystemFont, Apple SD Gothic Neo, Pretendard, sans-serif',
     shape: 'roundedRectangle',
     marginX: 80,
     marginY: 30,
@@ -331,7 +331,7 @@ const LIGHT_THEME_CONFIG = {
     borderRadius: 8,
     fontSize: 13,
     fontWeight: '500',
-    fontFamily: 'Inter, system-ui, sans-serif',
+    fontFamily: 'SF Pro Display, SF Pro Text, -apple-system, BlinkMacSystemFont, Apple SD Gothic Neo, Pretendard, sans-serif',
     shape: 'roundedRectangle',
     marginX: 60,
     marginY: 20,
@@ -345,7 +345,7 @@ const LIGHT_THEME_CONFIG = {
     borderWidth: 1,
     borderRadius: 6,
     fontSize: 12,
-    fontFamily: 'Inter, system-ui, sans-serif',
+    fontFamily: 'SF Pro Display, SF Pro Text, -apple-system, BlinkMacSystemFont, Apple SD Gothic Neo, Pretendard, sans-serif',
   },
 };
 
@@ -866,7 +866,7 @@ const MindMap: React.FC<MindMapProps> = ({
   const isRootActionNode = actionNode?.type === NodeType.ROOT;
 
   return (
-    <div className="w-full h-full bg-th-base relative overflow-hidden">
+    <div className="apple-tab-shell w-full h-full relative overflow-hidden">
       <style>{`
         @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
         .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
@@ -874,21 +874,8 @@ const MindMap: React.FC<MindMapProps> = ({
         .animate-fade-in-up { animation: fadeInUp 0.6s ease-out forwards; }
       `}</style>
 
-      {/* Header */}
-      <div className="absolute top-3 left-3 z-10 pointer-events-none select-none max-w-[calc(100%-72px)]">
-        <div className="flex items-baseline gap-2 flex-wrap">
-          <h1 className="text-lg sm:text-xl md:text-2xl font-display text-th-text tracking-[0.22em] md:tracking-widest leading-none drop-shadow-[0_0_10px_rgba(204,255,0,0.5)]">
-            SECRET COACH
-          </h1>
-          <span className="text-th-accent text-[10px] md:text-xs font-mono tracking-wide">
-            {__APP_VERSION__}
-          </span>
-        </div>
-        <p className="text-th-text-secondary text-[10px] md:text-xs font-body">Neural Interface Active</p>
-      </div>
-
       {/* Layout Switcher */}
-      <div className="absolute top-14 right-3 md:top-16 md:right-4 z-10 flex bg-th-overlay backdrop-blur-md border border-th-border rounded-full px-1 py-0.5 gap-0.5">
+      <div className="apple-chip absolute top-3 right-3 md:top-4 md:right-4 z-10 flex rounded-full px-1 py-0.5 gap-0.5">
         {LAYOUT_MODES.map(mode => (
           <button
             key={mode}
@@ -1118,27 +1105,7 @@ const MindMap: React.FC<MindMapProps> = ({
         </button>
       )}
 
-      {/* Phase 3: Contextual Tooltip */}
-      {onboardingPhase === 'tooltips' && (
-        <div
-          onClick={() => setTooltipDismissed(true)}
-          className="absolute bottom-20 left-1/2 -translate-x-1/2 z-30 animate-fade-in cursor-pointer"
-        >
-          <div className="bg-th-elevated/95 border border-th-border rounded-2xl px-5 py-3 backdrop-blur-md shadow-2xl">
-            <div className="flex items-center gap-4 text-th-text-secondary text-xs">
-              <div className="flex items-center gap-1.5">
-                <span className="text-th-accent">◉</span>
-                <span>{t.mindmap.onboarding.tooltipDoubleTap}</span>
-              </div>
-              <div className="w-px h-4 bg-th-border" />
-              <div className="flex items-center gap-1.5">
-                <span className="text-th-accent">◎</span>
-                <span>{t.mindmap.onboarding.tooltipTap}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Phase 3: Contextual Tooltip — removed */}
 
     </div>
   );
@@ -1169,4 +1136,6 @@ export default React.memo(MindMap, (prev, next) => {
     prev.imageLoadingNodes === next.imageLoadingNodes
   );
 });
+
+
 

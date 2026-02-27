@@ -1,11 +1,48 @@
-import React, { useState, useMemo } from 'react';
-import { Check, Trash2, Plus, ListTodo, Circle, CheckCircle2, Target, Bell, Repeat, Sun, ArrowLeft, ChevronRight, Layout, X, Calendar, Star, CalendarDays, Home, Menu } from 'lucide-react';
+﻿import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import { Check, Trash2, Plus, ListTodo, Circle, CheckCircle2, Target, Bell, Repeat, Sun, ArrowLeft, ChevronRight, ChevronDown, Layout, X, Calendar, Star, CalendarDays, Home, Menu, GripVertical } from 'lucide-react';
 import { ToDoItem, TodoList, TodoGroup, SmartListId, RepeatFrequency } from '../types';
 import { useFocusTrap } from '../hooks/useFocusTrap';
+import { useTranslation } from '../i18n/useTranslation';
 import TodoSidebar from './todo/TodoSidebar';
 import CreateListModal from './todo/CreateListModal';
 import CreateGroupModal from './todo/CreateGroupModal';
-import { useTranslation } from '../i18n/useTranslation';
+import { DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors, DragEndEvent, DragOverlay, DragStartEvent } from '@dnd-kit/core';
+import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+
+// === Extracted outside ToDoList to avoid React 19 hooks identity issue ===
+interface SortableTodoItemProps {
+  id: string;
+  isSelected: boolean;
+  isCompleted: boolean;
+  onSelect: (id: string) => void;
+  children: React.ReactNode;
+}
+
+const SortableTodoItem: React.FC<SortableTodoItemProps> = ({ id, isSelected, isCompleted, onSelect, children }) => {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+    zIndex: isDragging ? 10 : undefined,
+  };
+  const cardClass = `apple-card group flex items-center gap-2.5 py-2.5 px-3 mx-2 mb-1.5 rounded-lg cursor-pointer transition-all duration-150 ${
+    isSelected
+      ? 'bg-white/15 ring-1 ring-neon-lime/30'
+      : (isCompleted ? 'bg-white/[0.04] opacity-50' : 'bg-white/[0.06] hover:bg-white/10')
+  }`;
+  return (
+    <div ref={setNodeRef} style={style} {...attributes} onClick={() => onSelect(id)} className={cardClass}>
+      {!isCompleted && (
+        <div {...listeners} className="flex-shrink-0 cursor-grab active:cursor-grabbing text-gray-600 hover:text-gray-400 touch-none opacity-0 group-hover:opacity-100 transition-opacity">
+          <GripVertical size={16} />
+        </div>
+      )}
+      {children}
+    </div>
+  );
+};
 
 interface ToDoListProps {
   isOpen: boolean;
@@ -17,13 +54,14 @@ interface ToDoListProps {
   onActiveListChange: (id: string) => void;
   onTodoListsChange: React.Dispatch<React.SetStateAction<TodoList[]>>;
   onTodoGroupsChange: React.Dispatch<React.SetStateAction<TodoGroup[]>>;
-  onAddToDo: (text: string, listId?: string) => void;
+  onAddToDo: (text: string, listId?: string, extras?: Partial<ToDoItem>) => void;
   onToggleToDo: (id: string) => void;
   onDeleteToDo: (id: string) => void;
   onUpdateToDo: (id: string, updates: Partial<ToDoItem>) => void;
+  onReorderTodos: (orderedIds: string[]) => void;
 }
 
-const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, todoGroups, activeListId, onActiveListChange, onTodoListsChange, onTodoGroupsChange, onAddToDo, onToggleToDo, onDeleteToDo, onUpdateToDo }) => {
+const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, todoGroups, activeListId, onActiveListChange, onTodoListsChange, onTodoGroupsChange, onAddToDo, onToggleToDo, onDeleteToDo, onUpdateToDo, onReorderTodos }) => {
   const { t, language } = useTranslation();
   const [inputText, setInputText] = useState('');
   const [selectedToDoId, setSelectedToDoId] = useState<string | null>(null);
@@ -31,19 +69,44 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
 
   const [searchQuery, setSearchQuery] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isInputVisible, setIsInputVisible] = useState(false);
+  const [showCompleted, setShowCompleted] = useState(false);
   const inputRef = React.useRef<HTMLInputElement>(null);
   const [showCreateList, setShowCreateList] = useState(false);
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const [editingListId, setEditingListId] = useState<string | null>(null);
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
 
+  const uiText = useMemo(() => {
+    if (language === 'ko') {
+      return {
+        smartMyDay: '오늘 할 일',
+        smartImportant: '중요',
+        smartPlanned: '계획된 일정',
+        smartTasks: '작업',
+        searchResults: '검색 결과',
+        completedSection: '완료',
+        createdLabel: '생성일',
+        idLabel: 'ID',
+      };
+    }
+    return {
+      smartMyDay: 'My Day',
+      smartImportant: 'Important',
+      smartPlanned: 'Planned',
+      smartTasks: 'Tasks',
+      searchResults: 'Search results',
+      completedSection: 'Completed',
+      createdLabel: 'Created',
+      idLabel: 'ID',
+    };
+  }, [language]);
+
   // Smart list definitions
   const SMART_LIST_META: Record<SmartListId, { name: string; icon: React.ReactNode; color: string }> = {
-    myDay: { name: t.todo.myDay, icon: <Sun size={20} />, color: 'text-yellow-400' },
-    important: { name: language === 'ko' ? '중요' : 'Important', icon: <Star size={20} />, color: 'text-red-400' },
-    planned: { name: language === 'ko' ? '계획된 일정' : 'Planned', icon: <CalendarDays size={20} />, color: 'text-blue-400' },
-    tasks: { name: language === 'ko' ? '작업' : 'Tasks', icon: <Home size={20} />, color: 'text-neon-lime' },
+    myDay: { name: uiText.smartMyDay, icon: <Sun size={20} />, color: 'text-yellow-400' },
+    important: { name: uiText.smartImportant, icon: <Star size={20} />, color: 'text-red-400' },
+    planned: { name: uiText.smartPlanned, icon: <CalendarDays size={20} />, color: 'text-blue-400' },
+    tasks: { name: uiText.smartTasks, icon: <Home size={20} />, color: 'text-neon-lime' },
   };
 
   // Filter todos based on active list or search
@@ -71,8 +134,8 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
     if (smart) return smart;
     const customList = todoLists.find(l => l.id === activeListId);
     if (customList) return { name: customList.name, icon: <ListTodo size={20} />, color: `text-[${customList.color || '#CCFF00'}]` };
-    return { name: language === 'ko' ? '작업' : 'Tasks', icon: <Home size={20} />, color: 'text-neon-lime' };
-  }, [activeListId, todoLists, language]);
+    return { name: uiText.smartTasks, icon: <Home size={20} />, color: 'text-neon-lime' };
+  }, [activeListId, todoLists, uiText.smartTasks]);
 
   // CRUD handlers
   const handleCreateList = (name: string, color: string, groupId?: string) => {
@@ -120,46 +183,162 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
     onTodoGroupsChange(prev => prev.map(g => g.id === id ? { ...g, isCollapsed: !g.isCollapsed } : g));
   };
 
+  // Mobile keyboard height via VirtualKeyboard API (overlays-content 모드)
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  useEffect(() => {
+    const nav = navigator as unknown as { virtualKeyboard?: { overlaysContent: boolean; boundingRect: DOMRect; addEventListener: (e: string, fn: () => void) => void; removeEventListener: (e: string, fn: () => void) => void } };
+    if (!nav.virtualKeyboard) return;
+    nav.virtualKeyboard.overlaysContent = true;
+    const onChange = () => setKeyboardHeight(Math.round(nav.virtualKeyboard!.boundingRect.height));
+    nav.virtualKeyboard.addEventListener('geometrychange', onChange);
+    return () => nav.virtualKeyboard!.removeEventListener('geometrychange', onChange);
+  }, []);
+
+  // Quick action pending states
+  const [pendingDueDate, setPendingDueDate] = useState<number | null>(null);
+  const [pendingReminder, setPendingReminder] = useState<number | null>(null);
+  const [pendingRepeat, setPendingRepeat] = useState<RepeatFrequency>(null);
+  const [isInputFocused, setIsInputFocused] = useState(false);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (inputText.trim()) {
-      const listId = (['myDay', 'important', 'planned', 'tasks'] as string[]).includes(activeListId) ? undefined : activeListId;
-      onAddToDo(inputText, listId);
+      const isSmartList = (['myDay', 'important', 'planned', 'tasks'] as string[]).includes(activeListId);
+      const listId = isSmartList ? undefined : activeListId;
+
+      // Smart list 속성 자동 설정
+      const extras: Partial<ToDoItem> = {};
+      if (activeListId === 'myDay') extras.isMyDay = true;
+      if (activeListId === 'important') extras.priority = 'high';
+
+      // 퀵 액션 값 머지
+      if (pendingDueDate) extras.dueDate = pendingDueDate;
+      if (pendingReminder) extras.reminder = pendingReminder;
+      if (pendingRepeat) extras.repeat = pendingRepeat;
+
+      onAddToDo(inputText, listId, Object.keys(extras).length > 0 ? extras : undefined);
       setInputText('');
+      setPendingDueDate(null);
+      setPendingReminder(null);
+      setPendingRepeat(null);
     }
   };
 
-  // Sort: MyDay first, then Incomplete first, then by creation date
-  const sortedTodos = [...filteredTodos].sort((a, b) => {
-      if (a.completed === b.completed) {
-          if (a.isMyDay === b.isMyDay) return b.createdAt - a.createdAt;
-          return a.isMyDay ? -1 : 1;
-      }
-      return a.completed ? 1 : -1;
-  });
+  // Sort: sortOrder 우선, 없으면 MyDay -> createdAt 순서
+  const sortTodos = (a: ToDoItem, b: ToDoItem) => {
+    if (a.sortOrder != null && b.sortOrder != null) return a.sortOrder - b.sortOrder;
+    if (a.sortOrder != null) return -1;
+    if (b.sortOrder != null) return 1;
+    if (a.isMyDay === b.isMyDay) return b.createdAt - a.createdAt;
+    return a.isMyDay ? -1 : 1;
+  };
+  const incompleteTodos = [...filteredTodos].filter(t => !t.completed).sort(sortTodos);
+  const completedTodos = [...filteredTodos].filter(t => t.completed).sort(sortTodos);
+
+  // DnD
+  const [activeDragId, setActiveDragId] = useState<string | null>(null);
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } })
+  );
+  const handleDragStart = useCallback((e: DragStartEvent) => setActiveDragId(e.active.id as string), []);
+  const handleDragEnd = useCallback((e: DragEndEvent) => {
+    setActiveDragId(null);
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    const oldIdx = incompleteTodos.findIndex(t => t.id === active.id);
+    const newIdx = incompleteTodos.findIndex(t => t.id === over.id);
+    if (oldIdx === -1 || newIdx === -1) return;
+    const reordered = arrayMove(incompleteTodos, oldIdx, newIdx);
+    onReorderTodos(reordered.map(t => t.id));
+  }, [incompleteTodos, onReorderTodos]);
+  const activeDragTodo = activeDragId ? incompleteTodos.find(t => t.id === activeDragId) : null;
 
   const selectedToDo = todos.find(t => t.id === selectedToDoId);
+
+  // 카드형 기본 클래스
+  const getCardClass = (todo: ToDoItem) =>
+    `apple-card group flex items-center gap-2.5 py-2.5 px-3 mx-2 mb-1.5 rounded-lg cursor-pointer transition-all duration-150 ${
+      selectedToDoId === todo.id
+        ? 'bg-white/15 ring-1 ring-neon-lime/30'
+        : (todo.completed ? 'bg-white/[0.04] opacity-50' : 'bg-white/[0.06] hover:bg-white/10')
+    }`;
+
+  // 아이템 공통 콘텐츠 (체크박스 + 텍스트 + 메타 + 삭제 + 상세)
+  const renderTodoItemContent = (todo: ToDoItem) => (
+    <>
+      <button
+        onClick={(e) => { e.stopPropagation(); onToggleToDo(todo.id); }}
+        className={`transition-colors flex-shrink-0 ${todo.completed ? 'text-neon-lime' : 'text-gray-500 hover:text-neon-lime'}`}
+      >
+        {todo.completed ? <CheckCircle2 size={20} /> : <Circle size={20} />}
+      </button>
+      <div className="flex-1 min-w-0">
+        <p className={`text-sm truncate ${todo.completed ? 'line-through text-gray-500' : 'text-white'}`}>{todo.text}</p>
+        {(todo.isMyDay || todo.dueDate || todo.repeat || todo.linkedNodeText) && (
+          <div className="flex flex-wrap gap-1.5 mt-0.5">
+            {todo.isMyDay && (
+              <span className="flex items-center gap-0.5 text-[10px] text-yellow-400">
+                <Sun size={10} /> {uiText.smartMyDay}
+              </span>
+            )}
+            {todo.dueDate && (
+              <span className={`flex items-center gap-0.5 text-[10px] ${todo.dueDate < Date.now() && !todo.completed ? 'text-red-400' : 'text-gray-500'}`}>
+                <Calendar size={10} /> {formatDate(todo.dueDate)}
+              </span>
+            )}
+            {todo.repeat && <span className="flex items-center gap-0.5 text-[10px] text-blue-400"><Repeat size={10} /> {getRepeatLabel(todo.repeat)}</span>}
+            {todo.linkedNodeText && <span className="flex items-center gap-0.5 text-[10px] text-electric-orange/80"><Target size={10} /> {todo.linkedNodeText}</span>}
+          </div>
+        )}
+      </div>
+      <button
+        onClick={(e) => { e.stopPropagation(); onDeleteToDo(todo.id); }}
+        className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 p-1 rounded hover:bg-red-500/20 text-gray-500 hover:text-red-400"
+        title={t.todo.deleteTitle}
+      >
+        <Trash2 size={14} />
+      </button>
+      <ChevronRight size={16} className={`text-gray-600 flex-shrink-0 transition-transform ${selectedToDoId === todo.id ? 'translate-x-0.5 text-neon-lime' : ''}`} />
+    </>
+  );
+
+  // Non-sortable for completed items
+  const renderTodoItem = (todo: ToDoItem) => (
+    <div key={todo.id} onClick={() => setSelectedToDoId(todo.id)} className={getCardClass(todo)}>
+      {renderTodoItemContent(todo)}
+    </div>
+  );
 
   // Date Format Helpers
   const formatDate = (timestamp?: number | null) => {
       if (!timestamp) return null;
-      return new Date(timestamp).toLocaleDateString(language === 'ko' ? 'ko-KR' : 'en-US', { month: 'short', day: 'numeric', weekday: 'short' });
+      const locale = language === 'ko' ? 'ko-KR' : 'en-US';
+      return new Date(timestamp).toLocaleDateString(locale, {
+        month: 'short',
+        day: 'numeric',
+        weekday: 'short',
+      });
   };
 
   const formatTime = (timestamp?: number | null) => {
       if (!timestamp) return null;
-      return new Date(timestamp).toLocaleTimeString(language === 'ko' ? 'ko-KR' : 'en-US', { hour: '2-digit', minute: '2-digit' });
+      const locale = language === 'ko' ? 'ko-KR' : 'en-US';
+      return new Date(timestamp).toLocaleTimeString(locale, {
+        hour: '2-digit',
+        minute: '2-digit',
+      });
   };
 
   const getRepeatLabel = (freq: RepeatFrequency | undefined) => {
       if (!freq) return null;
-      return t.todo.repeat[freq] || freq;
+      return t.todo.repeatOptions[freq] || freq;
   };
 
   if (!isOpen) return null;
 
   return (
-    <div ref={focusTrapRef} className="fixed inset-0 z-50 bg-deep-space flex flex-row overflow-hidden text-white font-body">
+    <div ref={focusTrapRef} className="apple-tab-shell fixed inset-0 z-50 pb-16 flex flex-row overflow-hidden text-white font-body">
       
       {/* Ambient Background */}
       <div className="absolute top-[-20%] right-[-10%] w-[50%] h-[50%] bg-blue-900/20 rounded-full blur-[120px] pointer-events-none"></div>
@@ -170,7 +349,7 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
       {isSidebarOpen && (
         <div className="fixed inset-0 bg-black/50 z-30 md:hidden" onClick={() => setIsSidebarOpen(false)} />
       )}
-      <div className={`fixed inset-y-0 left-0 w-[260px] z-40 md:relative md:z-10 transform transition-transform duration-300 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
+      <div className={`fixed inset-y-0 left-0 w-[260px] z-40 pb-16 md:pb-0 md:relative md:z-10 transform transition-transform duration-300 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
         <TodoSidebar
           todos={todos}
           lists={todoLists}
@@ -193,7 +372,7 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
       <div className="flex-1 flex flex-col min-w-0 relative z-10">
           
           {/* Header */}
-          <div className="h-11 md:h-12 border-b border-white/10 flex items-center justify-between px-3 md:px-6 bg-black/20 backdrop-blur-md shrink-0">
+          <div className="apple-glass-header h-11 md:h-12 flex items-center justify-between px-3 md:px-6 shrink-0">
               <div className="flex items-center gap-2.5">
                   <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="md:hidden p-1.5 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-colors">
                     <Menu size={18} />
@@ -202,7 +381,7 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
                     <span className={activeListInfo.color}>{activeListInfo.icon}</span>
                   </div>
                   <div>
-                      <h1 className="text-base md:text-lg font-display font-bold tracking-wider text-white">{searchQuery ? (language === 'ko' ? '검색 결과' : 'Search Results') : activeListInfo.name}</h1>
+                      <h1 className="text-base md:text-lg font-display font-bold tracking-wider text-white">{searchQuery ? uiText.searchResults : activeListInfo.name}</h1>
                   </div>
               </div>
           </div>
@@ -210,7 +389,7 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
           {/* List Content */}
           <div className="flex-1 overflow-y-auto px-0 pt-1 scrollbar-hide">
               <div className="max-w-4xl mx-auto">
-                  {sortedTodos.length === 0 && !isInputVisible ? (
+                  {incompleteTodos.length === 0 && completedTodos.length === 0 ? (
                       <div className="flex flex-col items-center justify-center py-12 text-gray-600 space-y-4">
                           <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center">
                               <Target size={32} className="opacity-30" />
@@ -221,101 +400,105 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
                           </div>
                       </div>
                   ) : (
-                      sortedTodos.map(todo => (
-                          <div
-                            key={todo.id}
-                            onClick={() => setSelectedToDoId(todo.id)}
-                            className={`group flex items-center gap-2.5 py-2.5 px-3 border-b cursor-pointer transition-all duration-150 ${
-                                selectedToDoId === todo.id
-                                    ? 'bg-white/10 border-white/10'
-                                    : (todo.completed
-                                        ? 'border-white/5 opacity-50'
-                                        : 'border-white/5 hover:bg-white/5')
-                            }`}
+                    <>
+                      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+                        <SortableContext items={incompleteTodos.map(t => t.id)} strategy={verticalListSortingStrategy}>
+                          {incompleteTodos.map(todo => (
+                            <SortableTodoItem key={todo.id} id={todo.id} isSelected={selectedToDoId === todo.id} isCompleted={todo.completed} onSelect={setSelectedToDoId}>
+                              {renderTodoItemContent(todo)}
+                            </SortableTodoItem>
+                          ))}
+                        </SortableContext>
+                        <DragOverlay>
+                          {activeDragTodo && (
+                            <div className={`${getCardClass(activeDragTodo)} shadow-lg shadow-black/50 ring-1 ring-neon-lime/40`}>
+                              {renderTodoItemContent(activeDragTodo)}
+                            </div>
+                          )}
+                        </DragOverlay>
+                      </DndContext>
+
+                      {/* Completed section */}
+                      {completedTodos.length > 0 && (
+                        <div className="mt-2">
+                          <button
+                            onClick={() => setShowCompleted(prev => !prev)}
+                            className="flex items-center gap-2 px-3 py-2 w-full text-left text-sm text-gray-400 hover:text-gray-300 transition-colors"
                           >
-                              <button
-                                onClick={(e) => { e.stopPropagation(); onToggleToDo(todo.id); }}
-                                className={`transition-colors flex-shrink-0 ${todo.completed ? 'text-neon-lime' : 'text-gray-500 hover:text-neon-lime'}`}
-                              >
-                                  {todo.completed ? <CheckCircle2 size={20} /> : <Circle size={20} />}
-                              </button>
-
-                              <div className="flex-1 min-w-0">
-                                  <p className={`text-sm truncate ${todo.completed ? 'line-through text-gray-500' : 'text-white'}`}>
-                                      {todo.text}
-                                  </p>
-                                  {(todo.isMyDay || todo.dueDate || todo.repeat || todo.linkedNodeText) && (
-                                    <div className="flex flex-wrap gap-1.5 mt-0.5">
-                                        {todo.isMyDay && (
-                                            <span className="flex items-center gap-0.5 text-[10px] text-yellow-400">
-                                                <Sun size={10} /> {t.todo.myDay}
-                                            </span>
-                                        )}
-                                        {todo.dueDate && (
-                                            <span className={`flex items-center gap-0.5 text-[10px] ${todo.dueDate < Date.now() && !todo.completed ? 'text-red-400' : 'text-gray-500'}`}>
-                                                <Calendar size={10} /> {formatDate(todo.dueDate)}
-                                            </span>
-                                        )}
-                                        {todo.repeat && (
-                                            <span className="flex items-center gap-0.5 text-[10px] text-blue-400">
-                                                <Repeat size={10} /> {getRepeatLabel(todo.repeat)}
-                                            </span>
-                                        )}
-                                        {todo.linkedNodeText && (
-                                            <span className="flex items-center gap-0.5 text-[10px] text-electric-orange/80">
-                                                <Target size={10} /> {todo.linkedNodeText}
-                                            </span>
-                                        )}
-                                    </div>
-                                  )}
-                              </div>
-                              <button
-                                onClick={(e) => { e.stopPropagation(); onDeleteToDo(todo.id); }}
-                                className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 p-1 rounded hover:bg-red-500/20 text-gray-500 hover:text-red-400"
-                                title={t.todo.deleteTitle}
-                              >
-                                  <Trash2 size={14} />
-                              </button>
-                              <ChevronRight size={16} className={`text-gray-600 flex-shrink-0 transition-transform ${selectedToDoId === todo.id ? 'translate-x-0.5 text-neon-lime' : ''}`} />
-                          </div>
-                      ))
+                            {showCompleted
+                              ? <ChevronDown size={16} className="flex-shrink-0" />
+                              : <ChevronRight size={16} className="flex-shrink-0" />
+                            }
+                            <span>{uiText.completedSection}</span>
+                            <span className="text-xs bg-white/10 px-1.5 py-0.5 rounded-full">{completedTodos.length}</span>
+                          </button>
+                          {showCompleted && completedTodos.map(todo => renderTodoItem(todo))}
+                        </div>
+                      )}
+                    </>
                   )}
-
-                  {/* Inline Input (shown when FAB is tapped) */}
-                  {isInputVisible && (
-                    <form onSubmit={(e) => { handleSubmit(e); if (!inputText.trim()) { setIsInputVisible(false); } }} className="flex items-center gap-2.5 py-2.5 px-3 border-b border-white/10 bg-white/5">
-                        <Plus size={20} className="text-neon-lime flex-shrink-0" />
-                        <input
-                            ref={inputRef}
-                            type="text"
-                            value={inputText}
-                            onChange={(e) => setInputText(e.target.value)}
-                            onKeyDown={(e) => { if (e.key === 'Escape') { setIsInputVisible(false); setInputText(''); } }}
-                            placeholder={t.todo.inputPlaceholder}
-                            className="flex-1 bg-transparent text-sm text-white placeholder-gray-500 focus:outline-none"
-                            aria-label={t.todo.inputLabel}
-                            autoFocus
-                        />
-                        <button type="button" onClick={() => { setIsInputVisible(false); setInputText(''); }} className="text-gray-500 hover:text-white p-0.5">
-                          <X size={16} />
-                        </button>
-                    </form>
-                  )}
-
-                  <div className="h-20"></div>
               </div>
           </div>
 
-          {/* FAB Button */}
-          {!isInputVisible && (
-            <button
-              onClick={() => { setIsInputVisible(true); setTimeout(() => inputRef.current?.focus(), 50); }}
-              className="absolute bottom-20 right-4 md:bottom-6 md:right-6 z-20 w-12 h-12 rounded-full bg-neon-lime text-black flex items-center justify-center shadow-lg shadow-neon-lime/30 hover:scale-110 active:scale-95 transition-transform"
-              aria-label={t.todo.addLabel}
-            >
-              <Plus size={24} strokeWidth={2.5} />
-            </button>
-          )}
+          {/* Add task input + quick actions */}
+          <div
+            className="apple-glass-header flex flex-col border-t border-white/10 flex-shrink-0"
+            style={keyboardHeight > 0 ? { position: 'fixed', bottom: `${keyboardHeight}px`, left: 0, right: 0, zIndex: 60 } : undefined}
+          >
+            <form onSubmit={handleSubmit} className="flex items-center gap-2.5 py-2.5 px-3">
+              <Plus size={20} className="text-neon-lime flex-shrink-0" />
+              <input
+                ref={inputRef}
+                type="text"
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                onFocus={() => setIsInputFocused(true)}
+                onBlur={() => setTimeout(() => setIsInputFocused(false), 150)}
+                onKeyDown={(e) => { if (e.key === 'Escape') { inputRef.current?.blur(); setInputText(''); } }}
+                placeholder={t.todo.addLabel}
+                className="flex-1 bg-transparent text-sm text-white placeholder-gray-500 focus:outline-none"
+                aria-label={t.todo.inputLabel}
+              />
+            </form>
+
+            {/* Quick action buttons */}
+            {(isInputFocused || inputText) && (
+              <div className="flex items-center gap-1.5 px-3 pb-2 flex-wrap">
+                <label className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs cursor-pointer transition-colors ${pendingDueDate ? 'bg-neon-lime/20 text-neon-lime' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}>
+                  <Calendar size={12} />
+                  <span>{pendingDueDate ? formatDate(pendingDueDate) : t.todo.dueDate}</span>
+                  <input type="date" className="absolute opacity-0 w-0 h-0" onChange={(e) => {
+                    const d = new Date(e.target.value);
+                    if (!isNaN(d.getTime())) setPendingDueDate(d.getTime());
+                  }} />
+                  {pendingDueDate && <button type="button" onClick={(e) => { e.preventDefault(); setPendingDueDate(null); }} className="ml-0.5"><X size={10} /></button>}
+                </label>
+
+                <label className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs cursor-pointer transition-colors ${pendingReminder ? 'bg-electric-orange/20 text-electric-orange' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}>
+                  <Bell size={12} />
+                  <span>{pendingReminder ? `${formatDate(pendingReminder)} ${formatTime(pendingReminder)}` : t.todo.reminder}</span>
+                  <input type="datetime-local" className="absolute opacity-0 w-0 h-0" onChange={(e) => {
+                    const d = new Date(e.target.value);
+                    if (!isNaN(d.getTime())) setPendingReminder(d.getTime());
+                  }} />
+                  {pendingReminder && <button type="button" onClick={(e) => { e.preventDefault(); setPendingReminder(null); }} className="ml-0.5"><X size={10} /></button>}
+                </label>
+
+                <label className={`relative flex items-center gap-1 px-2 py-1 rounded-md text-xs cursor-pointer transition-colors ${pendingRepeat ? 'bg-blue-400/20 text-blue-400' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}>
+                  <Repeat size={12} />
+                  <span>{pendingRepeat ? getRepeatLabel(pendingRepeat) : t.todo.repeatLabel}</span>
+                  <select className="absolute inset-0 opacity-0 cursor-pointer" value={pendingRepeat || ''} onChange={(e) => setPendingRepeat((e.target.value || null) as RepeatFrequency)}>
+                    <option value="">{t.todo.repeatOptions.none}</option>
+                    <option value="daily">{t.todo.repeatOptions.daily}</option>
+                    <option value="weekdays">{t.todo.repeatOptions.weekdays}</option>
+                    <option value="weekly">{t.todo.repeatOptions.weekly}</option>
+                    <option value="monthly">{t.todo.repeatOptions.monthly}</option>
+                  </select>
+                  {pendingRepeat && <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setPendingRepeat(null); }} className="ml-0.5"><X size={10} /></button>}
+                </label>
+              </div>
+            )}
+          </div>
       </div>
 
       {/* === RIGHT DETAIL AREA (SIDEBAR) === */}
@@ -326,12 +509,12 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
           />
       )}
       <div
-        className={`fixed inset-y-0 right-0 w-full md:w-[380px] bg-[#0a0a10]/95 backdrop-blur-2xl border-l border-white/10 shadow-[-20px_0_50px_rgba(0,0,0,0.5)] z-20 transform transition-transform duration-300 ease-out flex flex-col ${selectedToDoId ? 'translate-x-0' : 'translate-x-full'}`}
+        className={`apple-glass-panel fixed inset-y-0 right-0 w-full md:w-[380px] border-l border-white/10 shadow-[-20px_0_50px_rgba(0,0,0,0.5)] z-20 transform transition-transform duration-300 ease-out flex flex-col ${selectedToDoId ? 'translate-x-0' : 'translate-x-full'}`}
       >
           {selectedToDo ? (
               <>
                   {/* Detail Header */}
-                  <div className="py-3 px-4 border-b border-white/10 flex items-center justify-between bg-black/20">
+                  <div className="apple-glass-header py-3 px-4 flex items-center justify-between">
                       <div className="flex items-center gap-2">
                           <button onClick={() => setSelectedToDoId(null)} className="md:hidden p-1.5 -ml-1 rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-all">
                               <ArrowLeft size={18} />
@@ -424,7 +607,7 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
                               <select
                                 value={selectedToDo.repeat || ''}
                                 onChange={(e) => onUpdateToDo(selectedToDo.id, { repeat: e.target.value as RepeatFrequency || null })}
-                                className="absolute inset-0 opacity-0 cursor-pointer bg-deep-space text-white"
+                                className="absolute inset-0 opacity-0 cursor-pointer bg-th-base text-white"
                               >
                                   <option value="">{t.todo.repeatOptions.none}</option>
                                   <option value="daily">{t.todo.repeatOptions.daily}</option>
@@ -443,7 +626,7 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
 
                       {/* Notes */}
                       <div className="bg-white/5 rounded-xl p-3 h-36 ring-1 ring-white/5 focus-within:ring-neon-lime/30 transition-all flex flex-col">
-                          <textarea
+                          <textarea 
                               placeholder={t.todo.notePlaceholder}
                               value={selectedToDo.note || ''}
                               onChange={(e) => onUpdateToDo(selectedToDo.id, { note: e.target.value })}
@@ -452,14 +635,16 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
                       </div>
                       
                       <div className="text-xs text-gray-600 text-center font-mono">
-                          CREATED: {new Date(selectedToDo.createdAt).toLocaleString()}
+                          {uiText.createdLabel}: {new Date(selectedToDo.createdAt).toLocaleString(
+                            language === 'ko' ? 'ko-KR' : 'en-US'
+                          )}
                       </div>
                   </div>
 
                   {/* Footer */}
                   <div className="py-3 px-4 border-t border-white/10 flex justify-between items-center bg-black/40">
                       <div className="text-xs text-gray-500">
-                          ID: {selectedToDo.id.slice(-6)}
+                          {uiText.idLabel}: {selectedToDo.id.slice(-6)}
                       </div>
                       <button
                         onClick={() => { onDeleteToDo(selectedToDo.id); setSelectedToDoId(null); }}
@@ -498,3 +683,4 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
 };
 
 export default ToDoList;
+

@@ -38,6 +38,7 @@ export interface ChatMessage {
   sender: 'user' | 'ai';
   text: string;
   timestamp: number;
+  imageDataUrl?: string;
 }
 
 export interface UserProfile {
@@ -108,6 +109,7 @@ export interface ToDoItem {
   priority?: TodoPriority;
   tags?: string[];
   listId?: string;
+  sortOrder?: number;
 }
 
 // Coach Memory System
@@ -148,4 +150,33 @@ export interface CoachMemoryContext {
   longTerm: string | null;
 }
 
+export interface FeedbackCard {
+  date: string; // "YYYY-MM-DD"
+  completedTodos: string[];
+  incompleteTodos: string[];
+  coachComment?: string;
+  userEdited?: boolean;
+  createdAt: number;
+  updatedAt: number;
+}
 
+export interface NotificationSettings {
+  morningEnabled: boolean;
+  morningTime: string; // "HH:mm"
+  eveningEnabled: boolean;
+  eveningTime: string; // "HH:mm"
+  notificationPermission: 'granted' | 'denied' | 'default';
+  fcmToken?: string;
+  updatedAt: number;
+}
+
+export interface GoalAdjustment {
+  goalId: string;
+  goalText: string;
+  currentMetric: string;
+  suggestedMetric: string;
+  reason: string;
+  avgCompletion: number;
+  weeks: number;
+  status: 'pending' | 'accepted' | 'dismissed';
+}

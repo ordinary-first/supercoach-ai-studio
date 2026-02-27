@@ -690,13 +690,13 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
   if (!isOpen) return null;
 
   return (
-    <div ref={focusTrapRef} className="fixed inset-0 z-50 bg-th-base flex flex-col font-body text-th-text">
+    <div ref={focusTrapRef} className="apple-tab-shell fixed inset-0 z-50 flex flex-col font-body text-th-text">
 
         {/* Ambient Background Glow */}
         <div className="absolute top-0 left-1/4 w-1/2 h-1/2 bg-neon-lime/5 rounded-full blur-[150px] pointer-events-none"></div>
 
         {/* Header */}
-        <div className="px-3 md:px-8 py-1.5 md:py-2 border-b border-th-border flex gap-2 md:gap-3 justify-between items-center bg-th-overlay backdrop-blur-xl z-10">
+        <div className="apple-glass-header px-3 md:px-8 py-1.5 md:py-2 flex gap-2 md:gap-3 justify-between items-center z-10">
             <div className="flex items-center gap-3 md:gap-6">
                 {/* Back button in day view */}
                 {viewMode === 'day' && (
@@ -714,7 +714,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
                     <button onClick={handlePrev} className="p-1.5 rounded-full hover:bg-th-surface-hover text-th-text-secondary hover:text-th-text transition-colors" aria-label={t.calendar.prev}>
                       <ChevronLeft size={18}/>
                     </button>
-                    <h2 className={`font-bold text-th-text text-center font-display tracking-wide ${viewMode === 'day' ? 'text-sm md:text-base min-w-[180px]' : 'text-base min-w-[120px]'}`}>
+                    <h2 className={`apple-tab-title font-bold text-th-text text-center font-display tracking-wide ${viewMode === 'day' ? 'text-sm md:text-base min-w-[180px]' : 'text-base min-w-[120px]'}`}>
                         {getHeaderTitle()}
                     </h2>
                     <button onClick={handleNext} className="p-1.5 rounded-full hover:bg-th-surface-hover text-th-text-secondary hover:text-th-text transition-colors" aria-label={t.calendar.next}>
@@ -732,7 +732,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
         {viewMode === 'month' && (
           <div className="flex-1 overflow-hidden flex flex-col p-1 md:p-3 lg:p-6 pb-[56px] md:pb-[64px] relative z-0 animate-in fade-in duration-300">
               {/* Week Headers */}
-              <div className="grid grid-cols-7 border-b border-th-border mb-0 bg-th-surface rounded-t-lg">
+              <div className="apple-glass-panel grid grid-cols-7 border-b border-th-border mb-0 rounded-t-lg">
                   {dayNames.map((day, idx) => (
                       <div key={day} className={`text-center py-1.5 font-display font-bold text-[10px] tracking-wider ${idx === 0 ? 'text-red-400' : (idx === 6 ? 'text-blue-400' : 'text-th-text-secondary')}`}>
                           {day}
@@ -741,7 +741,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
               </div>
 
               {/* Days */}
-              <div className="grid grid-cols-7 flex-1 border-l border-th-border auto-rows-fr bg-th-header backdrop-blur-sm rounded-b-lg overflow-hidden">
+              <div className="apple-glass-panel grid grid-cols-7 flex-1 border-l border-th-border auto-rows-fr rounded-b-lg overflow-hidden">
                    {renderCalendarDays()}
               </div>
           </div>
@@ -750,7 +750,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
         {/* Week View (Vertical) */}
         {viewMode === 'week' && (
           <div className="flex-1 overflow-y-auto flex flex-col p-1 md:p-3 pb-[56px] md:pb-[64px] relative z-0 animate-in fade-in duration-300">
-            <div className="flex-1 flex flex-col bg-th-header backdrop-blur-sm rounded-lg border border-th-border overflow-hidden">
+            <div className="apple-glass-panel flex-1 flex flex-col rounded-lg overflow-hidden">
               {renderWeekDays()}
             </div>
           </div>
