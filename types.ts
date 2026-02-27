@@ -149,4 +149,12 @@ export interface CoachMemoryContext {
   longTerm: string | null;
 }
 
-
+export interface FeedbackCard {
+  date: string; // "YYYY-MM-DD"
+  completedTodos: string[];
+  incompleteTodos: string[];
+  coachComment?: string;
+  userEdited?: boolean;
+  createdAt: number;
+  updatedAt: number;
+}
