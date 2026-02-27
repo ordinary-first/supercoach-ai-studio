@@ -59,15 +59,29 @@ const CoachChat: React.FC<CoachChatProps> = ({
     return () => nav.virtualKeyboard!.removeEventListener('geometrychange', onChange);
   }, []);
 
-  // Fallback: visualViewport resize → scroll to bottom (키보드 올라올 때)
+  // 키보드 올라올 때 최신 메시지로 스크롤 (다단계 타이밍)
   useEffect(() => {
     const vv = window.visualViewport;
     if (!vv) return;
+    let timers: ReturnType<typeof setTimeout>[] = [];
+    let prevHeight = vv.height;
     const onResize = () => {
-      requestAnimationFrame(() => scrollToBottom());
+      const shrunk = vv.height < prevHeight;
+      prevHeight = vv.height;
+      if (!shrunk) return;
+      // 키보드 애니메이션 완료까지 다단계 스크롤
+      timers.forEach(clearTimeout);
+      timers = [
+        setTimeout(() => scrollToBottom(), 50),
+        setTimeout(() => scrollToBottom(), 200),
+        setTimeout(() => scrollToBottom(), 400),
+      ];
     };
     vv.addEventListener('resize', onResize);
-    return () => vv.removeEventListener('resize', onResize);
+    return () => {
+      vv.removeEventListener('resize', onResize);
+      timers.forEach(clearTimeout);
+    };
   }, []);
 
   const extractComment = useCallback((text: string) => {
@@ -478,6 +492,7 @@ const CoachChat: React.FC<CoachChatProps> = ({
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && !e.nativeEvent.isComposing && handleSend()}
+                onFocus={() => { setTimeout(() => scrollToBottom(), 300); setTimeout(() => scrollToBottom(), 600); }}
                 placeholder={t.coach.placeholder}
                 className="w-full bg-transparent border-none py-2.5 px-4 text-sm text-th-text placeholder-th-text-tertiary focus:outline-none focus:ring-0"
                 aria-label={t.coach.sendMessage}
