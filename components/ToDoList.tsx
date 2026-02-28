@@ -27,11 +27,10 @@ const SortableTodoItem: React.FC<SortableTodoItemProps> = ({ id, isSelected, isC
     opacity: isDragging ? 0.4 : 1,
     zIndex: isDragging ? 10 : undefined,
   };
-  const cardClass = `apple-card group flex items-center gap-2.5 py-2.5 px-3 mx-2 mb-1.5 rounded-lg cursor-pointer transition-all duration-150 ${
-    isSelected
-      ? 'bg-white/15 ring-1 ring-neon-lime/30'
-      : (isCompleted ? 'bg-white/[0.04] opacity-50' : 'bg-white/[0.06] hover:bg-white/10')
-  }`;
+  const cardClass = `apple-card group flex items-center gap-2.5 py-2.5 px-3 mx-2 mb-1.5 rounded-lg cursor-pointer transition-all duration-150 ${isSelected
+      ? 'bg-th-surface border-th-accent ring-1 ring-th-accent/30'
+      : (isCompleted ? 'bg-th-surface/30 opacity-50' : 'bg-th-surface/50 hover:bg-th-surface')
+    }`;
   return (
     <div ref={setNodeRef} style={style} {...attributes} onClick={() => onSelect(id)} className={cardClass}>
       {!isCompleted && (
@@ -258,10 +257,9 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
 
   // 카드형 기본 클래스
   const getCardClass = (todo: ToDoItem) =>
-    `apple-card group flex items-center gap-2.5 py-2.5 px-3 mx-2 mb-1.5 rounded-lg cursor-pointer transition-all duration-150 ${
-      selectedToDoId === todo.id
-        ? 'bg-white/15 ring-1 ring-neon-lime/30'
-        : (todo.completed ? 'bg-white/[0.04] opacity-50' : 'bg-white/[0.06] hover:bg-white/10')
+    `apple-card group flex items-center gap-2.5 py-2.5 px-3 mx-2 mb-1.5 rounded-lg cursor-pointer transition-all duration-150 ${selectedToDoId === todo.id
+      ? 'bg-th-surface border-th-accent ring-1 ring-th-accent/30'
+      : (todo.completed ? 'bg-th-surface/30 opacity-50' : 'bg-th-surface/50 hover:bg-th-surface')
     }`;
 
   // 아이템 공통 콘텐츠 (체크박스 + 텍스트 + 메타 + 삭제 + 상세)
@@ -269,12 +267,12 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
     <>
       <button
         onClick={(e) => { e.stopPropagation(); onToggleToDo(todo.id); }}
-        className={`transition-colors flex-shrink-0 ${todo.completed ? 'text-neon-lime' : 'text-gray-500 hover:text-neon-lime'}`}
+        className={`transition-colors flex-shrink-0 ${todo.completed ? 'text-th-accent' : 'text-th-text-tertiary hover:text-th-accent'}`}
       >
         {todo.completed ? <CheckCircle2 size={20} /> : <Circle size={20} />}
       </button>
       <div className="flex-1 min-w-0">
-        <p className={`text-sm truncate ${todo.completed ? 'line-through text-gray-500' : 'text-white'}`}>{todo.text}</p>
+        <p className={`text-sm truncate ${todo.completed ? 'line-through text-th-text-muted' : 'text-th-text'}`}>{todo.text}</p>
         {(todo.isMyDay || todo.dueDate || todo.repeat || todo.linkedNodeText) && (
           <div className="flex flex-wrap gap-1.5 mt-0.5">
             {todo.isMyDay && (
@@ -312,34 +310,34 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
 
   // Date Format Helpers
   const formatDate = (timestamp?: number | null) => {
-      if (!timestamp) return null;
-      const locale = language === 'ko' ? 'ko-KR' : 'en-US';
-      return new Date(timestamp).toLocaleDateString(locale, {
-        month: 'short',
-        day: 'numeric',
-        weekday: 'short',
-      });
+    if (!timestamp) return null;
+    const locale = language === 'ko' ? 'ko-KR' : 'en-US';
+    return new Date(timestamp).toLocaleDateString(locale, {
+      month: 'short',
+      day: 'numeric',
+      weekday: 'short',
+    });
   };
 
   const formatTime = (timestamp?: number | null) => {
-      if (!timestamp) return null;
-      const locale = language === 'ko' ? 'ko-KR' : 'en-US';
-      return new Date(timestamp).toLocaleTimeString(locale, {
-        hour: '2-digit',
-        minute: '2-digit',
-      });
+    if (!timestamp) return null;
+    const locale = language === 'ko' ? 'ko-KR' : 'en-US';
+    return new Date(timestamp).toLocaleTimeString(locale, {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
   };
 
   const getRepeatLabel = (freq: RepeatFrequency | undefined) => {
-      if (!freq) return null;
-      return t.todo.repeatOptions[freq] || freq;
+    if (!freq) return null;
+    return t.todo.repeatOptions[freq] || freq;
   };
 
   if (!isOpen) return null;
 
   return (
-    <div ref={focusTrapRef} className="apple-tab-shell fixed inset-0 z-50 pb-16 flex flex-row overflow-hidden text-white font-body">
-      
+    <div ref={focusTrapRef} className="apple-tab-shell fixed inset-0 z-50 pb-16 flex flex-row overflow-hidden text-th-text font-body">
+
       {/* Ambient Background */}
       <div className="absolute top-[-20%] right-[-10%] w-[50%] h-[50%] bg-blue-900/20 rounded-full blur-[120px] pointer-events-none"></div>
       <div className="absolute bottom-[-20%] left-[-10%] w-[50%] h-[50%] bg-purple-900/20 rounded-full blur-[120px] pointer-events-none"></div>
@@ -370,296 +368,296 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
 
       {/* === LEFT MAIN AREA (LIST) === */}
       <div className="flex-1 flex flex-col min-w-0 relative z-10">
-          
-          {/* Header */}
-          <div className="apple-glass-header h-11 md:h-12 flex items-center justify-between px-3 md:px-6 shrink-0">
-              <div className="flex items-center gap-2.5">
-                  <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="md:hidden p-1.5 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-colors">
-                    <Menu size={18} />
-                  </button>
-                  <div className={`p-1.5 rounded-lg ${activeListId === 'myDay' ? 'bg-yellow-400/10' : activeListId === 'important' ? 'bg-red-400/10' : activeListId === 'planned' ? 'bg-blue-400/10' : 'bg-neon-lime/10'}`}>
-                    <span className={activeListInfo.color}>{activeListInfo.icon}</span>
-                  </div>
-                  <div>
-                      <h1 className="text-base md:text-lg font-display font-bold tracking-wider text-white">{searchQuery ? uiText.searchResults : activeListInfo.name}</h1>
-                  </div>
-              </div>
-          </div>
 
-          {/* List Content */}
-          <div className="flex-1 overflow-y-auto px-0 pt-1 scrollbar-hide">
-              <div className="max-w-4xl mx-auto">
-                  {incompleteTodos.length === 0 && completedTodos.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center py-12 text-gray-600 space-y-4">
-                          <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center">
-                              <Target size={32} className="opacity-30" />
-                          </div>
-                          <div className="text-center">
-                            <p className="text-base font-bold text-gray-500">{t.todo.empty}</p>
-                            <p className="text-xs mt-1 text-gray-600">{t.todo.emptyHint}</p>
-                          </div>
+        {/* Header */}
+        <div className="apple-glass-header h-11 md:h-12 flex items-center justify-between px-3 md:px-6 shrink-0">
+          <div className="flex items-center gap-2.5">
+            <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="md:hidden p-1.5 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-colors">
+              <Menu size={18} />
+            </button>
+            <div className={`p-1.5 rounded-lg ${activeListId === 'myDay' ? 'bg-yellow-400/10' : activeListId === 'important' ? 'bg-red-400/10' : activeListId === 'planned' ? 'bg-blue-400/10' : 'bg-th-accent-muted'}`}>
+              <span className={activeListInfo.color}>{activeListInfo.icon}</span>
+            </div>
+            <div>
+              <h1 className="text-base md:text-lg font-display font-bold tracking-wider text-th-text">{searchQuery ? uiText.searchResults : activeListInfo.name}</h1>
+            </div>
+          </div>
+        </div>
+
+        {/* List Content */}
+        <div className="flex-1 overflow-y-auto px-0 pt-1 scrollbar-hide">
+          <div className="max-w-4xl mx-auto">
+            {incompleteTodos.length === 0 && completedTodos.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-gray-600 space-y-4">
+                <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center">
+                  <Target size={32} className="opacity-30" />
+                </div>
+                <div className="text-center">
+                  <p className="text-base font-bold text-gray-500">{t.todo.empty}</p>
+                  <p className="text-xs mt-1 text-gray-600">{t.todo.emptyHint}</p>
+                </div>
+              </div>
+            ) : (
+              <>
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+                  <SortableContext items={incompleteTodos.map(t => t.id)} strategy={verticalListSortingStrategy}>
+                    {incompleteTodos.map(todo => (
+                      <SortableTodoItem key={todo.id} id={todo.id} isSelected={selectedToDoId === todo.id} isCompleted={todo.completed} onSelect={setSelectedToDoId}>
+                        {renderTodoItemContent(todo)}
+                      </SortableTodoItem>
+                    ))}
+                  </SortableContext>
+                  <DragOverlay>
+                    {activeDragTodo && (
+                      <div className={`${getCardClass(activeDragTodo)} shadow-lg shadow-black/20 ring-1 ring-th-accent/40`}>
+                        {renderTodoItemContent(activeDragTodo)}
                       </div>
-                  ) : (
-                    <>
-                      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-                        <SortableContext items={incompleteTodos.map(t => t.id)} strategy={verticalListSortingStrategy}>
-                          {incompleteTodos.map(todo => (
-                            <SortableTodoItem key={todo.id} id={todo.id} isSelected={selectedToDoId === todo.id} isCompleted={todo.completed} onSelect={setSelectedToDoId}>
-                              {renderTodoItemContent(todo)}
-                            </SortableTodoItem>
-                          ))}
-                        </SortableContext>
-                        <DragOverlay>
-                          {activeDragTodo && (
-                            <div className={`${getCardClass(activeDragTodo)} shadow-lg shadow-black/50 ring-1 ring-neon-lime/40`}>
-                              {renderTodoItemContent(activeDragTodo)}
-                            </div>
-                          )}
-                        </DragOverlay>
-                      </DndContext>
+                    )}
+                  </DragOverlay>
+                </DndContext>
 
-                      {/* Completed section */}
-                      {completedTodos.length > 0 && (
-                        <div className="mt-2">
-                          <button
-                            onClick={() => setShowCompleted(prev => !prev)}
-                            className="flex items-center gap-2 px-3 py-2 w-full text-left text-sm text-gray-400 hover:text-gray-300 transition-colors"
-                          >
-                            {showCompleted
-                              ? <ChevronDown size={16} className="flex-shrink-0" />
-                              : <ChevronRight size={16} className="flex-shrink-0" />
-                            }
-                            <span>{uiText.completedSection}</span>
-                            <span className="text-xs bg-white/10 px-1.5 py-0.5 rounded-full">{completedTodos.length}</span>
-                          </button>
-                          {showCompleted && completedTodos.map(todo => renderTodoItem(todo))}
-                        </div>
-                      )}
-                    </>
-                  )}
-              </div>
-          </div>
-
-          {/* Add task input + quick actions */}
-          <div
-            className="apple-glass-header flex flex-col border-t border-white/10 flex-shrink-0"
-            style={keyboardHeight > 0 ? { position: 'fixed', bottom: `${keyboardHeight}px`, left: 0, right: 0, zIndex: 60 } : undefined}
-          >
-            <form onSubmit={handleSubmit} className="flex items-center gap-2.5 py-2.5 px-3">
-              <Plus size={20} className="text-neon-lime flex-shrink-0" />
-              <input
-                ref={inputRef}
-                type="text"
-                value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
-                onFocus={() => setIsInputFocused(true)}
-                onBlur={() => setTimeout(() => setIsInputFocused(false), 150)}
-                onKeyDown={(e) => { if (e.key === 'Escape') { inputRef.current?.blur(); setInputText(''); } }}
-                placeholder={t.todo.addLabel}
-                className="flex-1 bg-transparent text-sm text-white placeholder-gray-500 focus:outline-none"
-                aria-label={t.todo.inputLabel}
-              />
-            </form>
-
-            {/* Quick action buttons */}
-            {(isInputFocused || inputText) && (
-              <div className="flex items-center gap-1.5 px-3 pb-2 flex-wrap">
-                <label className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs cursor-pointer transition-colors ${pendingDueDate ? 'bg-neon-lime/20 text-neon-lime' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}>
-                  <Calendar size={12} />
-                  <span>{pendingDueDate ? formatDate(pendingDueDate) : t.todo.dueDate}</span>
-                  <input type="date" className="absolute opacity-0 w-0 h-0" onChange={(e) => {
-                    const d = new Date(e.target.value);
-                    if (!isNaN(d.getTime())) setPendingDueDate(d.getTime());
-                  }} />
-                  {pendingDueDate && <button type="button" onClick={(e) => { e.preventDefault(); setPendingDueDate(null); }} className="ml-0.5"><X size={10} /></button>}
-                </label>
-
-                <label className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs cursor-pointer transition-colors ${pendingReminder ? 'bg-electric-orange/20 text-electric-orange' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}>
-                  <Bell size={12} />
-                  <span>{pendingReminder ? `${formatDate(pendingReminder)} ${formatTime(pendingReminder)}` : t.todo.reminder}</span>
-                  <input type="datetime-local" className="absolute opacity-0 w-0 h-0" onChange={(e) => {
-                    const d = new Date(e.target.value);
-                    if (!isNaN(d.getTime())) setPendingReminder(d.getTime());
-                  }} />
-                  {pendingReminder && <button type="button" onClick={(e) => { e.preventDefault(); setPendingReminder(null); }} className="ml-0.5"><X size={10} /></button>}
-                </label>
-
-                <label className={`relative flex items-center gap-1 px-2 py-1 rounded-md text-xs cursor-pointer transition-colors ${pendingRepeat ? 'bg-blue-400/20 text-blue-400' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}>
-                  <Repeat size={12} />
-                  <span>{pendingRepeat ? getRepeatLabel(pendingRepeat) : t.todo.repeatLabel}</span>
-                  <select className="absolute inset-0 opacity-0 cursor-pointer" value={pendingRepeat || ''} onChange={(e) => setPendingRepeat((e.target.value || null) as RepeatFrequency)}>
-                    <option value="">{t.todo.repeatOptions.none}</option>
-                    <option value="daily">{t.todo.repeatOptions.daily}</option>
-                    <option value="weekdays">{t.todo.repeatOptions.weekdays}</option>
-                    <option value="weekly">{t.todo.repeatOptions.weekly}</option>
-                    <option value="monthly">{t.todo.repeatOptions.monthly}</option>
-                  </select>
-                  {pendingRepeat && <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setPendingRepeat(null); }} className="ml-0.5"><X size={10} /></button>}
-                </label>
-              </div>
+                {/* Completed section */}
+                {completedTodos.length > 0 && (
+                  <div className="mt-2">
+                    <button
+                      onClick={() => setShowCompleted(prev => !prev)}
+                      className="flex items-center gap-2 px-3 py-2 w-full text-left text-sm text-gray-400 hover:text-gray-300 transition-colors"
+                    >
+                      {showCompleted
+                        ? <ChevronDown size={16} className="flex-shrink-0" />
+                        : <ChevronRight size={16} className="flex-shrink-0" />
+                      }
+                      <span>{uiText.completedSection}</span>
+                      <span className="text-xs bg-white/10 px-1.5 py-0.5 rounded-full">{completedTodos.length}</span>
+                    </button>
+                    {showCompleted && completedTodos.map(todo => renderTodoItem(todo))}
+                  </div>
+                )}
+              </>
             )}
           </div>
+        </div>
+
+        {/* Add task input + quick actions */}
+        <div
+          className="apple-glass-header flex flex-col border-t border-th-border flex-shrink-0"
+          style={keyboardHeight > 0 ? { position: 'fixed', bottom: `${keyboardHeight}px`, left: 0, right: 0, zIndex: 60 } : undefined}
+        >
+          <form onSubmit={handleSubmit} className="flex items-center gap-2.5 py-2.5 px-3">
+            <Plus size={20} className="text-th-accent flex-shrink-0" />
+            <input
+              ref={inputRef}
+              type="text"
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              onFocus={() => setIsInputFocused(true)}
+              onBlur={() => setTimeout(() => setIsInputFocused(false), 150)}
+              onKeyDown={(e) => { if (e.key === 'Escape') { inputRef.current?.blur(); setInputText(''); } }}
+              placeholder={t.todo.addLabel}
+              className="flex-1 bg-transparent text-sm text-th-text placeholder-th-text-tertiary focus:outline-none"
+              aria-label={t.todo.inputLabel}
+            />
+          </form>
+
+          {/* Quick action buttons */}
+          {(isInputFocused || inputText) && (
+            <div className="flex items-center gap-1.5 px-3 pb-2 flex-wrap">
+              <label className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs cursor-pointer transition-colors ${pendingDueDate ? 'bg-neon-lime/20 text-neon-lime' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}>
+                <Calendar size={12} />
+                <span>{pendingDueDate ? formatDate(pendingDueDate) : t.todo.dueDate}</span>
+                <input type="date" className="absolute opacity-0 w-0 h-0" onChange={(e) => {
+                  const d = new Date(e.target.value);
+                  if (!isNaN(d.getTime())) setPendingDueDate(d.getTime());
+                }} />
+                {pendingDueDate && <button type="button" onClick={(e) => { e.preventDefault(); setPendingDueDate(null); }} className="ml-0.5"><X size={10} /></button>}
+              </label>
+
+              <label className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs cursor-pointer transition-colors ${pendingReminder ? 'bg-electric-orange/20 text-electric-orange' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}>
+                <Bell size={12} />
+                <span>{pendingReminder ? `${formatDate(pendingReminder)} ${formatTime(pendingReminder)}` : t.todo.reminder}</span>
+                <input type="datetime-local" className="absolute opacity-0 w-0 h-0" onChange={(e) => {
+                  const d = new Date(e.target.value);
+                  if (!isNaN(d.getTime())) setPendingReminder(d.getTime());
+                }} />
+                {pendingReminder && <button type="button" onClick={(e) => { e.preventDefault(); setPendingReminder(null); }} className="ml-0.5"><X size={10} /></button>}
+              </label>
+
+              <label className={`relative flex items-center gap-1 px-2 py-1 rounded-md text-xs cursor-pointer transition-colors ${pendingRepeat ? 'bg-blue-400/20 text-blue-400' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}>
+                <Repeat size={12} />
+                <span>{pendingRepeat ? getRepeatLabel(pendingRepeat) : t.todo.repeatLabel}</span>
+                <select className="absolute inset-0 opacity-0 cursor-pointer" value={pendingRepeat || ''} onChange={(e) => setPendingRepeat((e.target.value || null) as RepeatFrequency)}>
+                  <option value="">{t.todo.repeatOptions.none}</option>
+                  <option value="daily">{t.todo.repeatOptions.daily}</option>
+                  <option value="weekdays">{t.todo.repeatOptions.weekdays}</option>
+                  <option value="weekly">{t.todo.repeatOptions.weekly}</option>
+                  <option value="monthly">{t.todo.repeatOptions.monthly}</option>
+                </select>
+                {pendingRepeat && <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setPendingRepeat(null); }} className="ml-0.5"><X size={10} /></button>}
+              </label>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* === RIGHT DETAIL AREA (SIDEBAR) === */}
       {selectedToDoId && (
-          <div
-              className="fixed inset-0 bg-black/40 z-10 md:hidden"
-              onClick={() => setSelectedToDoId(null)}
-          />
+        <div
+          className="fixed inset-0 bg-black/40 z-10 md:hidden"
+          onClick={() => setSelectedToDoId(null)}
+        />
       )}
       <div
         className={`apple-glass-panel fixed inset-y-0 right-0 w-full md:w-[380px] border-l border-white/10 shadow-[-20px_0_50px_rgba(0,0,0,0.5)] z-20 transform transition-transform duration-300 ease-out flex flex-col ${selectedToDoId ? 'translate-x-0' : 'translate-x-full'}`}
       >
-          {selectedToDo ? (
-              <>
-                  {/* Detail Header */}
-                  <div className="apple-glass-header py-3 px-4 flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                          <button onClick={() => setSelectedToDoId(null)} className="md:hidden p-1.5 -ml-1 rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-all">
-                              <ArrowLeft size={18} />
-                          </button>
-                          <h3 className="text-gray-400 font-bold text-sm tracking-wider flex items-center gap-2">
-                            <Layout size={14}/> {t.todo.detail}
-                          </h3>
-                      </div>
-                      <button onClick={() => setSelectedToDoId(null)} className="text-gray-500 hover:text-white transition-colors">
-                          <X size={20} />
-                      </button>
-                  </div>
-
-                  {/* Detail Body */}
-                  <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                      {/* Title Edit */}
-                      <div className="bg-white/5 rounded-xl p-3 flex items-start gap-3 ring-1 ring-white/5 focus-within:ring-neon-lime/50 transition-all">
-                          <button
-                            onClick={() => onToggleToDo(selectedToDo.id)}
-                            className={`mt-1 transition-colors flex-shrink-0 ${selectedToDo.completed ? 'text-neon-lime' : 'text-gray-500 hover:text-white'}`}
-                          >
-                              {selectedToDo.completed ? <CheckCircle2 size={20} /> : <Circle size={20} />}
-                          </button>
-                          <textarea
-                              value={selectedToDo.text}
-                              onChange={(e) => onUpdateToDo(selectedToDo.id, { text: e.target.value })}
-                              className="bg-transparent text-base font-semibold text-white w-full focus:outline-none resize-none h-auto min-h-[2rem]"
-                              rows={2}
-                          />
-                      </div>
-
-                      {/* Action Toggles */}
-                      <div className="space-y-2">
-                        <div
-                            className={`py-2.5 px-3 rounded-lg flex items-center gap-3 cursor-pointer transition-all border ${selectedToDo.isMyDay ? 'bg-yellow-400/10 border-yellow-400/30 text-yellow-400' : 'bg-white/5 border-white/5 text-gray-400 hover:bg-white/10'}`}
-                            onClick={() => onUpdateToDo(selectedToDo.id, { isMyDay: !selectedToDo.isMyDay })}
-                        >
-                            <Sun size={16} />
-                            <span className="text-sm font-medium flex-1">{t.todo.myDay}</span>
-                            {selectedToDo.isMyDay && <Check size={14} />}
-                        </div>
-                      </div>
-
-                      {/* Metadata Group */}
-                      <div className="bg-white/5 rounded-xl overflow-hidden border border-white/5 divide-y divide-white/5">
-
-                          {/* Reminder */}
-                          <div className="py-2.5 px-3 flex items-center gap-3 hover:bg-white/5 relative group transition-colors">
-                              <Bell size={16} className={selectedToDo.reminder ? 'text-electric-orange' : 'text-gray-500'} />
-                              <div className="flex-1">
-                                  <p className="text-sm font-medium text-gray-200">{t.todo.reminder}</p>
-                                  {selectedToDo.reminder && <p className="text-xs text-electric-orange mt-0.5">{formatDate(selectedToDo.reminder)} {formatTime(selectedToDo.reminder)}</p>}
-                              </div>
-                              <input
-                                type="datetime-local"
-                                className="absolute inset-0 opacity-0 cursor-pointer"
-                                onChange={(e) => {
-                                    const date = new Date(e.target.value);
-                                    if (!isNaN(date.getTime())) onUpdateToDo(selectedToDo.id, { reminder: date.getTime() });
-                                }}
-                              />
-                              {selectedToDo.reminder && <button onClick={() => onUpdateToDo(selectedToDo.id, { reminder: null })} className="p-1 hover:text-red-500 text-gray-500 z-10"><X size={14}/></button>}
-                          </div>
-
-                          {/* Due Date */}
-                          <div className="py-2.5 px-3 flex items-center gap-3 hover:bg-white/5 relative group transition-colors">
-                              <Calendar size={16} className={selectedToDo.dueDate ? 'text-neon-lime' : 'text-gray-500'} />
-                              <div className="flex-1">
-                                  <p className="text-sm font-medium text-gray-200">{t.todo.dueDate}</p>
-                                  {selectedToDo.dueDate && <p className="text-xs text-neon-lime mt-0.5">{formatDate(selectedToDo.dueDate)}</p>}
-                              </div>
-                              <input
-                                type="date"
-                                className="absolute inset-0 opacity-0 cursor-pointer"
-                                onChange={(e) => {
-                                    const date = new Date(e.target.value);
-                                    if (!isNaN(date.getTime())) onUpdateToDo(selectedToDo.id, { dueDate: date.getTime() });
-                                }}
-                              />
-                              {selectedToDo.dueDate && <button onClick={() => onUpdateToDo(selectedToDo.id, { dueDate: null })} className="p-1 hover:text-red-500 text-gray-500 z-10"><X size={14}/></button>}
-                          </div>
-
-                          {/* Repeat */}
-                          <div className="py-2.5 px-3 flex items-center gap-3 hover:bg-white/5 relative group transition-colors">
-                              <Repeat size={16} className={selectedToDo.repeat ? 'text-blue-400' : 'text-gray-500'} />
-                              <div className="flex-1">
-                                  <p className="text-sm font-medium text-gray-200">{t.todo.repeatLabel}</p>
-                                  {selectedToDo.repeat && <p className="text-xs text-blue-400 capitalize mt-0.5">{getRepeatLabel(selectedToDo.repeat)}</p>}
-                              </div>
-                              <select
-                                value={selectedToDo.repeat || ''}
-                                onChange={(e) => onUpdateToDo(selectedToDo.id, { repeat: e.target.value as RepeatFrequency || null })}
-                                className="absolute inset-0 opacity-0 cursor-pointer bg-th-base text-white"
-                              >
-                                  <option value="">{t.todo.repeatOptions.none}</option>
-                                  <option value="daily">{t.todo.repeatOptions.daily}</option>
-                                  <option value="weekdays">{t.todo.repeatOptions.weekdays}</option>
-                                  <option value="weekly">{t.todo.repeatOptions.weekly}</option>
-                                  <option value="weekly-2">{t.todo.repeatOptions['weekly-2']}</option>
-                                  <option value="weekly-3">{t.todo.repeatOptions['weekly-3']}</option>
-                                  <option value="weekly-4">{t.todo.repeatOptions['weekly-4']}</option>
-                                  <option value="weekly-5">{t.todo.repeatOptions['weekly-5']}</option>
-                                  <option value="weekly-6">{t.todo.repeatOptions['weekly-6']}</option>
-                                  <option value="monthly">{t.todo.repeatOptions.monthly}</option>
-                              </select>
-                              {selectedToDo.repeat && <button onClick={() => onUpdateToDo(selectedToDo.id, { repeat: null })} className="p-1 hover:text-red-500 text-gray-500 z-10"><X size={14}/></button>}
-                          </div>
-                      </div>
-
-                      {/* Notes */}
-                      <div className="bg-white/5 rounded-xl p-3 h-36 ring-1 ring-white/5 focus-within:ring-neon-lime/30 transition-all flex flex-col">
-                          <textarea 
-                              placeholder={t.todo.notePlaceholder}
-                              value={selectedToDo.note || ''}
-                              onChange={(e) => onUpdateToDo(selectedToDo.id, { note: e.target.value })}
-                              className="w-full h-full bg-transparent text-sm text-gray-300 resize-none focus:outline-none placeholder-gray-600"
-                          />
-                      </div>
-                      
-                      <div className="text-xs text-gray-600 text-center font-mono">
-                          {uiText.createdLabel}: {new Date(selectedToDo.createdAt).toLocaleString(
-                            language === 'ko' ? 'ko-KR' : 'en-US'
-                          )}
-                      </div>
-                  </div>
-
-                  {/* Footer */}
-                  <div className="py-3 px-4 border-t border-white/10 flex justify-between items-center bg-black/40">
-                      <div className="text-xs text-gray-500">
-                          {uiText.idLabel}: {selectedToDo.id.slice(-6)}
-                      </div>
-                      <button
-                        onClick={() => { onDeleteToDo(selectedToDo.id); setSelectedToDoId(null); }}
-                        className="text-gray-400 hover:text-red-500 transition-colors flex items-center gap-2 hover:bg-red-500/10 px-3 py-1.5 rounded-lg"
-                      >
-                          <Trash2 size={16} />
-                          <span className="text-sm">{t.todo.deleteTitle}</span>
-                      </button>
-                  </div>
-              </>
-          ) : (
-              <div className="flex-1 flex items-center justify-center text-gray-600">
-                  {t.todo.noSelection}
+        {selectedToDo ? (
+          <>
+            {/* Detail Header */}
+            <div className="apple-glass-header py-3 px-4 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <button onClick={() => setSelectedToDoId(null)} className="md:hidden p-1.5 -ml-1 rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-all">
+                  <ArrowLeft size={18} />
+                </button>
+                <h3 className="text-gray-400 font-bold text-sm tracking-wider flex items-center gap-2">
+                  <Layout size={14} /> {t.todo.detail}
+                </h3>
               </div>
-          )}
+              <button onClick={() => setSelectedToDoId(null)} className="text-gray-500 hover:text-white transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Detail Body */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {/* Title Edit */}
+              <div className="bg-th-surface/50 rounded-xl p-3 flex items-start gap-3 ring-1 ring-th-border focus-within:ring-th-accent/50 transition-all">
+                <button
+                  onClick={() => onToggleToDo(selectedToDo.id)}
+                  className={`mt-1 transition-colors flex-shrink-0 ${selectedToDo.completed ? 'text-th-accent' : 'text-th-text-tertiary hover:text-th-text'}`}
+                >
+                  {selectedToDo.completed ? <CheckCircle2 size={20} /> : <Circle size={20} />}
+                </button>
+                <textarea
+                  value={selectedToDo.text}
+                  onChange={(e) => onUpdateToDo(selectedToDo.id, { text: e.target.value })}
+                  className="bg-transparent text-base font-semibold text-th-text w-full focus:outline-none resize-none h-auto min-h-[2rem]"
+                  rows={2}
+                />
+              </div>
+
+              {/* Action Toggles */}
+              <div className="space-y-2">
+                <div
+                  className={`py-2.5 px-3 rounded-lg flex items-center gap-3 cursor-pointer transition-all border ${selectedToDo.isMyDay ? 'bg-yellow-400/10 border-yellow-400/30 text-yellow-400' : 'bg-white/5 border-white/5 text-gray-400 hover:bg-white/10'}`}
+                  onClick={() => onUpdateToDo(selectedToDo.id, { isMyDay: !selectedToDo.isMyDay })}
+                >
+                  <Sun size={16} />
+                  <span className="text-sm font-medium flex-1">{t.todo.myDay}</span>
+                  {selectedToDo.isMyDay && <Check size={14} />}
+                </div>
+              </div>
+
+              {/* Metadata Group */}
+              <div className="bg-white/5 rounded-xl overflow-hidden border border-white/5 divide-y divide-white/5">
+
+                {/* Reminder */}
+                <div className="py-2.5 px-3 flex items-center gap-3 hover:bg-white/5 relative group transition-colors">
+                  <Bell size={16} className={selectedToDo.reminder ? 'text-electric-orange' : 'text-gray-500'} />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-gray-200">{t.todo.reminder}</p>
+                    {selectedToDo.reminder && <p className="text-xs text-electric-orange mt-0.5">{formatDate(selectedToDo.reminder)} {formatTime(selectedToDo.reminder)}</p>}
+                  </div>
+                  <input
+                    type="datetime-local"
+                    className="absolute inset-0 opacity-0 cursor-pointer"
+                    onChange={(e) => {
+                      const date = new Date(e.target.value);
+                      if (!isNaN(date.getTime())) onUpdateToDo(selectedToDo.id, { reminder: date.getTime() });
+                    }}
+                  />
+                  {selectedToDo.reminder && <button onClick={() => onUpdateToDo(selectedToDo.id, { reminder: null })} className="p-1 hover:text-red-500 text-gray-500 z-10"><X size={14} /></button>}
+                </div>
+
+                {/* Due Date */}
+                <div className="py-2.5 px-3 flex items-center gap-3 hover:bg-white/5 relative group transition-colors">
+                  <Calendar size={16} className={selectedToDo.dueDate ? 'text-neon-lime' : 'text-gray-500'} />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-gray-200">{t.todo.dueDate}</p>
+                    {selectedToDo.dueDate && <p className="text-xs text-neon-lime mt-0.5">{formatDate(selectedToDo.dueDate)}</p>}
+                  </div>
+                  <input
+                    type="date"
+                    className="absolute inset-0 opacity-0 cursor-pointer"
+                    onChange={(e) => {
+                      const date = new Date(e.target.value);
+                      if (!isNaN(date.getTime())) onUpdateToDo(selectedToDo.id, { dueDate: date.getTime() });
+                    }}
+                  />
+                  {selectedToDo.dueDate && <button onClick={() => onUpdateToDo(selectedToDo.id, { dueDate: null })} className="p-1 hover:text-red-500 text-gray-500 z-10"><X size={14} /></button>}
+                </div>
+
+                {/* Repeat */}
+                <div className="py-2.5 px-3 flex items-center gap-3 hover:bg-white/5 relative group transition-colors">
+                  <Repeat size={16} className={selectedToDo.repeat ? 'text-blue-400' : 'text-gray-500'} />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-gray-200">{t.todo.repeatLabel}</p>
+                    {selectedToDo.repeat && <p className="text-xs text-blue-400 capitalize mt-0.5">{getRepeatLabel(selectedToDo.repeat)}</p>}
+                  </div>
+                  <select
+                    value={selectedToDo.repeat || ''}
+                    onChange={(e) => onUpdateToDo(selectedToDo.id, { repeat: e.target.value as RepeatFrequency || null })}
+                    className="absolute inset-0 opacity-0 cursor-pointer bg-th-base text-white"
+                  >
+                    <option value="">{t.todo.repeatOptions.none}</option>
+                    <option value="daily">{t.todo.repeatOptions.daily}</option>
+                    <option value="weekdays">{t.todo.repeatOptions.weekdays}</option>
+                    <option value="weekly">{t.todo.repeatOptions.weekly}</option>
+                    <option value="weekly-2">{t.todo.repeatOptions['weekly-2']}</option>
+                    <option value="weekly-3">{t.todo.repeatOptions['weekly-3']}</option>
+                    <option value="weekly-4">{t.todo.repeatOptions['weekly-4']}</option>
+                    <option value="weekly-5">{t.todo.repeatOptions['weekly-5']}</option>
+                    <option value="weekly-6">{t.todo.repeatOptions['weekly-6']}</option>
+                    <option value="monthly">{t.todo.repeatOptions.monthly}</option>
+                  </select>
+                  {selectedToDo.repeat && <button onClick={() => onUpdateToDo(selectedToDo.id, { repeat: null })} className="p-1 hover:text-red-500 text-gray-500 z-10"><X size={14} /></button>}
+                </div>
+              </div>
+
+              {/* Notes */}
+              <div className="bg-white/5 rounded-xl p-3 h-36 ring-1 ring-white/5 focus-within:ring-neon-lime/30 transition-all flex flex-col">
+                <textarea
+                  placeholder={t.todo.notePlaceholder}
+                  value={selectedToDo.note || ''}
+                  onChange={(e) => onUpdateToDo(selectedToDo.id, { note: e.target.value })}
+                  className="w-full h-full bg-transparent text-sm text-gray-300 resize-none focus:outline-none placeholder-gray-600"
+                />
+              </div>
+
+              <div className="text-xs text-gray-600 text-center font-mono">
+                {uiText.createdLabel}: {new Date(selectedToDo.createdAt).toLocaleString(
+                  language === 'ko' ? 'ko-KR' : 'en-US'
+                )}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="py-3 px-4 border-t border-th-border flex justify-between items-center bg-th-header">
+              <div className="text-xs text-gray-500">
+                {uiText.idLabel}: {selectedToDo.id.slice(-6)}
+              </div>
+              <button
+                onClick={() => { onDeleteToDo(selectedToDo.id); setSelectedToDoId(null); }}
+                className="text-gray-400 hover:text-red-500 transition-colors flex items-center gap-2 hover:bg-red-500/10 px-3 py-1.5 rounded-lg"
+              >
+                <Trash2 size={16} />
+                <span className="text-sm">{t.todo.deleteTitle}</span>
+              </button>
+            </div>
+          </>
+        ) : (
+          <div className="flex-1 flex items-center justify-center text-gray-600">
+            {t.todo.noSelection}
+          </div>
+        )}
       </div>
 
       {/* Modals */}
