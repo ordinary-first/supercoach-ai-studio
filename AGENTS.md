@@ -81,6 +81,18 @@ When one agent completes work that another agent will continue:
 
 ## Current Status
 _Last updated: 2026-02-28_
+- MindMap2 worktree sync and stabilization completed:
+  - `displayVersion` bumped to `V02.28r9`.
+  - Merged `origin/master` into `claude/mindmap...` branch.
+  - Fixed worktree build environment:
+    - Ran `npm install` in worktree directory.
+    - Updated `tsconfig.json` to include `vite/client` in types.
+    - Fixed duplicate property definitions in `SMMNodeData` interface (MindMap.tsx).
+    - Fixed `TabType` mismatch in `useKeyboardShortcuts.ts` ('PROFILE' -> 'FEEDBACK').
+  - Verification:
+    - `npm run build` passed.
+    - `npm run beta:sim:one` (journey-random mode) passed with 0 errors.
+
 - Dev backend verification path hardened r1 completed:
   - `displayVersion` bumped to `V02.28r1`.
   - `?dev` auth path now supports Firebase custom-token bootstrap:

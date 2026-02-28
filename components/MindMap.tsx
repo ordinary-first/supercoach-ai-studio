@@ -105,8 +105,6 @@ interface SMMNodeData {
   imageSize?: { width: number; height: number };
   // Ghost template nodes (Phase 2 onboarding)
   isGhost?: boolean;
-  fillColor?: string;
-  color?: string;
 }
 
 interface SMMNode {
@@ -396,9 +394,9 @@ const MindMap: React.FC<MindMapProps> = ({
 
   const onboardingPhase: OnboardingPhase =
     isRootDefault && childCount === 0 && !identitySkipped ? 'identity' :
-    !templatesSkipped && !allGhostsUsed && childCount <= usedGhosts.size ? 'templates' :
-    (childCount > 0 || templatesSkipped) && !tooltipDismissed ? 'tooltips' :
-    'done';
+      !templatesSkipped && !allGhostsUsed && childCount <= usedGhosts.size ? 'templates' :
+        (childCount > 0 || templatesSkipped) && !tooltipDismissed ? 'tooltips' :
+          'done';
 
   const labels = t.mindmap;
   const isDestroyedRef = useRef(false);
@@ -515,7 +513,7 @@ const MindMap: React.FC<MindMapProps> = ({
   tRef.current = t;
 
   // --- Onboarding: Root node position tracking ---
-  const [rootNodeCenter, setRootNodeCenter] = useState<{x: number; y: number} | null>(null);
+  const [rootNodeCenter, setRootNodeCenter] = useState<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
     if (onboardingPhase === 'done') return;
