@@ -1054,13 +1054,13 @@ const MindMap: React.FC<MindMapProps> = ({
             </div>
           )}
 
-          {/* Placeholder text on root node */}
+          {/* Example placeholder below root node text */}
           {rootNodeCenter && (
             <div
               className="absolute z-40 pointer-events-none"
-              style={{ left: rootNodeCenter.x, top: rootNodeCenter.y, transform: 'translate(-50%, -50%)' }}
+              style={{ left: rootNodeCenter.x, top: rootNodeCenter.y + 2, transform: 'translate(-50%, 0)' }}
             >
-              <span className="text-th-text/30 text-sm font-body whitespace-nowrap">
+              <span className="text-th-text/25 text-xs font-body whitespace-nowrap italic">
                 {t.mindmap.onboarding.identityPlaceholder}
               </span>
             </div>
