@@ -53,7 +53,7 @@ export default function VisualizationTab({
 
   const pipeline = useGenerationPipeline({ userProfile, nodes, isOpen });
   const audio = useVisualizationAudio();
-  const chat = useDreamChat();
+  const chat = useDreamChat(language);
   const focusTrapRef = useFocusTrap(isOpen);
 
   useEffect(() => {

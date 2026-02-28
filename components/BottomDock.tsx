@@ -1,6 +1,7 @@
 ﻿import React, { useState, useRef, useEffect } from 'react';
 import { Target, ListTodo, Eye, Calendar, BarChart3 } from 'lucide-react';
 import { useTranslation } from '../i18n/useTranslation';
+import type { LayoutMode } from './MindMap';
 
 export type TabType = 'GOALS' | 'TODO' | 'VISUALIZE' | 'CALENDAR' | 'FEEDBACK';
 export type CalendarViewMode = 'month' | 'week' | 'list';
@@ -10,6 +11,8 @@ interface BottomDockProps {
   onTabChange: (tab: TabType) => void;
   calendarViewMode?: CalendarViewMode;
   onCalendarViewModeChange?: (mode: CalendarViewMode) => void;
+  mindmapLayout?: LayoutMode;
+  onMindmapLayoutChange?: (layout: LayoutMode) => void;
 }
 
 const BottomDock: React.FC<BottomDockProps> = ({
@@ -17,12 +20,18 @@ const BottomDock: React.FC<BottomDockProps> = ({
   onTabChange,
   calendarViewMode,
   onCalendarViewModeChange,
+  mindmapLayout,
+  onMindmapLayoutChange,
 }) => {
   const { t, language } = useTranslation();
-  const [showPopup, setShowPopup] = useState(false);
-  const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const longPressTriggered = useRef(false);
-  const popupRef = useRef<HTMLDivElement>(null);
+  const [showCalendarPopup, setShowCalendarPopup] = useState(false);
+  const [showLayoutPopup, setShowLayoutPopup] = useState(false);
+  const calendarTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const goalsTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const calendarLongPress = useRef(false);
+  const goalsLongPress = useRef(false);
+  const calendarPopupRef = useRef<HTMLDivElement>(null);
+  const layoutPopupRef = useRef<HTMLDivElement>(null);
 
   const tabs: { id: TabType; label: string; icon: React.ReactNode }[] = [
     { id: 'GOALS', label: t.nav.goals, icon: <Target size={20} /> },
@@ -32,37 +41,67 @@ const BottomDock: React.FC<BottomDockProps> = ({
     { id: 'FEEDBACK', label: t.nav.feedback, icon: <BarChart3 size={20} /> },
   ];
 
-  const startPress = () => {
-    cancelPress();
-    longPressTriggered.current = false;
-    pressTimer.current = setTimeout(() => {
-      longPressTriggered.current = true;
-      setShowPopup(true);
+  const startCalendarPress = () => {
+    cancelCalendarPress();
+    calendarLongPress.current = false;
+    calendarTimer.current = setTimeout(() => {
+      calendarLongPress.current = true;
+      setShowCalendarPopup(true);
     }, 500);
   };
+  const cancelCalendarPress = () => {
+    if (calendarTimer.current) {
+      clearTimeout(calendarTimer.current);
+      calendarTimer.current = null;
+    }
+  };
 
-  const cancelPress = () => {
-    if (pressTimer.current) {
-      clearTimeout(pressTimer.current);
-      pressTimer.current = null;
+  const startGoalsPress = () => {
+    cancelGoalsPress();
+    goalsLongPress.current = false;
+    goalsTimer.current = setTimeout(() => {
+      goalsLongPress.current = true;
+      setShowLayoutPopup(true);
+    }, 500);
+  };
+  const cancelGoalsPress = () => {
+    if (goalsTimer.current) {
+      clearTimeout(goalsTimer.current);
+      goalsTimer.current = null;
     }
   };
 
   useEffect(() => {
-    if (!showPopup) return;
+    if (!showCalendarPopup && !showLayoutPopup) return;
     const handleClickOutside = (event: MouseEvent) => {
-      if (popupRef.current && !popupRef.current.contains(event.target as Node)) {
-        setShowPopup(false);
+      if (showCalendarPopup && calendarPopupRef.current &&
+          !calendarPopupRef.current.contains(event.target as Node)) {
+        setShowCalendarPopup(false);
+      }
+      if (showLayoutPopup && layoutPopupRef.current &&
+          !layoutPopupRef.current.contains(event.target as Node)) {
+        setShowLayoutPopup(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showPopup]);
+    document.addEventListener('touchstart', handleClickOutside as EventListener);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside as EventListener);
+    };
+  }, [showCalendarPopup, showLayoutPopup]);
 
   const calendarModes = [
     { mode: 'month' as const, label: t.calendar.monthView },
     { mode: 'week' as const, label: t.calendar.weekView },
     { mode: 'list' as const, label: language === 'ko' ? '리스트' : 'List' },
+  ];
+
+  const layoutModes: { mode: LayoutMode; label: string }[] = [
+    { mode: 'mindMap', label: t.mindmap.layoutModes.mindMap },
+    { mode: 'logicalStructure', label: t.mindmap.layoutModes.logicalStructure },
+    { mode: 'logicalStructureLeft', label: t.mindmap.layoutModes.logicalStructureLeft },
+    { mode: 'organizationStructure', label: t.mindmap.layoutModes.organizationStructure },
   ];
 
   return (
@@ -76,69 +115,81 @@ const BottomDock: React.FC<BottomDockProps> = ({
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id;
           const isCalendar = tab.id === 'CALENDAR';
+          const isGoals = tab.id === 'GOALS';
+          const hasLongPress = isCalendar || isGoals;
+
+          const longPressHandlers = isCalendar ? {
+            onTouchStart: startCalendarPress,
+            onMouseDown: startCalendarPress,
+            onTouchEnd: cancelCalendarPress,
+            onMouseUp: cancelCalendarPress,
+            onTouchMove: cancelCalendarPress,
+            onContextMenu: (e: React.MouseEvent) => e.preventDefault(),
+          } : isGoals ? {
+            onTouchStart: startGoalsPress,
+            onMouseDown: startGoalsPress,
+            onTouchEnd: cancelGoalsPress,
+            onMouseUp: cancelGoalsPress,
+            onTouchMove: cancelGoalsPress,
+            onContextMenu: (e: React.MouseEvent) => e.preventDefault(),
+          } : {};
 
           return (
-            <button
-              key={tab.id}
-              onClick={() => {
-                if (isCalendar) {
-                  if (longPressTriggered.current) {
-                    longPressTriggered.current = false;
-                    return;
+            <div key={tab.id} className="relative">
+              <button
+                onClick={() => {
+                  if (hasLongPress) {
+                    const triggered = isCalendar
+                      ? calendarLongPress : goalsLongPress;
+                    if (triggered.current) {
+                      triggered.current = false;
+                      return;
+                    }
                   }
-                  onTabChange('CALENDAR');
-                } else {
                   onTabChange(tab.id);
-                }
-              }}
-              {...(isCalendar && {
-                onTouchStart: startPress,
-                onMouseDown: startPress,
-                onTouchEnd: cancelPress,
-                onMouseUp: cancelPress,
-                onTouchMove: cancelPress,
-                onContextMenu: (event: React.MouseEvent) => event.preventDefault(),
-              })}
-              className={`relative group flex flex-col items-center justify-center w-11 h-11 rounded-xl
-                transition-all duration-300 ${
-                  isActive
-                    ? 'bg-white/12 text-th-accent shadow-[0_0_18px_var(--shadow-glow)]'
-                    : 'text-th-text-secondary hover:text-th-text hover:bg-white/8'
-                }`}
-              aria-label={tab.label}
-              aria-current={isActive ? 'page' : undefined}
-            >
-              <div className={`transition-transform duration-300 ${isActive ? 'scale-110' : 'group-hover:scale-110'}`}>
-                {tab.icon}
-              </div>
-              <span
-                className={`text-[9px] font-display mt-0.5 tracking-wide transition-opacity duration-300 ${
-                  isActive ? 'opacity-100 font-bold' : 'opacity-70'
-                }`}
+                }}
+                {...longPressHandlers}
+                className={`relative group flex flex-col items-center justify-center w-11 h-11 rounded-xl
+                  transition-all duration-300 ${
+                    isActive
+                      ? 'bg-white/12 text-th-accent shadow-[0_0_18px_var(--shadow-glow)]'
+                      : 'text-th-text-secondary hover:text-th-text hover:bg-white/8'
+                  }`}
+                aria-label={tab.label}
+                aria-current={isActive ? 'page' : undefined}
               >
-                {tab.label}
-              </span>
+                <div className={`transition-transform duration-300 ${isActive ? 'scale-110' : 'group-hover:scale-110'}`}>
+                  {tab.icon}
+                </div>
+                <span
+                  className={`text-[9px] font-display mt-0.5 tracking-wide transition-opacity duration-300 ${
+                    isActive ? 'opacity-100 font-bold' : 'opacity-70'
+                  }`}
+                >
+                  {tab.label}
+                </span>
 
-              {isActive && (
-                <div className="absolute -bottom-1 w-1 h-1 bg-th-accent rounded-full shadow-[0_0_5px_var(--shadow-glow)]" />
-              )}
+                {isActive && (
+                  <div className="absolute -bottom-1 w-1 h-1 bg-th-accent rounded-full shadow-[0_0_5px_var(--shadow-glow)]" />
+                )}
+              </button>
 
-              {showPopup && isCalendar && (
+              {showCalendarPopup && isCalendar && (
                 <div
-                  ref={popupRef}
+                  ref={calendarPopupRef}
                   className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 apple-glass-panel
                     rounded-xl shadow-2xl overflow-hidden min-w-[120px] z-[60]"
                 >
                   {calendarModes.map((item) => (
-                    <button
+                    <div
                       key={item.mode}
-                      onClick={(event) => {
-                        event.stopPropagation();
+                      role="button"
+                      onPointerUp={() => {
                         onCalendarViewModeChange?.(item.mode);
                         onTabChange('CALENDAR');
-                        setShowPopup(false);
+                        setShowCalendarPopup(false);
                       }}
-                      className={`w-full px-4 py-2.5 text-sm text-left transition-colors ${
+                      className={`w-full px-4 py-2.5 text-sm text-left transition-colors cursor-pointer select-none ${
                         calendarViewMode === item.mode
                           ? 'text-th-accent font-bold bg-th-surface'
                           : 'text-gray-300 hover:text-th-text hover:bg-th-surface'
@@ -146,11 +197,39 @@ const BottomDock: React.FC<BottomDockProps> = ({
                     >
                       {item.label}
                       {calendarViewMode === item.mode && ' ✓'}
-                    </button>
+                    </div>
                   ))}
                 </div>
               )}
-            </button>
+
+              {showLayoutPopup && isGoals && (
+                <div
+                  ref={layoutPopupRef}
+                  className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 apple-glass-panel
+                    rounded-xl shadow-2xl overflow-hidden min-w-[120px] z-[60]"
+                >
+                  {layoutModes.map((item) => (
+                    <div
+                      key={item.mode}
+                      role="button"
+                      onPointerUp={() => {
+                        onMindmapLayoutChange?.(item.mode);
+                        onTabChange('GOALS');
+                        setShowLayoutPopup(false);
+                      }}
+                      className={`w-full px-4 py-2.5 text-sm text-left transition-colors cursor-pointer select-none ${
+                        mindmapLayout === item.mode
+                          ? 'text-th-accent font-bold bg-th-surface'
+                          : 'text-gray-300 hover:text-th-text hover:bg-th-surface'
+                      }`}
+                    >
+                      {item.label}
+                      {mindmapLayout === item.mode && ' ✓'}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           );
         })}
       </div>

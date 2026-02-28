@@ -1,7 +1,7 @@
 ﻿
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import MindMap from './components/MindMap';
+import MindMap, { type LayoutMode } from './components/MindMap';
 import CoachChat from './components/CoachChat';
 import CoachBubble from './components/CoachBubble';
 import ShortcutsPanel from './components/ShortcutsPanel';
@@ -159,6 +159,7 @@ const App: React.FC = () => {
   const [activeListId, setActiveListId] = useState<string | SmartListId>('myDay');
   const [selectedNode, setSelectedNode] = useState<GoalNode | null>(null);
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
+  const [mindmapLayout, setMindmapLayout] = useState<LayoutMode>('mindMap');
   const [trialDismissed, setTrialDismissed] = useState(false);
   const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
   const [deleteConfirmNodeId, setDeleteConfirmNodeId] = useState<string | null>(null);
@@ -723,21 +724,9 @@ const App: React.FC = () => {
         }
       >
         <MindMap
-          nodes={visibleNodes} links={visibleLinks} language={language} selectedNodeId={selectedNode?.id} onNodeClick={setSelectedNode} onEditNode={(nodeId) => setEditingNodeId(nodeId)} onUpdateNode={handleUpdateNode} onDeleteNode={handleDeleteNode} onReparentNode={handleReparentNode} onAddSubNode={handleAddSubNode} onAddParentNode={handleAddParentNode} onGenerateImage={handleGenerateNodeImage} onInsertImage={handleInsertNodeImage} onConvertNodeToTask={handleConvertNodeToTodo} onDecomposeGoal={handleDecomposeGoal} previewNodeIds={previewNodeIds} confirmedPreviewIds={confirmedPreviewIds} onTogglePreviewConfirm={handleTogglePreviewConfirm} onFinalizePreview={handleFinalizePreview} editingNodeId={editingNodeId} onEditEnd={() => setEditingNodeId(null)} width={dimensions.width} height={dimensions.height} imageLoadingNodes={imageLoadingNodes}
+          nodes={visibleNodes} links={visibleLinks} language={language} selectedNodeId={selectedNode?.id} onNodeClick={setSelectedNode} onEditNode={(nodeId) => setEditingNodeId(nodeId)} onUpdateNode={handleUpdateNode} onDeleteNode={handleDeleteNode} onReparentNode={handleReparentNode} onAddSubNode={handleAddSubNode} onAddParentNode={handleAddParentNode} onGenerateImage={handleGenerateNodeImage} onInsertImage={handleInsertNodeImage} onConvertNodeToTask={handleConvertNodeToTodo} onDecomposeGoal={handleDecomposeGoal} previewNodeIds={previewNodeIds} confirmedPreviewIds={confirmedPreviewIds} onTogglePreviewConfirm={handleTogglePreviewConfirm} onFinalizePreview={handleFinalizePreview} editingNodeId={editingNodeId} onEditEnd={() => setEditingNodeId(null)} width={dimensions.width} height={dimensions.height} imageLoadingNodes={imageLoadingNodes} layout={mindmapLayout} onLayoutChange={setMindmapLayout}
         />
       </div>
-
-      {activeTab === 'GOALS' && (
-        <div className="absolute top-3 left-3 md:top-4 md:left-6 z-50">
-          <button
-            onClick={() => setIsShortcutsOpen(prev => !prev)}
-            className="apple-chip flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 text-[10px] font-bold tracking-widest text-th-accent hover:bg-th-accent hover:text-th-text-inverse transition-all"
-          >
-            <span className="bg-th-accent/20 px-1.5 py-0.5 rounded text-[8px] border border-th-accent-border">K</span>
-            {t.shortcuts.button}
-          </button>
-        </div>
-      )}
  
        <div className="absolute top-3 right-3 md:top-6 md:right-6 z-[60]">
          <button
@@ -791,7 +780,7 @@ const App: React.FC = () => {
       />
       <VisualizationTab isOpen={activeTab === 'VISUALIZE'} onClose={() => setActiveTab('GOALS')} userProfile={userProfile} nodes={nodes} />
       <ShortcutsPanel isOpen={isShortcutsOpen} onClose={() => setIsShortcutsOpen(false)} />
-      <BottomDock activeTab={activeTab} onTabChange={handleTabChange} calendarViewMode={calendarViewMode} onCalendarViewModeChange={setCalendarViewMode} />
+      <BottomDock activeTab={activeTab} onTabChange={handleTabChange} calendarViewMode={calendarViewMode} onCalendarViewModeChange={setCalendarViewMode} mindmapLayout={mindmapLayout} onMindmapLayoutChange={setMindmapLayout} />
       <CoachBubble
         isOpen={isChatOpen}
         onToggle={() => {

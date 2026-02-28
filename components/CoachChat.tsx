@@ -33,7 +33,7 @@ interface CoachChatProps {
 const CoachChat: React.FC<CoachChatProps> = ({
   isOpen, onClose, selectedNode, nodes, userProfile, userId, todos, onOpenVisualization, messages, onMessagesChange, activeTab
 }) => {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [selectedTopic, setSelectedTopic] = useState<CoachingQuestion | null>(null);
@@ -46,9 +46,9 @@ const CoachChat: React.FC<CoachChatProps> = ({
   const QUESTIONS_PER_PAGE = 3;
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const focusTrapRef = useFocusTrap(isOpen);
-  const memory = useCoachMemory(userId, isOpen, nodes || [], todos);
+  const memory = useCoachMemory(userId, isOpen, nodes || [], todos, language);
   const { pendingDirective, feedbackSlot, markFeedbackDone } =
-    useCoachFeedback(isOpen, todos);
+    useCoachFeedback(isOpen, todos, language);
   const effectiveKeyboardHeight = Math.max(keyboardHeight, viewportKeyboardInset);
 
   // Mobile keyboard height via VirtualKeyboard API (overlays-content 모드)
@@ -222,8 +222,8 @@ const CoachChat: React.FC<CoachChatProps> = ({
 
     (async () => {
       try {
-        const goalCtx = buildGoalContext(nodes || []);
-        const todoCtx = buildTodoContext(todos);
+        const goalCtx = buildGoalContext(nodes || [], language);
+        const todoCtx = buildTodoContext(todos, language);
         const subGoalCount = (nodes || []).filter(n => n.type !== 'ROOT').length;
 
         const response = await sendChatMessage(
@@ -305,8 +305,8 @@ const CoachChat: React.FC<CoachChatProps> = ({
         role: m.sender === 'user' ? 'user' : 'model',
         parts: [{ text: m.text }],
       }));
-      const goalCtx = buildGoalContext(nodes || []);
-      const todoCtx = buildTodoContext(todos);
+      const goalCtx = buildGoalContext(nodes || [], language);
+      const todoCtx = buildTodoContext(todos, language);
 
       const subGoalCount = (nodes || []).filter(n => n.type !== 'ROOT').length;
       const response = await sendChatMessage(

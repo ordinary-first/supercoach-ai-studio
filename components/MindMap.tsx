@@ -43,7 +43,7 @@ const AddParentIcon = () => (
 );
 
 // --- Types ---
-type LayoutMode = 'mindMap' | 'logicalStructure' | 'logicalStructureLeft' | 'organizationStructure';
+export type LayoutMode = 'mindMap' | 'logicalStructure' | 'logicalStructureLeft' | 'organizationStructure';
 
 interface MindMapProps {
   nodes: GoalNode[];
@@ -70,6 +70,8 @@ interface MindMapProps {
   editingNodeId?: string | null;
   onEditEnd?: () => void;
   imageLoadingNodes?: Set<string>;
+  layout?: LayoutMode;
+  onLayoutChange?: (layout: LayoutMode) => void;
 }
 
 // --- Status ??border color mapping ---
@@ -365,11 +367,11 @@ const MindMap: React.FC<MindMapProps> = ({
   nodes, links, language, selectedNodeId, onNodeClick, onEditNode, onUpdateNode, onDeleteNode,
   onReparentNode, onConvertNodeToTask, onGenerateImage, onInsertImage, onAddSubNode, onAddParentNode,
   onDecomposeGoal, previewNodeIds, confirmedPreviewIds, onTogglePreviewConfirm, onFinalizePreview,
-  width, height, editingNodeId, onEditEnd, imageLoadingNodes
+  width, height, editingNodeId, onEditEnd, imageLoadingNodes,
+  layout: layoutProp = 'mindMap', onLayoutChange,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const mindMapRef = useRef<any>(null);
-  const [layout, setLayout] = useState<LayoutMode>('mindMap');
   const [actionBar, setActionBar] = useState<ActionBarState | null>(null);
   const [viewScale, setViewScale] = useState(1);
   const [identitySkipped, setIdentitySkipped] = useState(false);
@@ -509,6 +511,8 @@ const MindMap: React.FC<MindMapProps> = ({
   setActionBarRef.current = setActionBar;
   actionBarRef.current = actionBar;
   setUsedGhostsRef.current = setUsedGhosts;
+  const tRef = useRef(t);
+  tRef.current = t;
 
   // --- Onboarding: Root node position tracking ---
   const [rootNodeCenter, setRootNodeCenter] = useState<{x: number; y: number} | null>(null);
@@ -575,7 +579,7 @@ const MindMap: React.FC<MindMapProps> = ({
     const mindMap = new (MindMapSDK as any)({
       el: containerRef.current,
       data: treeData,
-      layout: layout,
+      layout: layoutProp,
       theme: 'default',
       themeConfig: currentThemeConfig,
       rainbowLinesConfig: {
@@ -666,15 +670,22 @@ const MindMap: React.FC<MindMapProps> = ({
 
     // --- Event: Node click -> selection + action bar ---
     mindMap.on('node_click', (node: any, e: any) => {
+      // Single-select: clear other selections, keep only clicked node
+      mindMap.renderer?.clearActiveNodeList?.();
+      node?.active?.();
+
       const goalId = node?.nodeData?.data?.goalId || node?.nodeData?.data?.uid;
       if (!goalId) return;
 
-      // Ghost node interception
+      // Ghost node interception: pick one → remove all ghosts
       if (goalId.startsWith('ghost-')) {
         const idx = parseInt(goalId.split('-')[1]);
         if (!isNaN(idx) && GHOST_TEMPLATES[idx]) {
           onAddSubNodeRef.current('root', GHOST_TEMPLATES[idx]);
-          setUsedGhostsRef.current(prev => new Set(prev).add(idx));
+          // Mark ALL ghosts as used so remaining ones disappear
+          const allUsed = new Set<number>();
+          GHOST_TEMPLATES.forEach((_: string, i: number) => allUsed.add(i));
+          setUsedGhostsRef.current(allUsed);
         }
         return;
       }
@@ -747,6 +758,38 @@ const MindMap: React.FC<MindMapProps> = ({
         onFinalizePreviewRef.current?.();
       }
       setActionBarRef.current(null);
+    });
+
+    // --- Identity node placeholder on edit ---
+    const DEFAULT_TEXTS = ['My Life Vision', '나의 인생 비전', ''];
+    mindMap.on('node_dblclick', (node: any) => {
+      const goalId = node?.nodeData?.data?.goalId || node?.nodeData?.data?.uid;
+      const root = nodesRef.current.find(n => n.type === NodeType.ROOT);
+      if (!root || goalId !== root.id) return;
+      const nodeText = node.getData('text') || '';
+      if (!DEFAULT_TEXTS.includes(nodeText)) return;
+      // Clear default text after edit box appears, so CSS placeholder shows
+      setTimeout(() => {
+        const editBox = document.querySelector('.smm-node-edit-wrap') as HTMLElement | null;
+        if (editBox && editBox.style.display !== 'none') {
+          editBox.innerHTML = '';
+          editBox.setAttribute(
+            'data-placeholder',
+            tRef.current.mindmap.onboarding.identityPlaceholder,
+          );
+        }
+      }, 60);
+    });
+    mindMap.on('hide_text_edit', (_el: any, _list: any, editedNode: any) => {
+      const goalId = editedNode?.nodeData?.data?.goalId || editedNode?.nodeData?.data?.uid;
+      const root = nodesRef.current.find(n => n.type === NodeType.ROOT);
+      if (!root || goalId !== root.id) return;
+      const text = (editedNode.getData?.('text') || '').trim();
+      if (!text) {
+        // Restore default text when user leaves empty
+        editedNode.setText?.(tRef.current.mindmap.defaultRootText);
+        mindMap.render?.();
+      }
     });
 
     // --- Event: mindmap-center (from other components) ---
@@ -840,11 +883,14 @@ const MindMap: React.FC<MindMapProps> = ({
     }
   }, [nodes, links, selectedNodeId, confirmedPreviewIds, onboardingPhase, usedGhosts, getRenderedNodeByGoalId]);
 
-  // --- Layout changes ---
-  const handleLayoutChange = useCallback((newLayout: LayoutMode) => {
-    setLayout(newLayout);
-    mindMapRef.current?.setLayout(newLayout);
-  }, []);
+  // --- Sync layout prop → SDK ---
+  useEffect(() => {
+    const mm = mindMapRef.current;
+    if (!mm) return;
+    mm.setLayout(layoutProp);
+    // Re-center view after layout repositions nodes
+    setTimeout(() => mm.view?.reset?.(), 300);
+  }, [layoutProp]);
 
   // --- Resize ---
   useEffect(() => {
@@ -908,26 +954,15 @@ const MindMap: React.FC<MindMapProps> = ({
       <style>{`
         @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
         .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
+        .smm-node-edit-wrap:empty::before {
+          content: attr(data-placeholder);
+          opacity: 0.35;
+          font-style: italic;
+          pointer-events: none;
+        }
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .animate-fade-in-up { animation: fadeInUp 0.6s ease-out forwards; }
       `}</style>
-
-      {/* Layout Switcher */}
-      <div className="apple-chip absolute top-3 right-3 md:top-4 md:right-4 z-10 flex rounded-full px-1 py-0.5 gap-0.5">
-        {LAYOUT_MODES.map(mode => (
-          <button
-            key={mode}
-            onClick={() => handleLayoutChange(mode)}
-            className={`px-2 py-1 rounded-full text-[9px] md:text-[10px] font-semibold transition-all duration-200 ${
-              layout === mode
-                ? 'bg-th-accent text-th-text-inverse shadow-[0_0_8px_var(--shadow-glow)]'
-                : 'text-th-text-secondary hover:text-th-text hover:bg-th-surface-hover'
-            }`}
-          >
-            {t.mindmap.layoutModes[mode]}
-          </button>
-        ))}
-      </div>
 
       {/* Mind Map Container */}
       <div
@@ -1092,18 +1127,6 @@ const MindMap: React.FC<MindMapProps> = ({
             </div>
           )}
 
-          {/* Placeholder text on root node */}
-          {rootNodeCenter && (
-            <div
-              className="absolute z-40 pointer-events-none"
-              style={{ left: rootNodeCenter.x, top: rootNodeCenter.y, transform: 'translate(-50%, -50%)' }}
-            >
-              <span className="text-th-text/30 text-sm font-body whitespace-nowrap">
-                {t.mindmap.onboarding.identityPlaceholder}
-              </span>
-            </div>
-          )}
-
           {/* Popup message below root node */}
           {rootNodeCenter && (
             <div
@@ -1171,7 +1194,8 @@ export default React.memo(MindMap, (prev, next) => {
     prev.width === next.width &&
     prev.height === next.height &&
     prev.editingNodeId === next.editingNodeId &&
-    prev.imageLoadingNodes === next.imageLoadingNodes
+    prev.imageLoadingNodes === next.imageLoadingNodes &&
+    prev.layout === next.layout
   );
 });
 
