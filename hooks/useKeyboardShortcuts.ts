@@ -50,7 +50,7 @@ export function useKeyboardShortcuts(
         case '2': handleTabChange('CALENDAR'); break;
         case '3': handleTabChange('TODO'); break;
         case '4': handleTabChange('VISUALIZE'); break;
-        case '5': handleTabChange('PROFILE'); break;
+        case '5': handleTabChange('FEEDBACK'); break;
         case '6': setIsChatOpen(prev => !prev); break;
       }
     };

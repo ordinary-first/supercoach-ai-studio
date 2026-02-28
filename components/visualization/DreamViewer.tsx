@@ -106,17 +106,17 @@ function DreamViewer({
       <button
         onClick={handleClose}
         className="absolute top-4 left-4 z-10 w-10 h-10 rounded-full apple-chip flex items-center
-          justify-center text-white"
+          justify-center text-th-text-secondary hover:text-th-text transition-colors"
       >
         <X size={20} />
       </button>
 
       {isGenerating && generatingStep && (
         <div className="absolute top-5 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2 px-4
-          py-1.5 rounded-full apple-chip"
+          py-1.5 rounded-full apple-chip bg-th-accent-muted border-th-accent/20"
         >
-          <Loader2 size={14} className="animate-spin text-white/60" />
-          <span className="text-xs text-white/60">{generatingStep}</span>
+          <Loader2 size={14} className="animate-spin text-th-accent" />
+          <span className="text-xs font-semibold text-th-accent">{generatingStep}</span>
         </div>
       )}
 
@@ -182,7 +182,7 @@ function DreamViewer({
       <div
         className="fixed bottom-0 left-0 right-0 flex items-center justify-center h-20 z-10"
         style={{
-          background: 'linear-gradient(to top, rgba(7,11,22,0.96) 60%, transparent)',
+          background: 'linear-gradient(to top, var(--bg-base) 60%, transparent)',
           paddingBottom: 'env(safe-area-inset-bottom, 0px)',
         }}
       >
@@ -190,24 +190,24 @@ function DreamViewer({
           <button
             onClick={onSave}
             disabled={isSaving || isSaved}
-            className="apple-chip flex items-center gap-2 rounded-full px-6 py-3 text-sm text-white
-              disabled:opacity-50"
+            className="apple-chip flex items-center gap-2 rounded-full px-6 py-3 text-sm text-th-text
+              hover:bg-th-surface-hover disabled:opacity-50 shadow-sm transition-all"
           >
             {isSaving ? (
-              <Loader2 size={16} className="animate-spin" />
+              <Loader2 size={16} className="animate-spin text-th-accent" />
             ) : isSaved ? (
-              <Check size={16} />
+              <Check size={16} className="text-green-500" />
             ) : (
-              <Download size={16} />
+              <Download size={16} className="text-th-accent" />
             )}
-            <span>
+            <span className="font-semibold">
               {isSaving ? t.visualization.saving : isSaved ? t.visualization.savedLabel : t.visualization.saveButton}
             </span>
           </button>
 
-          <button className="apple-chip flex items-center gap-2 rounded-full px-6 py-3 text-sm text-white">
-            <Share2 size={16} />
-            <span>{t.visualization.shareButton}</span>
+          <button className="apple-chip flex items-center gap-2 rounded-full px-6 py-3 text-sm text-th-text hover:bg-th-surface-hover shadow-sm transition-all">
+            <Share2 size={16} className="text-th-text-tertiary" />
+            <span className="font-semibold">{t.visualization.shareButton}</span>
           </button>
         </div>
       </div>

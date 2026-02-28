@@ -54,15 +54,15 @@ const DreamGallery: FC<DreamGalleryProps> = ({
 
   if (items.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
-        <Sparkles size={32} className="text-white/20" />
-        <p className="text-[15px] text-white/60">{t.visualization.noDreamsYet}</p>
-        <p className="text-[13px] text-white/40">{t.visualization.noDreamsDesc}</p>
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3 px-6 text-center">
+        <Sparkles size={32} className="text-th-accent/20" />
+        <p className="text-[15px] font-medium text-th-text-secondary">{t.visualization.noDreamsYet}</p>
+        <p className="text-[13px] text-th-text-tertiary leading-relaxed">{t.visualization.noDreamsDesc}</p>
         <button
           type="button"
           onClick={onCreateDream}
-          className="apple-card mt-2 px-5 py-2 rounded-full text-sm font-semibold text-white
-            hover:bg-white/10 transition-colors"
+          className="apple-card mt-4 px-6 py-2.5 rounded-full text-sm font-semibold text-th-text
+            hover:bg-th-surface-hover transition-all active:scale-95 shadow-sm"
         >
           + {t.visualization.createFirstDream}
         </button>
@@ -82,9 +82,8 @@ const DreamGallery: FC<DreamGalleryProps> = ({
           <button
             key={item.id}
             type="button"
-            className={`relative aspect-square overflow-hidden cursor-pointer rounded-[10px] ${
-              !hasImage ? `bg-gradient-to-br ${pickGradient(item.id)}` : ''
-            }`}
+            className={`relative aspect-square overflow-hidden cursor-pointer rounded-[10px] ${!hasImage ? `bg-gradient-to-br ${pickGradient(item.id)}` : ''
+              }`}
             onClick={() => onItemTap(item)}
             onTouchStart={() => handleTouchStart(item)}
             onTouchEnd={cancelLongPress}

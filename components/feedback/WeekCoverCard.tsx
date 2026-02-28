@@ -88,16 +88,15 @@ const MiniDayCard: React.FC<{
       className={`${classByState[state]} flex-1 min-w-0 h-[52px] px-1.5
         flex flex-col items-center justify-center gap-0.5`}
     >
-      <span className={`text-[9px] font-medium ${
-        state === 'today-pending' ? 'text-th-accent' : 'text-white/55'
-      }`}>
+      <span className={`text-[9px] font-medium ${state === 'today-pending' ? 'text-th-accent' : 'text-th-text-tertiary'
+        }`}>
         {dayLabel}
       </span>
 
       {state === 'completed' && (
         <div className="flex items-center gap-1">
           <Check size={10} className="text-th-accent" />
-          {hasComment && <MessageCircle size={8} className="text-white/45" />}
+          {hasComment && <MessageCircle size={8} className="text-th-text-tertiary" />}
         </div>
       )}
 
@@ -144,8 +143,8 @@ export const WeekCoverCard: React.FC<WeekCoverCardProps> = ({
         ${isActive ? '' : 'fb-coverflow-card-shell-inactive'}`}
     >
       <header className="mb-3.5">
-        <p className="fb-coverflow-week-title text-[17px] font-semibold text-white/95">{label}</p>
-        <p className="fb-coverflow-week-range text-[12px] text-white/55 mt-0.5">{range}</p>
+        <p className="fb-coverflow-week-title text-[17px] font-semibold text-th-text">{label}</p>
+        <p className="fb-coverflow-week-range text-[12px] text-th-text-secondary mt-0.5">{range}</p>
       </header>
 
       <section className="flex gap-1.5">

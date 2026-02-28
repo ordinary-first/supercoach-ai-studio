@@ -23,7 +23,7 @@ const getWeekLabel = (weekStart: Date, t: TranslationStrings): string => {
 
   const weekNum = weekStart >= firstMonday
     ? Math.floor((weekStart.getTime() - firstMonday.getTime()) / (7 * 86400000)) +
-      (daysUntilMonday === 0 ? 1 : 2)
+    (daysUntilMonday === 0 ? 1 : 2)
     : 1;
 
   return t.feedback.weekLabel
@@ -56,11 +56,11 @@ export const WeeklySummaryCard: React.FC<WeeklySummaryCardProps> = ({
       className="bg-transparent px-5 py-5 cursor-pointer fb-card-press"
       onClick={onTap}
     >
-      <p className="text-[13px] font-semibold text-white/72 mb-4">{label}</p>
+      <p className="text-[13px] font-semibold text-th-text mb-4">{label}</p>
 
       {!hasContent ? (
         <div className="text-center py-4">
-          <p className="text-[12px] text-white/36 mb-3">{t.feedback.emptyRecord}</p>
+          <p className="text-[12px] text-th-text-muted mb-3">{t.feedback.emptyRecord}</p>
           <button
             onClick={(event) => {
               event.stopPropagation();
@@ -86,12 +86,12 @@ export const WeeklySummaryCard: React.FC<WeeklySummaryCardProps> = ({
         </div>
       ) : (
         <>
-          <p className="text-[11px] text-white/42 mb-2">{t.feedback.weeklyCompleted}</p>
+          <p className="text-[11px] text-th-text-tertiary mb-2">{t.feedback.weeklyCompleted}</p>
           <div className="space-y-1.5 mb-4">
             {topItems.map(([item, count], i) => (
               <div key={i} className="flex items-start gap-2">
                 <Trophy size={10} className="text-th-accent mt-0.5 shrink-0" />
-                <span className="text-[12px] text-white/78 leading-snug">
+                <span className="text-[12px] text-th-text leading-snug">
                   {item}
                   {count > 1 ? ` x${count}` : ''}
                 </span>
@@ -100,8 +100,8 @@ export const WeeklySummaryCard: React.FC<WeeklySummaryCardProps> = ({
           </div>
 
           {summaryText ? (
-            <div className="border-t border-white/[0.08] pt-3">
-              <p className="text-[12px] text-white/58 italic leading-relaxed">“{summaryText}”</p>
+            <div className="border-t border-th-border pt-3">
+              <p className="text-[12px] text-th-text-secondary italic leading-relaxed">“{summaryText}”</p>
             </div>
           ) : (
             <button

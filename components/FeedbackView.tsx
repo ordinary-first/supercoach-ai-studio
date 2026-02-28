@@ -520,28 +520,22 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
 
   return (
     <div
-      className={`fb-feedback-root fixed inset-0 z-50 flex flex-col overflow-hidden font-body text-white ${
-        isLowPerf ? 'fb-coverflow-lowperf' : ''
-      }`}
+      className={`fb-feedback-root fixed inset-0 z-50 flex flex-col overflow-hidden font-body text-th-text ${isLowPerf ? 'fb-coverflow-lowperf' : ''
+        }`}
     >
       <div className="fb-feedback-header h-14 px-4 flex items-center justify-between shrink-0">
         <button
           onClick={() => setShowSettings(true)}
-          className="p-2 rounded-full hover:bg-white/10 transition-colors"
+          className="p-2 rounded-full hover:bg-th-surface-hover transition-colors"
         >
-          <Settings size={16} className="text-white/65" />
+          <Settings size={16} className="text-th-text-secondary" />
         </button>
 
-        <h1 className="fb-feedback-header-title text-sm font-semibold text-white/92">
+        <h1 className="fb-feedback-header-title text-sm font-semibold text-th-text flex-1 text-center">
           {t.feedback.title}
         </h1>
 
-        <button
-          onClick={onClose}
-          className="p-2 rounded-full hover:bg-white/10 transition-colors"
-        >
-          <Menu size={16} className="text-white/55" />
-        </button>
+        <div className="w-10 h-10" /> {/* Spacer to maintain centering since global menu icon covers this spot */}
       </div>
 
       {generatingVictory && (
@@ -567,17 +561,16 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
       ) : (
         <div className="flex-1 overflow-y-auto">
           <div className="px-4 pt-3 pb-2 text-center">
-            <p className="fb-week-label text-[17px] font-semibold text-white/93">{activeWeekLabel}</p>
-            <p className="fb-week-range text-[12px] text-white/52 mt-0.5">{activeWeekRange}</p>
+            <p className="fb-week-label text-[17px] font-semibold text-th-text">{activeWeekLabel}</p>
+            <p className="fb-week-range text-[12px] text-th-text-secondary mt-0.5">{activeWeekRange}</p>
           </div>
 
           <div className="px-4 pb-3">
             <div
               className="fb-week-detail-panel fb-card-press"
               style={{
-                transform: `translateY(${collapseDragY * 0.45}px) scale(${
-                  1 - collapseProgress * (isLowPerf ? 0.1 : 0.15)
-                })`,
+                transform: `translateY(${collapseDragY * 0.45}px) scale(${1 - collapseProgress * (isLowPerf ? 0.1 : 0.15)
+                  })`,
                 opacity: 1 - collapseProgress * (isLowPerf ? 0.26 : 0.35),
                 transition: isCollapsingDrag
                   ? 'none'
@@ -632,7 +625,7 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
                 <span className="text-[12px] text-green-400">{t.feedback.adjustComplete}</span>
                 <button
                   onClick={handleUndo}
-                  className="text-[11px] font-semibold text-white/70 px-3 py-1 rounded-full bg-white/10 hover:bg-white/15 transition-colors"
+                  className="text-[11px] font-semibold text-th-text-secondary px-3 py-1 rounded-full bg-th-surface hover:bg-th-surface-hover transition-colors"
                 >
                   {t.feedback.undo}
                 </button>
@@ -648,7 +641,7 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
                   isGenerating={generatingWeek === toDateKey(activeWeekStart)}
                   t={t}
                   onGenerate={() => handleGenerateWeekly(activeWeekStart)}
-                  onTap={() => {}}
+                  onTap={() => { }}
                 />
               </div>
             </div>
@@ -671,7 +664,7 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
                     }
                     t={t}
                     onGenerate={() => handleGenerateMonthly(activeWeekStart)}
-                    onTap={() => {}}
+                    onTap={() => { }}
                   />
                 </div>
               </div>

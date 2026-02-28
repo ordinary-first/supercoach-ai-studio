@@ -105,8 +105,6 @@ interface SMMNodeData {
   imageSize?: { width: number; height: number };
   // Ghost template nodes (Phase 2 onboarding)
   isGhost?: boolean;
-  fillColor?: string;
-  color?: string;
 }
 
 interface SMMNode {
@@ -291,16 +289,16 @@ const DARK_THEME_CONFIG = {
 };
 
 const LIGHT_THEME_CONFIG = {
-  backgroundColor: '#F8FAFC',
-  lineColor: '#94A3B8',
-  lineWidth: 2,
+  backgroundColor: '#F2F2F7',
+  lineColor: '#007AFFBE',
+  lineWidth: 2.8,
   lineDasharray: 'none',
   lineStyle: 'curve' as const,
-  generalizationLineColor: '#64748B',
+  generalizationLineColor: '#8E8E93',
   root: {
     fillColor: '#FFFFFF',
-    color: '#0F172A',
-    borderColor: '#4D7C0F',
+    color: '#1D1D1F',
+    borderColor: '#007AFF',
     borderWidth: 3,
     borderRadius: 24,
     fontSize: 18,
@@ -309,51 +307,66 @@ const LIGHT_THEME_CONFIG = {
     shape: 'roundedRectangle',
     paddingX: 30,
     paddingY: 20,
+    active: {
+      borderColor: '#007AFF',
+      borderWidth: 3,
+    }
   },
   second: {
-    fillColor: '#F1F5F9',
-    color: '#1E293B',
-    borderColor: '#64748B',
+    fillColor: '#FFFFFF',
+    color: '#1D1D1F',
+    borderColor: '#007AFF88',
     borderWidth: 2,
-    borderRadius: 12,
+    borderRadius: 14,
     fontSize: 14,
     fontWeight: '600',
-    fontFamily: 'SF Pro Display, SF Pro Text, -apple-system, BlinkMacSystemFont, Apple SD Gothic Neo, Pretendard, sans-serif',
+    fontFamily: 'SF Pro Text, -apple-system, BlinkMacSystemFont, Apple SD Gothic Neo, Pretendard, sans-serif',
     shape: 'roundedRectangle',
     marginX: 80,
-    marginY: 30,
+    marginY: 32,
     paddingX: 20,
     paddingY: 12,
   },
   node: {
     fillColor: '#FFFFFF',
-    color: '#334155',
-    borderColor: '#94A3B8',
-    borderWidth: 1,
-    borderRadius: 8,
+    color: '#1D1D1F',
+    borderColor: 'rgba(0, 0, 0, 0.22)',
+    borderWidth: 1.5,
+    borderRadius: 10,
     fontSize: 13,
     fontWeight: '500',
-    fontFamily: 'SF Pro Display, SF Pro Text, -apple-system, BlinkMacSystemFont, Apple SD Gothic Neo, Pretendard, sans-serif',
+    fontFamily: 'SF Pro Text, -apple-system, BlinkMacSystemFont, Apple SD Gothic Neo, Pretendard, sans-serif',
     shape: 'roundedRectangle',
     marginX: 60,
-    marginY: 20,
+    marginY: 24,
     paddingX: 16,
     paddingY: 10,
   },
   generalization: {
-    fillColor: '#F1F5F9',
-    color: '#475569',
-    borderColor: '#94A3B8',
+    fillColor: '#E5E5EA',
+    color: '#3A3A3C',
+    borderColor: 'rgba(0, 0, 0, 0.1)',
     borderWidth: 1,
-    borderRadius: 6,
+    borderRadius: 8,
     fontSize: 12,
-    fontFamily: 'SF Pro Display, SF Pro Text, -apple-system, BlinkMacSystemFont, Apple SD Gothic Neo, Pretendard, sans-serif',
+    fontFamily: 'SF Pro Text, -apple-system, BlinkMacSystemFont, Apple SD Gothic Neo, Pretendard, sans-serif',
   },
 };
 
 const RAINBOW_COLORS = [
   '#CCFF00', '#00D4FF', '#FF6B6B', '#A78BFA',
   '#34D399', '#FBBF24', '#F472B6', '#60A5FA',
+];
+
+const RAINBOW_COLORS_LIGHT = [
+  '#007AFF', // Blue
+  '#248A3D', // Saturated Green
+  '#FF9500', // Orange
+  '#5856D6', // Indigo
+  '#D70015', // Vibrant Red
+  '#AF52DE', // Purple
+  '#00A3C9', // Saturated Cyan
+  '#BD10E0', // Magenta
 ];
 
 const LAYOUT_MODES: LayoutMode[] = [
@@ -396,9 +409,9 @@ const MindMap: React.FC<MindMapProps> = ({
 
   const onboardingPhase: OnboardingPhase =
     isRootDefault && childCount === 0 && !identitySkipped ? 'identity' :
-    !templatesSkipped && !allGhostsUsed && childCount <= usedGhosts.size ? 'templates' :
-    (childCount > 0 || templatesSkipped) && !tooltipDismissed ? 'tooltips' :
-    'done';
+      !templatesSkipped && !allGhostsUsed && childCount <= usedGhosts.size ? 'templates' :
+        (childCount > 0 || templatesSkipped) && !tooltipDismissed ? 'tooltips' :
+          'done';
 
   const labels = t.mindmap;
   const isDestroyedRef = useRef(false);
@@ -515,7 +528,7 @@ const MindMap: React.FC<MindMapProps> = ({
   tRef.current = t;
 
   // --- Onboarding: Root node position tracking ---
-  const [rootNodeCenter, setRootNodeCenter] = useState<{x: number; y: number} | null>(null);
+  const [rootNodeCenter, setRootNodeCenter] = useState<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
     if (onboardingPhase === 'done') return;
@@ -584,7 +597,7 @@ const MindMap: React.FC<MindMapProps> = ({
       themeConfig: currentThemeConfig,
       rainbowLinesConfig: {
         open: true,
-        colorsList: RAINBOW_COLORS,
+        colorsList: isLight ? RAINBOW_COLORS_LIGHT : RAINBOW_COLORS,
       },
       enableFreeDrag: false,
       mousewheelAction: 'zoom',
@@ -902,7 +915,14 @@ const MindMap: React.FC<MindMapProps> = ({
     const mindMap = mindMapRef.current;
     if (!mindMap) return;
     mindMap.setThemeConfig(currentThemeConfig);
-  }, [currentThemeConfig]);
+    // Force update rainbow colors if plugin is active
+    if (mindMap.rainbowLines) {
+      const cfg = mindMap.opt.rainbowLinesConfig || {};
+      cfg.colorsList = isLight ? RAINBOW_COLORS_LIGHT : RAINBOW_COLORS;
+      mindMap.opt.rainbowLinesConfig = cfg;
+      mindMap.render();
+    }
+  }, [currentThemeConfig, isLight]);
 
   // --- Trigger text editing when editingNodeId is set ---
   // setData() 후 라이브러리 내부 렌더가 비동기이므로, 노드가 나타날 때까지 폴링
@@ -984,13 +1004,13 @@ const MindMap: React.FC<MindMapProps> = ({
             transformOrigin: 'top center',
           }}
         >
-          <div className="flex items-center gap-1 rounded-full border border-th-border bg-th-elevated/95 p-1 shadow-2xl backdrop-blur-md">
+          <div className="flex items-center gap-1.5 rounded-full border border-th-border/40 bg-th-elevated/98 p-1.5 shadow-[0_12px_40px_-12px_rgba(0,0,0,0.25)] backdrop-blur-xl">
             <button
               onClick={() => {
                 onAddSubNode(actionBar.nodeId);
                 setActionBar(null);
               }}
-              className="rounded-full p-2 text-th-text-secondary hover:text-th-text hover:bg-th-surface-hover transition-colors"
+              className="rounded-full p-2.5 text-th-text-secondary hover:text-th-accent hover:bg-th-accent-muted transition-all active:scale-90"
               title={t.mindmap.onboarding.addChildTitle}
             >
               <AddChildIcon />
@@ -1006,7 +1026,7 @@ const MindMap: React.FC<MindMapProps> = ({
                     }
                     setActionBar(null);
                   }}
-                  className="rounded-full p-2 text-th-text-secondary hover:text-th-text hover:bg-th-surface-hover transition-colors"
+                  className="rounded-full p-2.5 text-th-text-secondary hover:text-th-accent hover:bg-th-accent-muted transition-all active:scale-90"
                   title={t.mindmap.onboarding.addSiblingTitle}
                 >
                   <AddSiblingIcon />
@@ -1016,7 +1036,7 @@ const MindMap: React.FC<MindMapProps> = ({
                     onAddParentNode?.(actionBar.nodeId);
                     setActionBar(null);
                   }}
-                  className="rounded-full p-2 text-th-text-secondary hover:text-th-text hover:bg-th-surface-hover transition-colors"
+                  className="rounded-full p-2.5 text-th-text-secondary hover:text-th-accent hover:bg-th-accent-muted transition-all active:scale-90"
                   title={t.mindmap.onboarding.addParentTitle}
                 >
                   <AddParentIcon />
@@ -1026,7 +1046,7 @@ const MindMap: React.FC<MindMapProps> = ({
                     onConvertNodeToTask?.(actionBar.nodeId);
                     setActionBar(null);
                   }}
-                  className="rounded-full px-3 py-1.5 text-xs font-semibold text-th-text hover:bg-th-surface-hover"
+                  className="rounded-full px-4 py-2 text-xs font-bold text-th-text hover:text-th-accent hover:bg-th-accent-muted transition-all"
                 >
                   {labels.todo}
                 </button>
@@ -1036,7 +1056,7 @@ const MindMap: React.FC<MindMapProps> = ({
             {!isRootActionNode && (
               <button
                 onClick={() => { onDecomposeGoal?.(actionBar.nodeId); setActionBar(null); }}
-                className="flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-medium bg-th-accent/10 text-th-accent hover:bg-th-accent/20 transition-colors whitespace-nowrap"
+                className="flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold bg-th-accent text-th-text-inverse hover:brightness-110 shadow-sm transition-all active:scale-95 whitespace-nowrap"
               >
                 <Sparkles className="w-3.5 h-3.5" />
                 {labels.decompose}
@@ -1048,7 +1068,7 @@ const MindMap: React.FC<MindMapProps> = ({
                 onGenerateImage?.(actionBar.nodeId);
                 setActionBar(null);
               }}
-              className="rounded-full px-3 py-1.5 text-xs font-semibold text-th-text hover:bg-th-surface-hover"
+              className="rounded-full px-4 py-2 text-xs font-bold text-th-text hover:text-th-accent hover:bg-th-accent-muted transition-all"
             >
               {labels.generate}
             </button>
@@ -1059,7 +1079,7 @@ const MindMap: React.FC<MindMapProps> = ({
                   onInsertImage?.(actionBar.nodeId);
                   setActionBar(null);
                 }}
-                className="rounded-full px-3 py-1.5 text-xs font-semibold text-th-text hover:bg-th-surface-hover"
+                className="rounded-full px-4 py-2 text-xs font-bold text-th-text hover:text-th-accent hover:bg-th-accent-muted transition-all"
               >
                 {labels.insert}
               </button>
@@ -1070,7 +1090,8 @@ const MindMap: React.FC<MindMapProps> = ({
                     prev ? { ...prev, isMoreOpen: !prev.isMoreOpen } : prev
                   ));
                 }}
-                className="rounded-full px-3 py-1.5 text-xs font-semibold text-th-text hover:bg-th-surface-hover"
+                className={`rounded-full px-4 py-2 text-xs font-bold transition-all ${actionBar.isMoreOpen ? 'bg-th-accent text-th-text-inverse' : 'text-th-text hover:text-th-accent hover:bg-th-accent-muted'
+                  }`}
               >
                 {labels.more}
               </button>

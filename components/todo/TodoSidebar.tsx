@@ -84,17 +84,17 @@ export default function TodoSidebar({
   }[] = useMemo(() => {
     const names = language === 'ko'
       ? {
-          myDay: '오늘 할 일',
-          important: '중요',
-          planned: '계획된 일정',
-          tasks: '작업',
-        }
+        myDay: '오늘 할 일',
+        important: '중요',
+        planned: '계획된 일정',
+        tasks: '작업',
+      }
       : {
-          myDay: 'My Day',
-          important: 'Important',
-          planned: 'Planned',
-          tasks: 'Tasks',
-        };
+        myDay: 'My Day',
+        important: 'Important',
+        planned: 'Planned',
+        tasks: 'Tasks',
+      };
 
     return [
       {
@@ -122,7 +122,7 @@ export default function TodoSidebar({
         id: 'tasks',
         name: names.tasks,
         icon: <Home size={18} />,
-        color: 'text-neon-lime',
+        color: 'text-th-accent',
         filter: (todo) => (!todo.listId || todo.listId === 'tasks') && !todo.completed,
       },
     ];
@@ -155,19 +155,18 @@ export default function TodoSidebar({
             setContextMenuId(null);
           }}
           className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all
-            group/list ${
-              isActive
-                ? 'bg-white/12 border-l-2 border-neon-lime text-white'
-                : 'text-gray-400 hover:bg-white/10 hover:text-white'
+            group/list ${isActive
+              ? 'bg-th-accent-muted border-l-2 border-th-accent text-th-text font-bold'
+              : 'text-th-text-secondary hover:bg-th-surface/50 hover:text-th-text'
             }`}
         >
           <span
             className="w-3 h-3 rounded-full flex-shrink-0"
-            style={{ backgroundColor: list.color || '#CCFF00' }}
+            style={{ backgroundColor: list.color || 'var(--accent)' }}
           />
           <span className="flex-1 text-left truncate">{list.name}</span>
           {count > 0 && (
-            <span className="bg-white/10 text-gray-400 text-xs px-1.5 py-0.5 rounded-full font-mono">
+            <span className="bg-th-surface text-th-text-tertiary text-xs px-1.5 py-0.5 rounded-full font-mono">
               {count}
             </span>
           )}
@@ -176,8 +175,8 @@ export default function TodoSidebar({
               event.stopPropagation();
               setContextMenuId(isContextOpen ? null : list.id);
             }}
-            className="opacity-0 group-hover/list:opacity-100 flex-shrink-0 text-gray-500
-              hover:text-white transition-opacity rounded-lg p-0.5 hover:bg-white/10"
+            className="opacity-0 group-hover/list:opacity-100 flex-shrink-0 text-th-text-tertiary
+              hover:text-th-text transition-opacity rounded-lg p-0.5 hover:bg-th-surface"
           >
             <MoreHorizontal size={14} />
           </button>
@@ -194,7 +193,7 @@ export default function TodoSidebar({
                 onRenameList(list.id);
                 setContextMenuId(null);
               }}
-              className="w-full px-3 py-2 text-left text-sm text-gray-300 hover:bg-white/10
+              className="w-full px-3 py-2 text-left text-sm text-th-text-secondary hover:bg-th-surface
                 flex items-center gap-2"
             >
               <Pencil size={14} /> {ui.rename}
@@ -223,7 +222,7 @@ export default function TodoSidebar({
 
     return (
       <div key={group.id} onClick={() => setContextMenuId(null)}>
-        <div className="relative flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-white/10
+        <div className="relative flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-th-surface/50
           cursor-pointer transition-colors group/grp"
         >
           <button
@@ -231,15 +230,15 @@ export default function TodoSidebar({
               event.stopPropagation();
               onToggleGroupCollapse(group.id);
             }}
-            className="flex-shrink-0 text-gray-500 hover:text-white transition-colors"
+            className="flex-shrink-0 text-th-text-tertiary hover:text-th-text transition-colors"
           >
             {group.isCollapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
           </button>
 
-          <FolderOpen size={16} className="text-gray-500 flex-shrink-0" />
+          <FolderOpen size={16} className="text-th-text-tertiary flex-shrink-0" />
 
           <span
-            className="flex-1 text-sm text-gray-300 truncate"
+            className="flex-1 text-sm text-th-text-secondary truncate"
             onClick={(event) => {
               event.stopPropagation();
               onToggleGroupCollapse(group.id);
@@ -253,8 +252,8 @@ export default function TodoSidebar({
               event.stopPropagation();
               setContextMenuId(isContextOpen ? null : `group-${group.id}`);
             }}
-            className="opacity-0 group-hover/grp:opacity-100 flex-shrink-0 text-gray-500
-              hover:text-white transition-opacity rounded-lg p-0.5 hover:bg-white/10"
+            className="opacity-0 group-hover/grp:opacity-100 flex-shrink-0 text-th-text-tertiary
+              hover:text-th-text transition-opacity rounded-lg p-0.5 hover:bg-th-surface"
           >
             <MoreHorizontal size={14} />
           </button>
@@ -270,7 +269,7 @@ export default function TodoSidebar({
                   onRenameGroup(group.id);
                   setContextMenuId(null);
                 }}
-                className="w-full px-3 py-2 text-left text-sm text-gray-300 hover:bg-white/10
+                className="w-full px-3 py-2 text-left text-sm text-th-text-secondary hover:bg-th-surface
                   flex items-center gap-2"
               >
                 <Pencil size={14} /> {ui.rename}
@@ -295,7 +294,7 @@ export default function TodoSidebar({
   };
 
   return (
-    <div className="apple-glass-panel h-full flex flex-col border-r border-white/10" onClick={() => {
+    <div className="apple-glass-panel h-full flex flex-col border-r border-th-border" onClick={() => {
       setContextMenuId(null);
     }}>
       <div className="px-3 pt-4 pb-2 flex-shrink-0">
@@ -304,7 +303,7 @@ export default function TodoSidebar({
 
       <div className="flex-1 overflow-y-auto py-2 scrollbar-hide">
         <div className="px-3 mb-1">
-          <p className="font-display text-[10px] tracking-widest uppercase text-gray-500 px-3 mb-1">
+          <p className="font-display text-[10px] tracking-widest uppercase text-th-text-tertiary px-3 mb-1">
             {ui.smartSection}
           </p>
           {smartLists.map((list) => {
@@ -317,16 +316,15 @@ export default function TodoSidebar({
                   onSelectList(list.id);
                   setContextMenuId(null);
                 }}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all ${
-                  isActive
-                    ? 'bg-white/12 text-white'
-                    : 'text-gray-400 hover:bg-white/10 hover:text-white'
-                }`}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all ${isActive
+                  ? 'bg-th-accent-muted text-th-text font-bold'
+                  : 'text-th-text-secondary hover:bg-th-surface/50 hover:text-th-text'
+                  }`}
               >
                 <span className={`flex-shrink-0 ${isActive ? list.color : ''}`}>{list.icon}</span>
                 <span className="flex-1 text-left truncate">{list.name}</span>
                 {count > 0 && (
-                  <span className="bg-white/10 text-gray-400 text-xs px-1.5 py-0.5 rounded-full font-mono">
+                  <span className="bg-th-surface text-th-text-tertiary text-xs px-1.5 py-0.5 rounded-full font-mono">
                     {count}
                   </span>
                 )}
@@ -335,11 +333,11 @@ export default function TodoSidebar({
           })}
         </div>
 
-        <div className="border-t border-white/10 mx-3 my-2" />
+        <div className="border-t border-th-border mx-3 my-2" />
 
         {(ungroupedLists.length > 0 || sortedGroups.length > 0) && (
           <div className="px-3">
-            <p className="font-display text-[10px] tracking-widest uppercase text-gray-500 px-3 mb-1">
+            <p className="font-display text-[10px] tracking-widest uppercase text-th-text-tertiary px-3 mb-1">
               {ui.customSection}
             </p>
             {ungroupedLists.map((list) => renderListItem(list))}
@@ -348,17 +346,17 @@ export default function TodoSidebar({
         )}
       </div>
 
-      <div className="flex items-center gap-1 px-3 py-2.5 border-t border-white/10 flex-shrink-0">
+      <div className="flex items-center gap-1 px-3 py-2.5 border-t border-th-border flex-shrink-0">
         <button
           onClick={onCreateList}
-          className="flex-1 flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-400
-            hover:bg-white/10 hover:text-neon-lime transition-colors"
+          className="flex-1 flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-th-text-secondary
+            hover:bg-th-surface hover:text-th-accent transition-colors"
         >
           <ListPlus size={16} /> {ui.createList}
         </button>
         <button
           onClick={onCreateGroup}
-          className="p-2 rounded-lg text-gray-400 hover:bg-white/10 hover:text-neon-lime transition-colors"
+          className="p-2 rounded-lg text-th-text-secondary hover:bg-th-surface hover:text-th-accent transition-colors"
           title={ui.createGroup}
         >
           <FolderPlus size={16} />

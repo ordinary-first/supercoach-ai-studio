@@ -18,61 +18,61 @@ type ViewMode = 'month' | 'week' | 'list' | 'day';
 // Logic to check if the targetDate falls on the recurrence pattern of the task.
 // Since we have complex patterns (Weekly-2, Weekly-3), we need to simulate the sequence.
 const checkRecurrenceMatch = (todo: ToDoItem, targetDate: Date): boolean => {
-    if (!todo.repeat) return false;
+  if (!todo.repeat) return false;
 
-    // Use DueDate or CreatedAt as the anchor
-    const anchorTimestamp = todo.dueDate || todo.createdAt;
+  // Use DueDate or CreatedAt as the anchor
+  const anchorTimestamp = todo.dueDate || todo.createdAt;
 
-    // Normalize dates to start of day
-    const target = new Date(targetDate);
-    target.setHours(0,0,0,0);
-    const start = new Date(anchorTimestamp);
-    start.setHours(0,0,0,0);
+  // Normalize dates to start of day
+  const target = new Date(targetDate);
+  target.setHours(0, 0, 0, 0);
+  const start = new Date(anchorTimestamp);
+  start.setHours(0, 0, 0, 0);
 
-    // If target is before start, it's not a match
-    if (target.getTime() < start.getTime()) return false;
+  // If target is before start, it's not a match
+  if (target.getTime() < start.getTime()) return false;
 
-    // --- OPTIMIZED CHECKS ---
-    const day = target.getDay();
+  // --- OPTIMIZED CHECKS ---
+  const day = target.getDay();
 
-    if (todo.repeat === 'daily') return true;
+  if (todo.repeat === 'daily') return true;
 
-    if (todo.repeat === 'weekdays') {
-        return day !== 0 && day !== 6; // Mon-Fri
-    }
+  if (todo.repeat === 'weekdays') {
+    return day !== 0 && day !== 6; // Mon-Fri
+  }
 
-    if (todo.repeat === 'weekly') {
-        return day === start.getDay();
-    }
+  if (todo.repeat === 'weekly') {
+    return day === start.getDay();
+  }
 
-    if (todo.repeat === 'monthly') {
-        return target.getDate() === start.getDate();
-    }
+  if (todo.repeat === 'monthly') {
+    return target.getDate() === start.getDate();
+  }
 
-    // --- COMPLEX PATTERN SIMULATION ---
-    /*
-       Pattern Logic based on App.tsx calculateNextDate:
-       Weekly-2: Mon(1), Thu(4)  (If started on other days, it snaps to this pattern)
-       Weekly-3: Mon(1), Wed(3), Fri(5)
-       Weekly-4: Mon(1), Tue(2), Thu(4), Fri(5)
-       Weekly-5: Weekdays (Mon-Fri)
-       Weekly-6: Mon-Sat
-    */
+  // --- COMPLEX PATTERN SIMULATION ---
+  /*
+     Pattern Logic based on App.tsx calculateNextDate:
+     Weekly-2: Mon(1), Thu(4)  (If started on other days, it snaps to this pattern)
+     Weekly-3: Mon(1), Wed(3), Fri(5)
+     Weekly-4: Mon(1), Tue(2), Thu(4), Fri(5)
+     Weekly-5: Weekdays (Mon-Fri)
+     Weekly-6: Mon-Sat
+  */
 
-    switch (todo.repeat) {
-        case 'weekly-2':
-            return day === 1 || day === 4;
-        case 'weekly-3':
-            return day === 1 || day === 3 || day === 5;
-        case 'weekly-4':
-            return day === 1 || day === 2 || day === 4 || day === 5;
-        case 'weekly-5':
-            return day >= 1 && day <= 5;
-        case 'weekly-6':
-            return day >= 1 && day <= 6;
-        default:
-            return false;
-    }
+  switch (todo.repeat) {
+    case 'weekly-2':
+      return day === 1 || day === 4;
+    case 'weekly-3':
+      return day === 1 || day === 3 || day === 5;
+    case 'weekly-4':
+      return day === 1 || day === 2 || day === 4 || day === 5;
+    case 'weekly-5':
+      return day >= 1 && day <= 5;
+    case 'weekly-6':
+      return day >= 1 && day <= 6;
+    default:
+      return false;
+  }
 }
 
 const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onToggleToDo, viewMode: externalViewMode, onViewModeChange }) => {
@@ -169,8 +169,8 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
 
   // Original getTodosForDate for month view (uses year/month from currentDate)
   const getTodosForDate = (day: number) => {
-      const targetDate = new Date(year, month, day);
-      return getTodosForDateGeneric(targetDate);
+    const targetDate = new Date(year, month, day);
+    return getTodosForDateGeneric(targetDate);
   };
 
   // Navigation handlers
@@ -298,18 +298,18 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
     let glowEffect = "";
 
     if (todo.completed) {
-      itemStyle = "bg-gradient-to-r from-neon-lime/80 to-green-400/80 text-black border border-white/50";
+      itemStyle = "bg-gradient-to-r from-th-accent to-blue-400 text-th-text-inverse border border-th-accent/20";
       glowEffect = "shadow-[0_0_12px_var(--shadow-glow)] z-10 scale-[1.02]";
-      icon = <Trophy size={10} className="fill-black text-black" />;
+      icon = <Trophy size={10} className="fill-current" />;
     } else if (isGhost) {
-      itemStyle = "bg-th-surface text-th-text-tertiary border border-th-border-subtle border-dashed backdrop-blur-[2px] cursor-not-allowed";
+      itemStyle = "bg-th-surface/30 text-th-text-tertiary border border-th-border border-dashed backdrop-blur-[2px] cursor-not-allowed";
       icon = <Lock size={10} className="text-th-text-muted" />;
     } else if (isPastDate && !todo.completed) {
-      itemStyle = "bg-th-elevated text-th-text-tertiary border border-th-border opacity-60 grayscale";
-      icon = <AlertCircle size={10} className="text-red-900" />;
+      itemStyle = "bg-th-surface text-red-500/80 border border-red-500/10 opacity-60 grayscale";
+      icon = <AlertCircle size={10} className="text-current" />;
     } else {
-      itemStyle = "bg-th-surface text-gray-300 border border-th-border backdrop-blur-sm";
-      icon = <Lock size={10} className="text-th-text-secondary" />;
+      itemStyle = "bg-th-surface text-th-text-secondary border border-th-border backdrop-blur-sm";
+      icon = <Lock size={10} className="text-th-text-tertiary" />;
     }
 
     return (
@@ -340,69 +340,69 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
 
   // ==================== MONTH VIEW ====================
   const renderCalendarDays = () => {
-      const days = [];
-      const totalCellsNeeded = startDay + daysInMonth;
-      const totalRows = Math.ceil(totalCellsNeeded / 7);
-      const totalSlots = totalRows * 7;
+    const days = [];
+    const totalCellsNeeded = startDay + daysInMonth;
+    const totalRows = Math.ceil(totalCellsNeeded / 7);
+    const totalSlots = totalRows * 7;
 
-      // Prev Month (Placeholder)
-      for (let i = startDay - 1; i >= 0; i--) {
-          days.push(
-              <div key={`prev-${i}`} className="min-h-0 md:min-h-0 bg-th-header border-b border-r border-th-border-subtle opacity-20 p-1 text-th-text-muted font-mono text-xs">
-                  {prevMonthDays - i}
+    // Prev Month (Placeholder)
+    for (let i = startDay - 1; i >= 0; i--) {
+      days.push(
+        <div key={`prev-${i}`} className="min-h-0 md:min-h-0 bg-th-header border-b border-r border-th-border-subtle opacity-20 p-1 text-th-text-muted font-mono text-xs">
+          {prevMonthDays - i}
+        </div>
+      );
+    }
+
+    // Current Month
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dateObj = new Date(year, month, day);
+      const isToday = normalizeDate(new Date()) === normalizeDate(dateObj);
+      const isPastDate = normalizeDate(dateObj) < normalizeDate(new Date());
+
+      const dayTodos = getTodosForDate(day);
+
+      days.push(
+        <div
+          key={`curr-${day}`}
+          onClick={() => handleDayClick(dateObj)}
+          className={`min-h-0 md:min-h-0 border-b border-r border-th-border p-1 relative group transition-all duration-300 cursor-pointer ${isToday ? 'bg-th-accent-muted shadow-[inset_0_0_20px_var(--shadow-glow)]' : 'bg-transparent hover:bg-th-surface'}`}
+        >
+          {/* Date Header */}
+          <div className="flex justify-between items-start mb-0.5">
+            <span className={`text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full transition-all ${isToday ? 'bg-th-accent text-th-text-inverse shadow-[0_0_10px_var(--shadow-glow)]' : 'text-th-text-secondary group-hover:text-th-text'}`}>
+              {day}
+            </span>
+          </div>
+
+          {/* Tasks Container */}
+          <div className="space-y-1.5 overflow-y-auto max-h-[28px] md:max-h-[80px] scrollbar-hide">
+            {dayTodos.map((todo: any) => renderTodoCell(todo, isPastDate, todo.isGhost))}
+
+            {/* Empty State placeholder for Today */}
+            {dayTodos.length === 0 && isToday && (
+              <div className="h-full flex items-center justify-center pt-2 opacity-30">
+                <div className="border border-dashed border-th-border rounded px-2 py-1 text-[9px] text-th-text-tertiary flex items-center gap-1">
+                  <Star size={8} /> {t.calendar.noMission}
+                </div>
               </div>
-          );
-      }
+            )}
+          </div>
+        </div>
+      );
+    }
 
-      // Current Month
-      for (let day = 1; day <= daysInMonth; day++) {
-          const dateObj = new Date(year, month, day);
-          const isToday = normalizeDate(new Date()) === normalizeDate(dateObj);
-          const isPastDate = normalizeDate(dateObj) < normalizeDate(new Date());
+    // Next Month Padding
+    const remainingSlots = totalSlots - days.length;
+    for (let i = 1; i <= remainingSlots; i++) {
+      days.push(
+        <div key={`next-${i}`} className="min-h-0 md:min-h-0 bg-th-header border-b border-r border-th-border-subtle opacity-20 p-1 text-th-text-muted font-mono text-xs">
+          {i}
+        </div>
+      );
+    }
 
-          const dayTodos = getTodosForDate(day);
-
-          days.push(
-              <div
-                key={`curr-${day}`}
-                onClick={() => handleDayClick(dateObj)}
-                className={`min-h-0 md:min-h-0 border-b border-r border-th-border p-1 relative group transition-all duration-300 cursor-pointer ${isToday ? 'bg-th-surface shadow-[inset_0_0_20px_var(--shadow-glow)]' : 'bg-transparent hover:bg-white/[0.07]'}`}
-              >
-                  {/* Date Header */}
-                  <div className="flex justify-between items-start mb-0.5">
-                      <span className={`text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full transition-all ${isToday ? 'bg-th-accent text-th-text-inverse shadow-[0_0_10px_var(--shadow-glow)]' : 'text-th-text-secondary group-hover:text-th-text'}`}>
-                          {day}
-                      </span>
-                  </div>
-
-                  {/* Tasks Container */}
-                  <div className="space-y-1.5 overflow-y-auto max-h-[28px] md:max-h-[80px] scrollbar-hide">
-                      {dayTodos.map((todo: any) => renderTodoCell(todo, isPastDate, todo.isGhost))}
-
-                      {/* Empty State placeholder for Today */}
-                      {dayTodos.length === 0 && isToday && (
-                          <div className="h-full flex items-center justify-center pt-2 opacity-30">
-                              <div className="border border-dashed border-th-border rounded px-2 py-1 text-[9px] text-th-text-tertiary flex items-center gap-1">
-                                  <Star size={8} /> {t.calendar.noMission}
-                              </div>
-                          </div>
-                      )}
-                  </div>
-              </div>
-          );
-      }
-
-      // Next Month Padding
-      const remainingSlots = totalSlots - days.length;
-      for (let i = 1; i <= remainingSlots; i++) {
-          days.push(
-              <div key={`next-${i}`} className="min-h-0 md:min-h-0 bg-th-header border-b border-r border-th-border-subtle opacity-20 p-1 text-th-text-muted font-mono text-xs">
-                  {i}
-              </div>
-          );
-      }
-
-      return days;
+    return days;
   };
 
   // ==================== WEEK VIEW ====================
@@ -422,21 +422,18 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
         <div
           key={`week-${i}`}
           onClick={() => handleDayClick(dateObj)}
-          className={`flex-1 flex items-stretch border-b border-th-border cursor-pointer transition-all duration-200 min-h-[56px] ${
-            isToday
+          className={`flex-1 flex items-stretch border-b border-th-border cursor-pointer transition-all duration-200 min-h-[56px] ${isToday
               ? 'bg-th-surface'
               : 'hover:bg-white/[0.03]'
-          }`}
+            }`}
         >
           {/* Date column */}
-          <div className={`w-16 shrink-0 flex flex-col items-center justify-center py-2 border-r border-th-border ${
-            dayOfWeek === 0 ? 'text-red-400' : dayOfWeek === 6 ? 'text-blue-400' : ''
-          }`}>
-            <span className={`text-lg font-bold font-display ${
-              isToday
+          <div className={`w-16 shrink-0 flex flex-col items-center justify-center py-2 border-r border-th-border ${dayOfWeek === 0 ? 'text-red-400' : dayOfWeek === 6 ? 'text-blue-400' : ''
+            }`}>
+            <span className={`text-lg font-bold font-display ${isToday
                 ? 'w-8 h-8 flex items-center justify-center rounded-full bg-th-accent text-th-text-inverse shadow-[0_0_10px_var(--shadow-glow)]'
                 : 'text-gray-300'
-            }`}>
+              }`}>
               {dateObj.getDate()}
             </span>
             <span className={`text-[10px] mt-0.5 ${isToday ? 'text-th-accent font-bold' : 'text-th-text-tertiary'}`}>
@@ -498,10 +495,10 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
         statusLabel = t.calendar.status.missed;
         labelStyle = "text-red-400/80 bg-red-500/10";
       } else {
-        cardStyle = "bg-th-surface border-white/15 hover:border-white/30 hover:bg-th-surface-hover";
+        cardStyle = "bg-th-surface border-th-border hover:border-th-accent/50 hover:bg-th-surface-hover";
         icon = <CheckCircle2 size={18} className="text-th-text-secondary" />;
         statusLabel = isToday ? t.calendar.status.inProgress : t.calendar.status.scheduled;
-        labelStyle = isToday ? "text-blue-400 bg-blue-500/10" : "text-th-text-secondary bg-th-surface";
+        labelStyle = isToday ? "text-th-accent bg-th-accent-muted" : "text-th-text-secondary bg-th-surface";
       }
 
       return (
@@ -649,15 +646,13 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
                 <div
                   data-today={isToday ? "true" : undefined}
                   onClick={() => handleDayClick(date)}
-                  className={`sticky top-0 z-10 flex items-center gap-3 px-3 py-2 cursor-pointer rounded-lg transition-colors ${
-                    isToday
+                  className={`sticky top-0 z-10 flex items-center gap-3 px-3 py-2 cursor-pointer rounded-lg transition-colors ${isToday
                       ? 'bg-neon-lime/10 border border-neon-lime/20'
                       : 'bg-th-overlay backdrop-blur-sm hover:bg-th-surface'
-                  }`}
+                    }`}
                 >
-                  <span className={`text-lg font-bold font-display ${
-                    isToday ? 'text-th-accent' : dayOfWeek === 0 ? 'text-red-400' : dayOfWeek === 6 ? 'text-blue-400' : 'text-gray-300'
-                  }`}>
+                  <span className={`text-lg font-bold font-display ${isToday ? 'text-th-accent' : dayOfWeek === 0 ? 'text-red-400' : dayOfWeek === 6 ? 'text-blue-400' : 'text-gray-300'
+                    }`}>
                     {date.getDate()}
                   </span>
                   <span className={`text-xs ${isToday ? 'text-th-accent font-bold' : 'text-th-text-tertiary'}`}>
@@ -692,83 +687,83 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
   return (
     <div ref={focusTrapRef} className="apple-tab-shell fixed inset-0 z-50 flex flex-col font-body text-th-text">
 
-        {/* Ambient Background Glow */}
-        <div className="absolute top-0 left-1/4 w-1/2 h-1/2 bg-neon-lime/5 rounded-full blur-[150px] pointer-events-none"></div>
+      {/* Ambient Background Glow */}
+      <div className="absolute top-0 left-1/4 w-1/2 h-1/2 bg-neon-lime/5 rounded-full blur-[150px] pointer-events-none"></div>
 
-        {/* Header */}
-        <div className="apple-glass-header px-3 md:px-8 py-1.5 md:py-2 flex gap-2 md:gap-3 justify-between items-center z-10">
-            <div className="flex items-center gap-3 md:gap-6">
-                {/* Back button in day view */}
-                {viewMode === 'day' && (
-                  <button
-                    onClick={handleBackFromDay}
-                    className="flex items-center gap-2 text-th-text-secondary hover:text-th-text transition-colors p-1.5 rounded-full hover:bg-th-surface-hover"
-                    aria-label={t.common.back}
-                  >
-                    <ArrowLeft size={20} />
-                  </button>
-                )}
+      {/* Header */}
+      <div className="apple-glass-header px-3 md:px-8 py-1.5 md:py-2 flex gap-2 md:gap-3 justify-between items-center z-10">
+        <div className="flex items-center gap-3 md:gap-6">
+          {/* Back button in day view */}
+          {viewMode === 'day' && (
+            <button
+              onClick={handleBackFromDay}
+              className="flex items-center gap-2 text-th-text-secondary hover:text-th-text transition-colors p-1.5 rounded-full hover:bg-th-surface-hover"
+              aria-label={t.common.back}
+            >
+              <ArrowLeft size={20} />
+            </button>
+          )}
 
-                {/* Navigation */}
-                <div className="flex items-center gap-2">
-                    <button onClick={handlePrev} className="p-1.5 rounded-full hover:bg-th-surface-hover text-th-text-secondary hover:text-th-text transition-colors" aria-label={t.calendar.prev}>
-                      <ChevronLeft size={18}/>
-                    </button>
-                    <h2 className={`apple-tab-title font-bold text-th-text text-center font-display tracking-wide ${viewMode === 'day' ? 'text-sm md:text-base min-w-[180px]' : 'text-base min-w-[120px]'}`}>
-                        {getHeaderTitle()}
-                    </h2>
-                    <button onClick={handleNext} className="p-1.5 rounded-full hover:bg-th-surface-hover text-th-text-secondary hover:text-th-text transition-colors" aria-label={t.calendar.next}>
-                      <ChevronRight size={18}/>
-                    </button>
-                </div>
-
-            </div>
+          {/* Navigation */}
+          <div className="flex items-center gap-2">
+            <button onClick={handlePrev} className="p-1.5 rounded-full hover:bg-th-surface-hover text-th-text-secondary hover:text-th-text transition-colors" aria-label={t.calendar.prev}>
+              <ChevronLeft size={18} />
+            </button>
+            <h2 className={`apple-tab-title font-bold text-th-text text-center font-display tracking-wide ${viewMode === 'day' ? 'text-sm md:text-base min-w-[180px]' : 'text-base min-w-[120px]'}`}>
+              {getHeaderTitle()}
+            </h2>
+            <button onClick={handleNext} className="p-1.5 rounded-full hover:bg-th-surface-hover text-th-text-secondary hover:text-th-text transition-colors" aria-label={t.calendar.next}>
+              <ChevronRight size={18} />
+            </button>
+          </div>
 
         </div>
 
-        {/* ==================== CONTENT AREA ==================== */}
+      </div>
 
-        {/* Month View */}
-        {viewMode === 'month' && (
-          <div className="flex-1 overflow-hidden flex flex-col p-1 md:p-3 lg:p-6 pb-[56px] md:pb-[64px] relative z-0 animate-in fade-in duration-300">
-              {/* Week Headers */}
-              <div className="apple-glass-panel grid grid-cols-7 border-b border-th-border mb-0 rounded-t-lg">
-                  {dayNames.map((day, idx) => (
-                      <div key={day} className={`text-center py-1.5 font-display font-bold text-[10px] tracking-wider ${idx === 0 ? 'text-red-400' : (idx === 6 ? 'text-blue-400' : 'text-th-text-secondary')}`}>
-                          {day}
-                      </div>
-                  ))}
+      {/* ==================== CONTENT AREA ==================== */}
+
+      {/* Month View */}
+      {viewMode === 'month' && (
+        <div className="flex-1 overflow-hidden flex flex-col p-1 md:p-3 lg:p-6 pb-[56px] md:pb-[64px] relative z-0 animate-in fade-in duration-300">
+          {/* Week Headers */}
+          <div className="apple-glass-panel grid grid-cols-7 border-b border-th-border mb-0 rounded-t-lg">
+            {dayNames.map((day, idx) => (
+              <div key={day} className={`text-center py-1.5 font-display font-bold text-[10px] tracking-wider ${idx === 0 ? 'text-red-400' : (idx === 6 ? 'text-blue-400' : 'text-th-text-secondary')}`}>
+                {day}
               </div>
-
-              {/* Days */}
-              <div className="apple-glass-panel grid grid-cols-7 flex-1 border-l border-th-border auto-rows-fr rounded-b-lg overflow-hidden">
-                   {renderCalendarDays()}
-              </div>
+            ))}
           </div>
-        )}
 
-        {/* Week View (Vertical) */}
-        {viewMode === 'week' && (
-          <div className="flex-1 overflow-y-auto flex flex-col p-1 md:p-3 pb-[56px] md:pb-[64px] relative z-0 animate-in fade-in duration-300">
-            <div className="apple-glass-panel flex-1 flex flex-col rounded-lg overflow-hidden">
-              {renderWeekDays()}
-            </div>
+          {/* Days */}
+          <div className="apple-glass-panel grid grid-cols-7 flex-1 border-l border-th-border auto-rows-fr rounded-b-lg overflow-hidden">
+            {renderCalendarDays()}
           </div>
-        )}
+        </div>
+      )}
 
-        {/* List View */}
-        {viewMode === 'list' && (
-          <div className="flex-1 overflow-hidden flex flex-col animate-in fade-in duration-300">
-            {renderListView()}
+      {/* Week View (Vertical) */}
+      {viewMode === 'week' && (
+        <div className="flex-1 overflow-y-auto flex flex-col p-1 md:p-3 pb-[56px] md:pb-[64px] relative z-0 animate-in fade-in duration-300">
+          <div className="apple-glass-panel flex-1 flex flex-col rounded-lg overflow-hidden">
+            {renderWeekDays()}
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Day Detail View */}
-        {viewMode === 'day' && (
-          <div className="flex-1 overflow-hidden flex flex-col animate-in fade-in duration-300">
-            {renderDayView()}
-          </div>
-        )}
+      {/* List View */}
+      {viewMode === 'list' && (
+        <div className="flex-1 overflow-hidden flex flex-col animate-in fade-in duration-300">
+          {renderListView()}
+        </div>
+      )}
+
+      {/* Day Detail View */}
+      {viewMode === 'day' && (
+        <div className="flex-1 overflow-hidden flex flex-col animate-in fade-in duration-300">
+          {renderDayView()}
+        </div>
+      )}
     </div>
   );
 };

@@ -136,13 +136,13 @@ const ChatInput: FC<ChatInputProps> = ({
       className="apple-glass-header flex flex-col gap-2 px-3 pb-3 pt-2"
       style={keyboardHeight > 0
         ? {
-            position: 'fixed',
-            bottom: `${keyboardHeight}px`,
-            left: 0,
-            right: 0,
-            zIndex: 60,
-            paddingBottom: 12,
-          }
+          position: 'fixed',
+          bottom: `${keyboardHeight}px`,
+          left: 0,
+          right: 0,
+          zIndex: 60,
+          paddingBottom: 12,
+        }
         : undefined}
     >
       {referenceImages.length > 0 && (
@@ -153,8 +153,8 @@ const ChatInput: FC<ChatInputProps> = ({
               <button
                 type="button"
                 onClick={() => onRemoveImage(index)}
-                className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-black/70 text-white
-                  flex items-center justify-center"
+                className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-th-overlay/70 text-th-text-inverse
+                  flex items-center justify-center border border-th-border/20"
               >
                 <X size={10} />
               </button>
@@ -172,16 +172,15 @@ const ChatInput: FC<ChatInputProps> = ({
                 <button
                   type="button"
                   onClick={() => handleToggle(key)}
-                  className={`transition-transform duration-150 ${
-                    active ? 'text-th-accent scale-105' : 'text-white/35 hover:text-white/70'
-                  }`}
+                  className={`transition-transform duration-150 ${active ? 'text-th-accent scale-105' : 'text-th-text-tertiary hover:text-th-text'
+                    }`}
                 >
                   <Icon size={20} />
                 </button>
                 {active && <div className="absolute bottom-[-4px] w-1 h-1 rounded-full bg-th-accent" />}
 
                 {key === 'image' && showQualityPopup && settings.image && (
-                  <div className="apple-glass-panel absolute bottom-full mb-2 flex gap-1 rounded-xl p-1.5 z-50">
+                  <div className="apple-glass-panel absolute bottom-full mb-2 flex gap-1 rounded-xl p-1.5 z-50 shadow-xl">
                     {(['medium', 'high'] as const).map((quality) => (
                       <button
                         key={quality}
@@ -190,9 +189,8 @@ const ChatInput: FC<ChatInputProps> = ({
                           onImageQualityChange(quality);
                           setShowQualityPopup(false);
                         }}
-                        className={`text-xs px-2 py-1 rounded-lg ${
-                          imageQuality === quality ? 'bg-white/20 text-white' : 'text-white/70'
-                        }`}
+                        className={`text-[11px] px-2.5 py-1 rounded-lg font-medium transition-colors ${imageQuality === quality ? 'bg-th-accent text-th-text-inverse' : 'text-th-text-secondary hover:bg-th-surface'
+                          }`}
                       >
                         {quality === 'medium'
                           ? language === 'ko' ? '보통' : 'Medium'
@@ -211,7 +209,7 @@ const ChatInput: FC<ChatInputProps> = ({
           onClick={onGenerate}
           disabled={isGenerating}
           className="flex items-center gap-1.5 h-8 rounded-full bg-th-accent px-3.5 text-[13px]
-            font-bold text-black active:scale-[0.97] transition-transform"
+            font-bold text-th-text-inverse active:scale-[0.97] transition-transform shadow-sm"
         >
           {isGenerating ? (
             <Loader2 size={14} className="animate-spin" />
@@ -224,11 +222,11 @@ const ChatInput: FC<ChatInputProps> = ({
         </button>
       </div>
 
-      <div className="apple-card flex items-end gap-2 rounded-[22px] px-3 py-2 min-h-11">
+      <div className="apple-card flex items-end gap-2 rounded-[22px] px-3 py-2 min-h-11 shadow-sm border-th-border/30">
         <button
           type="button"
           onClick={() => fileRef.current?.click()}
-          className="text-white/40 hover:text-white/80 mb-0.5"
+          className="text-th-text-tertiary hover:text-th-text mb-0.5"
         >
           <Paperclip size={20} />
         </button>
@@ -243,15 +241,14 @@ const ChatInput: FC<ChatInputProps> = ({
           placeholder={t.visualization.scenePlaceholder}
           rows={1}
           className="flex-1 resize-none bg-transparent border-none outline-none text-sm leading-6
-            text-white/90 max-h-[120px]"
+            text-th-text placeholder:text-th-text-muted max-h-[120px]"
         />
 
         <button
           type="button"
           onClick={handleSend}
-          className={`w-7 h-7 rounded-full mb-0.5 flex items-center justify-center transition-colors ${
-            hasText ? 'bg-th-accent text-black' : 'bg-white/10 text-white/40'
-          }`}
+          className={`w-7 h-7 rounded-full mb-0.5 flex items-center justify-center transition-colors ${hasText ? 'bg-th-accent text-th-text-inverse shadow-sm' : 'bg-th-surface border border-th-border text-th-text-tertiary'
+            }`}
         >
           <Send size={14} />
         </button>

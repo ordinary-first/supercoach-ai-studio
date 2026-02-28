@@ -75,11 +75,11 @@ const BottomDock: React.FC<BottomDockProps> = ({
     if (!showCalendarPopup && !showLayoutPopup) return;
     const handleClickOutside = (event: MouseEvent) => {
       if (showCalendarPopup && calendarPopupRef.current &&
-          !calendarPopupRef.current.contains(event.target as Node)) {
+        !calendarPopupRef.current.contains(event.target as Node)) {
         setShowCalendarPopup(false);
       }
       if (showLayoutPopup && layoutPopupRef.current &&
-          !layoutPopupRef.current.contains(event.target as Node)) {
+        !layoutPopupRef.current.contains(event.target as Node)) {
         setShowLayoutPopup(false);
       }
     };
@@ -150,10 +150,9 @@ const BottomDock: React.FC<BottomDockProps> = ({
                 }}
                 {...longPressHandlers}
                 className={`relative group flex flex-col items-center justify-center w-11 h-11 rounded-xl
-                  transition-all duration-300 ${
-                    isActive
-                      ? 'bg-white/12 text-th-accent shadow-[0_0_18px_var(--shadow-glow)]'
-                      : 'text-th-text-secondary hover:text-th-text hover:bg-white/8'
+                  transition-all duration-300 ${isActive
+                    ? 'bg-th-accent-muted text-th-accent shadow-[0_0_18px_var(--shadow-glow)]'
+                    : 'text-th-text-secondary hover:text-th-text hover:bg-th-surface/50'
                   }`}
                 aria-label={tab.label}
                 aria-current={isActive ? 'page' : undefined}
@@ -162,9 +161,8 @@ const BottomDock: React.FC<BottomDockProps> = ({
                   {tab.icon}
                 </div>
                 <span
-                  className={`text-[9px] font-display mt-0.5 tracking-wide transition-opacity duration-300 ${
-                    isActive ? 'opacity-100 font-bold' : 'opacity-70'
-                  }`}
+                  className={`text-[9px] font-display mt-0.5 tracking-wide transition-opacity duration-300 ${isActive ? 'opacity-100 font-bold' : 'opacity-70'
+                    }`}
                 >
                   {tab.label}
                 </span>
@@ -189,11 +187,10 @@ const BottomDock: React.FC<BottomDockProps> = ({
                         onTabChange('CALENDAR');
                         setShowCalendarPopup(false);
                       }}
-                      className={`w-full px-4 py-2.5 text-sm text-left transition-colors cursor-pointer select-none ${
-                        calendarViewMode === item.mode
-                          ? 'text-th-accent font-bold bg-th-surface'
-                          : 'text-gray-300 hover:text-th-text hover:bg-th-surface'
-                      }`}
+                      className={`w-full px-4 py-2.5 text-sm text-left transition-colors cursor-pointer select-none ${calendarViewMode === item.mode
+                        ? 'text-th-accent font-bold bg-th-surface'
+                        : 'text-th-text-secondary hover:text-th-text hover:bg-th-surface'
+                        }`}
                     >
                       {item.label}
                       {calendarViewMode === item.mode && ' ✓'}
@@ -217,11 +214,10 @@ const BottomDock: React.FC<BottomDockProps> = ({
                         onTabChange('GOALS');
                         setShowLayoutPopup(false);
                       }}
-                      className={`w-full px-4 py-2.5 text-sm text-left transition-colors cursor-pointer select-none ${
-                        mindmapLayout === item.mode
-                          ? 'text-th-accent font-bold bg-th-surface'
-                          : 'text-gray-300 hover:text-th-text hover:bg-th-surface'
-                      }`}
+                      className={`w-full px-4 py-2.5 text-sm text-left transition-colors cursor-pointer select-none ${mindmapLayout === item.mode
+                        ? 'text-th-accent font-bold bg-th-surface'
+                        : 'text-th-text-secondary hover:text-th-text hover:bg-th-surface'
+                        }`}
                     >
                       {item.label}
                       {mindmapLayout === item.mode && ' ✓'}

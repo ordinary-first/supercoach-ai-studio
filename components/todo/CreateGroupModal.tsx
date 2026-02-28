@@ -55,23 +55,23 @@ const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[60] flex items-center justify-center p-4">
-      <div className="apple-glass-panel w-full max-w-md rounded-2xl flex flex-col">
-        <div className="apple-glass-header flex items-center justify-between px-6 pt-6 pb-4">
-          <h2 className="font-display font-bold tracking-wide text-white text-lg">
+    <div className="fixed inset-0 bg-th-overlay/60 backdrop-blur-md z-[60] flex items-center justify-center p-4">
+      <div className="apple-glass-panel w-full max-w-sm rounded-[24px] flex flex-col shadow-2xl border border-th-border/20 overflow-hidden">
+        <div className="apple-glass-header flex items-center justify-between px-6 pt-6 pb-4 border-b border-th-border/10">
+          <h2 className="font-display font-bold tracking-tight text-th-text text-xl">
             {initialName ? ui.editTitle : ui.createTitle}
           </h2>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+            className="p-2 rounded-full hover:bg-th-surface-hover text-th-text-tertiary hover:text-th-text transition-colors"
           >
-            <X size={18} />
+            <X size={20} />
           </button>
         </div>
 
-        <div className="px-6 py-5">
-          <div className="flex flex-col gap-2">
-            <label className="text-xs font-body text-gray-400 tracking-wider uppercase">
+        <div className="px-6 py-6">
+          <div className="flex flex-col gap-2.5">
+            <label className="text-[10px] font-bold text-th-text-tertiary tracking-widest uppercase px-1">
               {ui.nameLabel}
             </label>
             <input
@@ -81,8 +81,9 @@ const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
               onKeyDown={handleKeyDown}
               placeholder={ui.namePlaceholder}
               autoFocus
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white
-                placeholder-gray-500 focus:outline-none focus:border-neon-lime/50 transition-colors"
+              className="w-full bg-th-surface border border-th-border rounded-xl px-4 py-3 text-sm
+                text-th-text placeholder:text-th-text-muted focus:outline-none focus:border-th-accent-border
+                focus:ring-2 focus:ring-th-accent/10 transition-all shadow-sm"
             />
           </div>
         </div>
@@ -90,16 +91,16 @@ const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
         <div className="flex items-center justify-end gap-3 px-6 pb-6 pt-2">
           <button
             onClick={onClose}
-            className="px-5 py-2 rounded-xl text-sm font-body text-gray-400 hover:text-white
-              hover:bg-white/10 transition-colors"
+            className="px-6 py-2.5 rounded-xl text-sm font-semibold text-th-text-secondary hover:text-th-text
+              hover:bg-th-surface-hover transition-all"
           >
             {t.common.cancel}
           </button>
           <button
             onClick={handleSave}
             disabled={!name.trim()}
-            className="px-5 py-2 rounded-xl text-sm font-body font-semibold bg-neon-lime text-deep-space
-              hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+            className="px-7 py-2.5 rounded-xl text-sm font-bold bg-th-accent text-th-text-inverse
+              hover:brightness-110 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-md active:scale-95"
           >
             {t.common.save}
           </button>

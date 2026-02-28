@@ -1,0 +1,22 @@
+{
+  "summary": {
+    "mode": "journey-random",
+    "devAuthMode": "custom-token",
+    "users": 1,
+    "actionsPerUser": 32,
+    "totalScenarios": 1,
+    "uniqueScenarioSignatures": 1,
+    "scenariosWithErrors": 0,
+    "totalErrors": 0,
+    "topIssueFingerprints": []
+  },
+  "runs": [
+    {
+      "scenarioId": 100,
+      "mobile": true,
+      "errors": [],
+      "actionErrors": [],
+      "signature": "tab-goals-start > settings-toggle-language > tab-calendar > calendar-interact > settings-toggle-theme > tab-todo > todo-add > todo-toggle-first > feedback-heavy-scroll > tab-goals-peek > tab-feedback > feedback-interact > viewport-jitter > coach-open-close > tab-visualize > visualize-interact > tab-goals-end"
+    }
+  ]
+}

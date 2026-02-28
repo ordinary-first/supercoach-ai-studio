@@ -113,11 +113,10 @@ const DreamChat: FC<DreamChatProps> = ({
             return (
               <div key={message.id} className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
                 <div
-                  className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
-                    isUser
-                      ? 'bg-th-accent/90 text-black rounded-tr-sm'
-                      : 'apple-card text-th-text rounded-tl-sm'
-                  }`}
+                  className={`max-w-[75%] md:max-w-[70%] rounded-[17px] px-3.5 py-2 text-[14.5px] leading-[1.45] shadow-sm transition-all ${isUser
+                      ? 'bg-th-accent text-th-text-inverse dark:bg-emerald-700 dark:text-white rounded-tr-sm'
+                      : 'apple-card text-th-text rounded-tl-sm border border-th-border/15 backdrop-blur-md'
+                    }`}
                 >
                   <span className="whitespace-pre-wrap">{message.content}</span>
                 </div>
@@ -129,11 +128,11 @@ const DreamChat: FC<DreamChatProps> = ({
 
           {isAiTyping && (
             <div className="flex justify-start">
-              <div className="apple-card rounded-2xl rounded-tl-sm px-4 py-3">
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 bg-th-accent rounded-full animate-pulse" />
-                  <span className="w-2 h-2 bg-th-accent rounded-full animate-pulse" style={{ animationDelay: '0.2s' }} />
-                  <span className="w-2 h-2 bg-th-accent rounded-full animate-pulse" style={{ animationDelay: '0.4s' }} />
+              <div className="apple-card rounded-[17px] rounded-tl-sm px-3.5 py-2.5 bg-th-surface/30 backdrop-blur-md border border-th-border/10 transition-all">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 bg-th-accent rounded-full animate-pulse" />
+                  <span className="w-1.5 h-1.5 bg-th-accent rounded-full animate-pulse" style={{ animationDelay: '0.2s' }} />
+                  <span className="w-1.5 h-1.5 bg-th-accent rounded-full animate-pulse" style={{ animationDelay: '0.4s' }} />
                 </div>
               </div>
             </div>
