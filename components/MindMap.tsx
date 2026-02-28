@@ -840,7 +840,11 @@ const MindMap: React.FC<MindMapProps> = ({
 
   // --- Sync layout prop → SDK ---
   useEffect(() => {
-    mindMapRef.current?.setLayout(layoutProp);
+    const mm = mindMapRef.current;
+    if (!mm) return;
+    mm.setLayout(layoutProp);
+    // Re-center view after layout repositions nodes
+    setTimeout(() => mm.view?.reset?.(), 300);
   }, [layoutProp]);
 
   // --- Resize ---
