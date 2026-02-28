@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Swiper, SwiperSlide } from 'swiper/react';
+import { Mousewheel } from 'swiper/modules';
 import type { Swiper as SwiperInstance } from 'swiper';
 import 'swiper/css';
 
@@ -27,30 +28,40 @@ interface StackPreset {
 }
 
 const STACK_PRESETS: StackPreset[] = [
-  { distance: 0, scale: 1, opacity: 1, blur: 0, rotateX: 0 },
-  { distance: 110, scale: 0.88, opacity: 0.75, blur: 0.6, rotateX: 34 },
-  { distance: 190, scale: 0.74, opacity: 0.48, blur: 1.1, rotateX: 48 },
-  { distance: 260, scale: 0.62, opacity: 0.26, blur: 1.8, rotateX: 58 },
-  { distance: 310, scale: 0.52, opacity: 0.12, blur: 2.4, rotateX: 64 },
+  { distance: 0,   scale: 1.00, opacity: 1.00, blur: 0,   rotateX: 0  },
+  { distance: 70,  scale: 0.92, opacity: 0.78, blur: 0.4, rotateX: 14 },
+  { distance: 130, scale: 0.84, opacity: 0.55, blur: 0.8, rotateX: 20 },
+  { distance: 180, scale: 0.76, opacity: 0.35, blur: 1.2, rotateX: 26 },
+  { distance: 220, scale: 0.70, opacity: 0.18, blur: 1.8, rotateX: 30 },
 ];
 
-const lerp = (start: number, end: number, ratio: number): number => {
-  return start + (end - start) * ratio;
-};
+const lerp = (start: number, end: number, ratio: number): number =>
+  start + (end - start) * ratio;
 
 const getStackPreset = (offsetAbs: number): StackPreset => {
   const bounded = Math.max(0, offsetAbs);
-  const lowerIndex = Math.min(Math.floor(bounded), STACK_PRESETS.length - 1);
-  const upperIndex = Math.min(lowerIndex + 1, STACK_PRESETS.length - 1);
-  const mix = bounded - lowerIndex;
+  const lo = Math.min(Math.floor(bounded), STACK_PRESETS.length - 1);
+  const hi = Math.min(lo + 1, STACK_PRESETS.length - 1);
+  const mix = bounded - lo;
   return {
-    distance: lerp(STACK_PRESETS[lowerIndex].distance, STACK_PRESETS[upperIndex].distance, mix),
-    scale: lerp(STACK_PRESETS[lowerIndex].scale, STACK_PRESETS[upperIndex].scale, mix),
-    opacity: lerp(STACK_PRESETS[lowerIndex].opacity, STACK_PRESETS[upperIndex].opacity, mix),
-    blur: lerp(STACK_PRESETS[lowerIndex].blur, STACK_PRESETS[upperIndex].blur, mix),
-    rotateX: lerp(STACK_PRESETS[lowerIndex].rotateX, STACK_PRESETS[upperIndex].rotateX, mix),
+    distance: lerp(STACK_PRESETS[lo].distance, STACK_PRESETS[hi].distance, mix),
+    scale: lerp(STACK_PRESETS[lo].scale, STACK_PRESETS[hi].scale, mix),
+    opacity: lerp(STACK_PRESETS[lo].opacity, STACK_PRESETS[hi].opacity, mix),
+    blur: lerp(STACK_PRESETS[lo].blur, STACK_PRESETS[hi].blur, mix),
+    rotateX: lerp(STACK_PRESETS[lo].rotateX, STACK_PRESETS[hi].rotateX, mix),
   };
 };
+
+const toDateKey = (d: Date): string => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${dd}`;
+};
+
+// Runway height for CoverFlow cards to extend above/below viewport.
+// Uses Swiper's slidesOffsetBefore/After (NOT CSS padding, which breaks centeredSlides).
+const RUNWAY_PX = 300;
 
 export const WeekCoverFlow: React.FC<WeekCoverFlowProps> = ({
   weeks,
@@ -66,6 +77,12 @@ export const WeekCoverFlow: React.FC<WeekCoverFlowProps> = ({
   const [isLowPerf, setIsLowPerf] = useState(false);
   const [isReducedMotion, setIsReducedMotion] = useState(false);
 
+  // Reverse: oldest=index 0 (top in vertical Swiper), current=last index (center).
+  const reversedWeeks = useMemo(() => [...weeks].reverse(), [weeks]);
+  const lastIdx = reversedWeeks.length - 1;
+  const toReverseIdx = useCallback((i: number) => lastIdx - i, [lastIdx]);
+  const toOriginalIdx = useCallback((ri: number) => lastIdx - ri, [lastIdx]);
+
   useEffect(() => {
     const cores = typeof navigator !== 'undefined' ? navigator.hardwareConcurrency ?? 8 : 8;
     setIsLowPerf(cores <= 4);
@@ -79,10 +96,10 @@ export const WeekCoverFlow: React.FC<WeekCoverFlowProps> = ({
   }, []);
 
   const className = useMemo(() => {
-    const classNames: string[] = ['fb-coverflow-swiper'];
-    if (isLowPerf) classNames.push('fb-coverflow-lowperf');
-    if (isReducedMotion) classNames.push('fb-coverflow-reduced');
-    return classNames.join(' ');
+    const cls: string[] = ['fb-coverflow-swiper'];
+    if (isLowPerf) cls.push('fb-coverflow-lowperf');
+    if (isReducedMotion) cls.push('fb-coverflow-reduced');
+    return cls.join(' ');
   }, [isLowPerf, isReducedMotion]);
 
   const applySlideStyles = useCallback((swiper: SwiperInstance) => {
@@ -101,24 +118,23 @@ export const WeekCoverFlow: React.FC<WeekCoverFlowProps> = ({
       const offsetAbs = Math.min(4.2, Math.abs(rawProgress));
       const preset = getStackPreset(offsetAbs);
 
-      // We want older items (rawProgress > 0) to stack UP and BACK
-      // We want future items (rawProgress < 0) to stack DOWN and BACK
+      // Past (rawProgress < 0) = above active. Below (rawProgress > 0) = newer, push harder.
       const direction = rawProgress === 0 ? 0 : rawProgress > 0 ? 1 : -1;
-
-      // Invert distance for positive progress to push it UP instead of down
-      const distance = -direction * preset.distance;
-      const rotateX = direction === 0 ? 0 : direction > 0 ? preset.rotateX : -preset.rotateX;
+      const isBelowActive = rawProgress > 0;
+      const distance = direction * preset.distance * (isBelowActive ? 1.5 : 1);
+      const rotateX = direction === 0 ? 0 : -direction * preset.rotateX;
 
       const scale = isLowPerf ? Math.max(0.54, preset.scale) : preset.scale;
       let opacity = preset.opacity;
       if (isActive) opacity = 1;
+      if (isBelowActive) opacity *= 0.65;
 
       const zIndex = 220 - Math.round(offsetAbs * 26);
       const blurValue = isLowPerf || isReducedMotion ? 0 : preset.blur;
 
-      // translate3d(x, y, z): pulling it UP with negative distance
       host.style.transform = `translate3d(0, ${distance}px, 0) rotateX(${rotateX}deg) scale(${scale})`;
       host.style.opacity = String(opacity);
+      (slideEl as HTMLElement).style.zIndex = String(zIndex);
       host.style.zIndex = String(zIndex);
       host.style.filter = blurValue <= 0
         ? 'none'
@@ -138,41 +154,52 @@ export const WeekCoverFlow: React.FC<WeekCoverFlowProps> = ({
   useEffect(() => {
     const swiper = swiperRef.current;
     if (!swiper) return;
-    if (swiper.activeIndex !== activeIndex) {
-      swiper.slideTo(activeIndex, isReducedMotion ? 220 : 420);
+    const targetIdx = toReverseIdx(activeIndex);
+    if (swiper.activeIndex !== targetIdx) {
+      swiper.slideTo(targetIdx, isReducedMotion ? 220 : 420);
     }
     applySlideStyles(swiper);
-  }, [activeIndex, isReducedMotion, applySlideStyles]);
+  }, [activeIndex, isReducedMotion, applySlideStyles, toReverseIdx]);
 
   return (
     <div className="fb-coverflow-stage flex-1 relative overflow-hidden px-1">
       <Swiper
+        modules={[Mousewheel]}
         direction="vertical"
         slidesPerView="auto"
         centeredSlides
+        observer
+        observeParents
         speed={isReducedMotion ? 220 : 420}
         threshold={2}
-        spaceBetween={isLowPerf ? -120 : -140}
+        spaceBetween={isLowPerf ? -120 : -150}
+        slidesOffsetBefore={RUNWAY_PX}
+        slidesOffsetAfter={RUNWAY_PX}
         resistance
         resistanceRatio={0.82}
         watchSlidesProgress
-        touchRatio={1}
+        simulateTouch
+        mousewheel={{ sensitivity: 1, forceToAxis: true, invert: true }}
+        grabCursor
         longSwipes
         longSwipesRatio={0.12}
         longSwipesMs={180}
         shortSwipes
         className={className}
-        initialSlide={activeIndex}
+        initialSlide={toReverseIdx(activeIndex)}
         onSwiper={(swiper) => {
           swiperRef.current = swiper;
+          // Force recalc + center after all slides are measured
+          swiper.update();
+          const target = toReverseIdx(activeIndex);
+          swiper.slideTo(target, 0);
           requestAnimationFrame(() => applySlideStyles(swiper));
-          setTimeout(() => applySlideStyles(swiper), 0);
         }}
         onProgress={(swiper) => applySlideStyles(swiper)}
         onSetTransition={(swiper, duration) => applyTransition(swiper, duration)}
-        onSlideChange={(swiper) => onIndexChange(swiper.activeIndex)}
+        onSlideChange={(swiper) => onIndexChange(toOriginalIdx(swiper.activeIndex))}
       >
-        {weeks.map((weekStart, index) => (
+        {reversedWeeks.map((weekStart, rIndex) => (
           <SwiperSlide key={toDateKey(weekStart)}>
             <div className="fb-coverflow-slide-shell">
               <div className="fb-coverflow-card-host">
@@ -181,9 +208,9 @@ export const WeekCoverFlow: React.FC<WeekCoverFlowProps> = ({
                   todos={todos}
                   feedbackCards={feedbackCards}
                   t={t}
-                  isActive={index === activeIndex}
+                  isActive={rIndex === toReverseIdx(activeIndex)}
                   onDayTap={onDayTap}
-                  onCardTap={() => onWeekTap(index)}
+                  onCardTap={() => onWeekTap(toOriginalIdx(rIndex))}
                 />
               </div>
             </div>
@@ -192,11 +219,4 @@ export const WeekCoverFlow: React.FC<WeekCoverFlowProps> = ({
       </Swiper>
     </div>
   );
-};
-
-const toDateKey = (d: Date): string => {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${dd}`;
 };

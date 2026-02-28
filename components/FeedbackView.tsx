@@ -586,6 +586,7 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
               onTouchCancel={handleCollapseEnd}
               onPointerDown={(e) => {
                 if (e.pointerType === 'touch') return;
+                (e.target as HTMLElement).setPointerCapture(e.pointerId);
                 handleCollapseStart(e.clientY);
               }}
               onPointerMove={(e) => {
@@ -593,6 +594,11 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
                 handleCollapseMove(e.clientY);
               }}
               onPointerUp={(e) => {
+                if (e.pointerType === 'touch') return;
+                (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+                handleCollapseEnd();
+              }}
+              onPointerCancel={(e) => {
                 if (e.pointerType === 'touch') return;
                 handleCollapseEnd();
               }}
