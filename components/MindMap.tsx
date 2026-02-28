@@ -43,7 +43,7 @@ const AddParentIcon = () => (
 );
 
 // --- Types ---
-type LayoutMode = 'mindMap' | 'logicalStructure' | 'logicalStructureLeft' | 'organizationStructure';
+export type LayoutMode = 'mindMap' | 'logicalStructure' | 'logicalStructureLeft' | 'organizationStructure';
 
 interface MindMapProps {
   nodes: GoalNode[];
@@ -70,6 +70,8 @@ interface MindMapProps {
   editingNodeId?: string | null;
   onEditEnd?: () => void;
   imageLoadingNodes?: Set<string>;
+  layout?: LayoutMode;
+  onLayoutChange?: (layout: LayoutMode) => void;
 }
 
 // --- Status ??border color mapping ---
@@ -365,11 +367,11 @@ const MindMap: React.FC<MindMapProps> = ({
   nodes, links, language, selectedNodeId, onNodeClick, onEditNode, onUpdateNode, onDeleteNode,
   onReparentNode, onConvertNodeToTask, onGenerateImage, onInsertImage, onAddSubNode, onAddParentNode,
   onDecomposeGoal, previewNodeIds, confirmedPreviewIds, onTogglePreviewConfirm, onFinalizePreview,
-  width, height, editingNodeId, onEditEnd, imageLoadingNodes
+  width, height, editingNodeId, onEditEnd, imageLoadingNodes,
+  layout: layoutProp = 'mindMap', onLayoutChange,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const mindMapRef = useRef<any>(null);
-  const [layout, setLayout] = useState<LayoutMode>('mindMap');
   const [actionBar, setActionBar] = useState<ActionBarState | null>(null);
   const [viewScale, setViewScale] = useState(1);
   const [identitySkipped, setIdentitySkipped] = useState(false);
@@ -562,7 +564,7 @@ const MindMap: React.FC<MindMapProps> = ({
     const mindMap = new (MindMapSDK as any)({
       el: containerRef.current,
       data: treeData,
-      layout: layout,
+      layout: layoutProp,
       theme: 'default',
       themeConfig: currentThemeConfig,
       rainbowLinesConfig: {
@@ -836,11 +838,10 @@ const MindMap: React.FC<MindMapProps> = ({
     }
   }, [nodes, links, selectedNodeId, confirmedPreviewIds, onboardingPhase, usedGhosts, getRenderedNodeByGoalId]);
 
-  // --- Layout changes ---
-  const handleLayoutChange = useCallback((newLayout: LayoutMode) => {
-    setLayout(newLayout);
-    mindMapRef.current?.setLayout(newLayout);
-  }, []);
+  // --- Sync layout prop → SDK ---
+  useEffect(() => {
+    mindMapRef.current?.setLayout(layoutProp);
+  }, [layoutProp]);
 
   // --- Resize ---
   useEffect(() => {
@@ -913,23 +914,6 @@ const MindMap: React.FC<MindMapProps> = ({
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .animate-fade-in-up { animation: fadeInUp 0.6s ease-out forwards; }
       `}</style>
-
-      {/* Layout Switcher */}
-      <div className="apple-chip absolute top-3 right-3 md:top-4 md:right-4 z-10 flex rounded-full px-1 py-0.5 gap-0.5">
-        {LAYOUT_MODES.map(mode => (
-          <button
-            key={mode}
-            onClick={() => handleLayoutChange(mode)}
-            className={`px-2 py-1 rounded-full text-[9px] md:text-[10px] font-semibold transition-all duration-200 ${
-              layout === mode
-                ? 'bg-th-accent text-th-text-inverse shadow-[0_0_8px_var(--shadow-glow)]'
-                : 'text-th-text-secondary hover:text-th-text hover:bg-th-surface-hover'
-            }`}
-          >
-            {t.mindmap.layoutModes[mode]}
-          </button>
-        ))}
-      </div>
 
       {/* Mind Map Container */}
       <div
@@ -1161,7 +1145,8 @@ export default React.memo(MindMap, (prev, next) => {
     prev.width === next.width &&
     prev.height === next.height &&
     prev.editingNodeId === next.editingNodeId &&
-    prev.imageLoadingNodes === next.imageLoadingNodes
+    prev.imageLoadingNodes === next.imageLoadingNodes &&
+    prev.layout === next.layout
   );
 });
 
