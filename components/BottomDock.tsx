@@ -84,7 +84,11 @@ const BottomDock: React.FC<BottomDockProps> = ({
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside as EventListener);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside as EventListener);
+    };
   }, [showCalendarPopup, showLayoutPopup]);
 
   const calendarModes = [
@@ -131,43 +135,44 @@ const BottomDock: React.FC<BottomDockProps> = ({
           } : {};
 
           return (
-            <button
-              key={tab.id}
-              onClick={() => {
-                if (hasLongPress) {
-                  const triggered = isCalendar
-                    ? calendarLongPress : goalsLongPress;
-                  if (triggered.current) {
-                    triggered.current = false;
-                    return;
+            <div key={tab.id} className="relative">
+              <button
+                onClick={() => {
+                  if (hasLongPress) {
+                    const triggered = isCalendar
+                      ? calendarLongPress : goalsLongPress;
+                    if (triggered.current) {
+                      triggered.current = false;
+                      return;
+                    }
                   }
-                }
-                onTabChange(tab.id);
-              }}
-              {...longPressHandlers}
-              className={`relative group flex flex-col items-center justify-center w-11 h-11 rounded-xl
-                transition-all duration-300 ${
-                  isActive
-                    ? 'bg-white/12 text-th-accent shadow-[0_0_18px_var(--shadow-glow)]'
-                    : 'text-th-text-secondary hover:text-th-text hover:bg-white/8'
-                }`}
-              aria-label={tab.label}
-              aria-current={isActive ? 'page' : undefined}
-            >
-              <div className={`transition-transform duration-300 ${isActive ? 'scale-110' : 'group-hover:scale-110'}`}>
-                {tab.icon}
-              </div>
-              <span
-                className={`text-[9px] font-display mt-0.5 tracking-wide transition-opacity duration-300 ${
-                  isActive ? 'opacity-100 font-bold' : 'opacity-70'
-                }`}
+                  onTabChange(tab.id);
+                }}
+                {...longPressHandlers}
+                className={`relative group flex flex-col items-center justify-center w-11 h-11 rounded-xl
+                  transition-all duration-300 ${
+                    isActive
+                      ? 'bg-white/12 text-th-accent shadow-[0_0_18px_var(--shadow-glow)]'
+                      : 'text-th-text-secondary hover:text-th-text hover:bg-white/8'
+                  }`}
+                aria-label={tab.label}
+                aria-current={isActive ? 'page' : undefined}
               >
-                {tab.label}
-              </span>
+                <div className={`transition-transform duration-300 ${isActive ? 'scale-110' : 'group-hover:scale-110'}`}>
+                  {tab.icon}
+                </div>
+                <span
+                  className={`text-[9px] font-display mt-0.5 tracking-wide transition-opacity duration-300 ${
+                    isActive ? 'opacity-100 font-bold' : 'opacity-70'
+                  }`}
+                >
+                  {tab.label}
+                </span>
 
-              {isActive && (
-                <div className="absolute -bottom-1 w-1 h-1 bg-th-accent rounded-full shadow-[0_0_5px_var(--shadow-glow)]" />
-              )}
+                {isActive && (
+                  <div className="absolute -bottom-1 w-1 h-1 bg-th-accent rounded-full shadow-[0_0_5px_var(--shadow-glow)]" />
+                )}
+              </button>
 
               {showCalendarPopup && isCalendar && (
                 <div
@@ -178,8 +183,7 @@ const BottomDock: React.FC<BottomDockProps> = ({
                   {calendarModes.map((item) => (
                     <button
                       key={item.mode}
-                      onClick={(event) => {
-                        event.stopPropagation();
+                      onClick={() => {
                         onCalendarViewModeChange?.(item.mode);
                         onTabChange('CALENDAR');
                         setShowCalendarPopup(false);
@@ -206,8 +210,7 @@ const BottomDock: React.FC<BottomDockProps> = ({
                   {layoutModes.map((item) => (
                     <button
                       key={item.mode}
-                      onClick={(event) => {
-                        event.stopPropagation();
+                      onClick={() => {
                         onMindmapLayoutChange?.(item.mode);
                         onTabChange('GOALS');
                         setShowLayoutPopup(false);
@@ -224,7 +227,7 @@ const BottomDock: React.FC<BottomDockProps> = ({
                   ))}
                 </div>
               )}
-            </button>
+            </div>
           );
         })}
       </div>
