@@ -38,12 +38,12 @@ export const MonthlySummaryCard: React.FC<MonthlySummaryCardProps> = ({
     <div className="bg-transparent px-5 py-5 cursor-pointer fb-card-press" onClick={onTap}>
       <div className="flex items-center gap-2 mb-4">
         <Sparkles size={14} className="text-th-accent" />
-        <p className="text-[13px] font-semibold text-white/72">{label}</p>
+        <p className="text-[13px] font-semibold text-th-text">{label}</p>
       </div>
 
       {!hasContent ? (
         <div className="text-center py-4">
-          <p className="text-[12px] text-white/36 mb-3">{t.feedback.emptyRecord}</p>
+          <p className="text-[12px] text-th-text-muted mb-3">{t.feedback.emptyRecord}</p>
           <button
             onClick={(event) => {
               event.stopPropagation();
@@ -69,12 +69,12 @@ export const MonthlySummaryCard: React.FC<MonthlySummaryCardProps> = ({
         </div>
       ) : (
         <>
-          <p className="text-[11px] text-white/42 mb-2">{t.feedback.monthlyCompleted}</p>
+          <p className="text-[11px] text-th-text-tertiary mb-2">{t.feedback.monthlyCompleted}</p>
           <div className="space-y-1.5 mb-4">
             {topItems.map(([item, count], i) => (
               <div key={i} className="flex items-start gap-2">
                 <Sparkles size={10} className="text-th-accent mt-0.5 shrink-0" />
-                <span className="text-[12px] text-white/78 leading-snug">
+                <span className="text-[12px] text-th-text leading-snug">
                   {item}
                   {count > 1 ? ` x${count}` : ''}
                 </span>
@@ -83,8 +83,8 @@ export const MonthlySummaryCard: React.FC<MonthlySummaryCardProps> = ({
           </div>
 
           {summaryText ? (
-            <div className="border-t border-white/[0.08] pt-3">
-              <p className="text-[12px] text-white/58 italic leading-relaxed">“{summaryText}”</p>
+            <div className="border-t border-th-border pt-3">
+              <p className="text-[12px] text-th-text-secondary italic leading-relaxed">“{summaryText}”</p>
             </div>
           ) : (
             <button

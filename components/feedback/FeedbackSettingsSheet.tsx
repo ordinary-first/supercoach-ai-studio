@@ -105,19 +105,19 @@ export const FeedbackSettingsSheet: React.FC<FeedbackSettingsSheetProps> = ({
 
   return (
     <div className="fixed inset-0 z-[60] flex items-end justify-center">
-      <div className="absolute inset-0 bg-black/70 animate-fade-in" onClick={onClose} />
+      <div className="absolute inset-0 bg-th-overlay/60 backdrop-blur-sm animate-fade-in" onClick={onClose} />
 
-      <div className="relative w-full max-w-lg bg-[#141414] rounded-t-3xl max-h-[70vh] flex flex-col animate-slide-up">
+      <div className="relative w-full max-w-lg bg-th-elevated rounded-t-3xl max-h-[70vh] flex flex-col animate-slide-up shadow-2xl border-t border-th-border">
         {/* Handle */}
         <div className="flex justify-center pt-3 pb-1">
-          <div className="w-10 h-1 rounded-full bg-white/20" />
+          <div className="w-10 h-1 rounded-full bg-th-border" />
         </div>
 
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-3">
-          <h2 className="text-base font-bold text-white/90">{t.feedback.settings}</h2>
-          <button onClick={onClose} className="p-2 rounded-full hover:bg-white/5">
-            <X size={16} className="text-white/40" />
+        <div className="flex items-center justify-between px-5 py-3 border-bottom border-th-border/50">
+          <h2 className="text-base font-bold text-th-text">{t.feedback.settings}</h2>
+          <button onClick={onClose} className="p-2 rounded-full hover:bg-th-surface-hover">
+            <X size={16} className="text-th-text-tertiary" />
           </button>
         </div>
 
@@ -132,7 +132,7 @@ export const FeedbackSettingsSheet: React.FC<FeedbackSettingsSheetProps> = ({
                 ) : (
                   <Bell size={14} className="text-th-accent" />
                 )}
-                <span className="text-[13px] font-semibold text-white/80">
+                <span className="text-[13px] font-semibold text-th-text-secondary">
                   {t.feedback.notificationPermission}
                 </span>
               </div>
@@ -146,22 +146,22 @@ export const FeedbackSettingsSheet: React.FC<FeedbackSettingsSheetProps> = ({
                   {t.feedback.notificationRequest}
                 </button>
               )}
-              <div className="border-t border-white/[0.06] mt-2" />
+              <div className="border-t border-th-border/50 mt-2" />
             </div>
           )}
 
           {/* Morning */}
           <div className="space-y-3">
             <div className="flex items-center gap-2">
-              <Sun size={14} className="text-amber-400" />
-              <span className="text-[13px] font-semibold text-white/80">{t.feedback.morningAlarm}</span>
+              <Sun size={14} className="text-amber-500" />
+              <span className="text-[13px] font-semibold text-th-text-secondary">{t.feedback.morningAlarm}</span>
             </div>
-            <p className="text-[11px] text-white/40">{t.feedback.morningDesc}</p>
+            <p className="text-[11px] text-th-text-tertiary">{t.feedback.morningDesc}</p>
 
             <select
               value={settings.morningTime}
               onChange={(e) => updateField('morningTime', e.target.value)}
-              className="w-full bg-white/[0.04] border border-white/10 rounded-xl px-3 py-2.5 text-[13px] text-white/70 focus:outline-none focus:border-th-accent/50 appearance-none"
+              className="w-full bg-th-surface border border-th-border rounded-xl px-3 py-2.5 text-[13px] text-th-text-secondary focus:outline-none focus:border-th-accent/50 appearance-none"
             >
               {TIME_OPTIONS.map((time) => (
                 <option key={time} value={time}>{formatTime(time)}</option>
@@ -169,12 +169,12 @@ export const FeedbackSettingsSheet: React.FC<FeedbackSettingsSheetProps> = ({
             </select>
 
             <label className="flex items-center justify-between cursor-pointer">
-              <span className="text-[12px] text-white/50">
+              <span className="text-[12px] text-th-text-tertiary">
                 {settings.morningEnabled ? t.feedback.alarmOn : t.feedback.alarmOff}
               </span>
               <div
                 onClick={() => updateField('morningEnabled', !settings.morningEnabled)}
-                className={`w-10 h-5 rounded-full transition-colors relative ${settings.morningEnabled ? 'bg-th-accent' : 'bg-white/10'}`}
+                className={`w-10 h-5 rounded-full transition-colors relative ${settings.morningEnabled ? 'bg-th-accent' : 'bg-th-border'}`}
               >
                 <div
                   className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${settings.morningEnabled ? 'translate-x-5' : 'translate-x-0.5'}`}
@@ -183,20 +183,20 @@ export const FeedbackSettingsSheet: React.FC<FeedbackSettingsSheetProps> = ({
             </label>
           </div>
 
-          <div className="border-t border-white/[0.06]" />
+          <div className="border-t border-th-border/50" />
 
           {/* Evening */}
           <div className="space-y-3">
             <div className="flex items-center gap-2">
-              <Moon size={14} className="text-indigo-400" />
-              <span className="text-[13px] font-semibold text-white/80">{t.feedback.eveningAlarm}</span>
+              <Moon size={14} className="text-indigo-500" />
+              <span className="text-[13px] font-semibold text-th-text-secondary">{t.feedback.eveningAlarm}</span>
             </div>
-            <p className="text-[11px] text-white/40">{t.feedback.eveningDesc}</p>
+            <p className="text-[11px] text-th-text-tertiary">{t.feedback.eveningDesc}</p>
 
             <select
               value={settings.eveningTime}
               onChange={(e) => updateField('eveningTime', e.target.value)}
-              className="w-full bg-white/[0.04] border border-white/10 rounded-xl px-3 py-2.5 text-[13px] text-white/70 focus:outline-none focus:border-th-accent/50 appearance-none"
+              className="w-full bg-th-surface border border-th-border rounded-xl px-3 py-2.5 text-[13px] text-th-text-secondary focus:outline-none focus:border-th-accent/50 appearance-none"
             >
               {EVENING_OPTIONS.map((time) => (
                 <option key={time} value={time}>{formatTime(time)}</option>
@@ -204,12 +204,12 @@ export const FeedbackSettingsSheet: React.FC<FeedbackSettingsSheetProps> = ({
             </select>
 
             <label className="flex items-center justify-between cursor-pointer">
-              <span className="text-[12px] text-white/50">
+              <span className="text-[12px] text-th-text-tertiary">
                 {settings.eveningEnabled ? t.feedback.alarmOn : t.feedback.alarmOff}
               </span>
               <div
                 onClick={() => updateField('eveningEnabled', !settings.eveningEnabled)}
-                className={`w-10 h-5 rounded-full transition-colors relative ${settings.eveningEnabled ? 'bg-th-accent' : 'bg-white/10'}`}
+                className={`w-10 h-5 rounded-full transition-colors relative ${settings.eveningEnabled ? 'bg-th-accent' : 'bg-th-border'}`}
               >
                 <div
                   className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${settings.eveningEnabled ? 'translate-x-5' : 'translate-x-0.5'}`}

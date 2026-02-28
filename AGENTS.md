@@ -87,9 +87,30 @@ When one agent completes work that another agent will continue:
 2. List what was done and what remains
 3. Note any gotchas or decisions made
 
+## Dev Environment
+
+```bash
+# This worktree's dev server (already running):
+# http://localhost:3016/?dev=1
+# Start manually if needed:
+cd web-legacy-mindmap2 && npx vite --port 3016 --host
+
+# .env.local must exist (copy from web-legacy/ if missing)
+# Preview requires ?dev=1 query param to bypass Google Auth popup
+```
+
 ## Current Status
 
 _Last updated: 2026-02-28_
+
+- Feedback section Light Mode visibility fixes completed:
+  - `displayVersion` bumped to `V02.28r11`.
+  - Refactored `feedbackApple.css`: Removed hardcoded dark colors and white borders; switched to theme-aware variables (`--bg-surface`, `--border`, etc.).
+  - Updated `FeedbackView.tsx` and 10+ sub-components (DayCard, WeeklySummaryCard, etc.): Replaced hardcoded `text-white/NN` classes with semantic `text-th-text-*` tokens.
+  - Improved readability of settings, summaries, and detail sheets in both themes.
+  - Verification:
+    - UI is now fully visible and premium in Light Mode.
+    - `npm run beta:sim:one` passed.
 
 - Apple-standard Light Mode Redesign & Premium Stabilization completed:
   - `displayVersion` bumped to `V02.28r10`.

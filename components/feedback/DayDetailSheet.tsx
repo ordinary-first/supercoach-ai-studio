@@ -68,37 +68,37 @@ export const DayDetailSheet: React.FC<DayDetailSheetProps> = ({
     <div className="fixed inset-0 z-[60] flex items-end justify-center">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/70 animate-fade-in"
+        className="absolute inset-0 bg-th-overlay/60 backdrop-blur-sm animate-fade-in"
         onClick={onClose}
       />
 
       {/* Sheet */}
-      <div className="relative w-full max-w-lg bg-[#141414] rounded-t-3xl max-h-[85vh] flex flex-col animate-slide-up">
+      <div className="relative w-full max-w-lg bg-th-elevated rounded-t-3xl max-h-[85vh] flex flex-col animate-slide-up shadow-2xl border-t border-th-border/50">
         {/* Handle */}
         <div className="flex justify-center pt-3 pb-1">
-          <div className="w-10 h-1 rounded-full bg-white/20" />
+          <div className="w-10 h-1 rounded-full bg-th-border" />
         </div>
 
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-3">
           <div>
-            <h2 className="text-base font-bold text-white/90">{title}</h2>
-            <p className="text-[11px] text-white/40 mt-0.5">{dateStr}</p>
+            <h2 className="text-base font-bold text-th-text">{title}</h2>
+            <p className="text-[11px] text-th-text-tertiary mt-0.5">{dateStr}</p>
           </div>
           <div className="flex items-center gap-2">
             {!isEditing && card && (
               <button
                 onClick={() => setIsEditing(true)}
-                className="p-2 rounded-full hover:bg-white/5 transition-colors"
+                className="p-2 rounded-full hover:bg-th-surface-hover transition-colors"
               >
-                <Pencil size={14} className="text-white/50" />
+                <Pencil size={14} className="text-th-text-tertiary" />
               </button>
             )}
             <button
               onClick={onClose}
-              className="p-2 rounded-full hover:bg-white/5 transition-colors"
+              className="p-2 rounded-full hover:bg-th-surface-hover transition-colors"
             >
-              <X size={16} className="text-white/40" />
+              <X size={16} className="text-th-text-tertiary" />
             </button>
           </div>
         </div>
@@ -107,7 +107,7 @@ export const DayDetailSheet: React.FC<DayDetailSheetProps> = ({
         <div className="flex-1 overflow-y-auto px-5 pb-6">
           {noData ? (
             <div className="flex flex-col items-center justify-center py-12">
-              <p className="text-[13px] text-white/30 text-center whitespace-pre-line">
+              <p className="text-[13px] text-th-text-muted text-center whitespace-pre-line">
                 {t.feedback.emptyRecordHint}
               </p>
             </div>
@@ -117,7 +117,7 @@ export const DayDetailSheet: React.FC<DayDetailSheetProps> = ({
               <div>
                 <div className="flex items-center gap-2 mb-3">
                   <Trophy size={14} className="text-th-accent" />
-                  <span className="text-[12px] font-semibold text-white/70 uppercase tracking-wider">
+                  <span className="text-[12px] font-semibold text-th-text-secondary uppercase tracking-wider">
                     {t.feedback.completed}
                   </span>
                 </div>
@@ -132,7 +132,7 @@ export const DayDetailSheet: React.FC<DayDetailSheetProps> = ({
                         size={12}
                         className={`mt-0.5 shrink-0 ${isEditing ? 'text-th-accent group-hover:text-red-400' : 'text-th-accent'}`}
                       />
-                      <span className="text-[13px] text-white/75 leading-snug">{item}</span>
+                      <span className="text-[13px] text-th-text leading-snug">{item}</span>
                     </button>
                   ))}
                 </div>
@@ -143,7 +143,7 @@ export const DayDetailSheet: React.FC<DayDetailSheetProps> = ({
                 <div>
                   <button
                     onClick={() => setShowIncomplete(!showIncomplete)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/[0.06] text-[11px] text-white/40 hover:text-white/60 transition-colors"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-th-surface text-[11px] text-th-text-tertiary border border-th-border hover:bg-th-surface-hover transition-colors"
                   >
                     {showIncomplete ? t.feedback.hideIncomplete : t.feedback.showIncomplete}
                     {showIncomplete ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
@@ -159,9 +159,9 @@ export const DayDetailSheet: React.FC<DayDetailSheetProps> = ({
                         >
                           <Circle
                             size={12}
-                            className={`mt-0.5 shrink-0 ${isEditing ? 'text-white/30 group-hover:text-th-accent' : 'text-white/30'}`}
+                            className={`mt-0.5 shrink-0 ${isEditing ? 'text-th-text-tertiary group-hover:text-th-accent' : 'text-th-text-tertiary'}`}
                           />
-                          <span className="text-[13px] text-white/40 leading-snug">{item}</span>
+                          <span className="text-[13px] text-th-text-tertiary leading-snug">{item}</span>
                         </button>
                       ))}
                     </div>
@@ -170,19 +170,19 @@ export const DayDetailSheet: React.FC<DayDetailSheetProps> = ({
               )}
 
               {/* Coach Comment */}
-              <div className="border-t border-white/[0.06] pt-4">
-                <p className="text-[11px] text-white/40 mb-2">{t.feedback.coachComment}</p>
+              <div className="border-t border-th-border/50 pt-4">
+                <p className="text-[11px] text-th-text-tertiary mb-2">{t.feedback.coachComment}</p>
                 {isEditing ? (
                   <textarea
                     value={editComment}
                     onChange={(e) => setEditComment(e.target.value)}
-                    className="w-full bg-white/[0.04] border border-white/10 rounded-xl px-3 py-2 text-[13px] text-white/80 resize-none focus:outline-none focus:border-th-accent/50"
+                    className="w-full bg-th-surface border border-th-border rounded-xl px-3 py-2 text-[13px] text-th-text resize-none focus:outline-none focus:border-th-accent/50"
                     rows={2}
                     placeholder="코치의 한줄 코멘트..."
                   />
                 ) : (
                   card?.coachComment && (
-                    <p className="text-[13px] text-white/50 italic">
+                    <p className="text-[13px] text-th-text-secondary italic">
                       &ldquo;{card.coachComment}&rdquo;
                     </p>
                   )

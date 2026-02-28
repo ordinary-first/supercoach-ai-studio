@@ -32,27 +32,27 @@ export const GoalAdjustmentCard: React.FC<GoalAdjustmentCardProps> = ({
 
       {/* Goal text */}
       <div className="px-4 pb-2">
-        <p className="text-[13px] text-white/70 leading-relaxed line-clamp-2">
+        <p className="text-[13px] text-th-text-secondary leading-relaxed line-clamp-2">
           "{goalText}"
         </p>
       </div>
 
       {/* Metric comparison */}
-      <div className="mx-4 mb-3 flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/[0.03]">
+      <div className="mx-4 mb-3 flex items-center gap-3 px-3 py-2.5 rounded-xl bg-th-surface border border-th-border">
         <div className="flex-1 text-center">
-          <p className="text-[10px] text-white/30 mb-0.5">현재</p>
-          <p className="text-[15px] font-bold text-white/60">{currentMetric}</p>
+          <p className="text-[10px] text-th-text-tertiary mb-0.5">현재</p>
+          <p className="text-[15px] font-bold text-th-text-secondary">{currentMetric}</p>
         </div>
-        <div className="text-white/20 text-[14px]">→</div>
+        <div className="text-th-text-muted text-[14px]">→</div>
         <div className="flex-1 text-center">
-          <p className="text-[10px] text-amber-400/60 mb-0.5">제안</p>
-          <p className="text-[15px] font-bold text-amber-400">{suggestedMetric}</p>
+          <p className="text-[10px] text-amber-500/80 mb-0.5">제안</p>
+          <p className="text-[15px] font-bold text-amber-600">{suggestedMetric}</p>
         </div>
       </div>
 
       {/* Reason */}
       <div className="px-4 pb-3">
-        <p className="text-[10px] text-white/30">
+        <p className="text-[10px] text-th-text-tertiary">
           {t.feedback.adjustReason
             .replace('{avg}', String(avgCompletion))
             .replace('{weeks}', String(weeks))}
@@ -60,15 +60,15 @@ export const GoalAdjustmentCard: React.FC<GoalAdjustmentCardProps> = ({
       </div>
 
       {/* Actions */}
-      <div className="flex border-t border-white/[0.06]">
+      <div className="flex border-t border-th-border">
         <button
           onClick={onDismiss}
           disabled={isAdjusting}
-          className="flex-1 py-3 text-[12px] font-medium text-white/40 hover:text-white/60 hover:bg-white/[0.02] transition-colors disabled:opacity-50"
+          className="flex-1 py-3 text-[12px] font-medium text-th-text-tertiary hover:text-th-text hover:bg-th-surface-hover transition-colors disabled:opacity-50"
         >
           {t.feedback.keepCurrent}
         </button>
-        <div className="w-px bg-white/[0.06]" />
+        <div className="w-px bg-th-border" />
         <button
           onClick={onAccept}
           disabled={isAdjusting}
