@@ -641,6 +641,10 @@ const MindMap: React.FC<MindMapProps> = ({
 
     // --- Event: Node click -> selection + action bar ---
     mindMap.on('node_click', (node: any, e: any) => {
+      // Single-select: clear other selections, keep only clicked node
+      mindMap.renderer?.clearActiveNodeList?.();
+      node?.active?.();
+
       const goalId = node?.nodeData?.data?.goalId || node?.nodeData?.data?.uid;
       if (!goalId) return;
 
