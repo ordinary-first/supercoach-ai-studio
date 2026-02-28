@@ -34,8 +34,8 @@ const applyTheme = (resolved: 'light' | 'dark'): void => {
 export const useThemeStore = create<ThemeState>()(
   persist(
     (set) => ({
-      preference: 'system',
-      resolved: resolveTheme('system'),
+      preference: 'dark',
+      resolved: resolveTheme('dark'),
       setTheme: (pref) => {
         const resolved = resolveTheme(pref);
         applyTheme(resolved);
