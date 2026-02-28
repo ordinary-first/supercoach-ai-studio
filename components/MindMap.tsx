@@ -648,12 +648,15 @@ const MindMap: React.FC<MindMapProps> = ({
       const goalId = node?.nodeData?.data?.goalId || node?.nodeData?.data?.uid;
       if (!goalId) return;
 
-      // Ghost node interception
+      // Ghost node interception: pick one → remove all ghosts
       if (goalId.startsWith('ghost-')) {
         const idx = parseInt(goalId.split('-')[1]);
         if (!isNaN(idx) && GHOST_TEMPLATES[idx]) {
           onAddSubNodeRef.current('root', GHOST_TEMPLATES[idx]);
-          setUsedGhostsRef.current(prev => new Set(prev).add(idx));
+          // Mark ALL ghosts as used so remaining ones disappear
+          const allUsed = new Set<number>();
+          GHOST_TEMPLATES.forEach((_: string, i: number) => allUsed.add(i));
+          setUsedGhostsRef.current(allUsed);
         }
         return;
       }
