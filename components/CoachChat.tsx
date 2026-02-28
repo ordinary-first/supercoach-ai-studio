@@ -364,29 +364,29 @@ const CoachChat: React.FC<CoachChatProps> = ({
       <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-emerald-700/5 rounded-full blur-[120px] pointer-events-none"></div>
 
       {/* Header */}
-      <div className="h-11 md:h-14 border-b border-th-border/5 flex items-center justify-between px-3 md:px-6 bg-th-base/40 backdrop-blur-3xl shrink-0 z-10 shadow-sm">
-        <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 md:w-9 md:h-9 bg-th-accent/15 rounded-[8px] md:rounded-[11px] flex items-center justify-center border border-th-accent/20">
-            <MessageCircle className="text-th-accent w-3.5 h-3.5 md:w-5 md:h-5" />
+      <div className="h-14 md:h-20 border-b border-th-border/5 dark:border-th-border flex items-center justify-between px-4 md:px-8 bg-th-base/40 dark:bg-th-header backdrop-blur-md shrink-0 z-10 shadow-sm">
+        <div className="flex items-center gap-4">
+          <div className="p-2 md:p-3 bg-th-accent/15 dark:bg-th-accent-muted rounded-lg md:rounded-xl border border-th-accent/20 dark:border-transparent">
+            <MessageCircle className="text-th-accent w-5 h-5 md:w-8 md:h-8" />
           </div>
-          <div className="flex flex-col">
-            <h1 className="text-[14px] md:text-base font-display font-bold tracking-tight text-th-text leading-none">{t.coach.title}</h1>
-            <p className="text-[8px] md:text-[9.5px] text-th-text-tertiary font-body font-extrabold mt-0.5 uppercase tracking-widest opacity-60">
+          <div>
+            <h1 className="text-lg md:text-2xl font-display font-bold tracking-wider text-th-text">{t.coach.title}</h1>
+            <p className="text-[10px] text-th-text-tertiary dark:text-neon-lime/60 font-mono mt-0.5">
               {t.coach.coachingStatus.replace('{tab}', tabLabels[activeTab])}
             </p>
           </div>
         </div>
-        <CloseButton onClick={onClose} size="sm" className="scale-90" />
+        <CloseButton onClick={onClose} />
       </div>
 
       {/* Chat Messages */}
       <div ref={messagesContainerRef} className="flex-1 overflow-y-auto px-4 lg:px-0 scrollbar-hide relative z-10">
         <div className="max-w-2xl mx-auto py-3 space-y-2">
           {messages.map((msg) => (
-            <div key={msg.id} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'} mb-1.5 px-2`}>
-              <div className={`max-w-[75%] md:max-w-[70%] rounded-[17px] px-3.5 py-2 text-[14.5px] leading-[1.45] shadow-sm transition-all ${msg.sender === 'user'
+            <div key={msg.id} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
+              <div className={`max-w-[78%] rounded-xl px-3 py-2 text-[13px] leading-relaxed ${msg.sender === 'user'
                   ? 'bg-th-accent text-th-text-inverse dark:bg-emerald-700 dark:text-white rounded-tr-sm'
-                  : 'bg-th-surface text-th-text rounded-tl-sm border border-th-border/20 backdrop-blur-md'
+                  : 'bg-th-surface text-th-text dark:text-gray-100 rounded-tl-sm border border-th-border/20 dark:border-th-border shadow-lg backdrop-blur-sm'
                 }`}>
                 {msg.imageDataUrl && (
                   <img src={msg.imageDataUrl} alt="" className="max-w-full rounded-lg mb-1.5" />
@@ -423,9 +423,9 @@ const CoachChat: React.FC<CoachChatProps> = ({
               (questionPage + 1) * QUESTIONS_PER_PAGE
             );
             return (
-              <div className="flex justify-start px-2 mt-1">
-                <div className="max-w-[85%] md:max-w-[75%] rounded-[20px] rounded-tl-sm bg-th-surface border border-th-border/20 shadow-xl backdrop-blur-xl px-5 py-4">
-                  <p className="text-[13.5px] md:text-[14px] text-th-text font-bold tracking-tight leading-relaxed mb-3">
+              <div className="flex justify-start">
+                <div className="max-w-[85%] rounded-xl rounded-tl-sm bg-th-surface border border-th-border/20 dark:border-th-border shadow-lg backdrop-blur-sm px-4 py-3">
+                  <p className="text-[13px] text-th-text dark:text-gray-100 leading-relaxed mb-2.5">
                     {t.coach.selectQuestion}
                   </p>
                   <div className="space-y-2">
@@ -433,7 +433,7 @@ const CoachChat: React.FC<CoachChatProps> = ({
                       <button
                         key={q.id}
                         onClick={() => handleTopicSelect(q)}
-                        className="w-full text-left px-3.5 py-3 rounded-xl bg-th-base/40 border border-th-border/5 hover:border-th-accent-border/30 hover:bg-th-surface-hover hover:scale-[1.005] active:scale-[0.985] transition-all duration-300 group shadow-sm"
+                        className="w-full text-left px-3 py-2.5 rounded-lg bg-th-surface border border-th-border/20 dark:border-th-border hover:border-th-accent-border hover:bg-th-accent-muted transition-all duration-200 group"
                       >
                         <div className="flex items-center gap-3">
                           <span className="text-lg">{q.icon}</span>
@@ -456,8 +456,8 @@ const CoachChat: React.FC<CoachChatProps> = ({
                           key={i}
                           onClick={() => setQuestionPage(i)}
                           className={`w-2 h-2 rounded-full transition-all ${i === questionPage
-                            ? 'bg-th-accent w-4 shadow-[0_0_8px_rgba(255,255,255,0.3)]'
-                            : 'bg-th-text-tertiary/40 hover:bg-th-accent/40'
+                            ? 'bg-th-accent shadow-[0_0_4px_var(--shadow-glow)]'
+                            : 'bg-th-border hover:bg-th-surface-hover'
                             }`}
                         />
                       ))}
@@ -511,7 +511,7 @@ const CoachChat: React.FC<CoachChatProps> = ({
             >
               <Plus size={20} />
             </button>
-            <div className="flex-1 flex items-center bg-th-elevated/50 backdrop-blur-lg border border-th-border/30 rounded-full shadow-inner-sm overflow-hidden transition-all duration-300 focus-within:border-th-accent/50 focus-within:bg-th-elevated">
+            <div className="flex-1 flex items-center bg-th-elevated/50 dark:bg-th-elevated border border-th-border/30 dark:border-th-border rounded-full shadow-lg overflow-hidden transition-colors hover:border-th-accent-border">
               <input
                 type="text"
                 value={inputText}
@@ -519,17 +519,17 @@ const CoachChat: React.FC<CoachChatProps> = ({
                 onKeyDown={(e) => e.key === 'Enter' && !e.nativeEvent.isComposing && handleSend()}
                 onFocus={() => { setTimeout(() => scrollToBottom(), 300); setTimeout(() => scrollToBottom(), 600); }}
                 placeholder={t.coach.placeholder}
-                className="w-full bg-transparent border-none py-3.5 px-6 text-[15px] text-th-text placeholder:text-th-text-tertiary focus:outline-none focus:ring-0"
+                className="w-full bg-transparent border-none py-2.5 px-4 text-sm text-th-text placeholder-th-text-tertiary focus:outline-none focus:ring-0"
                 aria-label={t.coach.sendMessage}
               />
             </div>
             <button
               onClick={handleSend}
               disabled={!inputText.trim() && !pendingImage}
-              className="shrink-0 w-11 h-11 bg-th-accent rounded-full text-th-text-inverse flex items-center justify-center hover:brightness-110 active:scale-90 transition-all shadow-lg shadow-th-accent/20 disabled:opacity-0 disabled:scale-95"
+              className="shrink-0 p-2.5 bg-th-accent rounded-full text-th-text-inverse hover:bg-white transition-all disabled:opacity-0 disabled:scale-95"
               aria-label={t.coach.sendLabel}
             >
-              <Send size={18} />
+              <Send size={16} />
             </button>
           </div>
         </div>

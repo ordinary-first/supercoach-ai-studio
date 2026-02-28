@@ -28,10 +28,10 @@ interface StackPreset {
 
 const STACK_PRESETS: StackPreset[] = [
   { distance: 0, scale: 1, opacity: 1, blur: 0, rotateX: 0 },
-  { distance: 118, scale: 0.84, opacity: 0.7, blur: 0.7, rotateX: 38 },
-  { distance: 178, scale: 0.68, opacity: 0.46, blur: 1.2, rotateX: 52 },
-  { distance: 230, scale: 0.56, opacity: 0.28, blur: 1.8, rotateX: 60 },
-  { distance: 264, scale: 0.48, opacity: 0.14, blur: 2.3, rotateX: 64 },
+  { distance: 110, scale: 0.88, opacity: 0.75, blur: 0.6, rotateX: 34 },
+  { distance: 190, scale: 0.74, opacity: 0.48, blur: 1.1, rotateX: 48 },
+  { distance: 260, scale: 0.62, opacity: 0.26, blur: 1.8, rotateX: 58 },
+  { distance: 310, scale: 0.52, opacity: 0.12, blur: 2.4, rotateX: 64 },
 ];
 
 const lerp = (start: number, end: number, ratio: number): number => {
@@ -100,9 +100,15 @@ export const WeekCoverFlow: React.FC<WeekCoverFlowProps> = ({
 
       const offsetAbs = Math.min(4.2, Math.abs(rawProgress));
       const preset = getStackPreset(offsetAbs);
+
+      // We want older items (rawProgress > 0) to stack UP and BACK
+      // We want future items (rawProgress < 0) to stack DOWN and BACK
       const direction = rawProgress === 0 ? 0 : rawProgress > 0 ? 1 : -1;
-      const distance = direction * preset.distance;
-      const rotateX = direction === 0 ? 0 : direction > 0 ? -preset.rotateX : preset.rotateX;
+
+      // Invert distance for positive progress to push it UP instead of down
+      const distance = -direction * preset.distance;
+      const rotateX = direction === 0 ? 0 : direction > 0 ? preset.rotateX : -preset.rotateX;
+
       const scale = isLowPerf ? Math.max(0.54, preset.scale) : preset.scale;
       let opacity = preset.opacity;
       if (isActive) opacity = 1;
@@ -110,12 +116,13 @@ export const WeekCoverFlow: React.FC<WeekCoverFlowProps> = ({
       const zIndex = 220 - Math.round(offsetAbs * 26);
       const blurValue = isLowPerf || isReducedMotion ? 0 : preset.blur;
 
+      // translate3d(x, y, z): pulling it UP with negative distance
       host.style.transform = `translate3d(0, ${distance}px, 0) rotateX(${rotateX}deg) scale(${scale})`;
       host.style.opacity = String(opacity);
       host.style.zIndex = String(zIndex);
       host.style.filter = blurValue <= 0
         ? 'none'
-        : `blur(${blurValue.toFixed(2)}px) saturate(${(1.04 - offsetAbs * 0.03).toFixed(2)})`;
+        : `blur(${blurValue.toFixed(2)}px) saturate(${(1.06 - offsetAbs * 0.04).toFixed(2)})`;
       host.style.pointerEvents = Math.abs(rawProgress) < 0.32 ? 'auto' : 'none';
     });
   }, [isLowPerf, isReducedMotion]);
@@ -138,18 +145,18 @@ export const WeekCoverFlow: React.FC<WeekCoverFlowProps> = ({
   }, [activeIndex, isReducedMotion, applySlideStyles]);
 
   return (
-    <div className="fb-coverflow-stage flex-1 relative overflow-hidden px-1 pb-4">
+    <div className="fb-coverflow-stage flex-1 relative overflow-hidden px-1">
       <Swiper
         direction="vertical"
         slidesPerView="auto"
         centeredSlides
         speed={isReducedMotion ? 220 : 420}
         threshold={2}
-        spaceBetween={isLowPerf ? -124 : -148}
+        spaceBetween={isLowPerf ? -120 : -140}
         resistance
         resistanceRatio={0.82}
         watchSlidesProgress
-        touchRatio={-1}
+        touchRatio={1}
         longSwipes
         longSwipesRatio={0.12}
         longSwipesMs={180}
