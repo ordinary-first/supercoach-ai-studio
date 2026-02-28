@@ -149,7 +149,7 @@ export default function VisualizationTab({
       </div>
 
       {isGeneratingBanner && (
-        <div className="apple-card text-center py-2 mx-4 mt-2 text-[13px] text-white/70">
+        <div className="apple-card text-center py-2.5 mx-4 mt-2 text-[13px] text-th-text-secondary bg-th-accent/5 border-th-accent/20 animate-pulse">
           {pipeline.generatingStep || t.visualization.generating}
         </div>
       )}
@@ -161,7 +161,7 @@ export default function VisualizationTab({
       )}
 
       {pipeline.infoMessage && (
-        <div className="apple-card text-center py-2 px-4 mx-4 mt-2 text-xs text-white/60">
+        <div className="apple-card text-center py-2 px-4 mx-4 mt-2 text-xs text-th-text-tertiary bg-th-surface/50">
           {pipeline.infoMessage}
         </div>
       )}
@@ -202,7 +202,7 @@ export default function VisualizationTab({
             setBackgroundComplete(false);
           }}
           className="apple-glass-panel absolute top-14 left-4 right-4 rounded-xl px-4 py-3 text-sm
-            text-white z-10 bg-[rgba(76,96,196,0.22)] border-[rgba(165,184,255,0.34)]"
+            text-th-accent font-semibold z-10 bg-th-accent-muted border-th-accent/30 shadow-xl animate-fade-in-up"
         >
           {completeBannerLabel}
         </button>

@@ -20,7 +20,7 @@ const DreamPillSwitcher: FC<DreamPillSwitcherProps> = ({ activeTab, onTabChange 
   return (
     <div className="apple-chip relative flex items-center mx-auto h-8 px-0.5">
       <div
-        className="absolute top-0.5 bottom-0.5 left-0.5 rounded-full bg-white/20 transition-transform duration-200"
+        className="absolute top-0.5 bottom-0.5 left-0.5 rounded-full bg-th-accent shadow-sm transition-transform duration-200"
         style={{ width: 'calc(50% - 2px)', transform: `translateX(${activeIndex * 100}%)` }}
       />
 
@@ -29,9 +29,8 @@ const DreamPillSwitcher: FC<DreamPillSwitcherProps> = ({ activeTab, onTabChange 
           key={tab.key}
           type="button"
           onClick={() => onTabChange(tab.key)}
-          className={`relative z-10 px-5 h-full text-[13px] transition-colors ${
-            activeTab === tab.key ? 'text-white font-semibold' : 'text-white/50'
-          }`}
+          className={`relative z-10 px-5 h-full text-[13px] transition-colors ${activeTab === tab.key ? 'text-th-text-inverse font-semibold' : 'text-th-text-tertiary hover:text-th-text-secondary'
+            }`}
         >
           {tab.label}
         </button>

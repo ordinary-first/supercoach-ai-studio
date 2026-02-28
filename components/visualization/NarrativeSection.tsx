@@ -15,7 +15,7 @@ const shimmerStyle = `
 `;
 
 const SHIMMER_BG =
-  'linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.03) 75%)';
+  'linear-gradient(90deg, var(--bg-surface) 25%, var(--border) 50%, var(--bg-surface) 75%)';
 
 function NarrativeSection({ text, isLoading }: NarrativeSectionProps) {
   const { t } = useTranslation();
@@ -26,7 +26,7 @@ function NarrativeSection({ text, isLoading }: NarrativeSectionProps) {
       <section className="apple-card rounded-[18px] px-6 py-5">
         <style>{shimmerStyle}</style>
         <div className="mb-3">
-          <span className="font-medium uppercase text-[11px] tracking-[0.12em] text-white/35">NARRATIVE</span>
+          <span className="font-bold uppercase text-[10px] tracking-[0.15em] text-th-text-tertiary">NARRATIVE</span>
         </div>
         <div className="flex flex-col gap-3">
           {[100, 85, 60].map((width, index) => (
@@ -51,26 +51,26 @@ function NarrativeSection({ text, isLoading }: NarrativeSectionProps) {
   return (
     <section className="apple-card rounded-[18px] px-6 py-5">
       <div className="mb-3">
-        <span className="font-medium uppercase text-[11px] tracking-[0.12em] text-white/35">NARRATIVE</span>
+        <span className="font-bold uppercase text-[10px] tracking-[0.15em] text-th-text-tertiary">NARRATIVE</span>
       </div>
 
       <div className="relative">
-        <div className="overflow-hidden transition-all duration-300 ease-in-out" style={{ maxHeight: expanded ? '2000px' : '4.5em' }}>
-          <p className="text-base leading-7 text-white/80 tracking-[0.01em] whitespace-pre-wrap">{text}</p>
+        <div className="overflow-hidden transition-all duration-300 ease-in-out" style={{ maxHeight: expanded ? '2000px' : '6em' }}>
+          <p className="text-base leading-[1.65] text-th-text tracking-[0.012em] whitespace-pre-wrap">{text}</p>
         </div>
 
-        {!expanded && text.length > 120 && (
+        {!expanded && text.length > 200 && (
           <div
-            className="absolute bottom-0 left-0 right-0 h-12 pointer-events-none"
-            style={{ background: 'linear-gradient(to top, rgba(16,20,28,1) 0%, transparent 100%)' }}
+            className="absolute bottom-0 left-0 right-0 h-16 pointer-events-none"
+            style={{ background: 'linear-gradient(to top, var(--bg-card) 20%, transparent 100%)' }}
           />
         )}
       </div>
 
-      {text.length > 120 && (
+      {text.length > 200 && (
         <button
           onClick={() => setExpanded((prev) => !prev)}
-          className="mt-2 flex items-center gap-1 text-white/60 text-[13px]"
+          className="mt-4 flex items-center gap-1.5 text-th-accent font-semibold text-[13px] hover:underline"
         >
           {expanded ? (
             <>

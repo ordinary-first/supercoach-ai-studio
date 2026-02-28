@@ -122,7 +122,7 @@ export default function TodoSidebar({
         id: 'tasks',
         name: names.tasks,
         icon: <Home size={18} />,
-        color: 'text-neon-lime',
+        color: 'text-th-accent',
         filter: (todo) => (!todo.listId || todo.listId === 'tasks') && !todo.completed,
       },
     ];
@@ -162,7 +162,7 @@ export default function TodoSidebar({
         >
           <span
             className="w-3 h-3 rounded-full flex-shrink-0"
-            style={{ backgroundColor: list.color || '#CCFF00' }}
+            style={{ backgroundColor: list.color || 'var(--accent)' }}
           />
           <span className="flex-1 text-left truncate">{list.name}</span>
           {count > 0 && (
@@ -235,7 +235,7 @@ export default function TodoSidebar({
             {group.isCollapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
           </button>
 
-          <FolderOpen size={16} className="text-gray-500 flex-shrink-0" />
+          <FolderOpen size={16} className="text-th-text-tertiary flex-shrink-0" />
 
           <span
             className="flex-1 text-sm text-th-text-secondary truncate"
@@ -317,8 +317,8 @@ export default function TodoSidebar({
                   setContextMenuId(null);
                 }}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all ${isActive
-                    ? 'bg-th-accent-muted text-th-text font-bold'
-                    : 'text-th-text-secondary hover:bg-th-surface/50 hover:text-th-text'
+                  ? 'bg-th-accent-muted text-th-text font-bold'
+                  : 'text-th-text-secondary hover:bg-th-surface/50 hover:text-th-text'
                   }`}
               >
                 <span className={`flex-shrink-0 ${isActive ? list.color : ''}`}>{list.icon}</span>

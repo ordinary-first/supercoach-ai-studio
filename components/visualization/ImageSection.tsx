@@ -28,8 +28,8 @@ function ImageSection({ imageUrl, imageDataUrl, isLoading }: ImageSectionProps) 
   return (
     <section className="apple-card overflow-hidden rounded-[18px]">
       <style>{floatStyle}</style>
-      <div className="px-6 pt-5 pb-2">
-        <span className="font-medium uppercase text-[11px] tracking-[0.12em] text-white/35">
+      <div className="px-6 pt-5 pb-3">
+        <span className="font-bold uppercase text-[10px] tracking-[0.15em] text-th-text-tertiary">
           SCENE · IMAGE
         </span>
       </div>
@@ -46,7 +46,7 @@ function ImageSection({ imageUrl, imageDataUrl, isLoading }: ImageSectionProps) 
       )}
 
       {!hasImage && isLoading && (
-        <div className="relative overflow-hidden h-[100vw] bg-black/35">
+        <div className="relative overflow-hidden aspect-video bg-th-surface border-y border-th-border/20">
           {BLOB_COLORS.map((color, index) => (
             <div
               key={index}

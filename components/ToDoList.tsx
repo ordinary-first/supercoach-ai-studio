@@ -28,8 +28,8 @@ const SortableTodoItem: React.FC<SortableTodoItemProps> = ({ id, isSelected, isC
     zIndex: isDragging ? 10 : undefined,
   };
   const cardClass = `apple-card group flex items-center gap-2.5 py-2.5 px-3 mx-2 mb-1.5 rounded-lg cursor-pointer transition-all duration-150 ${isSelected
-      ? 'bg-th-surface border-th-accent ring-1 ring-th-accent/30'
-      : (isCompleted ? 'bg-th-surface/30 opacity-50' : 'bg-th-surface/50 hover:bg-th-surface')
+    ? 'bg-th-surface border-th-accent ring-1 ring-th-accent/30'
+    : (isCompleted ? 'bg-th-surface/30 opacity-50' : 'bg-th-surface/50 hover:bg-th-surface')
     }`;
   return (
     <div ref={setNodeRef} style={style} {...attributes} onClick={() => onSelect(id)} className={cardClass}>
@@ -339,13 +339,13 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
     <div ref={focusTrapRef} className="apple-tab-shell fixed inset-0 z-50 pb-16 flex flex-row overflow-hidden text-th-text font-body">
 
       {/* Ambient Background */}
-      <div className="absolute top-[-20%] right-[-10%] w-[50%] h-[50%] bg-blue-900/20 rounded-full blur-[120px] pointer-events-none"></div>
-      <div className="absolute bottom-[-20%] left-[-10%] w-[50%] h-[50%] bg-purple-900/20 rounded-full blur-[120px] pointer-events-none"></div>
+      <div className="absolute top-[-20%] right-[-10%] w-[50%] h-[50%] bg-th-accent-muted rounded-full blur-[120px] pointer-events-none opacity-20"></div>
+      <div className="absolute bottom-[-20%] left-[-10%] w-[50%] h-[50%] bg-blue-500/10 rounded-full blur-[120px] pointer-events-none opacity-20"></div>
 
       {/* === SIDEBAR NAVIGATION === */}
       {/* Mobile overlay */}
       {isSidebarOpen && (
-        <div className="fixed inset-0 bg-black/50 z-30 md:hidden" onClick={() => setIsSidebarOpen(false)} />
+        <div className="fixed inset-0 bg-th-overlay/60 backdrop-blur-sm z-30 md:hidden" onClick={() => setIsSidebarOpen(false)} />
       )}
       <div className={`fixed inset-y-0 left-0 w-[260px] z-40 pb-16 md:pb-0 md:relative md:z-10 transform transition-transform duration-300 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
         <TodoSidebar
@@ -372,7 +372,7 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
         {/* Header */}
         <div className="apple-glass-header h-11 md:h-12 flex items-center justify-between px-3 md:px-6 shrink-0">
           <div className="flex items-center gap-2.5">
-            <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="md:hidden p-1.5 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-colors">
+            <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="md:hidden p-1.5 rounded-lg hover:bg-th-surface-hover text-th-text-secondary hover:text-th-text transition-colors">
               <Menu size={18} />
             </button>
             <div className={`p-1.5 rounded-lg ${activeListId === 'myDay' ? 'bg-yellow-400/10' : activeListId === 'important' ? 'bg-red-400/10' : activeListId === 'planned' ? 'bg-blue-400/10' : 'bg-th-accent-muted'}`}>
@@ -388,13 +388,13 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
         <div className="flex-1 overflow-y-auto px-0 pt-1 scrollbar-hide">
           <div className="max-w-4xl mx-auto">
             {incompleteTodos.length === 0 && completedTodos.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-gray-600 space-y-4">
-                <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center">
-                  <Target size={32} className="opacity-30" />
+              <div className="flex flex-col items-center justify-center py-20 text-th-text-tertiary space-y-4">
+                <div className="w-20 h-20 rounded-full bg-th-surface border border-th-border/10 flex items-center justify-center shadow-sm">
+                  <Target size={36} className="text-th-accent opacity-40" />
                 </div>
                 <div className="text-center">
-                  <p className="text-base font-bold text-gray-500">{t.todo.empty}</p>
-                  <p className="text-xs mt-1 text-gray-600">{t.todo.emptyHint}</p>
+                  <p className="text-base font-bold text-th-text-secondary">{t.todo.empty}</p>
+                  <p className="text-sm mt-1 text-th-text-tertiary">{t.todo.emptyHint}</p>
                 </div>
               </div>
             ) : (
@@ -421,14 +421,14 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
                   <div className="mt-2">
                     <button
                       onClick={() => setShowCompleted(prev => !prev)}
-                      className="flex items-center gap-2 px-3 py-2 w-full text-left text-sm text-gray-400 hover:text-gray-300 transition-colors"
+                      className="flex items-center gap-2 px-3 py-2.5 w-full text-left text-sm text-th-text-tertiary hover:text-th-text-secondary transition-colors font-medium border-t border-th-border/20"
                     >
                       {showCompleted
                         ? <ChevronDown size={16} className="flex-shrink-0" />
                         : <ChevronRight size={16} className="flex-shrink-0" />
                       }
                       <span>{uiText.completedSection}</span>
-                      <span className="text-xs bg-white/10 px-1.5 py-0.5 rounded-full">{completedTodos.length}</span>
+                      <span className="text-[11px] bg-th-surface border border-th-border px-1.5 py-0.5 rounded-full font-mono font-bold">{completedTodos.length}</span>
                     </button>
                     {showCompleted && completedTodos.map(todo => renderTodoItem(todo))}
                   </div>
@@ -462,28 +462,28 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
           {/* Quick action buttons */}
           {(isInputFocused || inputText) && (
             <div className="flex items-center gap-1.5 px-3 pb-2 flex-wrap">
-              <label className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs cursor-pointer transition-colors ${pendingDueDate ? 'bg-neon-lime/20 text-neon-lime' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}>
-                <Calendar size={12} />
+              <label className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs cursor-pointer transition-all border shadow-sm ${pendingDueDate ? 'bg-th-accent-muted border-th-accent-border text-th-accent font-bold scale-[1.02]' : 'bg-th-surface border-th-border text-th-text-tertiary hover:bg-th-surface-hover hover:text-th-text'}`}>
+                <Calendar size={13} />
                 <span>{pendingDueDate ? formatDate(pendingDueDate) : t.todo.dueDate}</span>
                 <input type="date" className="absolute opacity-0 w-0 h-0" onChange={(e) => {
                   const d = new Date(e.target.value);
                   if (!isNaN(d.getTime())) setPendingDueDate(d.getTime());
                 }} />
-                {pendingDueDate && <button type="button" onClick={(e) => { e.preventDefault(); setPendingDueDate(null); }} className="ml-0.5"><X size={10} /></button>}
+                {pendingDueDate && <button type="button" onClick={(e) => { e.preventDefault(); setPendingDueDate(null); }} className="ml-0.5 hover:text-red-500 transition-colors"><X size={12} /></button>}
               </label>
 
-              <label className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs cursor-pointer transition-colors ${pendingReminder ? 'bg-electric-orange/20 text-electric-orange' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}>
-                <Bell size={12} />
+              <label className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs cursor-pointer transition-all border shadow-sm ${pendingReminder ? 'bg-electric-orange/10 border-electric-orange/30 text-electric-orange font-bold scale-[1.02]' : 'bg-th-surface border-th-border text-th-text-tertiary hover:bg-th-surface-hover hover:text-th-text'}`}>
+                <Bell size={13} />
                 <span>{pendingReminder ? `${formatDate(pendingReminder)} ${formatTime(pendingReminder)}` : t.todo.reminder}</span>
                 <input type="datetime-local" className="absolute opacity-0 w-0 h-0" onChange={(e) => {
                   const d = new Date(e.target.value);
                   if (!isNaN(d.getTime())) setPendingReminder(d.getTime());
                 }} />
-                {pendingReminder && <button type="button" onClick={(e) => { e.preventDefault(); setPendingReminder(null); }} className="ml-0.5"><X size={10} /></button>}
+                {pendingReminder && <button type="button" onClick={(e) => { e.preventDefault(); setPendingReminder(null); }} className="ml-0.5 hover:text-red-500 transition-colors"><X size={12} /></button>}
               </label>
 
-              <label className={`relative flex items-center gap-1 px-2 py-1 rounded-md text-xs cursor-pointer transition-colors ${pendingRepeat ? 'bg-blue-400/20 text-blue-400' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}>
-                <Repeat size={12} />
+              <label className={`relative flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs cursor-pointer transition-all border shadow-sm ${pendingRepeat ? 'bg-th-accent-muted border-th-accent-border text-th-accent font-bold scale-[1.02]' : 'bg-th-surface border-th-border text-th-text-tertiary hover:bg-th-surface-hover hover:text-th-text'}`}>
+                <Repeat size={13} />
                 <span>{pendingRepeat ? getRepeatLabel(pendingRepeat) : t.todo.repeatLabel}</span>
                 <select className="absolute inset-0 opacity-0 cursor-pointer" value={pendingRepeat || ''} onChange={(e) => setPendingRepeat((e.target.value || null) as RepeatFrequency)}>
                   <option value="">{t.todo.repeatOptions.none}</option>
@@ -492,7 +492,7 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
                   <option value="weekly">{t.todo.repeatOptions.weekly}</option>
                   <option value="monthly">{t.todo.repeatOptions.monthly}</option>
                 </select>
-                {pendingRepeat && <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setPendingRepeat(null); }} className="ml-0.5"><X size={10} /></button>}
+                {pendingRepeat && <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setPendingRepeat(null); }} className="ml-0.5 hover:text-red-500 transition-colors"><X size={12} /></button>}
               </label>
             </div>
           )}
@@ -502,26 +502,26 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
       {/* === RIGHT DETAIL AREA (SIDEBAR) === */}
       {selectedToDoId && (
         <div
-          className="fixed inset-0 bg-black/40 z-10 md:hidden"
+          className="fixed inset-0 bg-th-overlay/60 backdrop-blur-sm z-10 md:hidden"
           onClick={() => setSelectedToDoId(null)}
         />
       )}
       <div
-        className={`apple-glass-panel fixed inset-y-0 right-0 w-full md:w-[380px] border-l border-white/10 shadow-[-20px_0_50px_rgba(0,0,0,0.5)] z-20 transform transition-transform duration-300 ease-out flex flex-col ${selectedToDoId ? 'translate-x-0' : 'translate-x-full'}`}
+        className={`apple-glass-panel fixed inset-y-0 right-0 w-full md:w-[380px] border-l border-th-border shadow-[-20px_0_50px_rgba(0,0,0,0.15)] z-20 transform transition-transform duration-300 ease-out flex flex-col ${selectedToDoId ? 'translate-x-0' : 'translate-x-full'}`}
       >
         {selectedToDo ? (
           <>
             {/* Detail Header */}
-            <div className="apple-glass-header py-3 px-4 flex items-center justify-between">
+            <div className="apple-glass-header py-3 px-4 flex items-center justify-between border-b border-th-border/20">
               <div className="flex items-center gap-2">
-                <button onClick={() => setSelectedToDoId(null)} className="md:hidden p-1.5 -ml-1 rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-all">
+                <button onClick={() => setSelectedToDoId(null)} className="md:hidden p-1.5 -ml-1 rounded-full hover:bg-th-surface-hover text-th-text-secondary hover:text-th-text transition-all">
                   <ArrowLeft size={18} />
                 </button>
-                <h3 className="text-gray-400 font-bold text-sm tracking-wider flex items-center gap-2">
+                <h3 className="text-th-text-tertiary font-bold text-xs tracking-wider flex items-center gap-2 uppercase">
                   <Layout size={14} /> {t.todo.detail}
                 </h3>
               </div>
-              <button onClick={() => setSelectedToDoId(null)} className="text-gray-500 hover:text-white transition-colors">
+              <button onClick={() => setSelectedToDoId(null)} className="text-th-text-tertiary hover:text-red-500 transition-colors p-1.5 hover:bg-red-500/10 rounded-full">
                 <X size={20} />
               </button>
             </div>
@@ -547,7 +547,7 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
               {/* Action Toggles */}
               <div className="space-y-2">
                 <div
-                  className={`py-2.5 px-3 rounded-lg flex items-center gap-3 cursor-pointer transition-all border ${selectedToDo.isMyDay ? 'bg-yellow-400/10 border-yellow-400/30 text-yellow-400' : 'bg-white/5 border-white/5 text-gray-400 hover:bg-white/10'}`}
+                  className={`py-2.5 px-3 rounded-lg flex items-center gap-3 cursor-pointer transition-all border shadow-sm ${selectedToDo.isMyDay ? 'bg-yellow-400/5 border-yellow-400/30 text-yellow-600 dark:text-yellow-400 font-bold' : 'bg-th-surface border-th-border text-th-text-secondary hover:bg-th-surface-hover hover:text-th-text'}`}
                   onClick={() => onUpdateToDo(selectedToDo.id, { isMyDay: !selectedToDo.isMyDay })}
                 >
                   <Sun size={16} />
@@ -557,14 +557,14 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
               </div>
 
               {/* Metadata Group */}
-              <div className="bg-white/5 rounded-xl overflow-hidden border border-white/5 divide-y divide-white/5">
+              <div className="bg-th-surface rounded-xl overflow-hidden border border-th-border divide-y divide-th-border/20 shadow-sm">
 
                 {/* Reminder */}
-                <div className="py-2.5 px-3 flex items-center gap-3 hover:bg-white/5 relative group transition-colors">
-                  <Bell size={16} className={selectedToDo.reminder ? 'text-electric-orange' : 'text-gray-500'} />
+                <div className="py-3 px-3.5 flex items-center gap-3 hover:bg-th-surface-hover relative group transition-colors">
+                  <Bell size={16} className={selectedToDo.reminder ? 'text-electric-orange' : 'text-th-text-tertiary'} />
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-200">{t.todo.reminder}</p>
-                    {selectedToDo.reminder && <p className="text-xs text-electric-orange mt-0.5">{formatDate(selectedToDo.reminder)} {formatTime(selectedToDo.reminder)}</p>}
+                    <p className="text-sm font-medium text-th-text-secondary">{t.todo.reminder}</p>
+                    {selectedToDo.reminder && <p className="text-xs text-electric-orange mt-0.5 font-semibold">{formatDate(selectedToDo.reminder)} {formatTime(selectedToDo.reminder)}</p>}
                   </div>
                   <input
                     type="datetime-local"
@@ -574,15 +574,15 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
                       if (!isNaN(date.getTime())) onUpdateToDo(selectedToDo.id, { reminder: date.getTime() });
                     }}
                   />
-                  {selectedToDo.reminder && <button onClick={() => onUpdateToDo(selectedToDo.id, { reminder: null })} className="p-1 hover:text-red-500 text-gray-500 z-10"><X size={14} /></button>}
+                  {selectedToDo.reminder && <button onClick={() => onUpdateToDo(selectedToDo.id, { reminder: null })} className="p-1 hover:text-red-500 text-th-text-tertiary hover:bg-red-500/10 rounded transition-colors z-10"><X size={14} /></button>}
                 </div>
 
                 {/* Due Date */}
-                <div className="py-2.5 px-3 flex items-center gap-3 hover:bg-white/5 relative group transition-colors">
-                  <Calendar size={16} className={selectedToDo.dueDate ? 'text-neon-lime' : 'text-gray-500'} />
+                <div className="py-3 px-3.5 flex items-center gap-3 hover:bg-th-surface-hover relative group transition-colors">
+                  <Calendar size={16} className={selectedToDo.dueDate ? 'text-th-accent' : 'text-th-text-tertiary'} />
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-200">{t.todo.dueDate}</p>
-                    {selectedToDo.dueDate && <p className="text-xs text-neon-lime mt-0.5">{formatDate(selectedToDo.dueDate)}</p>}
+                    <p className="text-sm font-medium text-th-text-secondary">{t.todo.dueDate}</p>
+                    {selectedToDo.dueDate && <p className="text-xs text-th-accent mt-0.5 font-semibold">{formatDate(selectedToDo.dueDate)}</p>}
                   </div>
                   <input
                     type="date"
@@ -592,20 +592,20 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
                       if (!isNaN(date.getTime())) onUpdateToDo(selectedToDo.id, { dueDate: date.getTime() });
                     }}
                   />
-                  {selectedToDo.dueDate && <button onClick={() => onUpdateToDo(selectedToDo.id, { dueDate: null })} className="p-1 hover:text-red-500 text-gray-500 z-10"><X size={14} /></button>}
+                  {selectedToDo.dueDate && <button onClick={() => onUpdateToDo(selectedToDo.id, { dueDate: null })} className="p-1 hover:text-red-500 text-th-text-tertiary hover:bg-red-500/10 rounded transition-colors z-10"><X size={14} /></button>}
                 </div>
 
                 {/* Repeat */}
-                <div className="py-2.5 px-3 flex items-center gap-3 hover:bg-white/5 relative group transition-colors">
-                  <Repeat size={16} className={selectedToDo.repeat ? 'text-blue-400' : 'text-gray-500'} />
+                <div className="py-3 px-3.5 flex items-center gap-3 hover:bg-th-surface-hover relative group transition-colors">
+                  <Repeat size={16} className={selectedToDo.repeat ? 'text-blue-500 dark:text-blue-400' : 'text-th-text-tertiary'} />
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-200">{t.todo.repeatLabel}</p>
-                    {selectedToDo.repeat && <p className="text-xs text-blue-400 capitalize mt-0.5">{getRepeatLabel(selectedToDo.repeat)}</p>}
+                    <p className="text-sm font-medium text-th-text-secondary">{t.todo.repeatLabel}</p>
+                    {selectedToDo.repeat && <p className="text-xs text-blue-500 dark:text-blue-400 capitalize mt-0.5 font-semibold">{getRepeatLabel(selectedToDo.repeat)}</p>}
                   </div>
                   <select
                     value={selectedToDo.repeat || ''}
                     onChange={(e) => onUpdateToDo(selectedToDo.id, { repeat: e.target.value as RepeatFrequency || null })}
-                    className="absolute inset-0 opacity-0 cursor-pointer bg-th-base text-white"
+                    className="absolute inset-0 opacity-0 cursor-pointer bg-th-base text-th-text"
                   >
                     <option value="">{t.todo.repeatOptions.none}</option>
                     <option value="daily">{t.todo.repeatOptions.daily}</option>
@@ -618,17 +618,17 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
                     <option value="weekly-6">{t.todo.repeatOptions['weekly-6']}</option>
                     <option value="monthly">{t.todo.repeatOptions.monthly}</option>
                   </select>
-                  {selectedToDo.repeat && <button onClick={() => onUpdateToDo(selectedToDo.id, { repeat: null })} className="p-1 hover:text-red-500 text-gray-500 z-10"><X size={14} /></button>}
+                  {selectedToDo.repeat && <button onClick={() => onUpdateToDo(selectedToDo.id, { repeat: null })} className="p-1 hover:text-red-500 text-th-text-tertiary hover:bg-red-500/10 rounded transition-colors z-10"><X size={14} /></button>}
                 </div>
               </div>
 
               {/* Notes */}
-              <div className="bg-white/5 rounded-xl p-3 h-36 ring-1 ring-white/5 focus-within:ring-neon-lime/30 transition-all flex flex-col">
+              <div className="bg-th-surface rounded-xl p-3 h-36 border border-th-border focus-within:border-th-accent-border focus-within:ring-1 focus-within:ring-th-accent/20 transition-all flex flex-col shadow-sm">
                 <textarea
                   placeholder={t.todo.notePlaceholder}
                   value={selectedToDo.note || ''}
                   onChange={(e) => onUpdateToDo(selectedToDo.id, { note: e.target.value })}
-                  className="w-full h-full bg-transparent text-sm text-gray-300 resize-none focus:outline-none placeholder-gray-600"
+                  className="w-full h-full bg-transparent text-sm text-th-text-secondary resize-none focus:outline-none placeholder:text-th-text-tertiary font-medium"
                 />
               </div>
 
@@ -640,16 +640,16 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
             </div>
 
             {/* Footer */}
-            <div className="py-3 px-4 border-t border-th-border flex justify-between items-center bg-th-header">
-              <div className="text-xs text-gray-500">
-                {uiText.idLabel}: {selectedToDo.id.slice(-6)}
+            <div className="py-3 px-4 border-t border-th-border flex justify-between items-center bg-th-header/30">
+              <div className="text-[10px] text-th-text-tertiary font-mono">
+                {uiText.idLabel}: {selectedToDo.id.slice(-6).toUpperCase()}
               </div>
               <button
                 onClick={() => { onDeleteToDo(selectedToDo.id); setSelectedToDoId(null); }}
-                className="text-gray-400 hover:text-red-500 transition-colors flex items-center gap-2 hover:bg-red-500/10 px-3 py-1.5 rounded-lg"
+                className="text-th-text-tertiary hover:text-red-500 transition-colors flex items-center gap-2 hover:bg-red-500/10 px-3 py-2 rounded-lg"
               >
                 <Trash2 size={16} />
-                <span className="text-sm">{t.todo.deleteTitle}</span>
+                <span className="text-sm font-bold uppercase tracking-tight">{t.todo.deleteTitle}</span>
               </button>
             </div>
           </>

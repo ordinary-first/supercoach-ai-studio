@@ -531,16 +531,11 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
           <Settings size={16} className="text-th-text-secondary" />
         </button>
 
-        <h1 className="fb-feedback-header-title text-sm font-semibold text-th-text">
+        <h1 className="fb-feedback-header-title text-sm font-semibold text-th-text flex-1 text-center">
           {t.feedback.title}
         </h1>
 
-        <button
-          onClick={onClose}
-          className="p-2 rounded-full hover:bg-th-surface-hover transition-colors"
-        >
-          <Menu size={16} className="text-th-text-tertiary" />
-        </button>
+        <div className="w-10 h-10" /> {/* Spacer to maintain centering since global menu icon covers this spot */}
       </div>
 
       {generatingVictory && (

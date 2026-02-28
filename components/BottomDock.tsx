@@ -188,8 +188,8 @@ const BottomDock: React.FC<BottomDockProps> = ({
                         setShowCalendarPopup(false);
                       }}
                       className={`w-full px-4 py-2.5 text-sm text-left transition-colors cursor-pointer select-none ${calendarViewMode === item.mode
-                          ? 'text-th-accent font-bold bg-th-surface'
-                          : 'text-gray-300 hover:text-th-text hover:bg-th-surface'
+                        ? 'text-th-accent font-bold bg-th-surface'
+                        : 'text-th-text-secondary hover:text-th-text hover:bg-th-surface'
                         }`}
                     >
                       {item.label}
@@ -215,8 +215,8 @@ const BottomDock: React.FC<BottomDockProps> = ({
                         setShowLayoutPopup(false);
                       }}
                       className={`w-full px-4 py-2.5 text-sm text-left transition-colors cursor-pointer select-none ${mindmapLayout === item.mode
-                          ? 'text-th-accent font-bold bg-th-surface'
-                          : 'text-gray-300 hover:text-th-text hover:bg-th-surface'
+                        ? 'text-th-accent font-bold bg-th-surface'
+                        : 'text-th-text-secondary hover:text-th-text hover:bg-th-surface'
                         }`}
                     >
                       {item.label}

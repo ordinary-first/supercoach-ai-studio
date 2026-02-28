@@ -178,16 +178,18 @@ export function useAuth(
           let billingSubscriptionId = savedProfile.billingSubscriptionId;
           let billingCancelAtPeriodEnd = savedProfile.billingCancelAtPeriodEnd;
 
-          try {
-            const syncResult = await syncSubscription(userId);
-            if (syncResult.isActive && syncResult.plan) {
-              billingPlan = syncResult.plan;
-              billingIsActive = true;
-              billingSubscriptionId = syncResult.subscriptionId;
-              billingCancelAtPeriodEnd = syncResult.cancelAtPeriodEnd;
+          if (!isDevMode) {
+            try {
+              const syncResult = await syncSubscription(userId);
+              if (syncResult.isActive && syncResult.plan) {
+                billingPlan = syncResult.plan;
+                billingIsActive = true;
+                billingSubscriptionId = syncResult.subscriptionId;
+                billingCancelAtPeriodEnd = syncResult.cancelAtPeriodEnd;
+              }
+            } catch (syncError) {
+              console.error('[Billing] Polar sync failed:', syncError);
             }
-          } catch (syncError) {
-            console.error('[Billing] Polar sync failed:', syncError);
           }
 
           setUserProfile((prev) => {

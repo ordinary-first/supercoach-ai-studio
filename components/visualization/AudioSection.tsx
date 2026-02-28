@@ -33,17 +33,17 @@ function AudioSection({ hasAudio, isLoading, isPlaying, onTogglePlay }: AudioSec
     <section className="apple-card flex flex-col rounded-[18px]">
       <style>{waveBarStyle}</style>
       <div className="px-6 pt-5 pb-2">
-        <span className="font-medium uppercase text-[11px] tracking-[0.12em] text-white/35">AUDIO</span>
+        <span className="font-bold uppercase text-[10px] tracking-[0.15em] text-th-text-tertiary">AUDIO</span>
       </div>
 
       <div className="flex items-center px-6 pb-4 h-[52px]">
         <div className="flex-1 flex items-center gap-[3px] h-8">
           {isLoading ? (
             <div
-              className="w-full h-3 rounded-full"
+              className="w-full h-3 rounded-full bg-th-surface border border-th-border/10 overflow-hidden"
               style={{
                 background:
-                  'linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.03) 75%)',
+                  'linear-gradient(90deg, var(--bg-surface) 25%, var(--border) 50%, var(--bg-surface) 75%)',
                 backgroundSize: '200% 100%',
                 animation: 'shimmer 2s infinite',
               }}
@@ -52,12 +52,13 @@ function AudioSection({ hasAudio, isLoading, isPlaying, onTogglePlay }: AudioSec
             BAR_CONFIGS.map((config, index) => (
               <div
                 key={index}
-                className="rounded-full"
+                className="rounded-full transition-all"
                 style={{
-                  width: '3px',
+                  width: '3.5px',
                   minHeight: '4px',
                   height: isPlaying ? undefined : '4px',
-                  backgroundColor: 'rgba(255,255,255,0.6)',
+                  backgroundColor: isPlaying ? 'var(--accent)' : 'var(--text-muted)',
+                  opacity: isPlaying ? 1 : 0.6,
                   ['--max-h' as string]: config.maxH,
                   ...(isPlaying
                     ? { animation: `waveBar 0.8s ease-in-out ${config.delay} infinite` }
@@ -71,9 +72,9 @@ function AudioSection({ hasAudio, isLoading, isPlaying, onTogglePlay }: AudioSec
         {hasAudio && !isLoading && (
           <button
             onClick={onTogglePlay}
-            className="ml-4 flex items-center justify-center rounded-full shrink-0 w-10 h-10 bg-white"
+            className="ml-4 flex items-center justify-center rounded-full shrink-0 w-11 h-11 bg-th-accent hover:brightness-110 active:scale-90 transition-all shadow-md"
           >
-            {isPlaying ? <Pause size={18} color="#000" fill="#000" /> : <Play size={18} color="#000" fill="#000" />}
+            {isPlaying ? <Pause size={20} className="text-th-text-inverse fill-th-text-inverse" /> : <Play size={20} className="text-th-text-inverse fill-th-text-inverse translate-x-0.5" />}
           </button>
         )}
       </div>
