@@ -494,6 +494,8 @@ const MindMap: React.FC<MindMapProps> = ({
   setActionBarRef.current = setActionBar;
   actionBarRef.current = actionBar;
   setUsedGhostsRef.current = setUsedGhosts;
+  const tRef = useRef(t);
+  tRef.current = t;
 
   // --- Onboarding: Root node position tracking ---
   const [rootNodeCenter, setRootNodeCenter] = useState<{x: number; y: number} | null>(null);
@@ -720,6 +722,38 @@ const MindMap: React.FC<MindMapProps> = ({
       setActionBarRef.current(null);
     });
 
+    // --- Identity node placeholder on edit ---
+    const DEFAULT_TEXTS = ['My Life Vision', '나의 인생 비전', ''];
+    mindMap.on('node_dblclick', (node: any) => {
+      const goalId = node?.nodeData?.data?.goalId || node?.nodeData?.data?.uid;
+      const root = nodesRef.current.find(n => n.type === NodeType.ROOT);
+      if (!root || goalId !== root.id) return;
+      const nodeText = node.getData('text') || '';
+      if (!DEFAULT_TEXTS.includes(nodeText)) return;
+      // Clear default text after edit box appears, so CSS placeholder shows
+      setTimeout(() => {
+        const editBox = document.querySelector('.smm-node-edit-wrap') as HTMLElement | null;
+        if (editBox && editBox.style.display !== 'none') {
+          editBox.innerHTML = '';
+          editBox.setAttribute(
+            'data-placeholder',
+            tRef.current.mindmap.onboarding.identityPlaceholder,
+          );
+        }
+      }, 60);
+    });
+    mindMap.on('hide_text_edit', (_el: any, _list: any, editedNode: any) => {
+      const goalId = editedNode?.nodeData?.data?.goalId || editedNode?.nodeData?.data?.uid;
+      const root = nodesRef.current.find(n => n.type === NodeType.ROOT);
+      if (!root || goalId !== root.id) return;
+      const text = (editedNode.getData?.('text') || '').trim();
+      if (!text) {
+        // Restore default text when user leaves empty
+        editedNode.setText?.(tRef.current.mindmap.defaultRootText);
+        mindMap.render?.();
+      }
+    });
+
     // --- Event: mindmap-center (from other components) ---
     const handleCenter = (e: Event) => {
       const detail = (e as CustomEvent).detail;
@@ -870,6 +904,12 @@ const MindMap: React.FC<MindMapProps> = ({
       <style>{`
         @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
         .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
+        .smm-node-edit-wrap:empty::before {
+          content: attr(data-placeholder);
+          opacity: 0.35;
+          font-style: italic;
+          pointer-events: none;
+        }
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .animate-fade-in-up { animation: fadeInUp 0.6s ease-out forwards; }
       `}</style>
@@ -1050,18 +1090,6 @@ const MindMap: React.FC<MindMapProps> = ({
             >
               <span className="text-[10px] text-th-text-secondary uppercase tracking-[0.2em] font-mono">
                 {t.mindmap.onboarding.identityLabel}
-              </span>
-            </div>
-          )}
-
-          {/* Example placeholder below root node text */}
-          {rootNodeCenter && (
-            <div
-              className="absolute z-40 pointer-events-none"
-              style={{ left: rootNodeCenter.x, top: rootNodeCenter.y + 2, transform: 'translate(-50%, 0)' }}
-            >
-              <span className="text-th-text/25 text-xs font-body whitespace-nowrap italic">
-                {t.mindmap.onboarding.identityPlaceholder}
               </span>
             </div>
           )}
