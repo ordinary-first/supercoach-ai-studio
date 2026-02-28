@@ -150,8 +150,6 @@ const App: React.FC = () => {
   const [language, setLanguage] = useState<AppLanguage>(getInitialLanguage);
   const [isLanguageLoaded, setIsLanguageLoaded] = useState(false);
   const [isSettingsPageOpen, setIsSettingsPageOpen] = useState(false);
-  const isDevSession =
-    import.meta.env.DEV && new URLSearchParams(window.location.search).has('dev');
 
   const [nodes, setNodes] = useState<GoalNode[]>(createInitialGoalNodes);
   const [links, setLinks] = useState<GoalLink[]>([]);
@@ -201,17 +199,7 @@ const App: React.FC = () => {
 
   const t = getTranslations(language);
 
-  useAutoSave(
-    nodes,
-    links,
-    todos,
-    todoLists,
-    todoGroups,
-    userProfile,
-    isDataLoaded,
-    userId,
-    isDevSession,
-  );
+  useAutoSave(nodes, links, todos, todoLists, todoGroups, userProfile, isDataLoaded, userId);
 
   // Prevent cross-account data bleed: reset in-memory state when the uid changes.
   const prevUserIdRef = useRef<string | null | undefined>(undefined);
@@ -233,36 +221,29 @@ const App: React.FC = () => {
 
   // 채팅 히스토리 Firestore 로딩
   useEffect(() => {
-    if (isDevSession || !userId) return;
+    if (!userId) return;
     let cancelled = false;
     loadChatHistory(userId).then((saved) => {
       if (cancelled) return;
       if (saved.length > 0) setChatMessages(saved);
     });
     return () => { cancelled = true; };
-  }, [userId, isDevSession]);
+  }, [userId]);
 
   // 채팅 히스토리 디바운스 자동저장 (2초)
   useEffect(() => {
-    if (isDevSession || !userId || chatMessages.length === 0) return;
+    if (!userId || chatMessages.length === 0) return;
     const timer = setTimeout(() => {
       saveChatHistory(userId, chatMessages);
     }, 2000);
     return () => clearTimeout(timer);
-  }, [chatMessages, userId, isDevSession]);
+  }, [chatMessages, userId]);
 
   useEffect(() => {
     document.documentElement.lang = language;
   }, [language]);
 
   useEffect(() => {
-    if (isDevSession) {
-      isLoadingSettingsRef.current = false;
-      setLanguage(getInitialLanguage());
-      setIsLanguageLoaded(true);
-      return;
-    }
-
     let cancelled = false;
     if (!userId) {
       isLoadingSettingsRef.current = false;
@@ -292,15 +273,15 @@ const App: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [userId, isDevSession]);
+  }, [userId]);
 
   useEffect(() => {
     localStorage.setItem('app_language', language);
-    if (isDevSession || !userId || !isLanguageLoaded || isLoadingSettingsRef.current) return;
+    if (!userId || !isLanguageLoaded || isLoadingSettingsRef.current) return;
     saveUserSettings(userId, { language }).catch(() => {
       addToast(t.app.toasts.languageSaveFailed, 'warning');
     });
-  }, [addToast, isLanguageLoaded, language, userId, isDevSession]);
+  }, [addToast, isLanguageLoaded, language, userId]);
 
   useEffect(() => {
     let cancelled = false;

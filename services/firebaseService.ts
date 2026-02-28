@@ -5,6 +5,7 @@ import {
   getAuth,
   onAuthStateChanged,
   signInAnonymously,
+  signInWithCustomToken,
   signInWithPopup,
   signOut,
   type User,
@@ -105,6 +106,18 @@ export const loginAnonymously = async (): Promise<User | null> => {
     return result.user;
   } catch (error) {
     console.error('[Auth] Anonymous login failed:', error);
+    return null;
+  }
+};
+
+export const loginWithDevToken = async (token: string): Promise<User | null> => {
+  if (!token) return null;
+  try {
+    const result = await signInWithCustomToken(auth, token);
+    log('[Auth] Dev token login:', result.user.uid);
+    return result.user;
+  } catch (error) {
+    console.error('[Auth] Dev token login failed:', error);
     return null;
   }
 };

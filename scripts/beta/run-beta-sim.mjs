@@ -1,8 +1,11 @@
 import { spawn } from 'node:child_process';
 import { setTimeout as sleep } from 'node:timers/promises';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
+import { cert, getApps, initializeApp } from 'firebase-admin/app';
+import { getAuth } from 'firebase-admin/auth';
 import { chromium } from 'playwright';
 
 const parseArg = (name, fallback) => {
@@ -20,6 +23,113 @@ const PORT = Number.parseInt(parseArg('port', process.env.BETA_PORT ?? '4173'), 
 const MODE = parseArg('mode', process.env.BETA_MODE ?? 'random');
 const VERBOSE = parseArg('verbose', process.env.BETA_VERBOSE ?? '0') === '1';
 const BASE_URL = `http://127.0.0.1:${PORT}`;
+const DEV_AUTH_UID = parseArg('dev-auth-uid', process.env.BETA_DEV_AUTH_UID ?? 'beta-sim-user');
+
+const loadEnvLocal = () => {
+  const envPath = path.resolve(process.cwd(), '.env.local');
+  try {
+    const raw = readFileSync(envPath, 'utf8');
+    for (const line of raw.split(/\r?\n/)) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+      const eq = trimmed.indexOf('=');
+      if (eq === -1) continue;
+      const key = trimmed.slice(0, eq).trim();
+      let value = trimmed.slice(eq + 1).trim();
+      if (process.env[key] !== undefined) continue;
+      if (
+        (value.startsWith('"') && value.endsWith('"'))
+        || (value.startsWith("'") && value.endsWith("'"))
+      ) {
+        value = value.slice(1, -1);
+      }
+      process.env[key] = value;
+    }
+  } catch {
+    // optional for local runs
+  }
+};
+
+const requiredEnv = (name) => {
+  const value = String(process.env[name] || '').trim();
+  if (!value) throw new Error(`missing_env_${name}`);
+  return value;
+};
+
+const findAdminKeyFile = () => {
+  const explicit = [
+    process.env.FIREBASE_ADMIN_KEY_FILE,
+    process.env.GOOGLE_APPLICATION_CREDENTIALS,
+  ].map((value) => String(value || '').trim()).filter(Boolean);
+
+  for (const filePath of explicit) {
+    if (existsSync(filePath)) return filePath;
+  }
+
+  const roots = [];
+  let cursor = process.cwd();
+  for (let depth = 0; depth < 4; depth += 1) {
+    roots.push(cursor);
+    const parent = path.dirname(cursor);
+    if (parent === cursor) break;
+    cursor = parent;
+  }
+
+  for (const root of roots) {
+    try {
+      const hit = readdirSync(root).find(
+        (name) => name.includes('firebase-adminsdk') && name.endsWith('.json'),
+      );
+      if (hit) return path.join(root, hit);
+    } catch {
+      // keep searching
+    }
+  }
+
+  return null;
+};
+
+const initAdminApp = () => {
+  if (getApps().length > 0) return;
+  const hasInlineEnv =
+    Boolean(process.env.FIREBASE_ADMIN_PROJECT_ID)
+    && Boolean(process.env.FIREBASE_ADMIN_CLIENT_EMAIL)
+    && Boolean(process.env.FIREBASE_ADMIN_PRIVATE_KEY);
+
+  if (hasInlineEnv) {
+    initializeApp({
+      credential: cert({
+        projectId: requiredEnv('FIREBASE_ADMIN_PROJECT_ID'),
+        clientEmail: requiredEnv('FIREBASE_ADMIN_CLIENT_EMAIL'),
+        privateKey: requiredEnv('FIREBASE_ADMIN_PRIVATE_KEY').replace(/\\n/g, '\n'),
+      }),
+    });
+    return;
+  }
+
+  const keyFile = findAdminKeyFile();
+  if (!keyFile) {
+    throw new Error('firebase_admin_credentials_not_found');
+  }
+
+  const raw = JSON.parse(readFileSync(keyFile, 'utf8'));
+  initializeApp({
+    credential: cert({
+      projectId: String(raw.project_id || ''),
+      clientEmail: String(raw.client_email || ''),
+      privateKey: String(raw.private_key || ''),
+    }),
+  });
+};
+
+const createDevAuthToken = async () => {
+  try {
+    initAdminApp();
+    return await getAuth().createCustomToken(DEV_AUTH_UID);
+  } catch {
+    return null;
+  }
+};
 
 const TAB_NAMES = {
   GOALS: ['Goals', '목표'],
@@ -79,6 +189,15 @@ const compactStack = (error) => {
   return stack.split('\n').slice(0, 8).join('\n').slice(0, 1000);
 };
 
+const shouldIgnoreConsoleError = (message) => {
+  const text = String(message || '');
+  if (text.includes('[Billing] Polar sync failed')) return true;
+  if (text.includes('Failed to load resource: the server responded with a status of 404')) {
+    return true;
+  }
+  return false;
+};
+
 const fingerprint = (message) =>
   message.replace(/\d+/g, '#').replace(/\s+/g, ' ').trim().slice(0, 180);
 
@@ -94,6 +213,47 @@ const waitForServer = async (url, timeoutMs = 90000) => {
     await sleep(500);
   }
   throw new Error(`dev server did not respond within ${timeoutMs}ms: ${url}`);
+};
+
+const waitForAppReady = async (page, options = {}) => {
+  const timeoutMs = options.timeoutMs ?? 30000;
+  const hasDevToken = options.hasDevToken ?? false;
+  const started = Date.now();
+  while (Date.now() - started < timeoutMs) {
+    const openSettings = page.getByRole('button', {
+      name: 'Open settings',
+      exact: true,
+    });
+    if ((await openSettings.count()) > 0) return;
+
+    const loginBtn = page.getByRole('button', {
+      name: 'Google Login',
+      exact: true,
+    });
+    if ((await loginBtn.count()) > 0) {
+      throw new Error(
+        'app_not_authenticated_in_dev: login screen visible. '
+        + (hasDevToken
+          ? 'Dev custom-token auth failed. Check FIREBASE_ADMIN_* env.'
+          : 'Anonymous auth likely disabled. Enable it or provide FIREBASE_ADMIN_* env for devToken.'),
+      );
+    }
+
+    const landingCta = page.getByRole('button', {
+      name: /Start Free|Get Started|무료 시작|시작하기/,
+    });
+    if ((await landingCta.count()) > 0) {
+      throw new Error(
+        'app_not_authenticated_in_dev: landing CTA visible. '
+        + (hasDevToken
+          ? 'Dev custom-token auth failed before app bootstrap.'
+          : 'Anonymous auth likely failed or is disabled.'),
+      );
+    }
+
+    await sleep(250);
+  }
+  throw new Error(`app_not_ready_within_${timeoutMs}ms`);
 };
 
 const clickByAnyLabel = async (page, labels) => {
@@ -333,7 +493,8 @@ const buildActionPlan = (rnd) => {
   return { type: 'random', actions: randomPool };
 };
 
-const runSingleScenario = async (browser, id, actionCount) => {
+const runSingleScenario = async (browser, id, actionCount, options = {}) => {
+  const devAuthToken = options.devAuthToken ?? null;
   const rnd = mulberry32(1000 + id);
   const mobile = rnd() > 0.35;
   const context = await browser.newContext(
@@ -356,15 +517,20 @@ const runSingleScenario = async (browser, id, actionCount) => {
 
   page.on('console', (msg) => {
     if (msg.type() === 'error') {
-      errors.push({ type: 'console', message: msg.text().slice(0, 240) });
+      const text = msg.text();
+      if (shouldIgnoreConsoleError(text)) return;
+      errors.push({ type: 'console', message: text.slice(0, 240) });
     }
   });
 
   const plan = buildActionPlan(rnd);
+  const query = devAuthToken
+    ? `?dev=1&devToken=${encodeURIComponent(devAuthToken)}`
+    : '?dev=1';
 
   try {
-    await page.goto(`${BASE_URL}/?dev=1`, { waitUntil: 'domcontentloaded' });
-    await page.getByRole('button', { name: 'Open settings', exact: true }).waitFor({ timeout: 12000 });
+    await page.goto(`${BASE_URL}/${query}`, { waitUntil: 'domcontentloaded' });
+    await waitForAppReady(page, { hasDevToken: Boolean(devAuthToken) });
 
     const totalSteps = plan.type === 'random'
       ? actionCount
@@ -406,6 +572,10 @@ const runSingleScenario = async (browser, id, actionCount) => {
 };
 
 const main = async () => {
+  loadEnvLocal();
+  const devAuthToken = await createDevAuthToken();
+  const authMode = devAuthToken ? 'custom-token' : 'anonymous';
+
   const serverCommand = process.platform === 'win32'
     ? {
         command: 'cmd.exe',
@@ -432,6 +602,7 @@ const main = async () => {
 
   try {
     await waitForServer(BASE_URL);
+    process.stdout.write(`[beta-sim] devAuthMode=${authMode}\n`);
 
     const browser = await chromium.launch({ headless: true });
     const runs = [];
@@ -442,7 +613,9 @@ const main = async () => {
       let retry = 0;
       while (retry < 16) {
         const scenarioId = i * 100 + retry;
-        result = await runSingleScenario(browser, scenarioId, ACTIONS_PER_USER);
+        result = await runSingleScenario(browser, scenarioId, ACTIONS_PER_USER, {
+          devAuthToken,
+        });
 
         if (MODE === 'journey-random') {
           if (usedSignatures.has(result.signature)) {
@@ -480,6 +653,7 @@ const main = async () => {
 
     const summary = {
       mode: MODE,
+      devAuthMode: authMode,
       users: USERS,
       actionsPerUser: ACTIONS_PER_USER,
       totalScenarios: runs.length,

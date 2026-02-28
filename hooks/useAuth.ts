@@ -1,15 +1,17 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { UserProfile, GoalNode, GoalLink, ToDoItem, TodoList, TodoGroup } from '../types';
+import React, { useEffect, useRef, useState } from 'react';
+import { GoalLink, GoalNode, ToDoItem, TodoGroup, TodoList, UserProfile } from '../types';
 import {
-  onAuthUpdate,
+  ensureCreatedAt,
+  getSyncStatus,
   getUserId,
   loadGoalData,
-  loadTodos,
-  loadTodoLists,
   loadProfile,
-  ensureCreatedAt,
+  loadTodoLists,
+  loadTodos,
+  loginAnonymously,
+  loginWithDevToken,
+  onAuthUpdate,
   testFirestoreConnection,
-  getSyncStatus,
   SyncStatus,
 } from '../services/firebaseService';
 import { syncSubscription } from '../services/polarService';
@@ -36,39 +38,56 @@ export function useAuth(
   const [isDataLoaded, setIsDataLoaded] = useState(false);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('offline');
   const [isNewUser, setIsNewUser] = useState(false);
+
   const userIdRef = useRef<string | null>(null);
   const loadedUserIdRef = useRef<string | null>(null);
   const isLoadingRef = useRef(false);
-  const isDevMode = import.meta.env.DEV && new URLSearchParams(window.location.search).has('dev');
+  const devAuthBootstrappingRef = useRef(false);
 
-  // 0. Dev auto-login: ?dev=1 → mock user (dev only, UI testing)
+  const isDevMode =
+    import.meta.env.DEV && new URLSearchParams(window.location.search).has('dev');
+  const devAuthToken =
+    import.meta.env.DEV ? new URLSearchParams(window.location.search).get('devToken') : null;
+
+  // In dev mode, authenticate against Firebase so backend paths are exercised.
   useEffect(() => {
     if (!isDevMode) return;
-    const devId = 'dev_local_' + Date.now();
-    userIdRef.current = devId;
-    loadedUserIdRef.current = devId;
-    setUserProfile({
-      name: 'Dev User',
-      email: 'dev@localhost',
-      googleId: devId,
-      gender: 'Other',
-      age: '',
-      location: '',
-      bio: '',
-      gallery: [],
-    });
-    setIsInitializing(false);
-    setIsDataLoaded(true);
-  }, []);
+    devAuthBootstrappingRef.current = true;
+    let cancelled = false;
+    let resolved = false;
+    const timeout = setTimeout(() => {
+      if (!resolved && !cancelled) {
+        setIsInitializing(false);
+      }
+    }, 8000);
+    (async () => {
+      const user = devAuthToken
+        ? await loginWithDevToken(devAuthToken)
+        : await loginAnonymously();
+      resolved = true;
+      devAuthBootstrappingRef.current = false;
+      clearTimeout(timeout);
+      if (!user && !cancelled) {
+        setIsInitializing(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+      devAuthBootstrappingRef.current = false;
+      clearTimeout(timeout);
+    };
+  }, [devAuthToken, isDevMode]);
 
-  // 1. Auth state listener (skip in dev mode)
+  // Auth listener
   useEffect(() => {
-    if (isDevMode) return;
     const unsubscribe = onAuthUpdate((authProfile) => {
+      if (isDevMode && !authProfile && devAuthBootstrappingRef.current) {
+        return;
+      }
+
       setUserProfile((prev) => {
         if (!authProfile) return null;
         if (!prev) return authProfile;
-        // auth 필드만 업데이트, 나머지(빌링 등) 보존
         return {
           ...prev,
           name: authProfile.name || prev.name,
@@ -77,13 +96,12 @@ export function useAuth(
           avatarUrl: authProfile.avatarUrl || prev.avatarUrl,
         };
       });
+
       setIsInitializing(false);
 
-      // Use uid from the auth callback payload (googleId) to avoid timing races with auth.currentUser.
-      const uid = authProfile ? (authProfile as UserProfile).googleId ?? getUserId() : null;
+      const uid = authProfile ? authProfile.googleId ?? getUserId() : null;
       const prevUid = userIdRef.current;
 
-      // Important: data is scoped by uid. If uid changes, force a reload.
       if (uid && uid !== prevUid) {
         userIdRef.current = uid;
         loadedUserIdRef.current = null;
@@ -96,11 +114,10 @@ export function useAuth(
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [isDevMode]);
 
-  // 2. Load user data from Firestore when profile is available (skip in dev mode)
+  // Load user-scoped data from Firestore
   useEffect(() => {
-    if (isDevMode) return;
     if (!userProfile) {
       loadedUserIdRef.current = null;
       isLoadingRef.current = false;
@@ -116,7 +133,6 @@ export function useAuth(
     }
     userIdRef.current = userId;
 
-    // Skip if already loaded for this user
     if (loadedUserIdRef.current === userId && isDataLoaded) return;
     if (isLoadingRef.current) return;
 
@@ -124,13 +140,11 @@ export function useAuth(
       isLoadingRef.current = true;
       setIsDataLoaded(false);
 
-      // Update sync status + test Firestore connection
       setSyncStatus(getSyncStatus());
       testFirestoreConnection(userId).then(() => {
         setSyncStatus(getSyncStatus());
       });
 
-      // 최초 로그인 시 createdAt 보장
       await ensureCreatedAt(userId);
 
       try {
@@ -141,7 +155,6 @@ export function useAuth(
           loadProfile(userId),
         ]);
 
-        // If user switched accounts while loading, ignore this result.
         if (userIdRef.current !== userId) return;
 
         if (goalData && goalData.nodes.length > 0) {
@@ -156,7 +169,6 @@ export function useAuth(
           onTodoListsLoaded(todoListsData.lists, todoListsData.groups);
         }
 
-        // 온보딩 완료 여부 판단 (source of truth: Firestore onboardingCompleted 필드)
         if (savedProfile) {
           const needsOnboarding = savedProfile.onboardingCompleted === false;
           setIsNewUser(needsOnboarding);
@@ -166,7 +178,6 @@ export function useAuth(
           let billingSubscriptionId = savedProfile.billingSubscriptionId;
           let billingCancelAtPeriodEnd = savedProfile.billingCancelAtPeriodEnd;
 
-          // 항상 Polar에서 최신 구독 상태 동기화 (Firestore 캐시 문제 방지)
           try {
             const syncResult = await syncSubscription(userId);
             if (syncResult.isActive && syncResult.plan) {
@@ -179,7 +190,7 @@ export function useAuth(
             console.error('[Billing] Polar sync failed:', syncError);
           }
 
-          setUserProfile(prev => {
+          setUserProfile((prev) => {
             if (!prev) return savedProfile;
             return {
               ...prev,
@@ -198,8 +209,8 @@ export function useAuth(
             };
           });
         }
-      } catch (e) {
-        console.error('Data loading error:', e);
+      } catch (error) {
+        console.error('Data loading error:', error);
       } finally {
         isLoadingRef.current = false;
         if (userIdRef.current === userId) {
@@ -209,7 +220,7 @@ export function useAuth(
       }
     };
 
-    loadData();
+    void loadData();
   }, [userProfile, isDataLoaded, onGoalDataLoaded, onTodosLoaded, onTodoListsLoaded]);
 
   const TRIAL_DAYS = 3;

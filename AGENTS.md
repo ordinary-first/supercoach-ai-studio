@@ -80,7 +80,24 @@ When one agent completes work that another agent will continue:
 3. Note any gotchas or decisions made
 
 ## Current Status
-_Last updated: 2026-02-27_
+_Last updated: 2026-02-28_
+- Dev backend verification path hardened r1 completed:
+  - `displayVersion` bumped to `V02.28r1`.
+  - `?dev` auth path now supports Firebase custom-token bootstrap:
+    - Added `loginWithDevToken` in `services/firebaseService.ts`.
+    - `hooks/useAuth.ts` now consumes `devToken` query and authenticates with Firebase
+      (`custom token` fallback to anonymous), while guarding initial auth null race.
+  - `scripts/beta/run-beta-sim.mjs` now performs real backend-capable auth boot:
+    - Loads local env + attempts Firebase Admin init from either
+      `FIREBASE_ADMIN_*` env or nearby `firebase-adminsdk*.json` key file.
+    - Creates per-run custom token and injects into app URL (`?dev=1&devToken=...`).
+    - Upgraded app-ready diagnostics for unauthenticated cases.
+    - Added known-noise console error filtering (Polar sync warning / static 404) so
+      simulator fails on real regressions, not infrastructure noise.
+  - Verification:
+    - `pnpm beta:sim:one` -> `devAuthMode=custom-token`, `scenariosWithErrors=0`.
+    - `pnpm beta:sim:variety` (20 users) -> unique signatures 20, errors 0.
+    - `pnpm build` passed.
 - Beta simulation expansion + large-scale run r17 completed:
   - `displayVersion` bumped to `V02.27r17`.
   - `scripts/beta/run-beta-sim.mjs` rewritten for scenario quality:
