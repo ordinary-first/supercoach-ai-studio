@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { ToDoItem } from '../types';
+import type { AppLanguage } from '../i18n/types';
 
 const MORNING_START = 6;
 const MORNING_END = 10;
@@ -28,29 +29,56 @@ const markDone = (slot: 'morning' | 'evening'): void => {
   } catch { /* ignore */ }
 };
 
-const MORNING_DIRECTIVE = `[아침 피드백 모드]
+const getMorningDirective = (lang: AppLanguage) =>
+  lang === 'ko'
+    ? `[아침 피드백 모드]
 지금은 하루 시작 브리핑 시간입니다.
 오늘의 일정과 할일을 자연스럽게 섞어서 칭찬과 함께 전달하세요.
 그 다음 딱 2가지만 물어보세요:
 1. 오늘 일정 중 조정이 필요한 게 있는지
 2. 추가로 오늘 할 일이 있는지
-절대 3가지 이상 묻지 마세요. 간결하고 따뜻하게.`;
+절대 3가지 이상 묻지 마세요. 간결하고 따뜻하게.`
+    : `[Morning Feedback Mode]
+It's time for the daily morning briefing.
+Naturally blend today's schedule and todos with praise.
+Then ask ONLY 2 questions:
+1. Any adjustments needed for today's schedule?
+2. Any additional tasks for today?
+Never ask more than 2. Keep it concise and warm.`;
 
 const buildEveningDirective = (
   completed: string[],
   incomplete: string[],
-): string => `[저녁 피드백 모드 - 오늘의 승리]
+  lang: AppLanguage,
+): string => {
+  if (lang === 'ko') {
+    return `[저녁 피드백 모드 - 오늘의 승리]
 완료한 할일: ${completed.length > 0 ? completed.join(', ') : '없음'}
 미완료 할일: ${incomplete.length > 0 ? incomplete.join(', ') : '없음'}
 
 ${incomplete.length === 0
-    ? '모든 할일을 완료했습니다! 칭찬 폭탄 MAX로 마무리하세요.'
-    : `1. 완료한 것 먼저 칭찬
+      ? '모든 할일을 완료했습니다! 칭찬 폭탄 MAX로 마무리하세요.'
+      : `1. 완료한 것 먼저 칭찬
 2. 못 한 것 이유 부드럽게 물어보기
 3. 목표 조정 여부 물어보기`}
 
 대화가 자연스럽게 마무리되면, 마지막 응답에 오늘의 한줄 코멘트를 포함하세요.
 형식: 응답 텍스트 마지막 줄에 <!-- COMMENT: 한줄 코멘트 내용 --> 로 삽입.`;
+  }
+
+  return `[Evening Feedback Mode - Today's Wins]
+Completed todos: ${completed.length > 0 ? completed.join(', ') : 'None'}
+Incomplete todos: ${incomplete.length > 0 ? incomplete.join(', ') : 'None'}
+
+${incomplete.length === 0
+    ? 'All todos completed! Celebrate with maximum praise.'
+    : `1. Praise completed items first
+2. Gently ask about reasons for incomplete items
+3. Ask if goals need adjustment`}
+
+When the conversation naturally wraps up, include a one-line daily comment in your final response.
+Format: Add <!-- COMMENT: one-line comment --> at the end of your response.`;
+};
 
 export type FeedbackSlot = 'morning' | 'evening' | null;
 
@@ -63,6 +91,7 @@ interface CoachFeedbackResult {
 export const useCoachFeedback = (
   isOpen: boolean,
   todos: ToDoItem[],
+  language: AppLanguage = 'ko',
 ): CoachFeedbackResult => {
   const [pendingDirective, setPendingDirective] = useState<string | null>(null);
   const [feedbackSlot, setFeedbackSlot] = useState<FeedbackSlot>(null);
@@ -77,7 +106,7 @@ export const useCoachFeedback = (
     const hour = new Date().getHours();
 
     if (hour >= MORNING_START && hour < MORNING_END && !wasDone('morning')) {
-      setPendingDirective(MORNING_DIRECTIVE);
+      setPendingDirective(getMorningDirective(language));
       setFeedbackSlot('morning');
       return;
     }
@@ -85,7 +114,7 @@ export const useCoachFeedback = (
     if (hour >= EVENING_START && hour < EVENING_END && !wasDone('evening')) {
       const completed = todos.filter(t => t.completed).map(t => t.text);
       const incomplete = todos.filter(t => !t.completed).map(t => t.text);
-      setPendingDirective(buildEveningDirective(completed, incomplete));
+      setPendingDirective(buildEveningDirective(completed, incomplete, language));
       setFeedbackSlot('evening');
       return;
     }

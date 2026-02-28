@@ -48,7 +48,7 @@ const CoachChat: React.FC<CoachChatProps> = ({
   const focusTrapRef = useFocusTrap(isOpen);
   const memory = useCoachMemory(userId, isOpen, nodes || [], todos, language);
   const { pendingDirective, feedbackSlot, markFeedbackDone } =
-    useCoachFeedback(isOpen, todos);
+    useCoachFeedback(isOpen, todos, language);
   const effectiveKeyboardHeight = Math.max(keyboardHeight, viewportKeyboardInset);
 
   // Mobile keyboard height via VirtualKeyboard API (overlays-content 모드)

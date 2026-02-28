@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 import { sendDreamChatMessage } from '../services/aiService';
+import type { AppLanguage } from '../i18n/types';
 
 export interface ChatMessage {
   id: string;
@@ -8,15 +9,23 @@ export interface ChatMessage {
   type: 'suggestion' | 'scene' | 'user-input';
 }
 
-const WELCOME_MESSAGE =
-  '안녕하세요! 어떤 장면을 시각화해 볼까요? 아래에서 마음에 드는 주제를 선택하거나 직접 입력해 주세요.';
+const getWelcomeMessage = (lang: AppLanguage) =>
+  lang === 'ko'
+    ? '안녕하세요! 어떤 장면을 시각화해 볼까요? 아래에서 마음에 드는 주제를 선택하거나 직접 입력해 주세요.'
+    : 'Hello! What scene would you like to visualize? Choose a topic below or type your own.';
+
+const getErrorMessage = (lang: AppLanguage) =>
+  lang === 'ko'
+    ? '죄송해요, 잠시 오류가 발생했어요. 다시 시도해 주세요.'
+    : 'Sorry, an error occurred. Please try again.';
 
 const makeId = () =>
   `${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
 
-export function useDreamChat() {
+export function useDreamChat(language: AppLanguage = 'ko') {
+  const welcomeMessage = getWelcomeMessage(language);
   const [messages, setMessages] = useState<ChatMessage[]>([
-    { id: makeId(), role: 'ai', content: WELCOME_MESSAGE, type: 'scene' },
+    { id: makeId(), role: 'ai', content: welcomeMessage, type: 'scene' },
   ]);
   const [isAiTyping, setIsAiTyping] = useState(false);
   const [finalPrompt, setFinalPrompt] = useState<string | null>(null);
@@ -43,7 +52,7 @@ export function useDreamChat() {
       try {
         // 현재 메시지로 히스토리 구성
         const history = [...messages, { id: '', role: 'user' as const, content: text, type: 'user-input' as const }]
-          .filter((m) => m.content !== WELCOME_MESSAGE)
+          .filter((m) => m.content !== welcomeMessage)
           .map((m) => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.content }));
 
         const { reply, prompt } = await sendDreamChatMessage(
@@ -55,11 +64,7 @@ export function useDreamChat() {
         addMessage('ai', reply, 'scene');
         if (prompt) setFinalPrompt(prompt);
       } catch {
-        addMessage(
-          'ai',
-          '죄송해요, 잠시 오류가 발생했어요. 다시 시도해 주세요.',
-          'scene',
-        );
+        addMessage('ai', getErrorMessage(language), 'scene');
       } finally {
         setIsAiTyping(false);
       }
@@ -69,7 +74,7 @@ export function useDreamChat() {
 
   const clearMessages = useCallback(() => {
     setMessages([
-      { id: makeId(), role: 'ai', content: WELCOME_MESSAGE, type: 'scene' },
+      { id: makeId(), role: 'ai', content: welcomeMessage, type: 'scene' },
     ]);
     setFinalPrompt(null);
   }, []);
