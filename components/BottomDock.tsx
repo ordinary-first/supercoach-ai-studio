@@ -181,14 +181,15 @@ const BottomDock: React.FC<BottomDockProps> = ({
                     rounded-xl shadow-2xl overflow-hidden min-w-[120px] z-[60]"
                 >
                   {calendarModes.map((item) => (
-                    <button
+                    <div
                       key={item.mode}
-                      onClick={() => {
+                      role="button"
+                      onPointerUp={() => {
                         onCalendarViewModeChange?.(item.mode);
                         onTabChange('CALENDAR');
                         setShowCalendarPopup(false);
                       }}
-                      className={`w-full px-4 py-2.5 text-sm text-left transition-colors ${
+                      className={`w-full px-4 py-2.5 text-sm text-left transition-colors cursor-pointer select-none ${
                         calendarViewMode === item.mode
                           ? 'text-th-accent font-bold bg-th-surface'
                           : 'text-gray-300 hover:text-th-text hover:bg-th-surface'
@@ -196,7 +197,7 @@ const BottomDock: React.FC<BottomDockProps> = ({
                     >
                       {item.label}
                       {calendarViewMode === item.mode && ' ✓'}
-                    </button>
+                    </div>
                   ))}
                 </div>
               )}
@@ -208,14 +209,15 @@ const BottomDock: React.FC<BottomDockProps> = ({
                     rounded-xl shadow-2xl overflow-hidden min-w-[120px] z-[60]"
                 >
                   {layoutModes.map((item) => (
-                    <button
+                    <div
                       key={item.mode}
-                      onClick={() => {
+                      role="button"
+                      onPointerUp={() => {
                         onMindmapLayoutChange?.(item.mode);
                         onTabChange('GOALS');
                         setShowLayoutPopup(false);
                       }}
-                      className={`w-full px-4 py-2.5 text-sm text-left transition-colors ${
+                      className={`w-full px-4 py-2.5 text-sm text-left transition-colors cursor-pointer select-none ${
                         mindmapLayout === item.mode
                           ? 'text-th-accent font-bold bg-th-surface'
                           : 'text-gray-300 hover:text-th-text hover:bg-th-surface'
@@ -223,7 +225,7 @@ const BottomDock: React.FC<BottomDockProps> = ({
                     >
                       {item.label}
                       {mindmapLayout === item.mode && ' ✓'}
-                    </button>
+                    </div>
                   ))}
                 </div>
               )}
