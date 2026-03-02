@@ -82,10 +82,11 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [previousViewMode, setPreviousViewMode] = useState<ViewMode>('month');
 
-  // Sync with external viewMode (skip if currently in day view)
+  // Sync with external viewMode. External selection should always win.
   useEffect(() => {
-    if (externalViewMode && viewMode !== 'day') {
+    if (externalViewMode) {
       setViewMode(externalViewMode);
+      setSelectedDate(null);
     }
   }, [externalViewMode]);
 
