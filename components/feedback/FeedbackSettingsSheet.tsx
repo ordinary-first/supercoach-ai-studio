@@ -15,11 +15,20 @@ interface FeedbackSettingsSheetProps {
   onSettingsChange?: (settings: NotificationSettings) => void;
 }
 
+const getClientTimezone = (): string => {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Seoul';
+  } catch {
+    return 'Asia/Seoul';
+  }
+};
+
 const DEFAULT_SETTINGS: NotificationSettings = {
   morningEnabled: false,
   morningTime: '08:00',
   eveningEnabled: false,
   eveningTime: '21:00',
+  timezone: getClientTimezone(),
   notificationPermission: 'default',
   updatedAt: 0,
 };
@@ -69,7 +78,25 @@ export const FeedbackSettingsSheet: React.FC<FeedbackSettingsSheetProps> = ({
     }
 
     loadNotificationSettings(userId).then((saved) => {
-      if (saved) setSettings(saved);
+      if (saved) {
+        const merged = {
+          ...DEFAULT_SETTINGS,
+          ...saved,
+          timezone: saved.timezone || getClientTimezone(),
+        };
+
+        setSettings(merged);
+
+        if (!saved.timezone) {
+          saveNotificationSettings(userId, merged);
+          onSettingsChange?.(merged);
+        }
+      } else {
+        setSettings({
+          ...DEFAULT_SETTINGS,
+          timezone: getClientTimezone(),
+        });
+      }
       setLoaded(true);
     });
   }, [userId]);
@@ -81,6 +108,12 @@ export const FeedbackSettingsSheet: React.FC<FeedbackSettingsSheetProps> = ({
       notificationPermission: Notification.permission as 'granted' | 'denied' | 'default',
     }));
   }, []);
+
+  useEffect(() => {
+    if (!userId) return;
+    if (settings.notificationPermission !== 'granted') return;
+    registerFcmToken(userId);
+  }, [settings.notificationPermission, userId]);
 
   const persistSettings = useCallback((next: NotificationSettings) => {
     setSettings(next);
@@ -122,6 +155,7 @@ export const FeedbackSettingsSheet: React.FC<FeedbackSettingsSheetProps> = ({
 
     const result = await Notification.requestPermission();
     updateField('notificationPermission', result as 'granted' | 'denied' | 'default');
+    updateField('timezone', getClientTimezone());
     if (result === 'granted' && userId) {
       registerFcmToken(userId);
     }

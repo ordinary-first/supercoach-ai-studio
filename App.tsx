@@ -26,7 +26,6 @@ import {
   TodoList,
   TodoGroup,
   SmartListId,
-  NotificationSettings,
 } from './types';
 import { generateGoalImage, uploadNodeImage, decomposeGoal } from './services/aiService';
 import { verifyPolarCheckout } from './services/polarService';
@@ -34,7 +33,6 @@ import {
   logout,
   getUserId,
   loadChatHistory,
-  loadNotificationSettings,
   loadUserSettings,
   saveChatHistory,
   saveProfile,
@@ -53,11 +51,6 @@ import { getTranslations } from './i18n';
 import {
   ALARM_CLICK_EVENT,
   AlarmSlot,
-  canShowNotification,
-  checkNotificationTriggers,
-  markEveningSent,
-  markMorningSent,
-  showBrowserNotification,
 } from './services/notificationService';
 
 // Helper function to calculate the next occurrence date for recurring todos
@@ -189,12 +182,7 @@ const App: React.FC = () => {
   const [deleteConfirmNodeId, setDeleteConfirmNodeId] = useState<string | null>(null);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [alarmSlotForChat, setAlarmSlotForChat] = useState<AlarmSlot | null>(null);
-  const [alarmPopup, setAlarmPopup] = useState<{
-    slot: AlarmSlot;
-    title: string;
-    body: string;
-  } | null>(null);
-  const [notifSettings, setNotifSettings] = useState<NotificationSettings | null>(null);
+  const [pendingAlarmSlot, setPendingAlarmSlot] = useState<AlarmSlot | null>(null);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [imageLoadingNodes, setImageLoadingNodes] = useState<Set<string>>(new Set());
   const [decomposingNodeId, setDecomposingNodeId] = useState<string | null>(null);
@@ -233,44 +221,11 @@ const App: React.FC = () => {
 
   useAutoSave(nodes, links, todos, todoLists, todoGroups, userProfile, isDataLoaded, userId);
 
-  useEffect(() => {
-    if (!userId) {
-      setNotifSettings(null);
-      return;
-    }
-
-    let cancelled = false;
-    loadNotificationSettings(userId).then((settings) => {
-      if (cancelled) return;
-      setNotifSettings(settings);
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [userId]);
-
   const openAlarmConversation = useCallback((slot: AlarmSlot) => {
     setAlarmSlotForChat(slot);
-    setAlarmPopup(null);
     setActiveTab('FEEDBACK');
     setIsChatOpen(true);
   }, []);
-
-  const triggerAlarmPopup = useCallback((slot: AlarmSlot) => {
-    const completedCount = todos.filter((todo) => todo.completed).length;
-    const body = slot === 'morning'
-      ? t.feedback.morningNotifBody
-      : t.feedback.eveningNotifBody.replace('{count}', String(completedCount));
-    const title = slot === 'morning'
-      ? t.feedback.morningNotifTitle
-      : t.feedback.eveningNotifTitle;
-
-    setAlarmPopup({ slot, title, body });
-    if (canShowNotification()) {
-      showBrowserNotification(title, body, `alarm-${slot}`, slot);
-    }
-  }, [todos, t]);
 
   // Prevent cross-account data bleed: reset in-memory state when the uid changes.
   const prevUserIdRef = useRef<string | null | undefined>(undefined);
@@ -390,6 +345,22 @@ const App: React.FC = () => {
   }, [addToast]);
 
   useEffect(() => {
+    const url = new URL(window.location.href);
+    const alarm = url.searchParams.get('alarm');
+    if (alarm !== 'morning' && alarm !== 'evening') return;
+
+    setPendingAlarmSlot(alarm);
+    url.searchParams.delete('alarm');
+    window.history.replaceState({}, '', url.toString());
+  }, []);
+
+  useEffect(() => {
+    if (!pendingAlarmSlot || !userId) return;
+    openAlarmConversation(pendingAlarmSlot);
+    setPendingAlarmSlot(null);
+  }, [pendingAlarmSlot, userId, openAlarmConversation]);
+
+  useEffect(() => {
     const handleAlarmClick = (event: Event) => {
       const detail = (event as CustomEvent<{ slot?: AlarmSlot }>).detail;
       const slot = detail?.slot;
@@ -402,28 +373,6 @@ const App: React.FC = () => {
       window.removeEventListener(ALARM_CLICK_EVENT, handleAlarmClick as EventListener);
     };
   }, [openAlarmConversation]);
-
-  useEffect(() => {
-    if (!userId || !notifSettings) return;
-
-    const tick = () => {
-      const triggers = checkNotificationTriggers(notifSettings);
-
-      if (triggers.shouldNotifyMorning) {
-        triggerAlarmPopup('morning');
-        markMorningSent();
-      }
-
-      if (triggers.shouldNotifyEvening) {
-        triggerAlarmPopup('evening');
-        markEveningSent();
-      }
-    };
-
-    tick();
-    const timer = setInterval(tick, 60000);
-    return () => clearInterval(timer);
-  }, [userId, notifSettings, triggerAlarmPopup]);
 
   // Window resize listener
   useEffect(() => {
@@ -955,29 +904,6 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {alarmPopup && (
-        <div className="fixed inset-0 z-[130] bg-th-overlay/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-sm rounded-2xl border border-th-border bg-th-elevated shadow-2xl p-5 space-y-3">
-            <p className="text-sm font-bold text-th-text">{alarmPopup.title}</p>
-            <p className="text-xs text-th-text-secondary whitespace-pre-wrap">{alarmPopup.body}</p>
-            <div className="flex items-center gap-2 pt-2">
-              <button
-                onClick={() => openAlarmConversation(alarmPopup.slot)}
-                className="flex-1 py-2 rounded-full bg-th-accent text-th-text-inverse text-sm font-semibold"
-              >
-                {language === 'ko' ? '대화 시작' : 'Start chat'}
-              </button>
-              <button
-                onClick={() => setAlarmPopup(null)}
-                className="flex-1 py-2 rounded-full bg-th-surface text-th-text-secondary text-sm font-semibold"
-              >
-                {t.common.later}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       <FeedbackView
         isOpen={activeTab === 'FEEDBACK'}
         onClose={() => setActiveTab('GOALS')}
@@ -986,7 +912,6 @@ const App: React.FC = () => {
         userProfile={userProfile}
         userId={userId}
         notificationRuntimeEnabled={false}
-        onNotificationSettingsChange={setNotifSettings}
         onUpdateNode={(id, updates) => handleUpdateNode(id, updates)}
         onUpdateTodo={(id, updates) => {
           setTodos(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));

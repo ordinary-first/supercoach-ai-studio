@@ -714,8 +714,11 @@ export const loadNotificationSettings = async (
       morningTime: String(d.morningTime || '08:00'),
       eveningEnabled: Boolean(d.eveningEnabled),
       eveningTime: String(d.eveningTime || '21:00'),
+      timezone: typeof d.timezone === 'string' ? d.timezone : undefined,
       notificationPermission: (d.notificationPermission as 'granted' | 'denied' | 'default') || 'default',
       fcmToken: typeof d.fcmToken === 'string' ? d.fcmToken : undefined,
+      lastMorningSentDate: typeof d.lastMorningSentDate === 'string' ? d.lastMorningSentDate : undefined,
+      lastEveningSentDate: typeof d.lastEveningSentDate === 'string' ? d.lastEveningSentDate : undefined,
       updatedAt: Number(d.updatedAt || 0),
     };
   } catch (error: unknown) {

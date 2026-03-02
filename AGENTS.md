@@ -103,6 +103,45 @@ cd web-legacy-mindmap2 && npx vite --port 3016 --host
 
 _Last updated: 2026-03-02_
 
+- PWA push reminder backend (web closed notification) implementation completed:
+  - `displayVersion` bumped to `V03.02r5`.
+  - Added scheduled push API: `api/push-reminders.ts`.
+    - Vercel cron endpoint validates cron auth (`CRON_SECRET` or `x-vercel-cron`).
+    - Scans users, reads `users/{uid}/settings/notifications`, computes due alarms by
+      per-user timezone, sends FCM push for morning/evening.
+    - Writes dedupe markers (`lastMorningSentDate`, `lastEveningSentDate`) and clears
+      invalid tokens.
+  - Enabled cron in `vercel.json`:
+    - `*/5 * * * *` on `/api/push-reminders`.
+  - FCM admin messaging enabled:
+    - `lib/firebaseAdmin.ts` now exports `getAdminMessaging()`.
+  - FCM token registration hardened:
+    - `services/notificationService.ts` now passes Firebase config to service worker via
+      URL query, supports optional `FIREBASE_VAPID_KEY`, and maps foreground payload slot.
+  - Service worker upgraded:
+    - `public/firebase-messaging-sw.js` now reads Firebase config from script query params.
+    - Background notification click opens deep link (`/?alarm=morning|evening`).
+  - App alarm entry flow switched to deep-link model:
+    - `App.tsx` consumes `?alarm=` and auto-opens feedback coach chat after auth.
+    - Removed app-local timer scheduler to avoid duplicate/incorrect reminders.
+  - Notification settings schema expanded:
+    - `types.ts` + `services/firebaseService.ts` now include timezone/sent-date fields.
+    - `FeedbackSettingsSheet.tsx` auto-captures and persists client timezone.
+  - Verification:
+    - `npm run build` passed.
+
+- Alarm trigger reliability hotfix completed:
+  - `displayVersion` bumped to `V03.02r4`.
+  - `services/notificationService.ts`:
+    - Expanded alarm trigger window from 1 minute to 5 minutes to reduce missed alarms on
+      timer drift/background throttling.
+    - Updated sent-check logic to consider `settings.updatedAt`, so if user changes reminder
+      time/settings on the same day, re-trigger is allowed for re-test.
+  - `App.tsx`:
+    - Alarm scheduler interval tightened from 60s to 30s to improve trigger timing.
+  - Verification:
+    - pending local build verification after this patch set.
+
 - Feedback goal-adjustment card temporary hide completed:
   - `displayVersion` bumped to `V03.02r3`.
   - `components/FeedbackView.tsx`:
