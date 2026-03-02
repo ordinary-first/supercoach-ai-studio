@@ -1,8 +1,11 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { X, Sun, Moon, Bell, BellOff } from 'lucide-react';
 import type { TranslationStrings } from '../../i18n/types';
 import type { NotificationSettings } from '../../types';
-import { loadNotificationSettings, saveNotificationSettings } from '../../services/firebaseService';
+import {
+  loadNotificationSettings,
+  saveNotificationSettings,
+} from '../../services/firebaseService';
 import { registerFcmToken } from '../../services/notificationService';
 
 interface FeedbackSettingsSheetProps {
@@ -12,23 +15,6 @@ interface FeedbackSettingsSheetProps {
   onSettingsChange?: (settings: NotificationSettings) => void;
 }
 
-const TIME_OPTIONS = [
-  '06:00', '06:30', '07:00', '07:30', '08:00', '08:30',
-  '09:00', '09:30', '10:00', '10:30', '11:00',
-];
-
-const EVENING_OPTIONS = [
-  '19:00', '19:30', '20:00', '20:30', '21:00', '21:30',
-  '22:00', '22:30', '23:00',
-];
-
-const formatTime = (time: string): string => {
-  const [h, m] = time.split(':').map(Number);
-  const period = h < 12 ? '오전' : '오후';
-  const hour = h > 12 ? h - 12 : h;
-  return `${period} ${hour}:${String(m).padStart(2, '0')}`;
-};
-
 const DEFAULT_SETTINGS: NotificationSettings = {
   morningEnabled: false,
   morningTime: '08:00',
@@ -36,6 +22,34 @@ const DEFAULT_SETTINGS: NotificationSettings = {
   eveningTime: '21:00',
   notificationPermission: 'default',
   updatedAt: 0,
+};
+
+const HOURS = Array.from({ length: 24 }, (_, idx) => String(idx).padStart(2, '0'));
+const MINUTES = Array.from({ length: 60 }, (_, idx) => String(idx).padStart(2, '0'));
+
+const parseTime = (value: string, fallback: string): { hh: string; mm: string } => {
+  const [rawHh, rawMm] = value.split(':');
+  const [fallbackHh, fallbackMm] = fallback.split(':');
+  const hh = /^\d{2}$/.test(rawHh || '') && Number(rawHh) >= 0 && Number(rawHh) <= 23
+    ? rawHh
+    : fallbackHh;
+  const mm = /^\d{2}$/.test(rawMm || '') && Number(rawMm) >= 0 && Number(rawMm) <= 59
+    ? rawMm
+    : fallbackMm;
+  return { hh, mm };
+};
+
+const toDisplayTime = (time: string, language: 'ko' | 'en'): string => {
+  const { hh, mm } = parseTime(time, '00:00');
+  const hNum = Number(hh);
+  if (language === 'ko') {
+    const period = hNum < 12 ? '오전' : '오후';
+    const hour12 = hNum % 12 === 0 ? 12 : hNum % 12;
+    return `${period} ${hour12}:${mm}`;
+  }
+  const period = hNum < 12 ? 'AM' : 'PM';
+  const hour12 = hNum % 12 === 0 ? 12 : hNum % 12;
+  return `${hour12}:${mm} ${period}`;
 };
 
 export const FeedbackSettingsSheet: React.FC<FeedbackSettingsSheetProps> = ({
@@ -48,30 +62,31 @@ export const FeedbackSettingsSheet: React.FC<FeedbackSettingsSheetProps> = ({
   const [loaded, setLoaded] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout>>();
 
-  // Load from Firestore
   useEffect(() => {
-    if (!userId) { setLoaded(true); return; }
+    if (!userId) {
+      setLoaded(true);
+      return;
+    }
+
     loadNotificationSettings(userId).then((saved) => {
       if (saved) setSettings(saved);
       setLoaded(true);
     });
   }, [userId]);
 
-  // Sync browser permission state
   useEffect(() => {
-    if (typeof Notification !== 'undefined') {
-      setSettings((prev) => ({
-        ...prev,
-        notificationPermission: Notification.permission as 'granted' | 'denied' | 'default',
-      }));
-    }
+    if (typeof Notification === 'undefined') return;
+    setSettings((prev) => ({
+      ...prev,
+      notificationPermission: Notification.permission as 'granted' | 'denied' | 'default',
+    }));
   }, []);
 
-  // Debounced save to Firestore
   const persistSettings = useCallback((next: NotificationSettings) => {
     setSettings(next);
     onSettingsChange?.(next);
     if (!userId) return;
+
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
       saveNotificationSettings(userId, next);
@@ -79,7 +94,8 @@ export const FeedbackSettingsSheet: React.FC<FeedbackSettingsSheetProps> = ({
   }, [userId, onSettingsChange]);
 
   const updateField = useCallback(<K extends keyof NotificationSettings>(
-    key: K, value: NotificationSettings[K],
+    key: K,
+    value: NotificationSettings[K],
   ) => {
     setSettings((prev) => {
       const next = { ...prev, [key]: value, updatedAt: Date.now() };
@@ -88,32 +104,55 @@ export const FeedbackSettingsSheet: React.FC<FeedbackSettingsSheetProps> = ({
     });
   }, [persistSettings]);
 
-  // Request notification permission + FCM token
+  const updateTimePart = useCallback((
+    key: 'morningTime' | 'eveningTime',
+    part: 'hh' | 'mm',
+    value: string,
+  ) => {
+    const current = settings[key];
+    const parsed = parseTime(current, key === 'morningTime' ? '08:00' : '21:00');
+    const next = part === 'hh'
+      ? `${value}:${parsed.mm}`
+      : `${parsed.hh}:${value}`;
+    updateField(key, next);
+  }, [settings, updateField]);
+
   const requestPermission = useCallback(async () => {
     if (typeof Notification === 'undefined') return;
+
     const result = await Notification.requestPermission();
     updateField('notificationPermission', result as 'granted' | 'denied' | 'default');
-    // FCM 토큰 등록 (granted일 때)
     if (result === 'granted' && userId) {
       registerFcmToken(userId);
     }
   }, [updateField, userId]);
 
+  const morningTime = useMemo(
+    () => parseTime(settings.morningTime, DEFAULT_SETTINGS.morningTime),
+    [settings.morningTime],
+  );
+  const eveningTime = useMemo(
+    () => parseTime(settings.eveningTime, DEFAULT_SETTINGS.eveningTime),
+    [settings.eveningTime],
+  );
+
   if (!loaded) return null;
 
   const permStatus = settings.notificationPermission;
+  const language = t.common.today === '오늘' ? 'ko' : 'en';
 
   return (
     <div className="fixed inset-0 z-[60] flex items-end justify-center">
-      <div className="absolute inset-0 bg-th-overlay/60 backdrop-blur-sm animate-fade-in" onClick={onClose} />
+      <div
+        className="absolute inset-0 bg-th-overlay/60 backdrop-blur-sm animate-fade-in"
+        onClick={onClose}
+      />
 
       <div className="relative w-full max-w-lg bg-th-elevated rounded-t-3xl max-h-[70vh] flex flex-col animate-slide-up shadow-2xl border-t border-th-border">
-        {/* Handle */}
         <div className="flex justify-center pt-3 pb-1">
           <div className="w-10 h-1 rounded-full bg-th-border" />
         </div>
 
-        {/* Header */}
         <div className="flex items-center justify-between px-5 py-3 border-bottom border-th-border/50">
           <h2 className="text-base font-bold text-th-text">{t.feedback.settings}</h2>
           <button onClick={onClose} className="p-2 rounded-full hover:bg-th-surface-hover">
@@ -121,9 +160,7 @@ export const FeedbackSettingsSheet: React.FC<FeedbackSettingsSheetProps> = ({
           </button>
         </div>
 
-        {/* Content */}
         <div className="flex-1 overflow-y-auto px-5 pb-8 space-y-6">
-          {/* Notification Permission */}
           {permStatus !== 'granted' && (
             <div className="space-y-2">
               <div className="flex items-center gap-2">
@@ -150,23 +187,39 @@ export const FeedbackSettingsSheet: React.FC<FeedbackSettingsSheetProps> = ({
             </div>
           )}
 
-          {/* Morning */}
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <Sun size={14} className="text-amber-500" />
-              <span className="text-[13px] font-semibold text-th-text-secondary">{t.feedback.morningAlarm}</span>
+              <span className="text-[13px] font-semibold text-th-text-secondary">
+                {t.feedback.morningAlarm}
+              </span>
             </div>
             <p className="text-[11px] text-th-text-tertiary">{t.feedback.morningDesc}</p>
 
-            <select
-              value={settings.morningTime}
-              onChange={(e) => updateField('morningTime', e.target.value)}
-              className="w-full bg-th-surface border border-th-border rounded-xl px-3 py-2.5 text-[13px] text-th-text-secondary focus:outline-none focus:border-th-accent/50 appearance-none"
-            >
-              {TIME_OPTIONS.map((time) => (
-                <option key={time} value={time}>{formatTime(time)}</option>
-              ))}
-            </select>
+            <div className="grid grid-cols-[1fr_auto_1fr] gap-2 items-center">
+              <select
+                value={morningTime.hh}
+                onChange={(e) => updateTimePart('morningTime', 'hh', e.target.value)}
+                className="w-full bg-th-surface border border-th-border rounded-xl px-3 py-2.5 text-[13px] text-th-text-secondary focus:outline-none focus:border-th-accent/50 appearance-none"
+              >
+                {HOURS.map((hour) => (
+                  <option key={`morning-hh-${hour}`} value={hour}>{hour}</option>
+                ))}
+              </select>
+              <span className="text-th-text-secondary font-semibold">:</span>
+              <select
+                value={morningTime.mm}
+                onChange={(e) => updateTimePart('morningTime', 'mm', e.target.value)}
+                className="w-full bg-th-surface border border-th-border rounded-xl px-3 py-2.5 text-[13px] text-th-text-secondary focus:outline-none focus:border-th-accent/50 appearance-none"
+              >
+                {MINUTES.map((minute) => (
+                  <option key={`morning-mm-${minute}`} value={minute}>{minute}</option>
+                ))}
+              </select>
+            </div>
+            <p className="text-[11px] text-th-text-tertiary">
+              {toDisplayTime(settings.morningTime, language)}
+            </p>
 
             <label className="flex items-center justify-between cursor-pointer">
               <span className="text-[12px] text-th-text-tertiary">
@@ -185,23 +238,39 @@ export const FeedbackSettingsSheet: React.FC<FeedbackSettingsSheetProps> = ({
 
           <div className="border-t border-th-border/50" />
 
-          {/* Evening */}
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <Moon size={14} className="text-indigo-500" />
-              <span className="text-[13px] font-semibold text-th-text-secondary">{t.feedback.eveningAlarm}</span>
+              <span className="text-[13px] font-semibold text-th-text-secondary">
+                {t.feedback.eveningAlarm}
+              </span>
             </div>
             <p className="text-[11px] text-th-text-tertiary">{t.feedback.eveningDesc}</p>
 
-            <select
-              value={settings.eveningTime}
-              onChange={(e) => updateField('eveningTime', e.target.value)}
-              className="w-full bg-th-surface border border-th-border rounded-xl px-3 py-2.5 text-[13px] text-th-text-secondary focus:outline-none focus:border-th-accent/50 appearance-none"
-            >
-              {EVENING_OPTIONS.map((time) => (
-                <option key={time} value={time}>{formatTime(time)}</option>
-              ))}
-            </select>
+            <div className="grid grid-cols-[1fr_auto_1fr] gap-2 items-center">
+              <select
+                value={eveningTime.hh}
+                onChange={(e) => updateTimePart('eveningTime', 'hh', e.target.value)}
+                className="w-full bg-th-surface border border-th-border rounded-xl px-3 py-2.5 text-[13px] text-th-text-secondary focus:outline-none focus:border-th-accent/50 appearance-none"
+              >
+                {HOURS.map((hour) => (
+                  <option key={`evening-hh-${hour}`} value={hour}>{hour}</option>
+                ))}
+              </select>
+              <span className="text-th-text-secondary font-semibold">:</span>
+              <select
+                value={eveningTime.mm}
+                onChange={(e) => updateTimePart('eveningTime', 'mm', e.target.value)}
+                className="w-full bg-th-surface border border-th-border rounded-xl px-3 py-2.5 text-[13px] text-th-text-secondary focus:outline-none focus:border-th-accent/50 appearance-none"
+              >
+                {MINUTES.map((minute) => (
+                  <option key={`evening-mm-${minute}`} value={minute}>{minute}</option>
+                ))}
+              </select>
+            </div>
+            <p className="text-[11px] text-th-text-tertiary">
+              {toDisplayTime(settings.eveningTime, language)}
+            </p>
 
             <label className="flex items-center justify-between cursor-pointer">
               <span className="text-[12px] text-th-text-tertiary">

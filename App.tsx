@@ -13,13 +13,28 @@ import MarketingLandingPage from './components/landing/MarketingLandingPage';
 import SettingsPage from './components/SettingsPage';
 import OnboardingScreen from './components/OnboardingScreen';
 import FeedbackView from './components/FeedbackView';
-import { GoalNode, GoalLink, NodeType, NodeStatus, ToDoItem, ChatMessage, RepeatFrequency, UserProfile, ActionLogEntry, TodoList, TodoGroup, SmartListId } from './types';
+import {
+  GoalNode,
+  GoalLink,
+  NodeType,
+  NodeStatus,
+  ToDoItem,
+  ChatMessage,
+  RepeatFrequency,
+  UserProfile,
+  ActionLogEntry,
+  TodoList,
+  TodoGroup,
+  SmartListId,
+  NotificationSettings,
+} from './types';
 import { generateGoalImage, uploadNodeImage, decomposeGoal } from './services/aiService';
 import { verifyPolarCheckout } from './services/polarService';
 import {
   logout,
   getUserId,
   loadChatHistory,
+  loadNotificationSettings,
   loadUserSettings,
   saveChatHistory,
   saveProfile,
@@ -35,6 +50,15 @@ import ToastContainer from './components/ToastContainer';
 import { Crown, Menu as MenuIcon } from 'lucide-react';
 import { LanguageContext } from './i18n/useTranslation';
 import { getTranslations } from './i18n';
+import {
+  ALARM_CLICK_EVENT,
+  AlarmSlot,
+  canShowNotification,
+  checkNotificationTriggers,
+  markEveningSent,
+  markMorningSent,
+  showBrowserNotification,
+} from './services/notificationService';
 
 // Helper function to calculate the next occurrence date for recurring todos
 const calculateNextDate = (repeat: RepeatFrequency, fromDate: Date): number => {
@@ -164,6 +188,13 @@ const App: React.FC = () => {
   const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
   const [deleteConfirmNodeId, setDeleteConfirmNodeId] = useState<string | null>(null);
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [alarmSlotForChat, setAlarmSlotForChat] = useState<AlarmSlot | null>(null);
+  const [alarmPopup, setAlarmPopup] = useState<{
+    slot: AlarmSlot;
+    title: string;
+    body: string;
+  } | null>(null);
+  const [notifSettings, setNotifSettings] = useState<NotificationSettings | null>(null);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [imageLoadingNodes, setImageLoadingNodes] = useState<Set<string>>(new Set());
   const [decomposingNodeId, setDecomposingNodeId] = useState<string | null>(null);
@@ -201,6 +232,45 @@ const App: React.FC = () => {
   const t = getTranslations(language);
 
   useAutoSave(nodes, links, todos, todoLists, todoGroups, userProfile, isDataLoaded, userId);
+
+  useEffect(() => {
+    if (!userId) {
+      setNotifSettings(null);
+      return;
+    }
+
+    let cancelled = false;
+    loadNotificationSettings(userId).then((settings) => {
+      if (cancelled) return;
+      setNotifSettings(settings);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
+
+  const openAlarmConversation = useCallback((slot: AlarmSlot) => {
+    setAlarmSlotForChat(slot);
+    setAlarmPopup(null);
+    setActiveTab('FEEDBACK');
+    setIsChatOpen(true);
+  }, []);
+
+  const triggerAlarmPopup = useCallback((slot: AlarmSlot) => {
+    const completedCount = todos.filter((todo) => todo.completed).length;
+    const body = slot === 'morning'
+      ? t.feedback.morningNotifBody
+      : t.feedback.eveningNotifBody.replace('{count}', String(completedCount));
+    const title = slot === 'morning'
+      ? t.feedback.morningNotifTitle
+      : t.feedback.eveningNotifTitle;
+
+    setAlarmPopup({ slot, title, body });
+    if (canShowNotification()) {
+      showBrowserNotification(title, body, `alarm-${slot}`, slot);
+    }
+  }, [todos, t]);
 
   // Prevent cross-account data bleed: reset in-memory state when the uid changes.
   const prevUserIdRef = useRef<string | null | undefined>(undefined);
@@ -318,6 +388,42 @@ const App: React.FC = () => {
       cancelled = true;
     };
   }, [addToast]);
+
+  useEffect(() => {
+    const handleAlarmClick = (event: Event) => {
+      const detail = (event as CustomEvent<{ slot?: AlarmSlot }>).detail;
+      const slot = detail?.slot;
+      if (!slot) return;
+      openAlarmConversation(slot);
+    };
+
+    window.addEventListener(ALARM_CLICK_EVENT, handleAlarmClick as EventListener);
+    return () => {
+      window.removeEventListener(ALARM_CLICK_EVENT, handleAlarmClick as EventListener);
+    };
+  }, [openAlarmConversation]);
+
+  useEffect(() => {
+    if (!userId || !notifSettings) return;
+
+    const tick = () => {
+      const triggers = checkNotificationTriggers(notifSettings);
+
+      if (triggers.shouldNotifyMorning) {
+        triggerAlarmPopup('morning');
+        markMorningSent();
+      }
+
+      if (triggers.shouldNotifyEvening) {
+        triggerAlarmPopup('evening');
+        markEveningSent();
+      }
+    };
+
+    tick();
+    const timer = setInterval(tick, 60000);
+    return () => clearInterval(timer);
+  }, [userId, notifSettings, triggerAlarmPopup]);
 
   // Window resize listener
   useEffect(() => {
@@ -646,6 +752,37 @@ const App: React.FC = () => {
     appendAction(getUserId(), 'COMPLETE_TODO', `"${todo?.text || id}" ${todo?.completed ? '미완료' : '완료'}`, { todoId: id });
   }, [todos]);
 
+  const handleAddTodoFromCoach = useCallback((text: string, extras?: Partial<ToDoItem>) => {
+    const trimmed = text.trim().slice(0, 500);
+    if (!trimmed) return;
+
+    const newId = Date.now().toString();
+    setTodos((prev) => [
+      {
+        id: newId,
+        text: trimmed,
+        completed: false,
+        createdAt: Date.now(),
+        ...extras,
+      },
+      ...prev,
+    ]);
+    appendAction(getUserId(), 'ADD_TODO', `"${trimmed}" 코치 반영`, { todoId: newId });
+  }, []);
+
+  const handleUpdateTodoFromCoach = useCallback((id: string, updates: Partial<ToDoItem>) => {
+    setTodos((prev) => prev.map((todo) => (
+      todo.id === id ? { ...todo, ...updates } : todo
+    )));
+    appendAction(getUserId(), 'UPDATE_TODO', '코치 반영으로 할일 수정', { todoId: id });
+  }, []);
+
+  const handleDeleteTodoFromCoach = useCallback((id: string) => {
+    const todo = todos.find((item) => item.id === id);
+    setTodos((prev) => prev.filter((item) => item.id !== id));
+    appendAction(getUserId(), 'DELETE_TODO', `"${todo?.text || id}" 코치 반영 삭제`, { todoId: id });
+  }, [todos]);
+
   const handleTabChange = useCallback((tab: TabType) => {
       setActiveTab(tab);
       const tabNames: Record<TabType, string> = { GOALS: '목표 마인드맵', CALENDAR: '캘린더', TODO: '할 일', VISUALIZE: '시각화', FEEDBACK: '피드백' };
@@ -767,7 +904,10 @@ const App: React.FC = () => {
       <CalendarView isOpen={activeTab === 'CALENDAR'} onClose={() => setActiveTab('GOALS')} todos={todos} onToggleToDo={handleToggleToDo} viewMode={calendarViewMode} onViewModeChange={setCalendarViewMode} />
       <CoachChat
         isOpen={isChatOpen}
-        onClose={() => setIsChatOpen(false)}
+        onClose={() => {
+          setIsChatOpen(false);
+          setAlarmSlotForChat(null);
+        }}
         selectedNode={selectedNode}
         nodes={nodes}
         userProfile={userProfile}
@@ -777,6 +917,11 @@ const App: React.FC = () => {
         messages={chatMessages}
         onMessagesChange={setChatMessages}
         activeTab={activeTab}
+        alarmSlot={alarmSlotForChat}
+        onAlarmSlotConsumed={() => setAlarmSlotForChat(null)}
+        onAddTodoFromCoach={handleAddTodoFromCoach}
+        onUpdateTodoFromCoach={handleUpdateTodoFromCoach}
+        onDeleteTodoFromCoach={handleDeleteTodoFromCoach}
       />
       <VisualizationTab isOpen={activeTab === 'VISUALIZE'} onClose={() => setActiveTab('GOALS')} userProfile={userProfile} nodes={nodes} />
       <ShortcutsPanel isOpen={isShortcutsOpen} onClose={() => setIsShortcutsOpen(false)} />
@@ -810,6 +955,29 @@ const App: React.FC = () => {
         </div>
       )}
 
+      {alarmPopup && (
+        <div className="fixed inset-0 z-[130] bg-th-overlay/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-sm rounded-2xl border border-th-border bg-th-elevated shadow-2xl p-5 space-y-3">
+            <p className="text-sm font-bold text-th-text">{alarmPopup.title}</p>
+            <p className="text-xs text-th-text-secondary whitespace-pre-wrap">{alarmPopup.body}</p>
+            <div className="flex items-center gap-2 pt-2">
+              <button
+                onClick={() => openAlarmConversation(alarmPopup.slot)}
+                className="flex-1 py-2 rounded-full bg-th-accent text-th-text-inverse text-sm font-semibold"
+              >
+                {language === 'ko' ? '대화 시작' : 'Start chat'}
+              </button>
+              <button
+                onClick={() => setAlarmPopup(null)}
+                className="flex-1 py-2 rounded-full bg-th-surface text-th-text-secondary text-sm font-semibold"
+              >
+                {t.common.later}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <FeedbackView
         isOpen={activeTab === 'FEEDBACK'}
         onClose={() => setActiveTab('GOALS')}
@@ -817,6 +985,8 @@ const App: React.FC = () => {
         todos={todos}
         userProfile={userProfile}
         userId={userId}
+        notificationRuntimeEnabled={false}
+        onNotificationSettingsChange={setNotifSettings}
         onUpdateNode={(id, updates) => handleUpdateNode(id, updates)}
         onUpdateTodo={(id, updates) => {
           setTodos(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));

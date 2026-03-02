@@ -4,6 +4,17 @@ import { saveFcmToken } from './firebaseService';
 import type { NotificationSettings } from '../types';
 
 const SENT_KEY = 'feedback_notif_sent';
+export const ALARM_CLICK_EVENT = 'supercoach-alarm-click';
+export type AlarmSlot = 'morning' | 'evening';
+
+const dispatchAlarmClick = (slot: AlarmSlot | null, tag?: string): void => {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(
+    new CustomEvent(ALARM_CLICK_EVENT, {
+      detail: { slot, tag },
+    }),
+  );
+};
 
 const getSentRecord = (): Record<string, string> => {
   try {
@@ -57,10 +68,23 @@ export const showBrowserNotification = (
   title: string,
   body: string,
   tag?: string,
+  slot: AlarmSlot | null = null,
 ): void => {
   if (!canShowNotification()) return;
   try {
-    new Notification(title, { body, tag, icon: '/icon-192.png' });
+    const notification = new Notification(title, {
+      body,
+      tag,
+      icon: '/icon-192.png',
+      data: { slot, tag },
+    });
+    notification.onclick = () => {
+      if (typeof window !== 'undefined') {
+        window.focus();
+      }
+      dispatchAlarmClick(slot, tag);
+      notification.close();
+    };
   } catch {
     // SW fallback not available yet
   }

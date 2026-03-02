@@ -101,7 +101,60 @@ cd web-legacy-mindmap2 && npx vite --port 3016 --host
 
 ## Current Status
 
-_Last updated: 2026-02-28_
+_Last updated: 2026-03-02_
+
+- Feedback goal-adjustment card temporary hide completed:
+  - `displayVersion` bumped to `V03.02r3`.
+  - `components/FeedbackView.tsx`:
+    - Added `SHOW_GOAL_ADJUSTMENTS = false` flag.
+    - Hidden both pending adjustment cards and accepted-adjustment undo toast from UI.
+    - Core logic preserved for easy re-enable later by flipping one constant.
+  - Verification:
+    - pending local build verification after this patch set.
+
+- Feedback alarm time precision + neutral terminology update completed:
+  - `displayVersion` bumped to `V03.02r2`.
+  - `components/feedback/FeedbackSettingsSheet.tsx`:
+    - Replaced fixed 30-minute time presets with separate hour/minute selectors.
+    - Users can now set any minute (00~59) for both check-in and wrap-up reminders.
+    - Added localized selected-time preview (ko/en).
+  - Terminology neutralized for non-morning schedules:
+    - `i18n/ko.ts`
+      - `아침 알림` -> `첫 활동 체크인`
+      - `저녁 알림` -> `하루 마무리 회고`
+      - Related description/notification copy updated to time-neutral wording.
+    - `i18n/en.ts`
+      - `Morning Reminder` -> `Start Check-in`
+      - `Evening Reminder` -> `Daily Wrap-up`
+      - Related description/notification copy updated.
+  - Verification:
+    - pending local build verification after this patch set.
+
+- Web-app alarm coaching flow (morning/evening) completed (web-only scope):
+  - `displayVersion` bumped to `V03.02r1`.
+  - App-level alarm scheduler added in `App.tsx`:
+    - Loads `NotificationSettings` from Firestore.
+    - Checks morning/evening trigger every minute (independent from Feedback tab open state).
+    - Shows in-app alarm popup and browser notification.
+    - Notification click now opens `FEEDBACK` tab + `CoachChat`.
+  - Notification click event bridge added in `services/notificationService.ts`:
+    - Introduced `ALARM_CLICK_EVENT` custom event.
+    - `showBrowserNotification()` now supports alarm slot metadata and click callback dispatch.
+  - Coach chat flow upgraded in `components/CoachChat.tsx`:
+    - Supports forced alarm slot (`morning`/`evening`) to reliably start alarm conversation.
+    - Added structured todo-action parsing (`<!-- TODO_ACTIONS: [...] -->`) from AI response.
+    - Added “confirm then apply” UI for todo actions (add/remove/postpone/complete/update).
+    - Added evening comment save + mark done handling with `<!-- COMMENT: ... -->`.
+  - `hooks/useCoachFeedback.ts` rewritten:
+    - Added clean morning/evening directives.
+    - Added `forcedSlot` support to decouple alarm conversation start from fixed hour window.
+  - `components/FeedbackView.tsx` integration updated:
+    - Added `notificationRuntimeEnabled` prop.
+    - Added `onNotificationSettingsChange` callback to sync settings to App scheduler.
+    - Feedback-tab internal notification runtime can be disabled to avoid duplicate triggers.
+  - Verification:
+    - `npm run build` passed.
+
 
 - Feedback section Light Mode visibility fixes completed:
   - `displayVersion` bumped to `V02.28r11`.
