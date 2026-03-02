@@ -97,6 +97,18 @@ const BottomDock: React.FC<BottomDockProps> = ({
     { mode: 'list' as const, label: language === 'ko' ? '리스트' : 'List' },
   ];
 
+  const handleCalendarModeSelect = (
+    event: React.PointerEvent<HTMLDivElement>,
+    mode: CalendarViewMode,
+  ) => {
+    // 모바일에서 팝업 닫힘과 동시에 하단 캘린더 셀 클릭이 전파되는 문제를 차단한다.
+    event.preventDefault();
+    event.stopPropagation();
+    onCalendarViewModeChange?.(mode);
+    onTabChange('CALENDAR');
+    setShowCalendarPopup(false);
+  };
+
   const layoutModes: { mode: LayoutMode; label: string }[] = [
     { mode: 'mindMap', label: t.mindmap.layoutModes.mindMap },
     { mode: 'logicalStructure', label: t.mindmap.layoutModes.logicalStructure },
@@ -182,11 +194,7 @@ const BottomDock: React.FC<BottomDockProps> = ({
                     <div
                       key={item.mode}
                       role="button"
-                      onPointerUp={() => {
-                        onCalendarViewModeChange?.(item.mode);
-                        onTabChange('CALENDAR');
-                        setShowCalendarPopup(false);
-                      }}
+                      onPointerDown={(event) => handleCalendarModeSelect(event, item.mode)}
                       className={`w-full px-4 py-2.5 text-sm text-left transition-colors cursor-pointer select-none ${calendarViewMode === item.mode
                         ? 'text-th-accent font-bold bg-th-surface'
                         : 'text-th-text-secondary hover:text-th-text hover:bg-th-surface'
