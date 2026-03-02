@@ -3,8 +3,15 @@
     "api/generate-image.ts": { "maxDuration": 60 },
     "api/generate-speech.ts": { "maxDuration": 60 },
     "api/generate-video.ts": { "maxDuration": 60 },
-    "api/save-visualization.ts": { "maxDuration": 30 }
+    "api/save-visualization.ts": { "maxDuration": 30 },
+    "api/push-reminders.ts": { "maxDuration": 60 }
   },
+  "crons": [
+    {
+      "path": "/api/push-reminders",
+      "schedule": "*/5 * * * *"
+    }
+  ],
   "headers": [
     {
       "source": "/(.*)",

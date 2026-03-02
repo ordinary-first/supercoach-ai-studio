@@ -2,9 +2,9 @@ import { useState, useEffect, useCallback } from 'react';
 import type { ToDoItem } from '../types';
 import type { AppLanguage } from '../i18n/types';
 
-const MORNING_START = 6;
-const MORNING_END = 10;
-const EVENING_START = 20;
+const MORNING_START = 5;
+const MORNING_END = 12;
+const EVENING_START = 18;
 const EVENING_END = 24;
 
 const todayKey = (): string => {
@@ -20,31 +20,35 @@ const STORAGE_PREFIX = 'secretcoach-feedback-done';
 const wasDone = (slot: 'morning' | 'evening'): boolean => {
   try {
     return localStorage.getItem(`${STORAGE_PREFIX}-${todayKey()}-${slot}`) === '1';
-  } catch { return false; }
+  } catch {
+    return false;
+  }
 };
 
 const markDone = (slot: 'morning' | 'evening'): void => {
   try {
     localStorage.setItem(`${STORAGE_PREFIX}-${todayKey()}-${slot}`, '1');
-  } catch { /* ignore */ }
+  } catch {
+    // ignore
+  }
 };
 
-const getMorningDirective = (lang: AppLanguage) =>
+const getMorningDirective = (lang: AppLanguage): string =>
   lang === 'ko'
     ? `[아침 피드백 모드]
 지금은 하루 시작 브리핑 시간입니다.
-오늘의 일정과 할일을 자연스럽게 섞어서 칭찬과 함께 전달하세요.
-그 다음 딱 2가지만 물어보세요:
-1. 오늘 일정 중 조정이 필요한 게 있는지
-2. 추가로 오늘 할 일이 있는지
-절대 3가지 이상 묻지 마세요. 간결하고 따뜻하게.`
+오늘 예정 할일을 먼저 짧게 정리하고 칭찬을 1문장 포함하세요.
+그 다음 질문은 딱 2개만 하세요.
+1) 오늘 일정/할일에서 조정할 것이 있는지
+2) 오늘 새로 추가할 할일이 있는지
+문장은 짧고 따뜻하게 유지하세요.`
     : `[Morning Feedback Mode]
-It's time for the daily morning briefing.
-Naturally blend today's schedule and todos with praise.
-Then ask ONLY 2 questions:
-1. Any adjustments needed for today's schedule?
-2. Any additional tasks for today?
-Never ask more than 2. Keep it concise and warm.`;
+This is the start-of-day briefing.
+Summarize today's planned tasks first and include one short praise sentence.
+Then ask exactly two questions:
+1) Any adjustments needed for today's schedule or tasks?
+2) Any extra tasks to add for today?
+Keep it concise and warm.`;
 
 const buildEveningDirective = (
   completed: string[],
@@ -56,28 +60,33 @@ const buildEveningDirective = (
 완료한 할일: ${completed.length > 0 ? completed.join(', ') : '없음'}
 미완료 할일: ${incomplete.length > 0 ? incomplete.join(', ') : '없음'}
 
-${incomplete.length === 0
-      ? '모든 할일을 완료했습니다! 칭찬 폭탄 MAX로 마무리하세요.'
-      : `1. 완료한 것 먼저 칭찬
-2. 못 한 것 이유 부드럽게 물어보기
-3. 목표 조정 여부 물어보기`}
+대화 순서:
+1) 완료한 항목을 먼저 칭찬
+2) 미완료 항목의 이유/사정을 부드럽게 질문
+3) 필요하면 내일 계획 조정 제안
 
-대화가 자연스럽게 마무리되면, 마지막 응답에 오늘의 한줄 코멘트를 포함하세요.
-형식: 응답 텍스트 마지막 줄에 <!-- COMMENT: 한줄 코멘트 내용 --> 로 삽입.`;
+대화가 마무리되는 마지막 응답 끝에 아래 형식을 추가하세요.
+<!-- COMMENT: 오늘의 승리 한줄 요약 -->`;
   }
 
   return `[Evening Feedback Mode - Today's Wins]
 Completed todos: ${completed.length > 0 ? completed.join(', ') : 'None'}
 Incomplete todos: ${incomplete.length > 0 ? incomplete.join(', ') : 'None'}
 
-${incomplete.length === 0
-    ? 'All todos completed! Celebrate with maximum praise.'
-    : `1. Praise completed items first
-2. Gently ask about reasons for incomplete items
-3. Ask if goals need adjustment`}
+Conversation order:
+1) Praise completed items first
+2) Gently ask reasons for incomplete items
+3) Suggest plan adjustment for tomorrow if needed
 
-When the conversation naturally wraps up, include a one-line daily comment in your final response.
-Format: Add <!-- COMMENT: one-line comment --> at the end of your response.`;
+When wrapping up, append:
+<!-- COMMENT: one-line summary of today's win -->`;
+};
+
+const getTimeBasedSlot = (): 'morning' | 'evening' | null => {
+  const hour = new Date().getHours();
+  if (hour >= MORNING_START && hour < MORNING_END) return 'morning';
+  if (hour >= EVENING_START && hour < EVENING_END) return 'evening';
+  return null;
 };
 
 export type FeedbackSlot = 'morning' | 'evening' | null;
@@ -92,6 +101,7 @@ export const useCoachFeedback = (
   isOpen: boolean,
   todos: ToDoItem[],
   language: AppLanguage = 'ko',
+  forcedSlot: FeedbackSlot = null,
 ): CoachFeedbackResult => {
   const [pendingDirective, setPendingDirective] = useState<string | null>(null);
   const [feedbackSlot, setFeedbackSlot] = useState<FeedbackSlot>(null);
@@ -102,33 +112,34 @@ export const useCoachFeedback = (
       setFeedbackSlot(null);
       return;
     }
+    if (pendingDirective) return;
 
-    const hour = new Date().getHours();
+    const targetSlot = forcedSlot && !wasDone(forcedSlot)
+      ? forcedSlot
+      : getTimeBasedSlot();
 
-    if (hour >= MORNING_START && hour < MORNING_END && !wasDone('morning')) {
+    if (!targetSlot || wasDone(targetSlot)) {
+      setFeedbackSlot(null);
+      return;
+    }
+
+    if (targetSlot === 'morning') {
       setPendingDirective(getMorningDirective(language));
       setFeedbackSlot('morning');
       return;
     }
 
-    if (hour >= EVENING_START && hour < EVENING_END && !wasDone('evening')) {
-      const completed = todos.filter(t => t.completed).map(t => t.text);
-      const incomplete = todos.filter(t => !t.completed).map(t => t.text);
-      setPendingDirective(buildEveningDirective(completed, incomplete, language));
-      setFeedbackSlot('evening');
-      return;
-    }
-
-    setPendingDirective(null);
-    setFeedbackSlot(null);
-  }, [isOpen, todos]);
+    const completed = todos.filter((t) => t.completed).map((t) => t.text);
+    const incomplete = todos.filter((t) => !t.completed).map((t) => t.text);
+    setPendingDirective(buildEveningDirective(completed, incomplete, language));
+    setFeedbackSlot('evening');
+  }, [isOpen, todos, language, forcedSlot, pendingDirective]);
 
   const markFeedbackDone = useCallback(() => {
-    if (feedbackSlot) {
-      markDone(feedbackSlot);
-      setPendingDirective(null);
-      setFeedbackSlot(null);
-    }
+    if (!feedbackSlot) return;
+    markDone(feedbackSlot);
+    setPendingDirective(null);
+    setFeedbackSlot(null);
   }, [feedbackSlot]);
 
   return { pendingDirective, feedbackSlot, markFeedbackDone };

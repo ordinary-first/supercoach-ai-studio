@@ -4,6 +4,18 @@ import { saveFcmToken } from './firebaseService';
 import type { NotificationSettings } from '../types';
 
 const SENT_KEY = 'feedback_notif_sent';
+const TRIGGER_WINDOW_MS = 5 * 60 * 1000;
+export const ALARM_CLICK_EVENT = 'supercoach-alarm-click';
+export type AlarmSlot = 'morning' | 'evening';
+
+const dispatchAlarmClick = (slot: AlarmSlot | null, tag?: string): void => {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(
+    new CustomEvent(ALARM_CLICK_EVENT, {
+      detail: { slot, tag },
+    }),
+  );
+};
 
 const getSentRecord = (): Record<string, string> => {
   try {
@@ -16,7 +28,6 @@ const getSentRecord = (): Record<string, string> => {
 const markSent = (type: string, dateKey: string): void => {
   const record = getSentRecord();
   record[`${type}_${dateKey}`] = new Date().toISOString();
-  // Clean entries older than 3 days
   const cutoff = Date.now() - 3 * 86400000;
   for (const [k, v] of Object.entries(record)) {
     if (new Date(v).getTime() < cutoff) delete record[k];
@@ -24,9 +35,17 @@ const markSent = (type: string, dateKey: string): void => {
   localStorage.setItem(SENT_KEY, JSON.stringify(record));
 };
 
-const wasSent = (type: string, dateKey: string): boolean => {
+const wasSent = (
+  type: string,
+  dateKey: string,
+  settingsUpdatedAt: number = 0,
+): boolean => {
   const record = getSentRecord();
-  return Boolean(record[`${type}_${dateKey}`]);
+  const sentAtIso = record[`${type}_${dateKey}`];
+  if (!sentAtIso) return false;
+  const sentAt = new Date(sentAtIso).getTime();
+  if (!Number.isFinite(sentAt)) return false;
+  return sentAt >= settingsUpdatedAt;
 };
 
 const todayKey = (): string => {
@@ -34,7 +53,7 @@ const todayKey = (): string => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
 
-const isWithinWindow = (targetTime: string, windowMs: number = 60000): boolean => {
+const isWithinWindow = (targetTime: string, windowMs: number = TRIGGER_WINDOW_MS): boolean => {
   const now = new Date();
   const [h, m] = targetTime.split(':').map(Number);
   const target = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m, 0);
@@ -57,12 +76,25 @@ export const showBrowserNotification = (
   title: string,
   body: string,
   tag?: string,
+  slot: AlarmSlot | null = null,
 ): void => {
   if (!canShowNotification()) return;
   try {
-    new Notification(title, { body, tag, icon: '/icon-192.png' });
+    const notification = new Notification(title, {
+      body,
+      tag,
+      icon: '/icon-192.png',
+      data: { slot, tag },
+    });
+    notification.onclick = () => {
+      if (typeof window !== 'undefined') {
+        window.focus();
+      }
+      dispatchAlarmClick(slot, tag);
+      notification.close();
+    };
   } catch {
-    // SW fallback not available yet
+    // no-op
   }
 };
 
@@ -83,22 +115,20 @@ export const checkNotificationTriggers = (
 
   if (!settings) return result;
   const today = todayKey();
+  const settingsUpdatedAt = Number(settings.updatedAt || 0);
 
-  // Morning check
-  if (settings.morningEnabled && !wasSent('morning', today)) {
+  if (settings.morningEnabled && !wasSent('morning', today, settingsUpdatedAt)) {
     if (isWithinWindow(settings.morningTime)) {
       result.shouldNotifyMorning = true;
     }
   }
 
-  // Evening check
-  if (settings.eveningEnabled && !wasSent('evening', today)) {
+  if (settings.eveningEnabled && !wasSent('evening', today, settingsUpdatedAt)) {
     if (isWithinWindow(settings.eveningTime)) {
       result.shouldNotifyEvening = true;
     }
   }
 
-  // Victory generation (independent of notification — triggers when past evening time)
   if (settings.eveningEnabled && isPastTime(settings.eveningTime)) {
     if (!wasSent('victory', today)) {
       result.shouldGenerateVictory = true;
@@ -113,34 +143,62 @@ export const markEveningSent = (): void => markSent('evening', todayKey());
 export const markVictoryGenerated = (): void => markSent('victory', todayKey());
 export const wasVictoryGenerated = (): boolean => wasSent('victory', todayKey());
 
-// ── FCM Token Registration ──
+const getFirebaseSwConfig = (): Record<string, string> => ({
+  apiKey: String(process.env.FIREBASE_API_KEY || ''),
+  authDomain: String(process.env.FIREBASE_AUTH_DOMAIN || ''),
+  projectId: String(process.env.FIREBASE_PROJECT_ID || ''),
+  storageBucket: String(process.env.FIREBASE_STORAGE_BUCKET || ''),
+  messagingSenderId: String(process.env.FIREBASE_MESSAGING_SENDER_ID || ''),
+  appId: String(process.env.FIREBASE_APP_ID || ''),
+});
+
+const getMessagingSwUrl = (): string => {
+  const params = new URLSearchParams(getFirebaseSwConfig());
+  return `/firebase-messaging-sw.js?${params.toString()}`;
+};
+
+const parseAlarmSlot = (value: string | undefined): AlarmSlot | null => {
+  if (value === 'morning' || value === 'evening') return value;
+  return null;
+};
 
 export const registerFcmToken = async (userId: string): Promise<string | null> => {
   try {
+    if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) {
+      return null;
+    }
+
     const app = getApp();
     const messaging = getMessaging(app);
+    const sw = await navigator.serviceWorker.register(getMessagingSwUrl());
+    const vapidKey = String(process.env.FIREBASE_VAPID_KEY || '').trim();
 
-    // Register service worker
-    const sw = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
-
-    const token = await getToken(messaging, {
-      serviceWorkerRegistration: sw,
-    });
+    const token = await getToken(
+      messaging,
+      vapidKey
+        ? {
+            serviceWorkerRegistration: sw,
+            vapidKey,
+          }
+        : {
+            serviceWorkerRegistration: sw,
+          },
+    );
 
     if (token) {
       await saveFcmToken(userId, token);
     }
 
-    // Foreground message handler
     onMessage(messaging, (payload) => {
       const title = payload.notification?.title || 'SuperCoach AI';
       const body = payload.notification?.body || '';
-      showBrowserNotification(title, body, 'fcm');
+      const slot = parseAlarmSlot(payload.data?.slot);
+      const tag = payload.data?.tag || 'fcm';
+      showBrowserNotification(title, body, tag, slot);
     });
 
     return token;
   } catch {
-    // FCM not supported or permission denied — silent fail
     return null;
   }
 };

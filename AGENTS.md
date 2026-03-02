@@ -103,6 +103,16 @@ cd web-legacy-mindmap2 && npx vite --port 3016 --host
 
 _Last updated: 2026-03-02_
 
+- PWA 푸시 알람(웹 종료 상태 수신) 머지 반영 완료:
+  - `claude/mindmap마인드맵2-xkWkn` 브랜치 변경을 `master`로 병합.
+  - 핵심 반영:
+    - `api/push-reminders.ts` 추가 + Vercel cron(`*/5 * * * *`) 설정.
+    - FCM Admin Messaging/Service Worker 딥링크(`/?alarm=...`) 연동.
+    - 알림 설정에 `timezone`, 일일 발송 dedupe 필드 확장.
+    - 앱 로컬 타이머 알람 제거, 푸시 딥링크 기반 코치 대화 진입으로 전환.
+  - 검증:
+    - `npm run build` 통과.
+
 - 랜딩 첫 화면 언어 선택기 추가 완료:
   - `displayVersion`를 `V03.02r6`로 갱신.
   - `components/landing/StickyNav.tsx`

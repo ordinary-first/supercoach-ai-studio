@@ -165,8 +165,11 @@ export interface NotificationSettings {
   morningTime: string; // "HH:mm"
   eveningEnabled: boolean;
   eveningTime: string; // "HH:mm"
+  timezone?: string;
   notificationPermission: 'granted' | 'denied' | 'default';
   fcmToken?: string;
+  lastMorningSentDate?: string;
+  lastEveningSentDate?: string;
   updatedAt: number;
 }
 
