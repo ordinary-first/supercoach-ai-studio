@@ -103,6 +103,20 @@ cd web-legacy-mindmap2 && npx vite --port 3016 --host
 
 _Last updated: 2026-03-02_
 
+- 알림 설정 UX + 푸시 발송 안정화 핫픽스 완료:
+  - `displayVersion`를 `V03.02r7`로 갱신.
+  - `components/feedback/FeedbackSettingsSheet.tsx`
+    - 시간/토글 변경 후 상태를 명확히 확정할 수 있도록 하단 `저장` 버튼 추가.
+    - 권한 `차단(denied)` 상태에서 브라우저별 허용 경로 안내(ios/android)와
+      `권한 다시 요청` 버튼 추가.
+    - 토글 영역 문구를 `알림 활성화`로 명확히 변경하고 상태 텍스트를 분리해 가독성 개선.
+    - 브라우저 권한값 동기화 시 Firestore에도 저장되도록 보강.
+  - `api/push-reminders.ts`
+    - 크론 인증을 `x-vercel-cron` 헤더 우선 허용으로 완화해 실발송 누락 위험 축소.
+    - 발송 대상 필터를 `token 존재 + permission !== denied` 기준으로 조정.
+  - 검증:
+    - `npm run build` 통과.
+
 - PWA 푸시 알람(웹 종료 상태 수신) 머지 반영 완료:
   - `claude/mindmap마인드맵2-xkWkn` 브랜치 변경을 `master`로 병합.
   - 핵심 반영:

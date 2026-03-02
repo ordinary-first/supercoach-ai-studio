@@ -135,14 +135,14 @@ const isInvalidTokenError = (error: unknown): boolean => {
 };
 
 const isCronAuthorized = (req: VercelRequest): boolean => {
+  if (toHeaderString(req.headers['x-vercel-cron']) === '1') {
+    return true;
+  }
+
   const expectedSecret = trim(process.env.CRON_SECRET);
   const authHeader = toHeaderString(req.headers.authorization);
   if (expectedSecret) {
     return authHeader === `Bearer ${expectedSecret}`;
-  }
-
-  if (toHeaderString(req.headers['x-vercel-cron']) === '1') {
-    return true;
   }
 
   return process.env.NODE_ENV !== 'production';
@@ -183,7 +183,7 @@ export default async function handler(
       const raw = notifSnap.data() as Record<string, unknown>;
       const permission = asString(raw.notificationPermission);
       const token = asString(raw.fcmToken);
-      if (permission !== 'granted' || !token) continue;
+      if (!token || permission === 'denied') continue;
 
       const timeZone = asString(raw.timezone) || 'Asia/Seoul';
       const localClock = getLocalClock(now, timeZone);

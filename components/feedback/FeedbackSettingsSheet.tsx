@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+﻿import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { X, Sun, Moon, Bell, BellOff } from 'lucide-react';
 import type { TranslationStrings } from '../../i18n/types';
 import type { NotificationSettings } from '../../types';
@@ -61,6 +61,46 @@ const toDisplayTime = (time: string, language: 'ko' | 'en'): string => {
   return `${hour12}:${mm} ${period}`;
 };
 
+const getPermissionGuide = (language: 'ko' | 'en'): string[] => {
+  if (typeof navigator === 'undefined') {
+    return language === 'ko'
+      ? ['釉뚮씪?곗? ?ㅼ젙?먯꽌 ???ъ씠???뚮┝???덉슜?댁＜?몄슂.']
+      : ['Allow notifications for this site in browser settings.'];
+  }
+
+  const ua = navigator.userAgent.toLowerCase();
+  const isIos = /iphone|ipad|ipod/.test(ua);
+
+  if (language === 'ko') {
+    if (isIos) {
+      return [
+        'iPhone Safari: ?ㅼ젙 > Safari > ?뚮┝ ?덉슜',
+        '?먮뒗 二쇱냼李?aA > ?뱀궗?댄듃 ?ㅼ젙 > ?뚮┝ ?덉슜',
+        '???붾㈃??異붽?(PWA) ???ㅼ떆 ?쒕룄',
+      ];
+    }
+    return [
+      'Android Chrome: 二쇱냼李??먮Ъ???꾩씠肄??곗튂',
+      '?ъ씠???ㅼ젙 > ?뚮┝ > ?덉슜',
+      '?깆쑝濡??뚯븘? ???踰꾪듉 ?곗튂',
+    ];
+  }
+
+  if (isIos) {
+    return [
+      'iPhone Safari: Settings > Safari > Notifications: Allow',
+      'or tap aA > Website Settings > Notifications: Allow',
+      'Add to Home Screen and retry',
+    ];
+  }
+
+  return [
+    'Android Chrome: tap lock icon in address bar',
+    'Site settings > Notifications > Allow',
+    'Return to app and tap Save',
+  ];
+};
+
 export const FeedbackSettingsSheet: React.FC<FeedbackSettingsSheetProps> = ({
   t,
   userId,
@@ -69,7 +109,18 @@ export const FeedbackSettingsSheet: React.FC<FeedbackSettingsSheetProps> = ({
 }) => {
   const [settings, setSettings] = useState<NotificationSettings>(DEFAULT_SETTINGS);
   const [loaded, setLoaded] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout>>();
+
+  const scheduleSave = useCallback((next: NotificationSettings) => {
+    onSettingsChange?.(next);
+    if (!userId) return;
+
+    clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      saveNotificationSettings(userId, next);
+    }, 500);
+  }, [userId, onSettingsChange]);
 
   useEffect(() => {
     if (!userId) {
@@ -103,11 +154,20 @@ export const FeedbackSettingsSheet: React.FC<FeedbackSettingsSheetProps> = ({
 
   useEffect(() => {
     if (typeof Notification === 'undefined') return;
-    setSettings((prev) => ({
-      ...prev,
-      notificationPermission: Notification.permission as 'granted' | 'denied' | 'default',
-    }));
-  }, []);
+
+    const browserPermission = Notification.permission as 'granted' | 'denied' | 'default';
+    setSettings((prev) => {
+      if (prev.notificationPermission === browserPermission) return prev;
+      const next = {
+        ...prev,
+        notificationPermission: browserPermission,
+        timezone: prev.timezone || getClientTimezone(),
+        updatedAt: Date.now(),
+      };
+      scheduleSave(next);
+      return next;
+    });
+  }, [scheduleSave]);
 
   useEffect(() => {
     if (!userId) return;
@@ -115,27 +175,34 @@ export const FeedbackSettingsSheet: React.FC<FeedbackSettingsSheetProps> = ({
     registerFcmToken(userId);
   }, [settings.notificationPermission, userId]);
 
-  const persistSettings = useCallback((next: NotificationSettings) => {
-    setSettings(next);
-    onSettingsChange?.(next);
-    if (!userId) return;
-
-    clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => {
-      saveNotificationSettings(userId, next);
-    }, 800);
-  }, [userId, onSettingsChange]);
-
   const updateField = useCallback(<K extends keyof NotificationSettings>(
     key: K,
     value: NotificationSettings[K],
   ) => {
     setSettings((prev) => {
       const next = { ...prev, [key]: value, updatedAt: Date.now() };
-      persistSettings(next);
+      scheduleSave(next);
       return next;
     });
-  }, [persistSettings]);
+  }, [scheduleSave]);
+
+  const handleManualSave = useCallback(async () => {
+    if (!userId) return;
+    const next = {
+      ...settings,
+      timezone: settings.timezone || getClientTimezone(),
+      updatedAt: Date.now(),
+    };
+    setSettings(next);
+    onSettingsChange?.(next);
+    setIsSaving(true);
+    clearTimeout(saveTimer.current);
+    try {
+      await saveNotificationSettings(userId, next);
+    } finally {
+      setIsSaving(false);
+    }
+  }, [onSettingsChange, settings, userId]);
 
   const updateTimePart = useCallback((
     key: 'morningTime' | 'eveningTime',
@@ -170,10 +237,18 @@ export const FeedbackSettingsSheet: React.FC<FeedbackSettingsSheetProps> = ({
     [settings.eveningTime],
   );
 
+  useEffect(
+    () => () => {
+      clearTimeout(saveTimer.current);
+    },
+    [],
+  );
+
   if (!loaded) return null;
 
   const permStatus = settings.notificationPermission;
   const language = t.common.today === '오늘' ? 'ko' : 'en';
+  const permissionGuide = getPermissionGuide(language);
 
   return (
     <div className="fixed inset-0 z-[60] flex items-end justify-center">
@@ -208,7 +283,20 @@ export const FeedbackSettingsSheet: React.FC<FeedbackSettingsSheetProps> = ({
                 </span>
               </div>
               {permStatus === 'denied' ? (
-                <p className="text-[11px] text-red-400/70">{t.feedback.notificationDenied}</p>
+                <div className="rounded-xl border border-red-400/30 bg-red-500/5 px-3 py-2 space-y-2">
+                  <p className="text-[11px] text-red-300">{t.feedback.notificationDenied}</p>
+                  <ul className="space-y-1">
+                    {permissionGuide.map((line) => (
+                      <li key={line} className="text-[11px] text-red-200/85">{`- ${line}`}</li>
+                    ))}
+                  </ul>
+                  <button
+                    onClick={requestPermission}
+                    className="w-full py-2 rounded-lg bg-red-500/15 text-red-200 text-[12px] font-semibold hover:bg-red-500/25 transition-colors"
+                  >
+                    {language === 'ko' ? '권한 다시 요청' : 'Request permission again'}
+                  </button>
+                </div>
               ) : (
                 <button
                   onClick={requestPermission}
@@ -255,9 +343,9 @@ export const FeedbackSettingsSheet: React.FC<FeedbackSettingsSheetProps> = ({
               {toDisplayTime(settings.morningTime, language)}
             </p>
 
-            <label className="flex items-center justify-between cursor-pointer">
-              <span className="text-[12px] text-th-text-tertiary">
-                {settings.morningEnabled ? t.feedback.alarmOn : t.feedback.alarmOff}
+            <label className="flex items-center justify-between cursor-pointer rounded-xl border border-th-border px-3 py-2.5">
+              <span className="text-[12px] text-th-text-secondary font-medium">
+                {language === 'ko' ? '알림 활성화' : 'Enable reminder'}
               </span>
               <div
                 onClick={() => updateField('morningEnabled', !settings.morningEnabled)}
@@ -268,6 +356,9 @@ export const FeedbackSettingsSheet: React.FC<FeedbackSettingsSheetProps> = ({
                 />
               </div>
             </label>
+            <p className="text-[11px] text-th-text-tertiary">
+              {settings.morningEnabled ? t.feedback.alarmOn : t.feedback.alarmOff}
+            </p>
           </div>
 
           <div className="border-t border-th-border/50" />
@@ -306,9 +397,9 @@ export const FeedbackSettingsSheet: React.FC<FeedbackSettingsSheetProps> = ({
               {toDisplayTime(settings.eveningTime, language)}
             </p>
 
-            <label className="flex items-center justify-between cursor-pointer">
-              <span className="text-[12px] text-th-text-tertiary">
-                {settings.eveningEnabled ? t.feedback.alarmOn : t.feedback.alarmOff}
+            <label className="flex items-center justify-between cursor-pointer rounded-xl border border-th-border px-3 py-2.5">
+              <span className="text-[12px] text-th-text-secondary font-medium">
+                {language === 'ko' ? '알림 활성화' : 'Enable reminder'}
               </span>
               <div
                 onClick={() => updateField('eveningEnabled', !settings.eveningEnabled)}
@@ -319,9 +410,26 @@ export const FeedbackSettingsSheet: React.FC<FeedbackSettingsSheetProps> = ({
                 />
               </div>
             </label>
+            <p className="text-[11px] text-th-text-tertiary">
+              {settings.eveningEnabled ? t.feedback.alarmOn : t.feedback.alarmOff}
+            </p>
+          </div>
+
+          <div className="pt-2">
+            <button
+              onClick={handleManualSave}
+              disabled={isSaving || !userId}
+              className="w-full py-2.5 rounded-xl bg-th-accent text-th-text-inverse text-[13px] font-semibold disabled:opacity-60"
+            >
+              {isSaving
+                ? (language === 'ko' ? '저장 중...' : 'Saving...')
+                : t.common.save}
+            </button>
           </div>
         </div>
       </div>
     </div>
   );
 };
+
+
