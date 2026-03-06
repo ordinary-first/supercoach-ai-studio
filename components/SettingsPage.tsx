@@ -170,19 +170,21 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
     }
     setIsUploadingMedia(false);
     if (nextUrls.length > 0) {
-      setFormData((prev) => ({
-        ...prev,
-        gallery: [...(prev.gallery || []), ...nextUrls].slice(0, 6),
-      }));
+      setFormData((prev) => {
+        const updated = { ...prev, gallery: [...(prev.gallery || []), ...nextUrls].slice(0, 6) };
+        onSaveProfile(updated);
+        return updated;
+      });
     }
     e.target.value = '';
   };
 
   const removeFromGallery = (index: number) => {
-    setFormData((prev) => ({
-      ...prev,
-      gallery: prev.gallery?.filter((_, i) => i !== index),
-    }));
+    setFormData((prev) => {
+      const updated = { ...prev, gallery: prev.gallery?.filter((_, i) => i !== index) };
+      onSaveProfile(updated);
+      return updated;
+    });
   };
 
   const hasAvatar = !!(formData.avatarUrl && formData.avatarUrl.length > 0);
