@@ -103,6 +103,26 @@ cd web-legacy-mindmap2 && npx vite --port 3016 --host
 
 _Last updated: 2026-03-07_
 
+- 피드백 오늘 카드 중앙 정렬 보강 완료:
+  - `displayVersion`를 `V03.07r6`로 갱신.
+  - `components/feedback/WeeklyCardScroll.tsx`
+    - `scrollIntoView` 대신 `scrollLeft`를 직접 계산해
+      오늘 카드 중심이 모바일 가로 영역의 중앙에 오도록 조정.
+    - 이제 현재 주 상세 진입 시 오늘 카드가 단순히 보이는 수준이 아니라
+      가운데 기준으로 정렬됨.
+  - 검증:
+    - `npm run build` 통과.
+
+- 피드백 주간 상세 진입 시 오늘 카드 자동 노출 완료:
+  - `displayVersion`를 `V03.07r5`로 갱신.
+  - `components/feedback/WeeklyCardScroll.tsx`
+    - 주간 카드 순서는 월요일 시작 그대로 유지.
+    - 대신 현재 주를 보고 있을 때는 진입 직후 `오늘` 날짜 카드가
+      가로 스크롤 영역 안으로 자동 이동하도록 조정.
+    - 금요일이면 금요일 카드가 바로 보이도록 개선.
+  - 검증:
+    - `npm run build` 통과.
+
 - 랜딩 R2 공개 URL fallback 추가 완료:
   - `displayVersion`를 `V03.07r4`로 갱신.
   - `components/landing/landingMedia.ts`

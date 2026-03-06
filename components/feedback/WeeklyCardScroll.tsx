@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { DayCard } from './DayCard';
 import type { DayCardState } from './DayCard';
 import type { FeedbackCard, ToDoItem } from '../../types';
@@ -80,12 +80,33 @@ export const WeeklyCardScroll: React.FC<WeeklyCardScrollProps> = ({
   onDayTap,
 }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const dayRefs = useRef<Array<HTMLDivElement | null>>([]);
 
   const days = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(weekStart);
     d.setDate(d.getDate() + i);
     return d;
   });
+
+  useEffect(() => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const targetIndex = days.findIndex((date) => getDayStart(date) === today.getTime());
+    if (targetIndex < 0) return;
+
+    const scrollNode = scrollRef.current;
+    const targetNode = dayRefs.current[targetIndex];
+    if (!scrollNode || !targetNode) return;
+
+    requestAnimationFrame(() => {
+      const targetCenter = targetNode.offsetLeft + targetNode.offsetWidth / 2;
+      const nextScrollLeft = Math.max(0, targetCenter - scrollNode.clientWidth / 2);
+      scrollNode.scrollTo({
+        left: nextScrollLeft,
+        behavior: 'auto',
+      });
+    });
+  }, [days]);
 
   return (
     <div
@@ -101,7 +122,14 @@ export const WeeklyCardScroll: React.FC<WeeklyCardScrollProps> = ({
         const displayCard = deriveFeedbackCard(card, dayTodos, dateKey);
 
         return (
-          <div key={dateKey} className="snap-start" style={{ scrollSnapAlign: 'start' }}>
+          <div
+            key={dateKey}
+            ref={(node) => {
+              dayRefs.current[i] = node;
+            }}
+            className="snap-start"
+            style={{ scrollSnapAlign: 'start' }}
+          >
             <DayCard
               date={date}
               state={state}
