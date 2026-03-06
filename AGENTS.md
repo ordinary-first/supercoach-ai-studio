@@ -103,6 +103,16 @@ cd web-legacy-mindmap2 && npx vite --port 3016 --host
 
 _Last updated: 2026-03-07_
 
+- 랜딩 미디어 URL을 코드 상수로 고정 완료:
+  - `displayVersion`를 `V03.07r7`로 갱신.
+  - `components/landing/landingMedia.ts`
+    - 랜딩 미디어 base URL이 Vercel preview env의 오래된 `R2_PUBLIC_URL`에
+      오염되지 않도록 `process.env` 의존 제거.
+    - 히어로/기능 영상은 이제 코드 상수의 올바른 R2 public URL을 직접 사용.
+    - 계획 문서의 "랜딩 미디어 URL 메타데이터는 코드 상수로 관리" 원칙에 맞춤.
+  - 검증:
+    - `npm run build` 통과.
+
 - 피드백 오늘 카드 중앙 정렬 보강 완료:
   - `displayVersion`를 `V03.07r6`로 갱신.
   - `components/feedback/WeeklyCardScroll.tsx`
