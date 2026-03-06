@@ -567,6 +567,7 @@ const MindMap: React.FC<MindMapProps> = ({
   const onTogglePreviewConfirmRef = useRef(onTogglePreviewConfirm);
   const onFinalizePreviewRef = useRef(onFinalizePreview);
   const previewNodeIdsRef = useRef(previewNodeIds);
+  const prevPreviewIdsRef = useRef<Set<string>>(new Set());
   const setActionBarRef = useRef(setActionBar);
   const actionBarRef = useRef<ActionBarState | null>(null);
   const lastTapRef = useRef<{ nodeId: string; ts: number }>({
@@ -953,6 +954,27 @@ const MindMap: React.FC<MindMapProps> = ({
         }, 300);
       });
     }
+
+    // Decompose animation: staggered scale-up for newly added preview nodes
+    const currentPreviewIds = previewNodeIdsRef.current || [];
+    const newPreviews = currentPreviewIds.filter(id => !prevPreviewIdsRef.current.has(id));
+    if (newPreviews.length > 0) {
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          newPreviews.forEach((id, i) => {
+            const nodeIns = getRenderedNodeByGoalId(id);
+            if (nodeIns?.group?.node) {
+              const el = nodeIns.group.node as HTMLElement;
+              el.style.opacity = '0';
+              el.style.transform = 'scale(0.3)';
+              el.style.transformOrigin = 'center center';
+              el.style.animation = `decomposeAppear 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) ${i * 80}ms forwards`;
+            }
+          });
+        }, 300);
+      });
+    }
+    prevPreviewIdsRef.current = new Set(currentPreviewIds);
   }, [nodes, links, selectedNodeId, confirmedPreviewIds, onboardingPhase, usedGhosts, getRenderedNodeByGoalId]);
 
   // --- Sync layout prop → SDK ---
@@ -1041,6 +1063,11 @@ const MindMap: React.FC<MindMapProps> = ({
         }
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .animate-fade-in-up { animation: fadeInUp 0.6s ease-out forwards; }
+        @keyframes decomposeAppear {
+          0%   { opacity: 0; transform: scale(0.3); }
+          60%  { opacity: 1; transform: scale(1.08); }
+          100% { opacity: 1; transform: scale(1); }
+        }
       `}</style>
 
       {/* Mind Map Container */}
