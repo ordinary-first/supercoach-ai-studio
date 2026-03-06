@@ -911,7 +911,7 @@ const App: React.FC = () => {
         todos={todos}
         userProfile={userProfile}
         userId={userId}
-        notificationRuntimeEnabled={false}
+        notificationRuntimeEnabled={true}
         onUpdateNode={(id, updates) => handleUpdateNode(id, updates)}
         onUpdateTodo={(id, updates) => {
           setTodos(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));

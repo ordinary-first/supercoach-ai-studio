@@ -61,10 +61,11 @@ const toDisplayTime = (time: string, language: 'ko' | 'en'): string => {
   return `${hour12}:${mm} ${period}`;
 };
 
+
 const getPermissionGuide = (language: 'ko' | 'en'): string[] => {
   if (typeof navigator === 'undefined') {
     return language === 'ko'
-      ? ['釉뚮씪?곗? ?ㅼ젙?먯꽌 ???ъ씠???뚮┝???덉슜?댁＜?몄슂.']
+      ? ['브라우저 설정에서 이 사이트의 알림을 허용해주세요.']
       : ['Allow notifications for this site in browser settings.'];
   }
 
@@ -74,15 +75,15 @@ const getPermissionGuide = (language: 'ko' | 'en'): string[] => {
   if (language === 'ko') {
     if (isIos) {
       return [
-        'iPhone Safari: ?ㅼ젙 > Safari > ?뚮┝ ?덉슜',
-        '?먮뒗 二쇱냼李?aA > ?뱀궗?댄듃 ?ㅼ젙 > ?뚮┝ ?덉슜',
-        '???붾㈃??異붽?(PWA) ???ㅼ떆 ?쒕룄',
+        'iPhone Safari: 설정 > Safari > 알림 허용',
+        '또는 주소창 aA > 웹사이트 설정 > 알림 허용',
+        '홈 화면에 추가(PWA) 후 다시 시도',
       ];
     }
     return [
-      'Android Chrome: 二쇱냼李??먮Ъ???꾩씠肄??곗튂',
-      '?ъ씠???ㅼ젙 > ?뚮┝ > ?덉슜',
-      '?깆쑝濡??뚯븘? ???踰꾪듉 ?곗튂',
+      'Android Chrome: 주소창 자물쇠 아이콘 터치',
+      '사이트 설정 > 알림 > 허용',
+      '앱으로 돌아와서 저장 버튼 터치',
     ];
   }
 
@@ -257,7 +258,7 @@ export const FeedbackSettingsSheet: React.FC<FeedbackSettingsSheetProps> = ({
         onClick={onClose}
       />
 
-      <div className="relative w-full max-w-lg bg-th-elevated rounded-t-3xl max-h-[70vh] flex flex-col animate-slide-up shadow-2xl border-t border-th-border">
+      <div className="relative w-full max-w-lg bg-th-elevated rounded-t-3xl max-h-[70vh] flex flex-col animate-slide-up shadow-2xl border-t border-th-border mb-[60px]">
         <div className="flex justify-center pt-3 pb-1">
           <div className="w-10 h-1 rounded-full bg-th-border" />
         </div>
@@ -269,7 +270,7 @@ export const FeedbackSettingsSheet: React.FC<FeedbackSettingsSheetProps> = ({
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-5 pb-8 space-y-6">
+        <div className="flex-1 overflow-y-auto px-5 pb-20 space-y-6">
           {permStatus !== 'granted' && (
             <div className="space-y-2">
               <div className="flex items-center gap-2">
