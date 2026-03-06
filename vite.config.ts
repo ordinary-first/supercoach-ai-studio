@@ -24,6 +24,7 @@ export default defineConfig(({ mode }) => {
         'process.env.FIREBASE_VAPID_KEY': JSON.stringify(env.FIREBASE_VAPID_KEY),
         'process.env.FIREBASE_APP_ID': JSON.stringify(env.FIREBASE_APP_ID),
         'process.env.FIREBASE_MEASUREMENT_ID': JSON.stringify(env.FIREBASE_MEASUREMENT_ID),
+        'process.env.R2_PUBLIC_URL': JSON.stringify(env.R2_PUBLIC_URL),
         '__APP_VERSION__': JSON.stringify(pkg.displayVersion || pkg.version)
       },
       resolve: {

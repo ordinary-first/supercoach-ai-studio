@@ -101,7 +101,178 @@ cd web-legacy-mindmap2 && npx vite --port 3016 --host
 
 ## Current Status
 
-_Last updated: 2026-03-02_
+_Last updated: 2026-03-07_
+
+- 랜딩 히어로 폰 프레임 실물감 리파인먼트 완료:
+  - `displayVersion`를 `V03.07r3`로 갱신.
+  - `components/landing/LandingMediaFrame.tsx`
+    - 히어로 폰 쉘의 과한 글로우/그라디언트를 줄이고,
+      매트한 네이비 바디로 단순화.
+    - 베젤 두께를 더 균일하게 정리하고,
+      상단 스피커/카메라 디테일을 예시 사진처럼 작고 자연스럽게 수정.
+    - 결과적으로 "예쁜 카드"보다 "실제 핸드폰 화면"처럼 보이게 조정.
+  - 검증:
+    - `npm run build` 통과.
+
+- 랜딩 히어로를 폰 디바이스 프레임으로 전환 완료:
+  - `displayVersion`를 `V03.07r2`로 갱신.
+  - `components/landing/landingMedia.ts`
+    - 히어로 영상 비율을 가로 카드용 `16 / 10`에서 실제 세로 녹화 비율
+      `1080 / 2328`로 수정.
+  - `components/landing/LandingMediaFrame.tsx`
+    - 공통 미디어 프레임에 `phone` variant 추가.
+    - 두꺼운 베젤, 상단 스피커/노치, 내부 스크린 inset을 가진
+      실제 디바이스 느낌의 프레임으로 구현.
+  - `components/landing/HeroSection.tsx`
+    - 히어로 미디어를 일반 카드가 아니라 `phone` variant로 사용하도록 변경.
+    - 히어로 영상이 더 크게, 더 자연스러운 폰 실물처럼 보이게 조정.
+  - 검증:
+    - `npm run build` 통과.
+
+- 랜딩 미디어 오버레이 라벨 제거 완료:
+  - `displayVersion`를 `V03.07r1`로 갱신.
+  - `components/landing/LandingMediaFrame.tsx`
+    - 실영상/실포스터 위에 항상 떠 있던 `fallbackLabel` pill 제거.
+    - 플레이스홀더용 문구가 실제 히어로 영상 위에 겹쳐 보이던 문제 수정.
+    - 미디어 프레임은 이제 실제 콘텐츠만 보이도록 정리.
+  - 검증:
+    - `npm run build` 통과.
+
+- 랜딩 히어로 eyebrow pill 제거 완료:
+  - `displayVersion`를 `V03.06r8`로 갱신.
+  - `components/landing/HeroSection.tsx`
+    - `IDENTITY. STRUCTURE. EVIDENCE.` 상단 pill 제거.
+    - 히어로 시작점을 바로 headline으로 올려,
+      첫 화면에서 영상이 더 빨리 보이도록 밀도 조정.
+  - 검증:
+    - `npm run build` 통과.
+
+- 랜딩 히어로 value chips 제거 완료:
+  - `displayVersion`를 `V03.06r7`로 갱신.
+  - `components/landing/HeroSection.tsx`
+    - 히어로 subline 아래의 value chips UI 제거.
+    - 설명형 SaaS 배지처럼 보이던 저가 신호를 제거하고,
+      headline, subline, CTA, 영상만 남겨 첫 화면 위계를 단순화.
+  - 검증:
+    - `npm run build` 통과.
+
+- 랜딩 히어로 미디어 모바일 overflow 수정 완료:
+  - `displayVersion`를 `V03.06r6`로 갱신.
+  - `components/landing/HeroSection.tsx`
+    - 히어로 텍스트/미디어 컬럼에 `min-w-0`를 추가해 grid 자식이 모바일에서
+      최소 콘텐츠 폭 때문에 가로로 밀려나지 않도록 수정.
+    - 히어로 미디어의 모바일 기본 `min-height`를 제거하고, `sm` 이상에서만
+      강제 높이를 적용하도록 변경.
+  - `components/landing/LandingMediaFrame.tsx`
+    - 프레임 자체에 `w-full`, `min-w-0`, `max-w-full`을 부여해
+      `aspect-ratio + min-height` 조합이 폭을 키우지 못하게 고정.
+    - 플레이스홀더 내부 텍스트와 상단 pill label에도 최대폭/잘림 처리를 추가해
+      모바일에서 내부 콘텐츠가 프레임 폭을 밀어내지 않도록 보강.
+  - 검증:
+    - `npm run build` 통과.
+
+- MOON 섹션 색상 톤 정합성 수정 완료:
+  - `displayVersion`를 `V03.06r5`로 갱신.
+  - `components/landing/MoonStorySection.tsx`
+    - 기존 웜 베이지 페이퍼 카드가 전체 랜딩의 다크/holy 세계관에서
+      과하게 튀던 문제 수정.
+    - 베이지 카드 대신 다크 네이비/딥 그린 계열의 글래스 패널로 통합.
+    - 인간적인 온도는 유지하되, 랜딩 전체 색 체계 안에 들어오도록 조정.
+  - 검증:
+    - `npm run build` 통과.
+
+- 랜딩 모바일 공감 섹션 레이아웃 버그 수정 완료:
+  - `displayVersion`를 `V03.06r4`로 갱신.
+  - `components/landing/EmpathyNarrativeSection.tsx`
+    - 모바일에서 desktop용 sticky narrative를 그대로 쓰던 문제를 제거.
+    - `1024px 미만`에서는 sticky 스크롤 연출을 비활성화하고,
+      압축된 정적 스택 레이아웃으로 폴백하도록 변경.
+    - 결과적으로 `Secret Coach는 그 작동 방식을 역이용합니다` 아래에
+      거대한 빈 캔버스가 생기던 현상 제거.
+  - 검증:
+    - `npm run build` 통과.
+
+- 랜딩 카피 복원 리파인먼트 완료:
+  - `displayVersion`를 `V03.06r3`로 갱신.
+  - `components/landing/landingCopy.ts`
+    - 직전 브랜드 리셋 카피의 방향성은 유지하되, 사용자가 처음 제공한
+      랜딩 설계 문서의 핵심 문구와 메시지 구조를 다시 복원.
+    - Hero를 `의지력은 고갈됩니다 / 시스템은 고갈되지 않습니다` 축으로 되돌림.
+    - 공감 섹션은 `혹시 이런 적 있으신가요?`, `문제는 의지력이 아니라 시스템`
+      톤으로 복원.
+    - 기능 섹션 타이틀/설명도 원래 문서의 핵심 문장
+      (`되고 싶은 사람`, `오늘 7개 정복`, `보고 듣고 읽으세요`,
+      `낡은 수첩`, `당신 편인 코치`)을 다시 살림.
+    - 디자인 무드는 현재의 holy / premium 방향을 유지.
+  - 검증:
+    - `npm run build` 통과.
+
+- 랜딩페이지 브랜드 리셋 2차 방향 전환 완료:
+  - `displayVersion`를 `V03.06r2`로 갱신.
+  - `components/landing/landingCopy.ts`
+    - 기존 premium SaaS 톤에서 한 단계 더 나아가
+      `프라이빗 운영체제`, `행동 설계`, `증거`, `자기 자신과의 관계 회복` 중심의
+      브랜드 카피로 전면 재작성.
+    - 무료/저가 신호를 제거하고, 앱의 정체성을
+      "behavioral architecture for becoming"으로 재정의.
+  - `components/landing/HeroSection.tsx`, `components/landing/StickyNav.tsx`,
+    `components/landing/FinalCTA.tsx`
+    - 무채색 위주의 과한 절제를 버리고,
+      블루/세이지/웜 앰버를 제한적으로 섞은 시그니처 광원과 CTA 그라디언트 복원.
+    - 히어로에 core value chips를 추가해 제품 정체성이 첫 화면에서 읽히도록 강화.
+  - `components/landing/EmpathyNarrativeSection.tsx`,
+    `components/landing/PsychologyFeaturesSection.tsx`,
+    `components/landing/LandingMediaFrame.tsx`
+    - 섹션별 감정 온도를 다르게 주는 컬러 레이어와 미디어 프레임 하이라이트 추가.
+    - 기능 블록을 단순 premium 카드가 아니라 브랜드 세계관이 느껴지는 스토리 패널로 상향.
+  - `components/landing/MoonStorySection.tsx`
+    - 다크 글래스 카드에서 웜 페이퍼 에디토리얼 카드로 전환.
+    - 랜딩 전체에서 가장 인간적인 섹션으로 의도적으로 분리.
+  - 검증:
+    - `npm run build` 통과.
+    - 로컬 preview에서 랜딩 렌더 확인.
+
+- 랜딩페이지 Apple-level 에디토리얼 리디자인 1차 구현 완료:
+  - `displayVersion`를 `V03.06r1`로 갱신.
+  - `components/landing/MarketingLandingPage.tsx`
+    - 기존 문제/솔루션/FAQ/가격표 스택을 제거하고 5단 내러티브 랜딩으로 재구성.
+    - 섹션 순서: Hero -> Empathy Narrative -> Psychology Features -> MOON Story -> Final CTA.
+    - 모든 CTA는 기존 `loginWithGoogle()` 즉시 진입 흐름 유지.
+  - `components/landing/HeroSection.tsx`, `components/landing/StickyNav.tsx`,
+    `components/landing/FinalCTA.tsx`
+    - 기존 네온 SaaS 톤을 걷어내고, Apple.com 스타일의 절제된 타이포/유리감/대형 영상 중심 레이아웃으로 재작성.
+    - 모바일 first-fold에서 영상/카피/CTA가 함께 보이도록 재배치.
+  - `components/landing/EmpathyNarrativeSection.tsx`
+    - 카드 3개 대신 sticky 스토리 애니메이션 섹션 추가.
+    - `prefers-reduced-motion` 환경에서는 정적 스택으로 폴백.
+  - `components/landing/PsychologyFeaturesSection.tsx`,
+    `components/landing/MoonStorySection.tsx`
+    - 심리학 브릿지 + 5개 기능 스토리 블록, MOON 에세이 요약+펼치기 섹션 추가.
+  - `components/landing/landingCopy.ts`, `components/landing/landingMedia.ts`,
+    `components/landing/landingContent.ts`, `components/landing/LandingMediaFrame.tsx`
+    - 랜딩 카피와 R2 공개 영상 메타데이터를 코드 상수로 분리.
+    - `landing/videos/...`, `landing/posters/...` key 규칙 전제.
+    - 영상/포스터 로드 실패 시 플레이스홀더 카드로 안전 폴백.
+  - `hooks/usePrefersReducedMotion.ts`
+    - 랜딩 전용 모션 접근성 훅 추가.
+  - `vite.config.ts`
+    - 프론트에서 `process.env.R2_PUBLIC_URL`을 읽을 수 있도록 define 추가.
+  - 검증:
+    - `npm run build` 통과.
+    - 로컬 preview에서 랜딩 렌더 및 공감 섹션 스토리 전환 확인.
+
+- 랜딩 premium positioning 카피 조정 완료:
+  - `components/landing/landingCopy.ts`
+    - `무료 시작` 중심 CTA를 제거하고 `Start Your System`, `Meet Your Coach`,
+      `시스템 시작하기`, `AI 코치 만나기`로 상향 조정.
+    - 무료/무카드 신호는 전면 CTA에서 빼고 `3-day guided trial`,
+      `프라이빗 베타`, `가이드 체험` 같은 보조 문구로 하향 배치.
+  - 검증:
+    - `npm run build` 통과.
+
+- 다음 작업:
+  - Cloudflare R2에 실제 랜딩 영상/포스터 업로드 후 `landing/videos/*`, `landing/posters/*` 경로 유효성 확인.
+  - 모바일 실기기(iPhone Safari / Android Chrome)에서 Hero first-fold 비율과 자동재생 동작 재검증.
 
 - 알림 설정 UX + 푸시 발송 안정화 핫픽스 완료:
   - `displayVersion`를 `V03.02r7`로 갱신.

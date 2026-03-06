@@ -1,185 +1,121 @@
 import React from 'react';
-import { ShieldCheck } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { useTranslation } from '../../i18n/useTranslation';
+import { LandingMediaFrame } from './LandingMediaFrame';
+import { landingContent, landingMedia } from './landingContent';
 
 interface HeroSectionProps {
   onCTAClick: () => void;
+  isLoggingIn?: boolean;
 }
 
-export const HeroSection: React.FC<HeroSectionProps> = ({ onCTAClick }) => {
+export const HeroSection: React.FC<HeroSectionProps> = ({
+  onCTAClick,
+  isLoggingIn = false,
+}) => {
   const { language } = useTranslation();
+  const copy = landingContent[language].hero;
+  const media = landingMedia['hero-impact'];
+
   return (
     <section
-      className="relative min-h-screen flex items-center justify-center overflow-hidden"
-      style={{ backgroundColor: '#050B14' }}
+      className="relative flex min-h-[100svh] items-center overflow-hidden px-5 pb-6 pt-28 md:px-10 md:pb-12 md:pt-32"
+      style={{ backgroundColor: '#02050b' }}
     >
-      {/* Background Layer 1: deep space base — handled by backgroundColor above */}
-
-      {/* Background Layer 2: Radial gradient glow */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
           background:
-            'radial-gradient(circle at 50% 40%, rgba(204,255,0,0.08) 0%, transparent 70%)',
+            'radial-gradient(circle at 14% 18%, rgba(151, 187, 255, 0.2) 0%, transparent 30%), radial-gradient(circle at 78% 22%, rgba(255, 202, 153, 0.16) 0%, transparent 22%), radial-gradient(circle at 62% 82%, rgba(153, 241, 208, 0.12) 0%, transparent 26%), linear-gradient(180deg, #05070E 0%, #0A1020 42%, #04070D 100%)',
         }}
       />
-
-      {/* Background Layer 3: CSS grid lines */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
-          backgroundImage: `
-            repeating-linear-gradient(
-              0deg,
-              rgba(255,255,255,0.03) 0px,
-              rgba(255,255,255,0.03) 1px,
-              transparent 1px,
-              transparent 80px
-            ),
-            repeating-linear-gradient(
-              90deg,
-              rgba(255,255,255,0.03) 0px,
-              rgba(255,255,255,0.03) 1px,
-              transparent 1px,
-              transparent 80px
-            )
-          `,
-        }}
-      />
-
-      {/* Background Layer 4: Floating orbs */}
-      <div
-        className="absolute rounded-full blur-3xl animate-pulse pointer-events-none"
-        style={{
-          width: '256px',
-          height: '256px',
-          background: 'rgba(204,255,0,0.04)',
-          top: '15%',
-          left: '10%',
-          animationDuration: '6s',
+          backgroundImage:
+            'linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px)',
+          backgroundSize: '96px 96px',
+          maskImage: 'linear-gradient(180deg, rgba(0,0,0,0.72), transparent 88%)',
         }}
       />
       <div
-        className="absolute rounded-full blur-3xl animate-pulse pointer-events-none"
-        style={{
-          width: '320px',
-          height: '320px',
-          background: 'rgba(204,255,0,0.03)',
-          bottom: '20%',
-          right: '8%',
-          animationDuration: '8s',
-          animationDelay: '2s',
-        }}
+        className="pointer-events-none absolute left-[8%] top-[12%] h-36 w-36 rounded-full blur-3xl"
+        style={{ background: 'rgba(151, 187, 255, 0.22)' }}
       />
       <div
-        className="absolute rounded-full blur-3xl animate-pulse pointer-events-none"
-        style={{
-          width: '200px',
-          height: '200px',
-          background: 'rgba(255,77,0,0.04)',
-          top: '60%',
-          left: '60%',
-          animationDuration: '10s',
-          animationDelay: '4s',
-        }}
+        className="pointer-events-none absolute bottom-[14%] right-[8%] h-44 w-44 rounded-full blur-3xl"
+        style={{ background: 'rgba(168, 240, 211, 0.18)' }}
+      />
+      <div
+        className="pointer-events-none absolute right-[16%] top-[18%] h-28 w-28 rounded-full blur-3xl"
+        style={{ background: 'rgba(255, 196, 140, 0.18)' }}
       />
 
-      {/* Content */}
-      <div className="relative z-10 flex flex-col items-center text-center px-5 max-w-4xl mx-auto gap-4 md:gap-6">
+      <div className="relative z-10 mx-auto grid w-full max-w-7xl items-center gap-8 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.05fr)] lg:gap-16">
+        <div className="min-w-0 max-w-2xl">
+          <div className="space-y-2 md:space-y-3">
+            {copy.headline.map((line, index) => (
+              <h1
+                key={line}
+                className={[
+                  'text-balance font-display text-[2.65rem] font-semibold tracking-[-0.08em]',
+                  'sm:text-[3.15rem] md:text-[4.6rem] lg:text-[5.15rem] lg:leading-[0.96]',
+                  index === 0
+                    ? 'text-white/96'
+                    : 'bg-[linear-gradient(120deg,#f9fafb_8%,#d9e7ff_44%,#a8f0d3_84%)] bg-clip-text text-transparent',
+                ].join(' ')}
+              >
+                {line}
+              </h1>
+            ))}
+          </div>
 
-        {/* Sub-label */}
-        <div
-          className="flex items-center gap-2 text-gray-500 text-xs uppercase tracking-widest"
-          style={{ animation: 'fadeIn 0.8s ease-out 0.1s both' }}
-        >
-          <ShieldCheck size={14} className="text-gray-500" />
-          <span style={{ fontFamily: 'Inter, sans-serif' }}>
-            Neural Goal Setting System
-          </span>
-        </div>
-
-        {/* Headline — primary visual element */}
-        <div
-          className="flex flex-col gap-2"
-          style={{ animation: 'fadeIn 0.8s ease-out 0.25s both' }}
-        >
-          <p
-            className="text-xl sm:text-2xl md:text-4xl text-white/70 font-light"
-            style={{ fontFamily: 'Inter, sans-serif' }}
-          >
-            {language === 'ko' ? '잠깐의 동기부여가 아닌' : 'Not fleeting motivation'}
+          <p className="mt-5 max-w-xl text-balance text-[1.02rem] leading-relaxed text-white/60 md:text-[1.18rem]">
+            {copy.subline}
           </p>
-          <p
-            className="text-2xl sm:text-3xl md:text-5xl font-bold leading-tight"
-            style={{ fontFamily: 'Inter, sans-serif' }}
-          >
-            <span style={{ color: '#CCFF00' }}>{language === 'ko' ? '과학적' : 'Scientific'}</span>
-            <span className="text-white">{language === 'ko' ? ' AI 밀착 관리 시스템' : ' AI Close-Management System'}</span>
-          </p>
-        </div>
 
-        {/* Sub description */}
-        <p
-          className="text-xs sm:text-sm text-gray-400 max-w-xs sm:max-w-md px-2"
-          style={{
-            fontFamily: 'Inter, sans-serif',
-            animation: 'fadeIn 0.8s ease-out 0.4s both',
-          }}
-        >
-          {language === 'ko'
-            ? '구조화 + AI 코치 + 시각화 — 목표 달성의 3가지 열쇠를 하나의 앱에서'
-            : 'Structure + AI Coach + Visualization — Three keys to goal achievement, in one app'}
-        </p>
-
-        {/* Primary CTA */}
-        <div
-          className="flex flex-col items-center gap-3 mt-1 md:mt-2"
-          style={{ animation: 'fadeIn 0.8s ease-out 0.55s both' }}
-        >
-          <button
-            onClick={onCTAClick}
-            className="px-8 py-3 md:px-10 md:py-4 rounded-full text-black font-black uppercase tracking-widest text-sm md:text-base transition-all duration-200 hover:scale-105"
-            style={{
-              backgroundColor: '#CCFF00',
-              fontFamily: 'Inter, sans-serif',
-              boxShadow: '0 0 0 0 rgba(204,255,0,0)',
-              transition: 'transform 0.2s ease, box-shadow 0.2s ease',
-            }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.boxShadow =
-                '0 0 32px rgba(204,255,0,0.45)';
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.boxShadow =
-                '0 0 0 0 rgba(204,255,0,0)';
-            }}
-          >
-            {language === 'ko' ? '무료로 시작하기' : 'Start Free'}
-          </button>
-
-          {/* Pulsing indicator */}
-          <div className="flex items-center gap-2">
-            <span
-              className="inline-block w-2 h-2 rounded-full animate-ping"
-              style={{ backgroundColor: '#CCFF00', opacity: 0.8 }}
-            />
-            <span
-              className="text-xs text-gray-400"
-              style={{ fontFamily: 'Inter, sans-serif' }}
+          <div className="mt-7 flex flex-col items-start gap-4">
+            <button
+              onClick={onCTAClick}
+              disabled={isLoggingIn}
+              className={[
+                'group inline-flex items-center gap-3 rounded-full px-6 py-3.5 md:px-7 md:py-4',
+                'border border-[#d9e7ff]/40 text-[#05070c] transition-all duration-200 hover:scale-[1.015]',
+                'disabled:cursor-not-allowed disabled:opacity-70',
+              ].join(' ')}
+              style={{
+                background:
+                  'linear-gradient(135deg, rgba(248,250,252,1) 0%, rgba(216,231,255,1) 55%, rgba(168,240,211,0.95) 100%)',
+                boxShadow:
+                  '0 28px 70px -34px rgba(151, 187, 255, 0.45), 0 18px 44px -30px rgba(168, 240, 211, 0.3)',
+              }}
             >
-              {language === 'ko' ? '베타 기간 무료 체험 · 집중 케어 인원 한정' : 'Free beta trial · Limited spots for focused care'}
-            </span>
+              <span className="text-sm font-semibold tracking-[-0.01em] md:text-base">
+                {isLoggingIn ? 'Redirecting...' : copy.cta}
+              </span>
+              <ArrowRight
+                size={18}
+                className="transition-transform duration-200 group-hover:translate-x-0.5"
+              />
+            </button>
+
+            <p className="text-sm leading-relaxed text-[#d9e4f9]/54 md:text-[0.95rem]">
+              {copy.meta}
+            </p>
           </div>
         </div>
-      </div>
 
-      {/* Fade-in keyframe injected once */}
-      <style>{`
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(16px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-      `}</style>
+        <div className="min-w-0 w-full lg:justify-self-end">
+          <LandingMediaFrame
+            asset={media}
+            title={copy.headline.join(' ')}
+            description={copy.subline}
+            priority
+            variant="phone"
+            className="max-w-[19.5rem] sm:max-w-[21.5rem] lg:max-w-[23rem]"
+          />
+        </div>
+      </div>
     </section>
   );
 };

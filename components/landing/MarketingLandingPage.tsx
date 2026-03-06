@@ -1,18 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import type { UserProfile } from '../../types';
 import { loginWithGoogle } from '../../services/firebaseService';
-
 import { StickyNav } from './StickyNav';
 import { HeroSection } from './HeroSection';
-import { ProblemSection } from './ProblemSection';
-import { SolutionSection } from './SolutionSection';
-import { FeatureShowcase } from './FeatureShowcase';
-import { HowItWorks } from './HowItWorks';
-import { VisualizationDemo } from './VisualizationDemo';
-import { PricingSection } from './PricingSection';
-import { FAQSection } from './FAQSection';
+import { EmpathyNarrativeSection } from './EmpathyNarrativeSection';
+import { PsychologyFeaturesSection } from './PsychologyFeaturesSection';
+import { MoonStorySection } from './MoonStorySection';
 import { FinalCTA } from './FinalCTA';
-import { FooterSection } from './FooterSection';
 
 interface MarketingLandingPageProps {
   onLoginSuccess: (profile: UserProfile) => void;
@@ -21,10 +15,8 @@ interface MarketingLandingPageProps {
 function MarketingLandingPage({ onLoginSuccess: _onLoginSuccess }: MarketingLandingPageProps) {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
-  // 앱의 index.html이 html,body에 position:fixed + overflow:hidden을 설정함.
-  // 랜딩 페이지에서는 스크롤이 필요하므로 마운트 시 해제하고 언마운트 시 복원.
   useEffect(() => {
-    const orig = {
+    const original = {
       bodyOverflow: document.body.style.overflow,
       bodyPosition: document.body.style.position,
       bodyWidth: document.body.style.width,
@@ -45,47 +37,40 @@ function MarketingLandingPage({ onLoginSuccess: _onLoginSuccess }: MarketingLand
     document.documentElement.style.height = 'auto';
 
     return () => {
-      document.body.style.overflow = orig.bodyOverflow;
-      document.body.style.position = orig.bodyPosition;
-      document.body.style.width = orig.bodyWidth;
-      document.body.style.height = orig.bodyHeight;
-      document.documentElement.style.position = orig.htmlPosition;
-      document.documentElement.style.overflow = orig.htmlOverflow;
-      document.documentElement.style.width = orig.htmlWidth;
-      document.documentElement.style.height = orig.htmlHeight;
+      document.body.style.overflow = original.bodyOverflow;
+      document.body.style.position = original.bodyPosition;
+      document.body.style.width = original.bodyWidth;
+      document.body.style.height = original.bodyHeight;
+      document.documentElement.style.position = original.htmlPosition;
+      document.documentElement.style.overflow = original.htmlOverflow;
+      document.documentElement.style.width = original.htmlWidth;
+      document.documentElement.style.height = original.htmlHeight;
     };
   }, []);
 
-  // 로그인 완료는 App.tsx의 useAuth → onAuthStateChanged가 감지함.
-  // onLoginSuccess prop은 App.tsx 인터페이스 호환성을 위해 유지.
-  const handleLogin = async () => {
+  const handleLogin = async (): Promise<void> => {
     if (isLoggingIn) return;
     setIsLoggingIn(true);
     try {
       await loginWithGoogle();
-    } catch (error) {
-      console.error('Login failed:', error);
     } finally {
       setIsLoggingIn(false);
     }
   };
 
   return (
-    <div
-      className="min-h-screen bg-[#050B14] text-white font-body"
-      style={{ scrollBehavior: 'smooth' }}
-    >
-      <StickyNav onCTAClick={handleLogin} />
-      <HeroSection onCTAClick={handleLogin} />
-      <ProblemSection />
-      <SolutionSection />
-      <FeatureShowcase />
-      <HowItWorks />
-      <VisualizationDemo />
-      <PricingSection onPlanSelect={handleLogin} />
-      <FAQSection />
-      <FinalCTA onCTAClick={handleLogin} />
-      <FooterSection />
+    <div className="min-h-screen bg-[#02050b] font-body text-white" style={{ scrollBehavior: 'smooth' }}>
+      <div className="relative overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.08),transparent_34%),linear-gradient(180deg,#03060c_0%,#050b14_35%,#02050b_100%)]" />
+        <StickyNav onCTAClick={handleLogin} isLoggingIn={isLoggingIn} />
+        <main className="relative z-10">
+          <HeroSection onCTAClick={handleLogin} isLoggingIn={isLoggingIn} />
+          <EmpathyNarrativeSection />
+          <PsychologyFeaturesSection />
+          <MoonStorySection />
+          <FinalCTA onCTAClick={handleLogin} isLoggingIn={isLoggingIn} />
+        </main>
+      </div>
     </div>
   );
 }

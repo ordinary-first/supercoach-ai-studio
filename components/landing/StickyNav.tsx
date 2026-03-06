@@ -1,17 +1,23 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from '../../i18n/useTranslation';
+import { landingContent } from './landingContent';
 
 interface StickyNavProps {
   onCTAClick: () => void;
+  isLoggingIn?: boolean;
 }
 
-export const StickyNav: React.FC<StickyNavProps> = ({ onCTAClick }) => {
+export const StickyNav: React.FC<StickyNavProps> = ({
+  onCTAClick,
+  isLoggingIn = false,
+}) => {
   const [scrolled, setScrolled] = useState(false);
   const { language, setLanguage } = useTranslation();
+  const copy = landingContent[language];
 
   useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 50);
+    const handleScroll = (): void => {
+      setScrolled(window.scrollY > 24);
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
@@ -21,40 +27,34 @@ export const StickyNav: React.FC<StickyNavProps> = ({ onCTAClick }) => {
   return (
     <nav
       className={[
-        'fixed top-0 left-0 right-0 z-50 px-6 py-4 flex items-center justify-between',
-        'transition-all duration-300 ease-in-out',
+        'fixed left-0 right-0 top-0 z-50 flex items-center justify-between px-5 py-4 md:px-10 md:py-5',
+        'transition-all duration-500 ease-out',
         scrolled
-          ? 'bg-black/80 backdrop-blur-xl border-b border-white/10'
+          ? 'bg-[linear-gradient(180deg,rgba(7,12,22,0.82),rgba(7,12,22,0.68))] backdrop-blur-2xl'
           : 'bg-transparent',
       ].join(' ')}
     >
-      {/* Logo */}
-      <div className="flex items-center gap-0.5 select-none min-w-0">
-        <span
-          className="text-white text-base md:text-2xl tracking-wider md:tracking-widest uppercase"
-          style={{ fontFamily: 'Orbitron, sans-serif' }}
-        >
-          SECRET
-        </span>
-        <span
-          className="text-base md:text-2xl tracking-wider md:tracking-widest uppercase italic font-bold"
-          style={{ fontFamily: 'Orbitron, sans-serif', color: '#CCFF00' }}
-        >
-          COACH
-        </span>
+      <div className="min-w-0">
+        <div className="select-none">
+          <span className="font-display text-lg font-semibold tracking-[-0.06em] text-white md:text-2xl">
+            Secret Coach
+          </span>
+        </div>
+        <p className="hidden text-xs tracking-[-0.01em] text-[#d6e2fb]/44 md:block">
+          {copy.navLabel}
+        </p>
       </div>
 
-      <div className="flex items-center gap-2 md:gap-3 shrink-0">
-        <div className="inline-flex items-center rounded-full border border-white/20 bg-black/40 p-0.5 backdrop-blur-md">
+      <div className="flex shrink-0 items-center gap-2 md:gap-3">
+        <div className="inline-flex items-center rounded-full border border-[#d7e5ff]/12 bg-[linear-gradient(135deg,rgba(151,187,255,0.08),rgba(255,255,255,0.04))] p-0.5 backdrop-blur-md">
           <button
             onClick={() => setLanguage('en')}
             className={[
-              'min-w-[34px] rounded-full px-2 py-1 text-[10px] md:text-xs font-bold tracking-wider transition-all',
+              'min-w-[34px] rounded-full px-2 py-1 text-[10px] font-semibold tracking-[0.14em] transition-all md:text-xs',
               language === 'en'
-                ? 'bg-[#CCFF00] text-black'
-                : 'text-gray-300 hover:text-white',
+                ? 'bg-[linear-gradient(135deg,#f8fafc,#dbe8ff)] text-[#06080d]'
+                : 'text-white/42 hover:text-white',
             ].join(' ')}
-            style={{ fontFamily: 'Inter, sans-serif' }}
             aria-label="Switch language to English"
             aria-pressed={language === 'en'}
           >
@@ -63,34 +63,33 @@ export const StickyNav: React.FC<StickyNavProps> = ({ onCTAClick }) => {
           <button
             onClick={() => setLanguage('ko')}
             className={[
-              'min-w-[34px] rounded-full px-2 py-1 text-[10px] md:text-xs font-bold tracking-wider transition-all',
+              'min-w-[34px] rounded-full px-2 py-1 text-[10px] font-semibold tracking-[0.14em] transition-all md:text-xs',
               language === 'ko'
-                ? 'bg-[#CCFF00] text-black'
-                : 'text-gray-300 hover:text-white',
+                ? 'bg-[linear-gradient(135deg,#f8fafc,#dbe8ff)] text-[#06080d]'
+                : 'text-white/42 hover:text-white',
             ].join(' ')}
-            style={{ fontFamily: 'Inter, sans-serif' }}
-            aria-label="언어를 한국어로 변경"
+            aria-label="한국어로 전환"
             aria-pressed={language === 'ko'}
           >
             KO
           </button>
         </div>
 
-        {/* CTA Button */}
         <button
           onClick={onCTAClick}
+          disabled={isLoggingIn}
           className={[
-            'px-3 py-1.5 md:px-4 md:py-2 rounded-full text-[10px] md:text-sm font-semibold uppercase tracking-wider md:tracking-widest',
-            'border transition-all duration-200 whitespace-nowrap',
-            'hover:bg-[#CCFF00] hover:text-black hover:scale-105',
+            'rounded-full border border-[#d7e5ff]/18 px-4 py-2 text-[10px] font-semibold tracking-[0.14em] text-white',
+            'whitespace-nowrap transition-all duration-200 hover:scale-[1.015] md:px-5 md:text-sm',
+            'disabled:cursor-not-allowed disabled:opacity-70',
           ].join(' ')}
           style={{
-            color: '#CCFF00',
-            borderColor: '#CCFF00',
-            fontFamily: 'Inter, sans-serif',
+            background:
+              'linear-gradient(135deg, rgba(151,187,255,0.16), rgba(168,240,211,0.12))',
+            boxShadow: '0 20px 40px -28px rgba(151, 187, 255, 0.45)',
           }}
         >
-          {language === 'ko' ? '무료 시작' : 'Start Free'}
+          {isLoggingIn ? 'Loading' : copy.navCta}
         </button>
       </div>
     </nav>
