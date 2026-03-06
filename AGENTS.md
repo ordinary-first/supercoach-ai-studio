@@ -103,6 +103,15 @@ cd web-legacy-mindmap2 && npx vite --port 3016 --host
 
 _Last updated: 2026-03-07_
 
+- 랜딩 R2 공개 URL fallback 추가 완료:
+  - `displayVersion`를 `V03.07r4`로 갱신.
+  - `components/landing/landingMedia.ts`
+    - `process.env.R2_PUBLIC_URL`이 없는 preview/build 환경에서도
+      히어로 미디어가 비지 않도록 R2 public URL fallback 상수 추가.
+    - 로컬 `.env.local`에서만 뜨고 원격 preview에서는 안 뜨던 문제 보강.
+  - 검증:
+    - `npm run build` 통과.
+
 - 랜딩 히어로 폰 프레임 실물감 리파인먼트 완료:
   - `displayVersion`를 `V03.07r3`로 갱신.
   - `components/landing/LandingMediaFrame.tsx`

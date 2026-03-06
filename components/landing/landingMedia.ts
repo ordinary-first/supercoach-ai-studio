@@ -15,8 +15,12 @@ export interface LandingMediaAsset {
   fallbackLabel: string;
 }
 
+const FALLBACK_R2_PUBLIC_URL = 'https://pub-64975e1a220e4c788486947b767f5518.r2.dev';
+
 const toPublicAssetUrl = (key: string): string | undefined => {
-  const base = (process.env.R2_PUBLIC_URL ?? '').trim().replace(/\/$/, '');
+  const base = (process.env.R2_PUBLIC_URL ?? FALLBACK_R2_PUBLIC_URL)
+    .trim()
+    .replace(/\/$/, '');
   if (!base) return undefined;
   return `${base}/${key}`;
 };
