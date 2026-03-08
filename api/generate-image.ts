@@ -190,8 +190,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             reference_image_url: faceUrl,
             image_size: 'square_hd',
             num_inference_steps: isNodeImage ? 16 : 20,
-            guidance_scale: 4,
-            id_weight: 1,
+            guidance_scale: 4.5,
+            id_weight: 0.5,
           },
           pollInterval: 2000,
         });
@@ -237,11 +237,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const compressed = await compressToBuffer(rawBuffer);
     const dataUrl = `data:image/jpeg;base64,${compressed.toString('base64')}`;
 
-    // 노드 이미지 → R2
+    // 노드 이미지 → R2 (cache-bust: 재생성 시 동일 경로 덮어쓰므로 ?v= 추가)
     if (uid && cleanNodeId && R2_PUBLIC_URL) {
       try {
         const key = `goals/${safePathSegment(uid)}/${safePathSegment(cleanNodeId)}.jpg`;
-        const url = await uploadToR2(key, compressed);
+        const rawUrl = await uploadToR2(key, compressed);
+        const url = `${rawUrl}?v=${Date.now()}`;
         await saveGenerationResult(uid, cleanVisualizationId || cleanNodeId, url, dataUrl, requestId);
         return complete(res, requestId, url, dataUrl);
       } catch (r2Error: unknown) {
@@ -254,7 +255,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (cleanImagePurpose === 'visualization' && uid && cleanVisualizationId && R2_PUBLIC_URL) {
       try {
         const key = `visualizations/${safePathSegment(uid)}/${safePathSegment(cleanVisualizationId)}/image.jpg`;
-        const url = await uploadToR2(key, compressed);
+        const rawUrl = await uploadToR2(key, compressed);
+        const url = `${rawUrl}?v=${Date.now()}`;
         await saveGenerationResult(uid, cleanVisualizationId, url, dataUrl, requestId);
         return complete(res, requestId, url, dataUrl);
       } catch (r2Error: unknown) {
