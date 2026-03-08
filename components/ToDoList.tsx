@@ -436,6 +436,7 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
           activeListId={activeListId}
           searchQuery={searchQuery}
           principles={principles}
+          showPrinciplesEditor={showPrinciplesEditor}
           onSelectList={(id) => { onActiveListChange(id); setIsSidebarOpen(false); }}
           onSearchChange={setSearchQuery}
           onCreateList={() => { setEditingListId(null); setShowCreateList(true); }}
@@ -485,49 +486,83 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
         {/* === PRINCIPLES FULL VIEW === */}
         {showPrinciplesEditor ? (
           <>
-            <div className="flex-1 overflow-y-auto p-4 space-y-2 scrollbar-hide">
-              {principles.length === 0 && (
-                <div className="flex flex-col items-center justify-center py-20 text-th-text-tertiary space-y-4">
-                  <div className="w-20 h-20 rounded-full bg-th-surface border border-th-border/10 flex items-center justify-center shadow-sm">
-                    <span className="text-3xl opacity-40">✦</span>
+            <div className="flex-1 overflow-y-auto px-4 pt-3 pb-4 scrollbar-hide">
+              {principles.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-24 space-y-5">
+                  <div className="w-24 h-24 rounded-[28px] bg-gradient-to-br from-th-accent/20 to-th-accent/5
+                    flex items-center justify-center shadow-lg shadow-th-accent/5 ring-1 ring-th-accent/10">
+                    <span className="text-4xl">✦</span>
                   </div>
-                  <div className="text-center">
-                    <p className="text-base font-bold text-th-text-secondary">
-                      {language === 'ko' ? '원칙을 추가해보세요' : 'Add your first principle'}
+                  <div className="text-center space-y-1.5">
+                    <p className="text-lg font-bold text-th-text">
+                      {language === 'ko' ? '나만의 원칙 만들기' : 'Create Your Principles'}
                     </p>
-                    <p className="text-sm mt-1 text-th-text-tertiary">
-                      {language === 'ko' ? '매일 지킬 나만의 원칙을 적어보세요' : 'Write down principles to live by each day'}
+                    <p className="text-sm text-th-text-tertiary leading-relaxed max-w-[240px] mx-auto">
+                      {language === 'ko'
+                        ? '매일 지킬 나만의 원칙을 적어보세요.\n사이드바에서 오늘의 포커스로 보여줍니다.'
+                        : 'Write principles to live by.\nOne will show as daily focus.'}
                     </p>
                   </div>
+                </div>
+              ) : (
+                <div className="space-y-2.5">
+                  {/* 오늘의 포커스 하이라이트 카드 */}
+                  {(() => {
+                    const now = new Date();
+                    const startOfYear = new Date(now.getFullYear(), 0, 0);
+                    const dayOfYear = Math.floor((now.getTime() - startOfYear.getTime()) / 86400000);
+                    const todayIdx = dayOfYear % principles.length;
+                    return (
+                      <div className="mb-4 rounded-2xl bg-gradient-to-br from-th-accent/15 via-th-accent/8 to-transparent
+                        p-4 ring-1 ring-th-accent/20 shadow-lg shadow-th-accent/5">
+                        <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-th-accent/70 mb-1.5">
+                          {language === 'ko' ? "오늘의 포커스" : "Today's Focus"}
+                        </p>
+                        <p className="text-base font-semibold text-th-text leading-snug">
+                          {principles[todayIdx]?.text}
+                        </p>
+                      </div>
+                    );
+                  })()}
+                  {/* 원칙 리스트 */}
+                  <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-th-text-tertiary px-1 pt-1">
+                    {language === 'ko'
+                      ? `전체 원칙 · ${principles.length}개`
+                      : `All Principles · ${principles.length}`}
+                  </p>
+                  {principles.map((p, idx) => (
+                    <div
+                      key={p.id}
+                      className="group rounded-2xl bg-th-surface/40 px-4 py-3.5 flex items-center gap-3.5
+                        ring-1 ring-white/[0.04] hover:ring-th-accent/25 hover:bg-th-surface/60
+                        transition-all duration-200"
+                    >
+                      <span className="w-6 h-6 rounded-lg bg-th-accent/15 flex items-center justify-center
+                        text-[11px] font-bold text-th-accent flex-shrink-0 tabular-nums">
+                        {idx + 1}
+                      </span>
+                      <input
+                        type="text"
+                        value={p.text}
+                        onChange={(e) => onUpdatePrinciple(p.id, e.target.value)}
+                        className="flex-1 bg-transparent text-[15px] text-th-text focus:outline-none
+                          placeholder:text-th-text-tertiary min-w-0 font-medium"
+                      />
+                      <button
+                        onClick={() => onDeletePrinciple(p.id)}
+                        className="opacity-0 group-hover:opacity-100 flex-shrink-0 p-1.5
+                          text-th-text-tertiary hover:text-red-400 hover:bg-red-400/10
+                          rounded-lg transition-all duration-200"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
+                  ))}
                 </div>
               )}
-              {principles.map((p) => (
-                <div
-                  key={p.id}
-                  className="bg-th-surface/50 rounded-xl px-4 py-3 flex items-start gap-3
-                    ring-1 ring-th-border group hover:ring-th-accent/30 transition-all"
-                >
-                  <span className="text-th-accent mt-0.5 flex-shrink-0 text-sm font-bold">✦</span>
-                  <input
-                    type="text"
-                    value={p.text}
-                    onChange={(e) => onUpdatePrinciple(p.id, e.target.value)}
-                    className="flex-1 bg-transparent text-sm text-th-text focus:outline-none
-                      placeholder:text-th-text-tertiary min-w-0"
-                  />
-                  <button
-                    onClick={() => onDeletePrinciple(p.id)}
-                    className="opacity-0 group-hover:opacity-100 flex-shrink-0 p-1
-                      text-th-text-tertiary hover:text-red-400 hover:bg-red-400/10
-                      rounded transition-all"
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-              ))}
             </div>
             {/* Add principle input */}
-            <div className="border-t border-th-border px-4 py-3 flex-shrink-0">
+            <div className="border-t border-th-border/50 px-4 py-3.5 flex-shrink-0 bg-th-surface/30">
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
@@ -538,13 +573,14 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
                   onAddPrinciple(text);
                   input.value = '';
                 }}
-                className="flex items-center gap-2.5"
+                className="flex items-center gap-3 rounded-xl bg-th-surface/50 ring-1 ring-white/[0.06]
+                  px-3.5 py-2.5 focus-within:ring-th-accent/30 transition-all"
               >
                 <Plus size={18} className="text-th-accent flex-shrink-0" />
                 <input
                   name="principleInput"
                   type="text"
-                  placeholder={language === 'ko' ? '원칙 추가' : 'Add principle'}
+                  placeholder={language === 'ko' ? '새로운 원칙 추가하기...' : 'Add a new principle...'}
                   className="flex-1 bg-transparent text-sm text-th-text
                     placeholder-th-text-tertiary focus:outline-none"
                   autoFocus

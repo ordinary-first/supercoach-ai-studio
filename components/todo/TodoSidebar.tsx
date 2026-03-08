@@ -24,6 +24,7 @@ interface TodoSidebarProps {
   activeListId: string;
   searchQuery: string;
   principles: UserPrinciple[];
+  showPrinciplesEditor: boolean;
   onSelectList: (listId: string) => void;
   onSearchChange: (query: string) => void;
   onCreateList: () => void;
@@ -52,6 +53,7 @@ export default function TodoSidebar({
   onRenameList,
   onRenameGroup,
   onToggleGroupCollapse,
+  showPrinciplesEditor,
   onOpenPrinciples,
 }: TodoSidebarProps) {
   const { language } = useTranslation();
@@ -144,7 +146,7 @@ export default function TodoSidebar({
 
   const renderListItem = (list: TodoList, indented = false) => {
     const count = getListCount(list.id);
-    const isActive = activeListId === list.id;
+    const isActive = !showPrinciplesEditor && activeListId === list.id;
     const isContextOpen = contextMenuId === list.id;
 
     return (
@@ -321,14 +323,17 @@ export default function TodoSidebar({
           <div className="px-3 pb-2 flex-shrink-0">
             <button
               onClick={() => onOpenPrinciples()}
-              className="w-full text-left border-l-[3px] border-th-accent bg-th-accent-muted/40
-                rounded-xl px-3 py-2.5 transition-all hover:bg-th-accent-muted/60"
+              className={`w-full text-left rounded-xl px-3 py-2.5 transition-all ${
+                showPrinciplesEditor
+                  ? 'bg-th-accent/15 ring-1 ring-th-accent/40 shadow-[0_0_12px_-3px] shadow-th-accent/20'
+                  : 'border-l-[3px] border-th-accent bg-th-accent-muted/40 hover:bg-th-accent-muted/60'
+              }`}
             >
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-bold text-th-accent tracking-wide">
                   {language === 'ko'
-                    ? '\u2726 \uC624\uB298 \uC774\uAC83\uB9CC \uC9C0\uCF1C\uC918!'
-                    : '\u2726 My Principle'}
+                    ? '\u2726 \uC774\uAC83\uB9CC \uC9C0\uCF1C\uC918!'
+                    : '\u2726 My Principles'}
                 </span>
                 {hasPrinciples && (
                   <span
@@ -376,7 +381,7 @@ export default function TodoSidebar({
           </p>
           {smartLists.map((list) => {
             const count = todos.filter(list.filter).length;
-            const isActive = activeListId === list.id;
+            const isActive = !showPrinciplesEditor && activeListId === list.id;
             return (
               <button
                 key={list.id}
