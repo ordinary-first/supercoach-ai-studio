@@ -58,7 +58,13 @@ export default function TodoSidebar({
 }: TodoSidebarProps) {
   const { language } = useTranslation();
   const [contextMenuId, setContextMenuId] = useState<string | null>(null);
-  const [principlesCollapsed, setPrinciplesCollapsed] = useState(false);
+  const todayPrinciple = useMemo(() => {
+    if (principles.length === 0) return null;
+    const now = new Date();
+    const start = new Date(now.getFullYear(), 0, 0);
+    const dayOfYear = Math.floor((now.getTime() - start.getTime()) / 86400000);
+    return principles[dayOfYear % principles.length];
+  }, [principles]);
 
   const ui = useMemo(() => {
     if (language === 'ko') {
@@ -308,71 +314,36 @@ export default function TodoSidebar({
         <TodoSearchBar value={searchQuery} onChange={onSearchChange} />
       </div>
 
-      {/* Principles card */}
-      {(() => {
-        const hasPrinciples = principles.length > 0;
-        const todayPrinciple = hasPrinciples ? (() => {
-          const now = new Date();
-          const startOfYear = new Date(now.getFullYear(), 0, 0);
-          const dayOfYear = Math.floor(
-            (now.getTime() - startOfYear.getTime()) / 86400000,
-          );
-          return principles[dayOfYear % principles.length];
-        })() : null;
-        return (
-          <div className="px-3 pb-2 flex-shrink-0">
-            <button
-              onClick={() => onOpenPrinciples()}
-              className={`w-full text-left rounded-xl px-3 py-2.5 transition-all ${
-                showPrinciplesEditor
-                  ? 'bg-th-accent/15 ring-1 ring-th-accent/40 shadow-[0_0_12px_-3px] shadow-th-accent/20'
-                  : 'border-l-[3px] border-th-accent bg-th-accent-muted/40 hover:bg-th-accent-muted/60'
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold text-th-accent tracking-wide">
-                  {language === 'ko'
-                    ? '\u2726 \uC774\uAC83\uB9CC \uC9C0\uCF1C\uC918!'
-                    : '\u2726 My Principles'}
-                </span>
-                {hasPrinciples && (
-                  <span
-                    role="button"
-                    tabIndex={0}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setPrinciplesCollapsed(prev => !prev);
-                    }}
-                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); setPrinciplesCollapsed(prev => !prev); } }}
-                    className="p-0.5 text-th-text-tertiary hover:text-th-text transition-colors cursor-pointer"
-                  >
-                    {principlesCollapsed
-                      ? <ChevronRight size={14} />
-                      : <ChevronDown size={14} />}
-                  </span>
-                )}
-              </div>
-              {hasPrinciples && !principlesCollapsed && todayPrinciple && (
-                <div className="mt-1.5">
-                  <p className="text-[10px] text-th-text-tertiary uppercase tracking-widest mb-0.5">
-                    {language === 'ko' ? '\uC624\uB298\uC758 \uD3EC\uCEE4\uC2A4' : "Today's Focus"}
-                  </p>
-                  <p className="text-sm text-th-text font-medium leading-snug line-clamp-2">
-                    {todayPrinciple.text}
-                  </p>
-                </div>
-              )}
-              {!hasPrinciples && (
-                <p className="mt-1 text-xs text-th-text-tertiary">
-                  {language === 'ko'
-                    ? '탭해서 원칙 추가하기'
-                    : 'Tap to add principles'}
-                </p>
-              )}
-            </button>
-          </div>
-        );
-      })()}
+      {/* Principles - same style as smart lists */}
+      <div className="px-3 pb-1 flex-shrink-0">
+        <button
+          onClick={() => onOpenPrinciples()}
+          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all ${
+            showPrinciplesEditor
+              ? 'bg-th-accent-muted text-th-text font-bold'
+              : 'text-th-text-secondary hover:bg-th-surface/50 hover:text-th-text'
+          }`}
+        >
+          <span className={`flex-shrink-0 ${showPrinciplesEditor ? 'text-th-accent' : ''}`}>✦</span>
+          <span className="flex-1 text-left truncate">
+            {language === 'ko' ? '이것만 지켜줘!' : 'My Principles'}
+          </span>
+          {principles.length > 0 && (
+            <span className="bg-th-surface text-th-text-tertiary text-xs px-1.5 py-0.5 rounded-full font-mono">
+              {principles.length}
+            </span>
+          )}
+        </button>
+        {todayPrinciple && (
+          <button
+            onClick={() => onOpenPrinciples()}
+            className="w-full mt-1 mx-1 px-3 py-2 rounded-lg bg-th-surface/60 text-sm text-th-text-secondary
+              text-left truncate hover:bg-th-surface transition-colors"
+          >
+            {todayPrinciple.text}
+          </button>
+        )}
+      </div>
 
       <div className="flex-1 overflow-y-auto py-2 scrollbar-hide">
         <div className="px-3 mb-1">

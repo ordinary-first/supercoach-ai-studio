@@ -494,8 +494,8 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
                     </p>
                     <p className="text-sm text-th-text-tertiary leading-relaxed max-w-[240px] mx-auto">
                       {language === 'ko'
-                        ? '매일 지킬 나만의 원칙을 적어보세요.\n사이드바에서 오늘의 포커스로 보여줍니다.'
-                        : 'Write principles to live by.\nOne will show as daily focus.'}
+                        ? '매일 지킬 나만의 원칙을 적어보세요.'
+                        : 'Write principles to live by.'}
                     </p>
                   </div>
                 </div>
@@ -510,9 +510,6 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
                     return (
                       <div className="mb-4 rounded-2xl bg-gradient-to-br from-th-accent/15 via-th-accent/8 to-transparent
                         p-4 ring-1 ring-th-accent/20 shadow-lg shadow-th-accent/5">
-                        <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-th-accent/70 mb-1.5">
-                          {language === 'ko' ? "오늘의 포커스" : "Today's Focus"}
-                        </p>
                         <p className="text-base font-semibold text-th-text leading-snug">
                           {principles[todayIdx]?.text}
                         </p>
