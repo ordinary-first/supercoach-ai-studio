@@ -103,19 +103,6 @@ const DeleteActionIcon = () => (
   </svg>
 );
 
-const MoveUpIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5">
-    <path d="M9 14V4" strokeLinecap="round" />
-    <path d="M5 8L9 4L13 8" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-);
-
-const MoveDownIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5">
-    <path d="M9 4V14" strokeLinecap="round" />
-    <path d="M5 10L9 14L13 10" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-);
 
 // --- Types ---
 export type LayoutMode = 'mindMap' | 'logicalStructure' | 'logicalStructureLeft' | 'organizationStructure';
@@ -136,7 +123,6 @@ interface MindMapProps {
   onAddSubNode: (parentId: string, text?: string) => void;
   onAddParentNode?: (nodeId: string) => void;
   onDecomposeGoal?: (nodeId: string) => void;
-  onReorderNode?: (nodeId: string, direction: 'up' | 'down') => void;
   previewNodeIds?: string[];
   confirmedPreviewIds?: string[];
   onTogglePreviewConfirm?: (nodeId: string) => void;
@@ -455,7 +441,7 @@ const LAYOUT_MODES: LayoutMode[] = [
 const MindMap: React.FC<MindMapProps> = ({
   nodes, links, language, selectedNodeId, onNodeClick, onEditNode, onUpdateNode, onDeleteNode,
   onReparentNode, onConvertNodeToTask, onGenerateImage, onInsertImage, onAddSubNode, onAddParentNode,
-  onDecomposeGoal, onReorderNode, previewNodeIds, confirmedPreviewIds, onTogglePreviewConfirm, onFinalizePreview,
+  onDecomposeGoal, previewNodeIds, confirmedPreviewIds, onTogglePreviewConfirm, onFinalizePreview,
   width, height, editingNodeId, onEditEnd, imageLoadingNodes,
   layout: layoutProp = 'mindMap', onLayoutChange,
 }) => {
@@ -818,14 +804,13 @@ const MindMap: React.FC<MindMapProps> = ({
       });
     });
 
-    // --- Event: data_change ??sync text edits back to React ---
-    // ONLY syncs text changes from in-place editing. Ignores changes we caused.
+    // --- Event: data_change — sync text edits + sibling order back to React ---
+    // Syncs text changes AND children order (from drag-and-drop).
+    // Ignores changes we caused via setData/updateData.
     mindMap.on('data_change', (data: SMMNode) => {
-      // Ignore if we caused this change via setData/updateData
       if (Date.now() - lastSetDataTimeRef.current < 500) return;
 
-      // Walk the tree and check for text differences
-      const syncTextChanges = (smmNode: SMMNode) => {
+      const syncChanges = (smmNode: SMMNode) => {
         const goalId = smmNode.data?.goalId || smmNode.data?.uid;
         if (goalId?.startsWith('ghost-')) return;
         if (goalId) {
@@ -834,11 +819,21 @@ const MindMap: React.FC<MindMapProps> = ({
             onUpdateNodeRef.current(goalId, { text: smmNode.data.text });
           }
         }
-        for (const child of smmNode.children || []) {
-          syncTextChanges(child);
+        // Sync children sortOrder from tree position
+        const children = smmNode.children || [];
+        children.forEach((child, idx) => {
+          const childId = child.data?.goalId || child.data?.uid;
+          if (!childId || childId.startsWith('ghost-')) return;
+          const existing = nodesRef.current.find(n => n.id === childId);
+          if (existing && (existing.sortOrder ?? 0) !== idx) {
+            onUpdateNodeRef.current(childId, { sortOrder: idx });
+          }
+        });
+        for (const child of children) {
+          syncChanges(child);
         }
       };
-      syncTextChanges(data);
+      syncChanges(data);
     });
 
     // Close context menu on background click
@@ -1194,27 +1189,6 @@ const MindMap: React.FC<MindMapProps> = ({
             >
               <InsertImageActionIcon />
             </button>
-
-            {!isRootActionNode && onReorderNode && (
-              <>
-                <button
-                  onClick={() => { onReorderNode(actionBar.nodeId, 'up'); setActionBar(null); }}
-                  className="rounded-full p-2.5 text-th-text-secondary hover:text-th-accent hover:bg-th-accent-muted transition-all active:scale-90"
-                  title="Move up"
-                  aria-label="Move up"
-                >
-                  <MoveUpIcon />
-                </button>
-                <button
-                  onClick={() => { onReorderNode(actionBar.nodeId, 'down'); setActionBar(null); }}
-                  className="rounded-full p-2.5 text-th-text-secondary hover:text-th-accent hover:bg-th-accent-muted transition-all active:scale-90"
-                  title="Move down"
-                  aria-label="Move down"
-                >
-                  <MoveDownIcon />
-                </button>
-              </>
-            )}
 
             {!isRootActionNode && (
               <button

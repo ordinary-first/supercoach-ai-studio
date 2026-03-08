@@ -307,23 +307,20 @@ export default function TodoSidebar({
       </div>
 
       {/* Principles card */}
-      {principles.length > 0 && (() => {
-        const now = new Date();
-        const startOfYear = new Date(now.getFullYear(), 0, 0);
-        const dayOfYear = Math.floor(
-          (now.getTime() - startOfYear.getTime()) / 86400000,
-        );
-        const todayPrinciple = principles[dayOfYear % principles.length];
+      {(() => {
+        const hasPrinciples = principles.length > 0;
+        const todayPrinciple = hasPrinciples ? (() => {
+          const now = new Date();
+          const startOfYear = new Date(now.getFullYear(), 0, 0);
+          const dayOfYear = Math.floor(
+            (now.getTime() - startOfYear.getTime()) / 86400000,
+          );
+          return principles[dayOfYear % principles.length];
+        })() : null;
         return (
           <div className="px-3 pb-2 flex-shrink-0">
             <button
-              onClick={() => {
-                if (principlesCollapsed) {
-                  setPrinciplesCollapsed(false);
-                } else {
-                  onOpenPrinciples();
-                }
-              }}
+              onClick={() => onOpenPrinciples()}
               className="w-full text-left border-l-[3px] border-th-accent bg-th-accent-muted/40
                 rounded-xl px-3 py-2.5 transition-all hover:bg-th-accent-muted/60"
             >
@@ -333,19 +330,21 @@ export default function TodoSidebar({
                     ? '\u2726 \uC624\uB298 \uC774\uAC83\uB9CC \uC9C0\uCF1C\uC918!'
                     : '\u2726 My Principle'}
                 </span>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setPrinciplesCollapsed(prev => !prev);
-                  }}
-                  className="p-0.5 text-th-text-tertiary hover:text-th-text transition-colors"
-                >
-                  {principlesCollapsed
-                    ? <ChevronRight size={14} />
-                    : <ChevronDown size={14} />}
-                </button>
+                {hasPrinciples && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setPrinciplesCollapsed(prev => !prev);
+                    }}
+                    className="p-0.5 text-th-text-tertiary hover:text-th-text transition-colors"
+                  >
+                    {principlesCollapsed
+                      ? <ChevronRight size={14} />
+                      : <ChevronDown size={14} />}
+                  </button>
+                )}
               </div>
-              {!principlesCollapsed && todayPrinciple && (
+              {hasPrinciples && !principlesCollapsed && todayPrinciple && (
                 <div className="mt-1.5">
                   <p className="text-[10px] text-th-text-tertiary uppercase tracking-widest mb-0.5">
                     {language === 'ko' ? '\uC624\uB298\uC758 \uD3EC\uCEE4\uC2A4' : "Today's Focus"}
@@ -354,6 +353,13 @@ export default function TodoSidebar({
                     {todayPrinciple.text}
                   </p>
                 </div>
+              )}
+              {!hasPrinciples && (
+                <p className="mt-1 text-xs text-th-text-tertiary">
+                  {language === 'ko'
+                    ? '탭해서 원칙 추가하기'
+                    : 'Tap to add principles'}
+                </p>
               )}
             </button>
           </div>

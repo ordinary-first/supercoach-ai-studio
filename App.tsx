@@ -672,35 +672,6 @@ const App: React.FC = () => {
       setDeleteConfirmNodeId(nodeId);
   }, []);
 
-  const handleReorderNode = useCallback((nodeId: string, direction: 'up' | 'down') => {
-    setNodes(prev => {
-      const node = prev.find(n => n.id === nodeId);
-      if (!node || !node.parentId) return prev;
-
-      const siblings = prev
-        .filter(n => n.parentId === node.parentId)
-        .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
-
-      if (siblings.length < 2) return prev;
-
-      // Normalize sortOrders to guarantee unique values
-      const orderMap = new Map<string, number>();
-      siblings.forEach((s, i) => orderMap.set(s.id, i));
-
-      const idx = siblings.findIndex(n => n.id === nodeId);
-      const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
-      if (swapIdx < 0 || swapIdx >= siblings.length) return prev;
-
-      // Swap positions
-      orderMap.set(siblings[idx].id, swapIdx);
-      orderMap.set(siblings[swapIdx].id, idx);
-
-      return prev.map(n => {
-        const newOrder = orderMap.get(n.id);
-        return newOrder !== undefined ? { ...n, sortOrder: newOrder } : n;
-      });
-    });
-  }, []);
 
   const handleReparentNode = useCallback((childId: string, newParentId: string) => {
       if (childId === newParentId || childId === 'root') return;
@@ -876,7 +847,7 @@ const App: React.FC = () => {
         }
       >
         <MindMap
-          nodes={visibleNodes} links={visibleLinks} language={language} selectedNodeId={selectedNode?.id} onNodeClick={setSelectedNode} onEditNode={(nodeId) => setEditingNodeId(nodeId)} onUpdateNode={handleUpdateNode} onDeleteNode={handleDeleteNode} onReparentNode={handleReparentNode} onAddSubNode={handleAddSubNode} onAddParentNode={handleAddParentNode} onGenerateImage={handleGenerateNodeImage} onInsertImage={handleInsertNodeImage} onConvertNodeToTask={handleConvertNodeToTodo} onDecomposeGoal={handleDecomposeGoal} onReorderNode={handleReorderNode} previewNodeIds={previewNodeIds} confirmedPreviewIds={confirmedPreviewIds} onTogglePreviewConfirm={handleTogglePreviewConfirm} onFinalizePreview={handleFinalizePreview} editingNodeId={editingNodeId} onEditEnd={() => setEditingNodeId(null)} width={dimensions.width} height={dimensions.height} imageLoadingNodes={imageLoadingNodes} layout={mindmapLayout} onLayoutChange={setMindmapLayout}
+          nodes={visibleNodes} links={visibleLinks} language={language} selectedNodeId={selectedNode?.id} onNodeClick={setSelectedNode} onEditNode={(nodeId) => setEditingNodeId(nodeId)} onUpdateNode={handleUpdateNode} onDeleteNode={handleDeleteNode} onReparentNode={handleReparentNode} onAddSubNode={handleAddSubNode} onAddParentNode={handleAddParentNode} onGenerateImage={handleGenerateNodeImage} onInsertImage={handleInsertNodeImage} onConvertNodeToTask={handleConvertNodeToTodo} onDecomposeGoal={handleDecomposeGoal} previewNodeIds={previewNodeIds} confirmedPreviewIds={confirmedPreviewIds} onTogglePreviewConfirm={handleTogglePreviewConfirm} onFinalizePreview={handleFinalizePreview} editingNodeId={editingNodeId} onEditEnd={() => setEditingNodeId(null)} width={dimensions.width} height={dimensions.height} imageLoadingNodes={imageLoadingNodes} layout={mindmapLayout} onLayoutChange={setMindmapLayout}
         />
       </div>
  
