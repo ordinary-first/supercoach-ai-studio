@@ -172,11 +172,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const faceUrl = pickFaceImageUrl(profile);
     const personDesc = buildPersonDescription(profile);
 
-    const childContext = Array.isArray(childTexts) && childTexts.length > 0
-      ? ` This goal encompasses these sub-goals: ${childTexts.join(', ')}.`
+    const activities = Array.isArray(childTexts) && childTexts.length > 0
+      ? childTexts.join(', ')
       : '';
 
-    const textPrompt = `Create a single photorealistic image that directly illustrates this personal goal: "${cleanPrompt}".${childContext} Show ${personDesc} in a concrete, specific scene, not abstract or metaphorical. The scene should feel aspirational and warm. Square composition, soft cinematic lighting. Absolutely no text, letters, words, or watermarks in the image.`;
+    // 하위 노드가 있으면 활동 장면 중심, 없으면 목표 자체 묘사
+    const textPrompt = activities
+      ? `Photorealistic image of ${personDesc} actively doing these activities: ${activities}. The overall theme is "${cleanPrompt}". Show the person in the middle of the action, full body or upper body visible, in a vivid real-world setting. Aspirational and energetic mood. Square composition, cinematic lighting. No text, no letters, no watermarks.`
+      : `Photorealistic image of ${personDesc} working towards their goal: "${cleanPrompt}". Show the person actively engaged in a concrete scene related to this goal, full body or upper body visible. Aspirational and warm mood. Square composition, cinematic lighting. No text, no letters, no watermarks.`;
 
     let result: unknown;
 
