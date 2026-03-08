@@ -13,7 +13,7 @@ import {
   FolderPlus,
   MoreHorizontal,
 } from 'lucide-react';
-import { ToDoItem, TodoList, TodoGroup, SmartListId } from '../../types';
+import { ToDoItem, TodoList, TodoGroup, SmartListId, UserPrinciple } from '../../types';
 import { useTranslation } from '../../i18n/useTranslation';
 import TodoSearchBar from './TodoSearchBar';
 
@@ -23,6 +23,7 @@ interface TodoSidebarProps {
   groups: TodoGroup[];
   activeListId: string;
   searchQuery: string;
+  principles: UserPrinciple[];
   onSelectList: (listId: string) => void;
   onSearchChange: (query: string) => void;
   onCreateList: () => void;
@@ -32,6 +33,7 @@ interface TodoSidebarProps {
   onRenameList: (id: string) => void;
   onRenameGroup: (id: string) => void;
   onToggleGroupCollapse: (id: string) => void;
+  onOpenPrinciples: () => void;
 }
 
 export default function TodoSidebar({
@@ -40,6 +42,7 @@ export default function TodoSidebar({
   groups,
   activeListId,
   searchQuery,
+  principles,
   onSelectList,
   onSearchChange,
   onCreateList,
@@ -49,9 +52,11 @@ export default function TodoSidebar({
   onRenameList,
   onRenameGroup,
   onToggleGroupCollapse,
+  onOpenPrinciples,
 }: TodoSidebarProps) {
   const { language } = useTranslation();
   const [contextMenuId, setContextMenuId] = useState<string | null>(null);
+  const [principlesCollapsed, setPrinciplesCollapsed] = useState(false);
 
   const ui = useMemo(() => {
     if (language === 'ko') {
@@ -300,6 +305,60 @@ export default function TodoSidebar({
       <div className="px-3 pt-4 pb-2 flex-shrink-0">
         <TodoSearchBar value={searchQuery} onChange={onSearchChange} />
       </div>
+
+      {/* Principles card */}
+      {principles.length > 0 && (() => {
+        const now = new Date();
+        const startOfYear = new Date(now.getFullYear(), 0, 0);
+        const dayOfYear = Math.floor(
+          (now.getTime() - startOfYear.getTime()) / 86400000,
+        );
+        const todayPrinciple = principles[dayOfYear % principles.length];
+        return (
+          <div className="px-3 pb-2 flex-shrink-0">
+            <button
+              onClick={() => {
+                if (principlesCollapsed) {
+                  setPrinciplesCollapsed(false);
+                } else {
+                  onOpenPrinciples();
+                }
+              }}
+              className="w-full text-left border-l-[3px] border-th-accent bg-th-accent-muted/40
+                rounded-xl px-3 py-2.5 transition-all hover:bg-th-accent-muted/60"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-th-accent tracking-wide">
+                  {language === 'ko'
+                    ? '\u2726 \uC624\uB298 \uC774\uAC83\uB9CC \uC9C0\uCF1C\uC918!'
+                    : '\u2726 My Principle'}
+                </span>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setPrinciplesCollapsed(prev => !prev);
+                  }}
+                  className="p-0.5 text-th-text-tertiary hover:text-th-text transition-colors"
+                >
+                  {principlesCollapsed
+                    ? <ChevronRight size={14} />
+                    : <ChevronDown size={14} />}
+                </button>
+              </div>
+              {!principlesCollapsed && todayPrinciple && (
+                <div className="mt-1.5">
+                  <p className="text-[10px] text-th-text-tertiary uppercase tracking-widest mb-0.5">
+                    {language === 'ko' ? '\uC624\uB298\uC758 \uD3EC\uCEE4\uC2A4' : "Today's Focus"}
+                  </p>
+                  <p className="text-sm text-th-text font-medium leading-snug line-clamp-2">
+                    {todayPrinciple.text}
+                  </p>
+                </div>
+              )}
+            </button>
+          </div>
+        );
+      })()}
 
       <div className="flex-1 overflow-y-auto py-2 scrollbar-hide">
         <div className="px-3 mb-1">

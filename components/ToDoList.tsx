@@ -1,6 +1,6 @@
 ﻿import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { Check, Trash2, Plus, ListTodo, Circle, CheckCircle2, Target, Bell, Repeat, Sun, ArrowLeft, ChevronRight, ChevronDown, Layout, X, Calendar, Star, CalendarDays, Home, Menu, GripVertical } from 'lucide-react';
-import { ToDoItem, TodoList, TodoGroup, SmartListId, RepeatFrequency } from '../types';
+import { ToDoItem, TodoList, TodoGroup, TodoStep, SmartListId, RepeatFrequency, UserPrinciple } from '../types';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { useTranslation } from '../i18n/useTranslation';
 import TodoSidebar from './todo/TodoSidebar';
@@ -43,6 +43,80 @@ const SortableTodoItem: React.FC<SortableTodoItemProps> = ({ id, isSelected, isC
   );
 };
 
+// --- Steps (subtasks) sub-component ---
+const StepsSection: React.FC<{
+  steps: TodoStep[];
+  onUpdate: (steps: TodoStep[]) => void;
+  language: string;
+}> = ({ steps, onUpdate, language }) => {
+  const [newStepText, setNewStepText] = useState('');
+
+  const addStep = () => {
+    const text = newStepText.trim();
+    if (!text) return;
+    onUpdate([...steps, { id: crypto.randomUUID(), text, completed: false }]);
+    setNewStepText('');
+  };
+
+  const toggleStep = (stepId: string) => {
+    onUpdate(steps.map((s) => (s.id === stepId ? { ...s, completed: !s.completed } : s)));
+  };
+
+  const deleteStep = (stepId: string) => {
+    onUpdate(steps.filter((s) => s.id !== stepId));
+  };
+
+  const label = language === 'ko' ? '단계 추가' : 'Add step';
+  const done = steps.filter((s) => s.completed).length;
+
+  return (
+    <div className="space-y-1.5">
+      {steps.length > 0 && (
+        <div className="flex items-center gap-2 mb-1">
+          <div className="flex-1 h-1.5 rounded-full bg-th-border overflow-hidden">
+            <div
+              className="h-full rounded-full bg-th-accent transition-all"
+              style={{ width: `${steps.length ? (done / steps.length) * 100 : 0}%` }}
+            />
+          </div>
+          <span className="text-[11px] text-th-text-tertiary font-mono">{done}/{steps.length}</span>
+        </div>
+      )}
+
+      {steps.map((step) => (
+        <div key={step.id} className="flex items-center gap-2 group px-1">
+          <button onClick={() => toggleStep(step.id)} className="flex-shrink-0">
+            {step.completed
+              ? <CheckCircle2 size={16} className="text-th-accent" />
+              : <Circle size={16} className="text-th-text-tertiary" />}
+          </button>
+          <span className={`flex-1 text-sm ${step.completed ? 'line-through text-th-text-tertiary' : 'text-th-text'}`}>
+            {step.text}
+          </span>
+          <button
+            onClick={() => deleteStep(step.id)}
+            className="opacity-0 group-hover:opacity-100 p-0.5 text-th-text-tertiary hover:text-red-400 transition-all"
+          >
+            <X size={12} />
+          </button>
+        </div>
+      ))}
+
+      <div className="flex items-center gap-2 px-1">
+        <Plus size={16} className="text-th-text-tertiary flex-shrink-0" />
+        <input
+          type="text"
+          value={newStepText}
+          onChange={(e) => setNewStepText(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') addStep(); }}
+          placeholder={label}
+          className="flex-1 bg-transparent text-sm text-th-text placeholder:text-th-text-tertiary focus:outline-none py-1"
+        />
+      </div>
+    </div>
+  );
+};
+
 interface ToDoListProps {
   isOpen: boolean;
   onClose: () => void;
@@ -58,9 +132,16 @@ interface ToDoListProps {
   onDeleteToDo: (id: string) => void;
   onUpdateToDo: (id: string, updates: Partial<ToDoItem>) => void;
   onReorderTodos: (orderedIds: string[]) => void;
+  principles: UserPrinciple[];
+  showPrinciplesEditor: boolean;
+  onClosePrinciplesEditor: () => void;
+  onOpenPrinciples: () => void;
+  onAddPrinciple: (text: string) => void;
+  onDeletePrinciple: (id: string) => void;
+  onUpdatePrinciple: (id: string, text: string) => void;
 }
 
-const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, todoGroups, activeListId, onActiveListChange, onTodoListsChange, onTodoGroupsChange, onAddToDo, onToggleToDo, onDeleteToDo, onUpdateToDo, onReorderTodos }) => {
+const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, todoGroups, activeListId, onActiveListChange, onTodoListsChange, onTodoGroupsChange, onAddToDo, onToggleToDo, onDeleteToDo, onUpdateToDo, onReorderTodos, principles, showPrinciplesEditor, onClosePrinciplesEditor, onOpenPrinciples, onAddPrinciple, onDeletePrinciple, onUpdatePrinciple }) => {
   const { t, language } = useTranslation();
   const [inputText, setInputText] = useState('');
   const [selectedToDoId, setSelectedToDoId] = useState<string | null>(null);
@@ -354,6 +435,7 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
           groups={todoGroups}
           activeListId={activeListId}
           searchQuery={searchQuery}
+          principles={principles}
           onSelectList={(id) => { onActiveListChange(id); setIsSidebarOpen(false); }}
           onSearchChange={setSearchQuery}
           onCreateList={() => { setEditingListId(null); setShowCreateList(true); }}
@@ -363,6 +445,7 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
           onRenameList={handleRenameList}
           onRenameGroup={handleRenameGroup}
           onToggleGroupCollapse={handleToggleGroupCollapse}
+          onOpenPrinciples={onOpenPrinciples}
         />
       </div>
 
@@ -544,6 +627,13 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
                 />
               </div>
 
+              {/* Steps / Subtasks */}
+              <StepsSection
+                steps={selectedToDo.steps ?? []}
+                onUpdate={(steps) => onUpdateToDo(selectedToDo.id, { steps })}
+                language={language}
+              />
+
               {/* Action Toggles */}
               <div className="space-y-2">
                 <div
@@ -658,6 +748,95 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
             {t.todo.noSelection}
           </div>
         )}
+      </div>
+
+      {/* === PRINCIPLES EDITOR SHEET === */}
+      {showPrinciplesEditor && (
+        <div className="fixed inset-0 bg-th-overlay/60 backdrop-blur-sm z-[70]" onClick={onClosePrinciplesEditor} />
+      )}
+      <div
+        className={`apple-glass-panel fixed inset-y-0 right-0 w-full md:w-[380px]
+          border-l border-th-border shadow-[-20px_0_50px_rgba(0,0,0,0.15)] z-[80]
+          transform transition-transform duration-300 ease-out flex flex-col
+          ${showPrinciplesEditor ? 'translate-x-0' : 'translate-x-full'}`}
+      >
+        {/* Header */}
+        <div className="apple-glass-header py-3 px-4 flex items-center justify-between border-b border-th-border/20">
+          <h3 className="text-base font-display font-bold text-th-text tracking-wide">
+            {language === 'ko' ? '\uC774\uAC83\uB9CC\uC9C0\uCF1C\uC918!' : 'My Principles'}
+          </h3>
+          <button
+            onClick={onClosePrinciplesEditor}
+            className="text-th-text-tertiary hover:text-red-500 transition-colors p-1.5
+              hover:bg-red-500/10 rounded-full"
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        {/* Principles list */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-2">
+          {principles.length === 0 && (
+            <div className="text-center py-12 text-th-text-tertiary text-sm">
+              {language === 'ko'
+                ? '\uC6D0\uCE59\uC744 \uCD94\uAC00\uD574\uBCF4\uC138\uC694'
+                : 'Add your first principle'}
+            </div>
+          )}
+          {principles.map((p) => (
+            <div
+              key={p.id}
+              className="bg-th-surface/50 rounded-xl px-3 py-2.5 flex items-start gap-2.5
+                ring-1 ring-th-border group hover:ring-th-accent/30 transition-all"
+            >
+              <span className="text-th-accent mt-0.5 flex-shrink-0 text-xs font-bold">
+                \u2726
+              </span>
+              <input
+                type="text"
+                value={p.text}
+                onChange={(e) => onUpdatePrinciple(p.id, e.target.value)}
+                className="flex-1 bg-transparent text-sm text-th-text focus:outline-none
+                  placeholder:text-th-text-tertiary min-w-0"
+              />
+              <button
+                onClick={() => onDeletePrinciple(p.id)}
+                className="opacity-0 group-hover:opacity-100 flex-shrink-0 p-1
+                  text-th-text-tertiary hover:text-red-400 hover:bg-red-400/10
+                  rounded transition-all"
+              >
+                <Trash2 size={14} />
+              </button>
+            </div>
+          ))}
+        </div>
+
+        {/* Add principle input */}
+        <div className="border-t border-th-border px-4 py-3 flex-shrink-0">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              const form = e.currentTarget;
+              const input = form.elements.namedItem('principleInput') as HTMLInputElement;
+              const text = input.value.trim();
+              if (!text) return;
+              onAddPrinciple(text);
+              input.value = '';
+            }}
+            className="flex items-center gap-2.5"
+          >
+            <Plus size={18} className="text-th-accent flex-shrink-0" />
+            <input
+              name="principleInput"
+              type="text"
+              placeholder={
+                language === 'ko' ? '\uC6D0\uCE59 \uCD94\uAC00' : 'Add principle'
+              }
+              className="flex-1 bg-transparent text-sm text-th-text
+                placeholder-th-text-tertiary focus:outline-none"
+            />
+          </form>
+        </div>
       </div>
 
       {/* Modals */}

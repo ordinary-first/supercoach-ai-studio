@@ -84,11 +84,11 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
 
   // Sync with external viewMode. External selection should always win.
   useEffect(() => {
-    if (externalViewMode) {
+    if (externalViewMode && isOpen) {
       setViewMode(externalViewMode);
       setSelectedDate(null);
     }
-  }, [externalViewMode]);
+  }, [externalViewMode, isOpen]);
 
   const focusTrapRef = useFocusTrap(isOpen);
 

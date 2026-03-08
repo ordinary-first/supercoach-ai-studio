@@ -26,6 +26,7 @@ import {
   TodoList,
   TodoGroup,
   SmartListId,
+  UserPrinciple,
 } from './types';
 import { generateGoalImage, uploadNodeImage, decomposeGoal } from './services/aiService';
 import { verifyPolarCheckout } from './services/polarService';
@@ -33,8 +34,10 @@ import {
   logout,
   getUserId,
   loadChatHistory,
+  loadPrinciples,
   loadUserSettings,
   saveChatHistory,
+  savePrinciples,
   saveProfile,
   saveUserSettings,
 } from './services/firebaseService';
@@ -188,6 +191,8 @@ const App: React.FC = () => {
   const [decomposingNodeId, setDecomposingNodeId] = useState<string | null>(null);
   const [previewNodeIds, setPreviewNodeIds] = useState<string[]>([]);
   const [confirmedPreviewIds, setConfirmedPreviewIds] = useState<string[]>([]);
+  const [principles, setPrinciples] = useState<UserPrinciple[]>([]);
+  const [showPrinciplesEditor, setShowPrinciplesEditor] = useState(false);
   const insertImageInputRef = useRef<HTMLInputElement>(null);
   const insertImageTargetNodeRef = useRef<string | null>(null);
   const isLoadingSettingsRef = useRef(false);
@@ -219,7 +224,7 @@ const App: React.FC = () => {
 
   const t = getTranslations(language);
 
-  useAutoSave(nodes, links, todos, todoLists, todoGroups, userProfile, isDataLoaded, userId);
+  const { flushAll } = useAutoSave(nodes, links, todos, todoLists, todoGroups, userProfile, isDataLoaded, userId);
 
   const openAlarmConversation = useCallback((slot: AlarmSlot) => {
     setAlarmSlotForChat(slot);
@@ -240,6 +245,7 @@ const App: React.FC = () => {
     setNodes(createInitialGoalNodes());
     setLinks([]);
     setTodos([]);
+    setPrinciples([]);
     setSelectedNode(null);
     setChatMessages([]);
     setIsSettingsPageOpen(false);
@@ -253,17 +259,29 @@ const App: React.FC = () => {
       if (cancelled) return;
       if (saved.length > 0) setChatMessages(saved);
     });
+    loadPrinciples(userId).then((p) => {
+      if (!cancelled) setPrinciples(p);
+    });
     return () => { cancelled = true; };
   }, [userId]);
 
   // 채팅 히스토리 디바운스 자동저장 (2초)
   useEffect(() => {
-    if (!userId || chatMessages.length === 0) return;
+    if (!userId || !isDataLoaded || chatMessages.length === 0) return;
     const timer = setTimeout(() => {
       saveChatHistory(userId, chatMessages);
     }, 2000);
     return () => clearTimeout(timer);
   }, [chatMessages, userId]);
+
+  // 원칙 디바운스 자동저장 (1.5초)
+  useEffect(() => {
+    if (!userId || !isDataLoaded || principles.length === 0) return;
+    const timer = setTimeout(() => {
+      savePrinciples(userId, principles).catch(() => {});
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [principles, userId, isDataLoaded]);
 
   useEffect(() => {
     document.documentElement.lang = language;
@@ -654,6 +672,36 @@ const App: React.FC = () => {
       setDeleteConfirmNodeId(nodeId);
   }, []);
 
+  const handleReorderNode = useCallback((nodeId: string, direction: 'up' | 'down') => {
+    setNodes(prev => {
+      const node = prev.find(n => n.id === nodeId);
+      if (!node || !node.parentId) return prev;
+
+      const siblings = prev
+        .filter(n => n.parentId === node.parentId)
+        .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+
+      if (siblings.length < 2) return prev;
+
+      // Normalize sortOrders to guarantee unique values
+      const orderMap = new Map<string, number>();
+      siblings.forEach((s, i) => orderMap.set(s.id, i));
+
+      const idx = siblings.findIndex(n => n.id === nodeId);
+      const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+      if (swapIdx < 0 || swapIdx >= siblings.length) return prev;
+
+      // Swap positions
+      orderMap.set(siblings[idx].id, swapIdx);
+      orderMap.set(siblings[swapIdx].id, idx);
+
+      return prev.map(n => {
+        const newOrder = orderMap.get(n.id);
+        return newOrder !== undefined ? { ...n, sortOrder: newOrder } : n;
+      });
+    });
+  }, []);
+
   const handleReparentNode = useCallback((childId: string, newParentId: string) => {
       if (childId === newParentId || childId === 'root') return;
       handleUpdateNode(childId, { parentId: newParentId });
@@ -731,6 +779,24 @@ const App: React.FC = () => {
     setTodos((prev) => prev.filter((item) => item.id !== id));
     appendAction(getUserId(), 'DELETE_TODO', `"${todo?.text || id}" 코치 반영 삭제`, { todoId: id });
   }, [todos]);
+
+  // --- Principles CRUD ---
+  const handleAddPrinciple = useCallback((text: string) => {
+    setPrinciples(prev => [
+      ...prev,
+      { id: crypto.randomUUID(), text, createdAt: Date.now() },
+    ]);
+  }, []);
+
+  const handleDeletePrinciple = useCallback((id: string) => {
+    setPrinciples(prev => prev.filter(p => p.id !== id));
+  }, []);
+
+  const handleUpdatePrinciple = useCallback((id: string, text: string) => {
+    setPrinciples(prev =>
+      prev.map(p => (p.id === id ? { ...p, text } : p)),
+    );
+  }, []);
 
   const handleTabChange = useCallback((tab: TabType) => {
       setActiveTab(tab);
@@ -810,7 +876,7 @@ const App: React.FC = () => {
         }
       >
         <MindMap
-          nodes={visibleNodes} links={visibleLinks} language={language} selectedNodeId={selectedNode?.id} onNodeClick={setSelectedNode} onEditNode={(nodeId) => setEditingNodeId(nodeId)} onUpdateNode={handleUpdateNode} onDeleteNode={handleDeleteNode} onReparentNode={handleReparentNode} onAddSubNode={handleAddSubNode} onAddParentNode={handleAddParentNode} onGenerateImage={handleGenerateNodeImage} onInsertImage={handleInsertNodeImage} onConvertNodeToTask={handleConvertNodeToTodo} onDecomposeGoal={handleDecomposeGoal} previewNodeIds={previewNodeIds} confirmedPreviewIds={confirmedPreviewIds} onTogglePreviewConfirm={handleTogglePreviewConfirm} onFinalizePreview={handleFinalizePreview} editingNodeId={editingNodeId} onEditEnd={() => setEditingNodeId(null)} width={dimensions.width} height={dimensions.height} imageLoadingNodes={imageLoadingNodes} layout={mindmapLayout} onLayoutChange={setMindmapLayout}
+          nodes={visibleNodes} links={visibleLinks} language={language} selectedNodeId={selectedNode?.id} onNodeClick={setSelectedNode} onEditNode={(nodeId) => setEditingNodeId(nodeId)} onUpdateNode={handleUpdateNode} onDeleteNode={handleDeleteNode} onReparentNode={handleReparentNode} onAddSubNode={handleAddSubNode} onAddParentNode={handleAddParentNode} onGenerateImage={handleGenerateNodeImage} onInsertImage={handleInsertNodeImage} onConvertNodeToTask={handleConvertNodeToTodo} onDecomposeGoal={handleDecomposeGoal} onReorderNode={handleReorderNode} previewNodeIds={previewNodeIds} confirmedPreviewIds={confirmedPreviewIds} onTogglePreviewConfirm={handleTogglePreviewConfirm} onFinalizePreview={handleFinalizePreview} editingNodeId={editingNodeId} onEditEnd={() => setEditingNodeId(null)} width={dimensions.width} height={dimensions.height} imageLoadingNodes={imageLoadingNodes} layout={mindmapLayout} onLayoutChange={setMindmapLayout}
         />
       </div>
  
@@ -828,6 +894,13 @@ const App: React.FC = () => {
         todoLists={todoLists} todoGroups={todoGroups} activeListId={activeListId}
         onActiveListChange={setActiveListId}
         onTodoListsChange={setTodoLists} onTodoGroupsChange={setTodoGroups}
+        principles={principles}
+        showPrinciplesEditor={showPrinciplesEditor}
+        onClosePrinciplesEditor={() => setShowPrinciplesEditor(false)}
+        onOpenPrinciples={() => setShowPrinciplesEditor(true)}
+        onAddPrinciple={handleAddPrinciple}
+        onDeletePrinciple={handleDeletePrinciple}
+        onUpdatePrinciple={handleUpdatePrinciple}
         onAddToDo={(text, listId, extras) => {
   const trimmed = text.trim().slice(0, 500);
   if (!trimmed) return;
@@ -934,7 +1007,7 @@ const App: React.FC = () => {
           if (uid) saveProfile(uid, p).catch(() => addToast(t.app.toasts.profileSaveFailed, 'error'));
           appendAction(getUserId(), 'UPDATE_PROFILE', `프로필 업데이트: ${p.name}`);
         }}
-        onLogout={() => { logout(); setUserProfile(null); setActiveTab('GOALS'); setIsSettingsPageOpen(false); }}
+        onLogout={async () => { await flushAll(); await logout(); setUserProfile(null); setActiveTab('GOALS'); setIsSettingsPageOpen(false); }}
       />
 
       {isTrialExpired && !isSettingsPageOpen && !trialDismissed && (

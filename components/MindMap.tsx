@@ -103,6 +103,20 @@ const DeleteActionIcon = () => (
   </svg>
 );
 
+const MoveUpIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5">
+    <path d="M9 14V4" strokeLinecap="round" />
+    <path d="M5 8L9 4L13 8" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+const MoveDownIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5">
+    <path d="M9 4V14" strokeLinecap="round" />
+    <path d="M5 10L9 14L13 10" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
 // --- Types ---
 export type LayoutMode = 'mindMap' | 'logicalStructure' | 'logicalStructureLeft' | 'organizationStructure';
 
@@ -122,6 +136,7 @@ interface MindMapProps {
   onAddSubNode: (parentId: string, text?: string) => void;
   onAddParentNode?: (nodeId: string) => void;
   onDecomposeGoal?: (nodeId: string) => void;
+  onReorderNode?: (nodeId: string, direction: 'up' | 'down') => void;
   previewNodeIds?: string[];
   confirmedPreviewIds?: string[];
   onTogglePreviewConfirm?: (nodeId: string) => void;
@@ -211,6 +226,7 @@ function goalNodesToTree(
     const children = childIds
       .map(id => nodeMap.get(id))
       .filter((n): n is GoalNode => !!n)
+      .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
       .map(buildNode);
 
     const statusColor = STATUS_COLORS[goalNode.status] || '#3B82F6';
@@ -439,7 +455,7 @@ const LAYOUT_MODES: LayoutMode[] = [
 const MindMap: React.FC<MindMapProps> = ({
   nodes, links, language, selectedNodeId, onNodeClick, onEditNode, onUpdateNode, onDeleteNode,
   onReparentNode, onConvertNodeToTask, onGenerateImage, onInsertImage, onAddSubNode, onAddParentNode,
-  onDecomposeGoal, previewNodeIds, confirmedPreviewIds, onTogglePreviewConfirm, onFinalizePreview,
+  onDecomposeGoal, onReorderNode, previewNodeIds, confirmedPreviewIds, onTogglePreviewConfirm, onFinalizePreview,
   width, height, editingNodeId, onEditEnd, imageLoadingNodes,
   layout: layoutProp = 'mindMap', onLayoutChange,
 }) => {
@@ -1178,6 +1194,27 @@ const MindMap: React.FC<MindMapProps> = ({
             >
               <InsertImageActionIcon />
             </button>
+
+            {!isRootActionNode && onReorderNode && (
+              <>
+                <button
+                  onClick={() => { onReorderNode(actionBar.nodeId, 'up'); setActionBar(null); }}
+                  className="rounded-full p-2.5 text-th-text-secondary hover:text-th-accent hover:bg-th-accent-muted transition-all active:scale-90"
+                  title="Move up"
+                  aria-label="Move up"
+                >
+                  <MoveUpIcon />
+                </button>
+                <button
+                  onClick={() => { onReorderNode(actionBar.nodeId, 'down'); setActionBar(null); }}
+                  className="rounded-full p-2.5 text-th-text-secondary hover:text-th-accent hover:bg-th-accent-muted transition-all active:scale-90"
+                  title="Move down"
+                  aria-label="Move down"
+                >
+                  <MoveDownIcon />
+                </button>
+              </>
+            )}
 
             {!isRootActionNode && (
               <button

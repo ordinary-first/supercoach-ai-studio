@@ -328,7 +328,10 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
         return next;
       });
 
-      if (userId) await saveFeedbackCard(userId, card);
+      if (userId) {
+        try { await saveFeedbackCard(userId, card); }
+        catch { /* silent — local state already updated */ }
+      }
       setSelectedDay(null);
     },
     [userId],
@@ -357,7 +360,10 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
         return next;
       });
 
-      if (userId) await saveFeedbackCard(userId, card);
+      if (userId) {
+        try { await saveFeedbackCard(userId, card); }
+        catch { /* silent — local state already updated */ }
+      }
       markVictoryGenerated();
 
       if (canShowNotification()) {
