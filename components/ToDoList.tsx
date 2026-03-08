@@ -445,7 +445,7 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
           onRenameList={handleRenameList}
           onRenameGroup={handleRenameGroup}
           onToggleGroupCollapse={handleToggleGroupCollapse}
-          onOpenPrinciples={onOpenPrinciples}
+          onOpenPrinciples={() => { onOpenPrinciples(); setIsSidebarOpen(false); }}
         />
       </div>
 
@@ -455,18 +455,105 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
         {/* Header */}
         <div className="apple-glass-header h-11 md:h-12 flex items-center justify-between px-3 md:px-6 shrink-0">
           <div className="flex items-center gap-2.5">
-            <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="md:hidden p-1.5 rounded-lg hover:bg-th-surface-hover text-th-text-secondary hover:text-th-text transition-colors">
-              <Menu size={18} />
+            <button onClick={() => { if (showPrinciplesEditor) { onClosePrinciplesEditor(); } else { setIsSidebarOpen(!isSidebarOpen); } }} className="md:hidden p-1.5 rounded-lg hover:bg-th-surface-hover text-th-text-secondary hover:text-th-text transition-colors">
+              {showPrinciplesEditor ? <ArrowLeft size={18} /> : <Menu size={18} />}
             </button>
-            <div className={`p-1.5 rounded-lg ${activeListId === 'myDay' ? 'bg-yellow-400/10' : activeListId === 'important' ? 'bg-red-400/10' : activeListId === 'planned' ? 'bg-blue-400/10' : 'bg-th-accent-muted'}`}>
-              <span className={activeListInfo.color}>{activeListInfo.icon}</span>
-            </div>
+            {showPrinciplesEditor ? (
+              <div className="p-1.5 rounded-lg bg-th-accent-muted">
+                <span className="text-th-accent text-sm font-bold">✦</span>
+              </div>
+            ) : (
+              <div className={`p-1.5 rounded-lg ${activeListId === 'myDay' ? 'bg-yellow-400/10' : activeListId === 'important' ? 'bg-red-400/10' : activeListId === 'planned' ? 'bg-blue-400/10' : 'bg-th-accent-muted'}`}>
+                <span className={activeListInfo.color}>{activeListInfo.icon}</span>
+              </div>
+            )}
             <div>
-              <h1 className="text-base md:text-lg font-display font-bold tracking-wider text-th-text">{searchQuery ? uiText.searchResults : activeListInfo.name}</h1>
+              <h1 className="text-base md:text-lg font-display font-bold tracking-wider text-th-text">
+                {showPrinciplesEditor
+                  ? (language === 'ko' ? '이것만지켜줘!' : 'My Principles')
+                  : (searchQuery ? uiText.searchResults : activeListInfo.name)}
+              </h1>
             </div>
           </div>
+          {showPrinciplesEditor && (
+            <button onClick={onClosePrinciplesEditor} className="hidden md:block text-th-text-tertiary hover:text-th-text transition-colors p-1.5 hover:bg-th-surface-hover rounded-full">
+              <X size={18} />
+            </button>
+          )}
         </div>
 
+        {/* === PRINCIPLES FULL VIEW === */}
+        {showPrinciplesEditor ? (
+          <>
+            <div className="flex-1 overflow-y-auto p-4 space-y-2 scrollbar-hide">
+              {principles.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-20 text-th-text-tertiary space-y-4">
+                  <div className="w-20 h-20 rounded-full bg-th-surface border border-th-border/10 flex items-center justify-center shadow-sm">
+                    <span className="text-3xl opacity-40">✦</span>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-base font-bold text-th-text-secondary">
+                      {language === 'ko' ? '원칙을 추가해보세요' : 'Add your first principle'}
+                    </p>
+                    <p className="text-sm mt-1 text-th-text-tertiary">
+                      {language === 'ko' ? '매일 지킬 나만의 원칙을 적어보세요' : 'Write down principles to live by each day'}
+                    </p>
+                  </div>
+                </div>
+              )}
+              {principles.map((p) => (
+                <div
+                  key={p.id}
+                  className="bg-th-surface/50 rounded-xl px-4 py-3 flex items-start gap-3
+                    ring-1 ring-th-border group hover:ring-th-accent/30 transition-all"
+                >
+                  <span className="text-th-accent mt-0.5 flex-shrink-0 text-sm font-bold">✦</span>
+                  <input
+                    type="text"
+                    value={p.text}
+                    onChange={(e) => onUpdatePrinciple(p.id, e.target.value)}
+                    className="flex-1 bg-transparent text-sm text-th-text focus:outline-none
+                      placeholder:text-th-text-tertiary min-w-0"
+                  />
+                  <button
+                    onClick={() => onDeletePrinciple(p.id)}
+                    className="opacity-0 group-hover:opacity-100 flex-shrink-0 p-1
+                      text-th-text-tertiary hover:text-red-400 hover:bg-red-400/10
+                      rounded transition-all"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              ))}
+            </div>
+            {/* Add principle input */}
+            <div className="border-t border-th-border px-4 py-3 flex-shrink-0">
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const form = e.currentTarget;
+                  const input = form.elements.namedItem('principleInput') as HTMLInputElement;
+                  const text = input.value.trim();
+                  if (!text) return;
+                  onAddPrinciple(text);
+                  input.value = '';
+                }}
+                className="flex items-center gap-2.5"
+              >
+                <Plus size={18} className="text-th-accent flex-shrink-0" />
+                <input
+                  name="principleInput"
+                  type="text"
+                  placeholder={language === 'ko' ? '원칙 추가' : 'Add principle'}
+                  className="flex-1 bg-transparent text-sm text-th-text
+                    placeholder-th-text-tertiary focus:outline-none"
+                  autoFocus
+                />
+              </form>
+            </div>
+          </>
+        ) : (
+        <>
         {/* List Content */}
         <div className="flex-1 overflow-y-auto px-0 pt-1 scrollbar-hide">
           <div className="max-w-4xl mx-auto">
@@ -580,6 +667,8 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
             </div>
           )}
         </div>
+        </>
+        )}
       </div>
 
       {/* === RIGHT DETAIL AREA (SIDEBAR) === */}
@@ -748,95 +837,6 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
             {t.todo.noSelection}
           </div>
         )}
-      </div>
-
-      {/* === PRINCIPLES EDITOR SHEET === */}
-      {showPrinciplesEditor && (
-        <div className="fixed inset-0 bg-th-overlay/60 backdrop-blur-sm z-[70]" onClick={onClosePrinciplesEditor} />
-      )}
-      <div
-        className={`apple-glass-panel fixed inset-y-0 right-0 w-full md:w-[380px]
-          border-l border-th-border shadow-[-20px_0_50px_rgba(0,0,0,0.15)] z-[80]
-          transform transition-transform duration-300 ease-out flex flex-col pb-16 md:pb-0
-          ${showPrinciplesEditor ? 'translate-x-0' : 'translate-x-full'}`}
-      >
-        {/* Header */}
-        <div className="apple-glass-header py-3 px-4 flex items-center justify-between border-b border-th-border/20">
-          <h3 className="text-base font-display font-bold text-th-text tracking-wide">
-            {language === 'ko' ? '\uC774\uAC83\uB9CC\uC9C0\uCF1C\uC918!' : 'My Principles'}
-          </h3>
-          <button
-            onClick={onClosePrinciplesEditor}
-            className="text-th-text-tertiary hover:text-red-500 transition-colors p-1.5
-              hover:bg-red-500/10 rounded-full"
-          >
-            <X size={20} />
-          </button>
-        </div>
-
-        {/* Principles list */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-2">
-          {principles.length === 0 && (
-            <div className="text-center py-12 text-th-text-tertiary text-sm">
-              {language === 'ko'
-                ? '\uC6D0\uCE59\uC744 \uCD94\uAC00\uD574\uBCF4\uC138\uC694'
-                : 'Add your first principle'}
-            </div>
-          )}
-          {principles.map((p) => (
-            <div
-              key={p.id}
-              className="bg-th-surface/50 rounded-xl px-3 py-2.5 flex items-start gap-2.5
-                ring-1 ring-th-border group hover:ring-th-accent/30 transition-all"
-            >
-              <span className="text-th-accent mt-0.5 flex-shrink-0 text-xs font-bold">
-                \u2726
-              </span>
-              <input
-                type="text"
-                value={p.text}
-                onChange={(e) => onUpdatePrinciple(p.id, e.target.value)}
-                className="flex-1 bg-transparent text-sm text-th-text focus:outline-none
-                  placeholder:text-th-text-tertiary min-w-0"
-              />
-              <button
-                onClick={() => onDeletePrinciple(p.id)}
-                className="opacity-0 group-hover:opacity-100 flex-shrink-0 p-1
-                  text-th-text-tertiary hover:text-red-400 hover:bg-red-400/10
-                  rounded transition-all"
-              >
-                <Trash2 size={14} />
-              </button>
-            </div>
-          ))}
-        </div>
-
-        {/* Add principle input */}
-        <div className="border-t border-th-border px-4 py-3 flex-shrink-0">
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              const form = e.currentTarget;
-              const input = form.elements.namedItem('principleInput') as HTMLInputElement;
-              const text = input.value.trim();
-              if (!text) return;
-              onAddPrinciple(text);
-              input.value = '';
-            }}
-            className="flex items-center gap-2.5"
-          >
-            <Plus size={18} className="text-th-accent flex-shrink-0" />
-            <input
-              name="principleInput"
-              type="text"
-              placeholder={
-                language === 'ko' ? '\uC6D0\uCE59 \uCD94\uAC00' : 'Add principle'
-              }
-              className="flex-1 bg-transparent text-sm text-th-text
-                placeholder-th-text-tertiary focus:outline-none"
-            />
-          </form>
-        </div>
       </div>
 
       {/* Modals */}
