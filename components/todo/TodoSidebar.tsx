@@ -331,17 +331,20 @@ export default function TodoSidebar({
                     : '\u2726 My Principle'}
                 </span>
                 {hasPrinciples && (
-                  <button
+                  <span
+                    role="button"
+                    tabIndex={0}
                     onClick={(e) => {
                       e.stopPropagation();
                       setPrinciplesCollapsed(prev => !prev);
                     }}
-                    className="p-0.5 text-th-text-tertiary hover:text-th-text transition-colors"
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); setPrinciplesCollapsed(prev => !prev); } }}
+                    className="p-0.5 text-th-text-tertiary hover:text-th-text transition-colors cursor-pointer"
                   >
                     {principlesCollapsed
                       ? <ChevronRight size={14} />
                       : <ChevronDown size={14} />}
-                  </button>
+                  </span>
                 )}
               </div>
               {hasPrinciples && !principlesCollapsed && todayPrinciple && (
