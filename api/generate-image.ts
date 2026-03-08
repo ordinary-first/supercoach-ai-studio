@@ -182,17 +182,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (faceUrl) {
       // PuLID FLUX — 갤러리/아바타 사진으로 얼굴 보존 생성
-      result = await fal.subscribe('fal-ai/flux-pulid', {
-        input: {
-          prompt: textPrompt,
-          reference_image_url: faceUrl,
-          image_size: 'square_hd',
-          num_inference_steps: isNodeImage ? 16 : 20,
-          guidance_scale: 4,
-          id_weight: 1,
-        },
-        pollInterval: 2000,
-      });
+      // fal.ai가 reference URL 접근 못하면 schnell로 폴백
+      try {
+        result = await fal.subscribe('fal-ai/flux-pulid', {
+          input: {
+            prompt: textPrompt,
+            reference_image_url: faceUrl,
+            image_size: 'square_hd',
+            num_inference_steps: isNodeImage ? 16 : 20,
+            guidance_scale: 4,
+            id_weight: 1,
+          },
+          pollInterval: 2000,
+        });
+      } catch (pulidErr: unknown) {
+        console.error('[generate-image][pulid-fallback]', requestId, pulidErr instanceof Error ? pulidErr.message : pulidErr);
+        // PuLID 실패 → FLUX schnell 텍스트 only 폴백
+        result = await fal.subscribe('fal-ai/flux/schnell', {
+          input: {
+            prompt: textPrompt,
+            image_size: 'square_hd',
+            num_inference_steps: 4,
+          },
+          pollInterval: 2000,
+        });
+      }
     } else {
       // 얼굴 사진 없음 — FLUX schnell 텍스트 only (빠르고 저렴)
       result = await fal.subscribe('fal-ai/flux/schnell', {
