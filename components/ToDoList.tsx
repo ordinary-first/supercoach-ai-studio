@@ -437,7 +437,7 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
           searchQuery={searchQuery}
           principles={principles}
           showPrinciplesEditor={showPrinciplesEditor}
-          onSelectList={(id) => { onActiveListChange(id); setIsSidebarOpen(false); }}
+          onSelectList={(id) => { onActiveListChange(id); setIsSidebarOpen(false); if (showPrinciplesEditor) onClosePrinciplesEditor(); }}
           onSearchChange={setSearchQuery}
           onCreateList={() => { setEditingListId(null); setShowCreateList(true); }}
           onCreateGroup={() => { setEditingGroupId(null); setShowCreateGroup(true); }}
@@ -456,8 +456,8 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
         {/* Header */}
         <div className="apple-glass-header h-11 md:h-12 flex items-center justify-between px-3 md:px-6 shrink-0">
           <div className="flex items-center gap-2.5">
-            <button onClick={() => { if (showPrinciplesEditor) { onClosePrinciplesEditor(); } else { setIsSidebarOpen(!isSidebarOpen); } }} className="md:hidden p-1.5 rounded-lg hover:bg-th-surface-hover text-th-text-secondary hover:text-th-text transition-colors">
-              {showPrinciplesEditor ? <ArrowLeft size={18} /> : <Menu size={18} />}
+            <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="md:hidden p-1.5 rounded-lg hover:bg-th-surface-hover text-th-text-secondary hover:text-th-text transition-colors">
+              <Menu size={18} />
             </button>
             {showPrinciplesEditor ? (
               <div className="p-1.5 rounded-lg bg-th-accent-muted">
@@ -476,11 +476,6 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
               </h1>
             </div>
           </div>
-          {showPrinciplesEditor && (
-            <button onClick={onClosePrinciplesEditor} className="hidden md:block text-th-text-tertiary hover:text-th-text transition-colors p-1.5 hover:bg-th-surface-hover rounded-full">
-              <X size={18} />
-            </button>
-          )}
         </div>
 
         {/* === PRINCIPLES FULL VIEW === */}
