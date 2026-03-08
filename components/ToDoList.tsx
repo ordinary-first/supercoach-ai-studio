@@ -757,7 +757,7 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
       <div
         className={`apple-glass-panel fixed inset-y-0 right-0 w-full md:w-[380px]
           border-l border-th-border shadow-[-20px_0_50px_rgba(0,0,0,0.15)] z-[80]
-          transform transition-transform duration-300 ease-out flex flex-col
+          transform transition-transform duration-300 ease-out flex flex-col pb-16 md:pb-0
           ${showPrinciplesEditor ? 'translate-x-0' : 'translate-x-full'}`}
       >
         {/* Header */}
