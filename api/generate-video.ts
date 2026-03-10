@@ -21,8 +21,9 @@ const r2 = new S3Client({
   },
 });
 
-// Kling 2.6 Pro — 얼굴 유무 모두 같은 모델 (elements 유무로 분기)
-const MODEL_KLING = 'fal-ai/kling-video/v2.6/pro/text-to-video';
+// MiniMax — 얼굴 있으면 Subject Reference, 없으면 Text-to-Video
+const MODEL_SUBJECT_REF = 'fal-ai/minimax/video-01-subject-reference';
+const MODEL_TEXT_TO_VIDEO = 'fal-ai/minimax/video-01/text-to-video';
 
 type VideoStatus = 'queued' | 'in_progress' | 'completed' | 'failed';
 
@@ -61,19 +62,15 @@ function mapFalStatus(falStatus: string): VideoStatus {
   return 'failed';
 }
 
-// videoId 형식: "kling:{request_id}" (레거시: "subref:" / "t2v:")
+// videoId 형식: "subref:{request_id}" 또는 "t2v:{request_id}"
 function parseVideoId(videoId: string): { model: string; requestId: string } {
-  if (videoId.startsWith('kling:')) {
-    return { model: MODEL_KLING, requestId: videoId.slice(6) };
-  }
-  // 레거시 호환 (MiniMax 시절 ID)
   if (videoId.startsWith('subref:')) {
-    return { model: 'fal-ai/minimax/video-01-subject-reference', requestId: videoId.slice(7) };
+    return { model: MODEL_SUBJECT_REF, requestId: videoId.slice(7) };
   }
   if (videoId.startsWith('t2v:')) {
-    return { model: 'fal-ai/minimax/video-01/text-to-video', requestId: videoId.slice(4) };
+    return { model: MODEL_TEXT_TO_VIDEO, requestId: videoId.slice(4) };
   }
-  return { model: MODEL_KLING, requestId: videoId };
+  return { model: MODEL_SUBJECT_REF, requestId: videoId };
 }
 
 async function uploadVideoToR2(key: string, buffer: Buffer): Promise<string> {
@@ -128,7 +125,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const { prompt, profile, videoId } = req.body || {};
-    const DURATION = 5; // Kling 2.6 Pro: 5초
+    const DURATION = 6; // MiniMax ~6초
 
     const fal = getFalClient();
 
@@ -258,37 +255,49 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ? `${p.name}, ${p.age ? `${p.age}yo` : ''} ${typeof p.gender === 'string' ? p.gender.toLowerCase() : ''} in ${p.location || 'a beautiful setting'}`
       : 'A determined person';
 
-    // Kling: 얼굴 있으면 @Element1 참조, 없으면 텍스트 묘사
-    const videoPrompt = faceUrl
-      ? `Cinematic scene of @Element1 living the reality of: "${promptText}". Aspirational, warm atmosphere. Smooth natural movement. Soft cinematic lighting.`
-      : `Cinematic scene of ${personDesc} living the reality of: "${promptText}". Aspirational, warm atmosphere. Smooth natural movement. Soft cinematic lighting.`;
+    const videoPrompt = `Cinematic scene of ${personDesc} living the reality of: "${promptText}". Aspirational, warm atmosphere. Smooth natural movement. Soft cinematic lighting.`;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const input: Record<string, any> = {
-      prompt: videoPrompt,
-      duration: String(DURATION),
-      aspect_ratio: '1:1',
-      generate_audio: false,
-    };
+    let submitted: unknown;
+    let prefixedId: string;
 
     if (faceUrl) {
-      input.elements = [{
-        frontal_image_url: faceUrl,
-      }];
-    }
-
-    const submitted = await fal.queue.submit(MODEL_KLING, { input });
-    const reqId = (submitted as any)?.request_id;
-    if (!reqId) {
-      return respondVideo(res, {
-        durationSec: DURATION,
-        requestId,
-        status: 'failed',
-        errorCode: 'VIDEO_ID_MISSING',
-        errorMessage: 'No request ID returned',
+      submitted = await fal.queue.submit(MODEL_SUBJECT_REF, {
+        input: {
+          prompt: videoPrompt,
+          subject_reference_image_url: faceUrl,
+          prompt_optimizer: true,
+        },
       });
+      const reqId = (submitted as any)?.request_id;
+      if (!reqId) {
+        return respondVideo(res, {
+          durationSec: DURATION,
+          requestId,
+          status: 'failed',
+          errorCode: 'VIDEO_ID_MISSING',
+          errorMessage: 'No request ID returned',
+        });
+      }
+      prefixedId = `subref:${reqId}`;
+    } else {
+      submitted = await fal.queue.submit(MODEL_TEXT_TO_VIDEO, {
+        input: {
+          prompt: videoPrompt,
+          prompt_optimizer: true,
+        },
+      });
+      const reqId = (submitted as any)?.request_id;
+      if (!reqId) {
+        return respondVideo(res, {
+          durationSec: DURATION,
+          requestId,
+          status: 'failed',
+          errorCode: 'VIDEO_ID_MISSING',
+          errorMessage: 'No request ID returned',
+        });
+      }
+      prefixedId = `t2v:${reqId}`;
     }
-    const prefixedId = `kling:${reqId}`;
 
     return respondVideo(res, {
       durationSec: DURATION,
