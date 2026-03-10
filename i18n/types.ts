@@ -144,6 +144,8 @@ export interface TranslationStrings {
     adjustComplete: string;
     undo: string;
     adjustReason: string;
+    currentLabel: string;
+    suggestedLabel: string;
   };
   settings: {
     title: string;

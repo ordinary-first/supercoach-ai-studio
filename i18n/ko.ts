@@ -168,6 +168,8 @@ const ko: TranslationStrings = {
     adjustComplete: '조정 완료! 마인드맵과 할 일이 업데이트됐어요.',
     undo: '되돌리기',
     adjustReason: '{weeks}주간 평균 달성률 {avg}%',
+    currentLabel: '현재',
+    suggestedLabel: '제안',
   },
   settings: {
     title: '설정',

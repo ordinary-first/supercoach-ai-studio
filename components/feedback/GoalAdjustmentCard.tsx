@@ -40,12 +40,12 @@ export const GoalAdjustmentCard: React.FC<GoalAdjustmentCardProps> = ({
       {/* Metric comparison */}
       <div className="mx-4 mb-3 flex items-center gap-3 px-3 py-2.5 rounded-xl bg-th-surface border border-th-border">
         <div className="flex-1 text-center">
-          <p className="text-[10px] text-th-text-tertiary mb-0.5">현재</p>
+          <p className="text-[10px] text-th-text-tertiary mb-0.5">{t.feedback.currentLabel}</p>
           <p className="text-[15px] font-bold text-th-text-secondary">{currentMetric}</p>
         </div>
         <div className="text-th-text-muted text-[14px]">→</div>
         <div className="flex-1 text-center">
-          <p className="text-[10px] text-amber-500/80 mb-0.5">제안</p>
+          <p className="text-[10px] text-amber-500/80 mb-0.5">{t.feedback.suggestedLabel}</p>
           <p className="text-[15px] font-bold text-amber-600">{suggestedMetric}</p>
         </div>
       </div>

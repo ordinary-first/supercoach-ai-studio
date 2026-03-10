@@ -166,6 +166,8 @@ const en: TranslationStrings = {
     adjustComplete: 'Adjusted! Mind map and todos have been updated.',
     undo: 'Undo',
     adjustReason: 'Average {avg}% over {weeks} weeks',
+    currentLabel: 'Current',
+    suggestedLabel: 'Suggested',
   },
   settings: {
     title: 'Settings',
