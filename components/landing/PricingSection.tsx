@@ -27,13 +27,13 @@ const PlanCard: React.FC<{ plan: PlanConfig; onSelect: (id: string) => void; del
   const { ref, isVisible } = useScrollReveal();
 
   const cardBorder = plan.recommended
-    ? 'border-2 border-[#CCFF00]'
+    ? 'border-2 border-[#5AA9FF]'
     : 'border border-white/10';
 
-  const priceColor = plan.recommended ? 'text-[#CCFF00]' : 'text-white';
+  const priceColor = plan.recommended ? 'text-[#5AA9FF]' : 'text-white';
 
   const ctaClass = plan.recommended
-    ? 'w-full py-3 rounded-xl bg-[#CCFF00] text-black font-bold text-sm tracking-wide hover:opacity-90 transition-opacity'
+    ? 'w-full py-3 rounded-xl bg-[#5AA9FF] text-black font-bold text-sm tracking-wide hover:opacity-90 transition-opacity'
     : 'w-full py-3 rounded-xl border border-white/30 text-white text-sm font-semibold hover:bg-white/10 transition-colors';
 
   return (
@@ -47,7 +47,7 @@ const PlanCard: React.FC<{ plan: PlanConfig; onSelect: (id: string) => void; del
       }}
     >
       {plan.recommended && (
-        <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#CCFF00] text-black text-xs font-bold px-4 py-1 rounded-full whitespace-nowrap">
+        <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#5AA9FF] text-black text-xs font-bold px-4 py-1 rounded-full whitespace-nowrap">
           {language === 'ko' ? '추천' : 'Best'}
         </span>
       )}
@@ -69,7 +69,7 @@ const PlanCard: React.FC<{ plan: PlanConfig; onSelect: (id: string) => void; del
         {plan.originalPrice && (
           <span
             className="text-xs mt-1 px-2 py-0.5 rounded-full"
-            style={{ backgroundColor: 'rgba(204,255,0,0.15)', color: '#CCFF00' }}
+            style={{ backgroundColor: 'rgba(90,169,255,0.14)', color: '#5AA9FF' }}
           >
             {language === 'ko' ? '베타 특가' : 'Beta Deal'}
           </span>
@@ -85,7 +85,7 @@ const PlanCard: React.FC<{ plan: PlanConfig; onSelect: (id: string) => void; del
           <li key={feature} className="flex items-center gap-2 text-xs md:text-sm text-gray-300">
             <Check
               size={16}
-              className={plan.recommended ? 'text-[#CCFF00] shrink-0' : 'text-gray-400 shrink-0'}
+              className={plan.recommended ? 'text-[#5AA9FF] shrink-0' : 'text-gray-400 shrink-0'}
             />
             {feature}
           </li>
@@ -143,7 +143,7 @@ export const PricingSection: React.FC<PricingSectionProps> = ({ onPlanSelect }) 
           <p className="text-gray-500 text-sm" style={{ fontFamily: 'Inter, sans-serif' }}>
             {language === 'ko' ? '전문 라이프 코칭 비용: ' : 'Professional life coaching cost: '}<span className="line-through">{language === 'ko' ? '월 200~300만원' : '$2,000~3,000/mo'}</span>
           </p>
-          <p className="text-lg font-semibold mt-1" style={{ fontFamily: 'Inter, sans-serif', color: '#CCFF00' }}>
+          <p className="text-lg font-semibold mt-1" style={{ fontFamily: 'Inter, sans-serif', color: '#5AA9FF' }}>
             {language === 'ko' ? 'Secret Coach: AI가 24시간 밀착 관리 — 베타 특가' : 'Secret Coach: 24/7 AI close management — Beta pricing'}
           </p>
         </div>

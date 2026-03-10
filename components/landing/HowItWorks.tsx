@@ -60,7 +60,7 @@ export const HowItWorks: React.FC = () => {
                 <div
                   className="flex items-center justify-center w-8 h-8 md:w-12 md:h-12 rounded-full text-black font-bold text-sm md:text-lg mb-1 md:mb-4 select-none"
                   style={{
-                    background: '#CCFF00',
+                    background: '#5AA9FF',
                     fontFamily: 'Orbitron, sans-serif',
                   }}
                 >

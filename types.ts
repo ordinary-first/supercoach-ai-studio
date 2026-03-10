@@ -124,6 +124,7 @@ export interface UserPrinciple {
   id: string;
   text: string;
   createdAt: number;
+  isRepresentative?: boolean;
 }
 
 // Coach Memory System

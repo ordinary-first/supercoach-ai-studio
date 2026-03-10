@@ -25,12 +25,12 @@ export const VisualizationDemo: React.FC = () => {
           {language === 'ko' ? (
             <>
               <span className="text-gray-300">성공을 미리 </span>
-              <span style={{ color: '#CCFF00' }}>경험하세요</span>
+              <span style={{ color: '#5AA9FF' }}>경험하세요</span>
             </>
           ) : (
             <>
               <span className="text-gray-300">Experience success </span>
-              <span style={{ color: '#CCFF00' }}>before it happens</span>
+              <span style={{ color: '#5AA9FF' }}>before it happens</span>
             </>
           )}
         </h2>
@@ -42,7 +42,7 @@ export const VisualizationDemo: React.FC = () => {
         </p>
         <div
           className="w-12 h-0.5 rounded-full mt-2"
-          style={{ backgroundColor: '#CCFF00' }}
+          style={{ backgroundColor: '#5AA9FF' }}
         />
       </div>
 
@@ -76,15 +76,15 @@ export const VisualizationDemo: React.FC = () => {
               <div className="flex items-center gap-2">
                 <div
                   className="p-1.5 rounded-lg"
-                  style={{ backgroundColor: 'rgba(204,255,0,0.1)' }}
+                  style={{ backgroundColor: 'rgba(90,169,255,0.12)' }}
                 >
-                  <FileText size={16} style={{ color: '#CCFF00' }} />
+                  <FileText size={16} style={{ color: '#5AA9FF' }} />
                 </div>
                 <span
                   className="text-xs font-semibold uppercase tracking-widest px-2 py-0.5 rounded-full"
                   style={{
-                    color: '#CCFF00',
-                    backgroundColor: 'rgba(204,255,0,0.1)',
+                    color: '#5AA9FF',
+                    backgroundColor: 'rgba(90,169,255,0.12)',
                     fontFamily: 'Inter, sans-serif',
                   }}
                 >
@@ -118,15 +118,15 @@ export const VisualizationDemo: React.FC = () => {
               <div className="flex items-center gap-2">
                 <div
                   className="p-1.5 rounded-lg"
-                  style={{ backgroundColor: 'rgba(204,255,0,0.1)' }}
+                  style={{ backgroundColor: 'rgba(90,169,255,0.12)' }}
                 >
-                  <Image size={16} style={{ color: '#CCFF00' }} />
+                  <Image size={16} style={{ color: '#5AA9FF' }} />
                 </div>
                 <span
                   className="text-xs font-semibold uppercase tracking-widest px-2 py-0.5 rounded-full"
                   style={{
-                    color: '#CCFF00',
-                    backgroundColor: 'rgba(204,255,0,0.1)',
+                    color: '#5AA9FF',
+                    backgroundColor: 'rgba(90,169,255,0.12)',
                     fontFamily: 'Inter, sans-serif',
                   }}
                 >
@@ -143,11 +143,11 @@ export const VisualizationDemo: React.FC = () => {
               <div
                 className="flex-1 min-h-20 rounded-xl flex items-center justify-center"
                 style={{
-                  background: 'linear-gradient(135deg, rgba(204,255,0,0.05) 0%, transparent 100%)',
-                  border: '1px dashed rgba(204,255,0,0.2)',
+                  background: 'linear-gradient(135deg, rgba(90,169,255,0.08) 0%, transparent 100%)',
+                  border: '1px dashed rgba(90,169,255,0.24)',
                 }}
               >
-                <ImagePlus size={28} style={{ color: 'rgba(204,255,0,0.4)' }} />
+                <ImagePlus size={28} style={{ color: 'rgba(90,169,255,0.45)' }} />
               </div>
             </div>
 
@@ -162,15 +162,15 @@ export const VisualizationDemo: React.FC = () => {
               <div className="flex items-center gap-2">
                 <div
                   className="p-1.5 rounded-lg"
-                  style={{ backgroundColor: 'rgba(204,255,0,0.1)' }}
+                  style={{ backgroundColor: 'rgba(90,169,255,0.12)' }}
                 >
-                  <Volume2 size={16} style={{ color: '#CCFF00' }} />
+                  <Volume2 size={16} style={{ color: '#5AA9FF' }} />
                 </div>
                 <span
                   className="text-xs font-semibold uppercase tracking-widest px-2 py-0.5 rounded-full"
                   style={{
-                    color: '#CCFF00',
-                    backgroundColor: 'rgba(204,255,0,0.1)',
+                    color: '#5AA9FF',
+                    backgroundColor: 'rgba(90,169,255,0.12)',
                     fontFamily: 'Inter, sans-serif',
                   }}
                 >
@@ -191,7 +191,7 @@ export const VisualizationDemo: React.FC = () => {
                     className="flex-1 rounded-full"
                     style={{
                       height: `${h}px`,
-                      backgroundColor: 'rgba(204,255,0,0.5)',
+                      backgroundColor: 'rgba(90,169,255,0.7)',
                       minWidth: '3px',
                     }}
                   />
@@ -210,15 +210,15 @@ export const VisualizationDemo: React.FC = () => {
               <div className="flex items-center gap-2">
                 <div
                   className="p-1.5 rounded-lg"
-                  style={{ backgroundColor: 'rgba(204,255,0,0.1)' }}
+                  style={{ backgroundColor: 'rgba(90,169,255,0.12)' }}
                 >
-                  <Video size={16} style={{ color: '#CCFF00' }} />
+                  <Video size={16} style={{ color: '#5AA9FF' }} />
                 </div>
                 <span
                   className="text-xs font-semibold uppercase tracking-widest px-2 py-0.5 rounded-full"
                   style={{
-                    color: '#CCFF00',
-                    backgroundColor: 'rgba(204,255,0,0.1)',
+                    color: '#5AA9FF',
+                    backgroundColor: 'rgba(90,169,255,0.12)',
                     fontFamily: 'Inter, sans-serif',
                   }}
                 >

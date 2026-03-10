@@ -299,9 +299,9 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
     let glowEffect = "";
 
     if (todo.completed) {
-      itemStyle = "bg-gradient-to-r from-th-accent to-blue-400 text-th-text-inverse border border-th-accent/20";
-      glowEffect = "shadow-[0_0_12px_var(--shadow-glow)] z-10 scale-[1.02]";
-      icon = <Trophy size={10} className="fill-current" />;
+      itemStyle = "bg-[linear-gradient(180deg,rgba(28,31,38,0.96)_0%,rgba(14,16,20,0.98)_100%)] text-th-text border border-th-sacred";
+      glowEffect = "shadow-[0_0_16px_-4px_var(--shadow-sacred)] z-10 scale-[1.02]";
+      icon = <Trophy size={10} className="text-th-sacred fill-current" />;
     } else if (isGhost) {
       itemStyle = "bg-th-surface/30 text-th-text-tertiary border border-th-border border-dashed backdrop-blur-[2px] cursor-not-allowed";
       icon = <Lock size={10} className="text-th-text-muted" />;
@@ -329,7 +329,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
         title={isGhost ? t.calendar.lockedMission : todo.text}
       >
         {todo.completed && (
-          <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/40 to-transparent opacity-50 rounded-md pointer-events-none"></div>
+          <div className="absolute inset-0 rounded-md pointer-events-none bg-[radial-gradient(circle_at_12%_50%,var(--sacred-muted)_0%,transparent_42%),linear-gradient(180deg,rgba(255,255,255,0.06),transparent_24%)]"></div>
         )}
         <div className="shrink-0">{icon}</div>
         <span className={`truncate ${todo.completed ? 'font-bold' : ''}`}>
@@ -481,10 +481,10 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
       let labelStyle = "";
 
       if (todo.completed) {
-        cardStyle = "bg-gradient-to-r from-neon-lime/20 to-green-400/10 border-th-accent-border shadow-[0_0_20px_var(--shadow-glow)]";
-        icon = <Trophy size={18} className="text-th-accent fill-neon-lime/50" />;
+        cardStyle = "bg-[linear-gradient(180deg,rgba(28,31,38,0.98)_0%,rgba(13,15,19,1)_100%)] border-th-sacred shadow-[0_0_24px_-8px_var(--shadow-sacred)]";
+        icon = <Trophy size={18} className="text-th-sacred fill-current" />;
         statusLabel = t.calendar.status.completed;
-        labelStyle = "text-th-accent bg-neon-lime/10";
+        labelStyle = "text-th-sacred bg-th-sacred-muted";
       } else if (isGhost) {
         cardStyle = "bg-white/[0.03] border-th-border-subtle border-dashed";
         icon = <Lock size={18} className="text-th-text-muted" />;
@@ -515,11 +515,11 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
         >
           {/* Completed sheen */}
           {todo.completed && (
-            <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/10 to-transparent opacity-50 rounded-xl pointer-events-none"></div>
+            <div className="absolute inset-0 rounded-xl pointer-events-none bg-[radial-gradient(circle_at_10%_18%,var(--sacred-muted)_0%,transparent_40%),linear-gradient(180deg,rgba(255,255,255,0.06),transparent_24%)]"></div>
           )}
 
           {/* Icon */}
-          <div className="shrink-0 w-10 h-10 rounded-lg bg-th-surface border border-th-border flex items-center justify-center">
+          <div className={`shrink-0 w-10 h-10 rounded-lg border flex items-center justify-center ${todo.completed ? 'bg-th-sacred-muted border-th-sacred/60 shadow-[0_0_18px_-8px_var(--shadow-sacred)]' : 'bg-th-surface border-th-border'}`}>
             {icon}
           </div>
 
@@ -548,8 +548,8 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
           <div className="bg-th-surface border border-th-border rounded-2xl p-5 backdrop-blur-sm">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-neon-lime/10 border border-neon-lime/20 flex items-center justify-center">
-                  <Trophy size={18} className="text-th-accent" />
+                <div className="w-10 h-10 rounded-xl bg-[linear-gradient(180deg,rgba(28,31,38,0.96)_0%,rgba(14,16,20,0.98)_100%)] border border-th-sacred flex items-center justify-center shadow-[0_0_20px_-6px_var(--shadow-sacred)]">
+                  <Trophy size={18} className="text-th-sacred" />
                 </div>
                 <div>
                   <p className="text-xs text-th-text-tertiary uppercase tracking-wider font-bold">{t.calendar.missionStatus}</p>
@@ -558,15 +558,19 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
                   </p>
                 </div>
               </div>
-              <span className="text-2xl font-display font-bold text-th-accent">
+              <span className="text-2xl font-display font-bold text-th-sacred">
                 {totalCount > 0 ? Math.round(progressPercent) : 0}%
               </span>
             </div>
             {/* Progress Bar */}
             <div className="w-full h-2 bg-th-surface rounded-full overflow-hidden border border-th-border">
               <div
-                className="h-full bg-gradient-to-r from-neon-lime to-green-400 rounded-full transition-all duration-500 ease-out shadow-[0_0_8px_var(--shadow-glow)]"
-                style={{ width: `${progressPercent}%` }}
+                className="h-full rounded-full transition-all duration-500 ease-out"
+                style={{
+                  width: `${progressPercent}%`,
+                  background: 'linear-gradient(90deg, var(--sacred), var(--reward), var(--accent))',
+                  boxShadow: '0 0 10px var(--shadow-sacred)',
+                }}
               />
             </div>
           </div>
@@ -578,12 +582,12 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
           {completedTodos.length > 0 && (
             <div>
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-2 h-2 rounded-full bg-th-accent shadow-[0_0_6px_var(--shadow-glow)]"></div>
-                <h3 className="text-sm font-bold text-th-accent uppercase tracking-wider font-display">
+                <div className="w-2 h-2 rounded-full bg-th-sacred shadow-[0_0_8px_var(--shadow-sacred)]"></div>
+                <h3 className="text-sm font-bold text-th-sacred uppercase tracking-wider font-display">
                   {t.calendar.completedMissions}
                 </h3>
                 <span className="text-xs text-th-text-muted font-mono">{completedTodos.length}</span>
-                <div className="flex-1 h-px bg-neon-lime/10"></div>
+                <div className="flex-1 h-px bg-th-sacred-muted"></div>
               </div>
               <div className="space-y-2.5">
                 {completedTodos.map(renderDayTodoCard)}
@@ -648,7 +652,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
                   data-today={isToday ? "true" : undefined}
                   onClick={() => handleDayClick(date)}
                   className={`sticky top-0 z-10 flex items-center gap-3 px-3 py-2 cursor-pointer rounded-lg transition-colors ${isToday
-                      ? 'bg-neon-lime/10 border border-neon-lime/20'
+                      ? 'bg-th-accent-muted border border-th-accent-border'
                       : 'bg-th-overlay backdrop-blur-sm hover:bg-th-surface'
                     }`}
                 >
@@ -660,7 +664,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
                     {dayNamesFull[dayOfWeek]}
                   </span>
                   {isToday && (
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-neon-lime/20 text-th-accent font-bold">{t.common.today}</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-th-accent-muted text-th-accent font-bold">{t.common.today}</span>
                   )}
                   {dayTodos.length > 0 && (
                     <span className="ml-auto text-[10px] text-th-text-tertiary">
@@ -689,7 +693,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
     <div ref={focusTrapRef} className="apple-tab-shell fixed inset-0 z-50 flex flex-col font-body text-th-text">
 
       {/* Ambient Background Glow */}
-      <div className="absolute top-0 left-1/4 w-1/2 h-1/2 bg-neon-lime/5 rounded-full blur-[150px] pointer-events-none"></div>
+      <div className="absolute top-0 left-1/4 w-1/2 h-1/2 bg-th-accent-muted rounded-full blur-[150px] pointer-events-none opacity-60"></div>
 
       {/* Header */}
       <div className="apple-glass-header px-3 md:px-8 py-1.5 md:py-2 flex gap-2 md:gap-3 justify-between items-center z-10">

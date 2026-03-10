@@ -38,7 +38,7 @@ export const StickyNav: React.FC<StickyNavProps> = ({ onCTAClick }) => {
         </span>
         <span
           className="text-base md:text-2xl tracking-wider md:tracking-widest uppercase italic font-bold"
-          style={{ fontFamily: 'Orbitron, sans-serif', color: '#CCFF00' }}
+          style={{ fontFamily: 'Orbitron, sans-serif', color: '#5AA9FF' }}
         >
           COACH
         </span>
@@ -51,7 +51,7 @@ export const StickyNav: React.FC<StickyNavProps> = ({ onCTAClick }) => {
             className={[
               'min-w-[34px] rounded-full px-2 py-1 text-[10px] md:text-xs font-bold tracking-wider transition-all',
               language === 'en'
-                ? 'bg-[#CCFF00] text-black'
+                ? 'bg-[#5AA9FF] text-black'
                 : 'text-gray-300 hover:text-white',
             ].join(' ')}
             style={{ fontFamily: 'Inter, sans-serif' }}
@@ -65,7 +65,7 @@ export const StickyNav: React.FC<StickyNavProps> = ({ onCTAClick }) => {
             className={[
               'min-w-[34px] rounded-full px-2 py-1 text-[10px] md:text-xs font-bold tracking-wider transition-all',
               language === 'ko'
-                ? 'bg-[#CCFF00] text-black'
+                ? 'bg-[#5AA9FF] text-black'
                 : 'text-gray-300 hover:text-white',
             ].join(' ')}
             style={{ fontFamily: 'Inter, sans-serif' }}
@@ -82,11 +82,11 @@ export const StickyNav: React.FC<StickyNavProps> = ({ onCTAClick }) => {
           className={[
             'px-3 py-1.5 md:px-4 md:py-2 rounded-full text-[10px] md:text-sm font-semibold uppercase tracking-wider md:tracking-widest',
             'border transition-all duration-200 whitespace-nowrap',
-            'hover:bg-[#CCFF00] hover:text-black hover:scale-105',
+            'hover:bg-[#5AA9FF] hover:text-black hover:scale-105',
           ].join(' ')}
           style={{
-            color: '#CCFF00',
-            borderColor: '#CCFF00',
+            color: '#5AA9FF',
+            borderColor: '#5AA9FF',
             fontFamily: 'Inter, sans-serif',
           }}
         >

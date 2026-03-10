@@ -163,25 +163,26 @@ const BottomDock: React.FC<BottomDockProps> = ({
                 {...longPressHandlers}
                 className={`relative group flex flex-col items-center justify-center w-11 h-11 rounded-xl
                   transition-all duration-300 ${isActive
-                    ? 'bg-th-accent-muted text-th-accent shadow-[0_0_18px_var(--shadow-glow)]'
+                    ? 'text-white shadow-[0_0_26px_var(--shadow-glow)]'
                     : 'text-th-text-secondary hover:text-th-text hover:bg-th-surface/50'
                   }`}
                 aria-label={tab.label}
                 aria-current={isActive ? 'page' : undefined}
+                style={isActive ? {
+                  textShadow: '0 1px 2px rgba(4, 18, 38, 0.28)',
+                  background:
+                    'radial-gradient(circle at 50% 42%, rgba(113, 183, 255, 0.36) 0%, rgba(113, 183, 255, 0.18) 34%, rgba(113, 183, 255, 0.04) 72%, transparent 100%)',
+                } : undefined}
               >
                 <div className={`transition-transform duration-300 ${isActive ? 'scale-110' : 'group-hover:scale-110'}`}>
                   {tab.icon}
                 </div>
                 <span
-                  className={`text-[9px] font-display mt-0.5 tracking-wide transition-opacity duration-300 ${isActive ? 'opacity-100 font-bold' : 'opacity-70'
+                  className={`text-[9px] font-display mt-0.5 tracking-wide transition-opacity duration-300 ${isActive ? 'opacity-100 font-bold text-white' : 'opacity-70'
                     }`}
                 >
                   {tab.label}
                 </span>
-
-                {isActive && (
-                  <div className="absolute -bottom-1 w-1 h-1 bg-th-accent rounded-full shadow-[0_0_5px_var(--shadow-glow)]" />
-                )}
               </button>
 
               {showCalendarPopup && isCalendar && (

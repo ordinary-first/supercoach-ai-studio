@@ -755,17 +755,37 @@ const App: React.FC = () => {
   const handleAddPrinciple = useCallback((text: string) => {
     setPrinciples(prev => [
       ...prev,
-      { id: crypto.randomUUID(), text, createdAt: Date.now() },
+      {
+        id: crypto.randomUUID(),
+        text,
+        createdAt: Date.now(),
+        isRepresentative: prev.length === 0,
+      },
     ]);
   }, []);
 
   const handleDeletePrinciple = useCallback((id: string) => {
-    setPrinciples(prev => prev.filter(p => p.id !== id));
+    setPrinciples(prev => {
+      const next = prev.filter(p => p.id !== id);
+      if (next.length > 0 && !next.some((p) => p.isRepresentative)) {
+        next[0] = { ...next[0], isRepresentative: true };
+      }
+      return next;
+    });
   }, []);
 
   const handleUpdatePrinciple = useCallback((id: string, text: string) => {
     setPrinciples(prev =>
       prev.map(p => (p.id === id ? { ...p, text } : p)),
+    );
+  }, []);
+
+  const handleSetRepresentativePrinciple = useCallback((id: string) => {
+    setPrinciples(prev =>
+      prev.map((p) => ({
+        ...p,
+        isRepresentative: p.id === id,
+      })),
     );
   }, []);
 
@@ -872,6 +892,7 @@ const App: React.FC = () => {
         onAddPrinciple={handleAddPrinciple}
         onDeletePrinciple={handleDeletePrinciple}
         onUpdatePrinciple={handleUpdatePrinciple}
+        onSetRepresentativePrinciple={handleSetRepresentativePrinciple}
         onAddToDo={(text, listId, extras) => {
   const trimmed = text.trim().slice(0, 500);
   if (!trimmed) return;

@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { GoalLink, GoalNode, ToDoItem, TodoGroup, TodoList, UserProfile } from '../types';
 import {
   ensureCreatedAt,
+  fetchDevAuthToken,
   getSyncStatus,
   getUserId,
   loadGoalData,
@@ -61,9 +62,11 @@ export function useAuth(
       }
     }, 8000);
     (async () => {
-      const user = devAuthToken
-        ? await loginWithDevToken(devAuthToken)
-        : await loginAnonymously();
+      let user = devAuthToken ? await loginWithDevToken(devAuthToken) : null;
+      if (!user) {
+        const freshToken = await fetchDevAuthToken();
+        user = freshToken ? await loginWithDevToken(freshToken) : await loginAnonymously();
+      }
       resolved = true;
       devAuthBootstrappingRef.current = false;
       clearTimeout(timeout);
@@ -227,6 +230,7 @@ export function useAuth(
 
   const TRIAL_DAYS = 3;
   const isTrialExpired = (() => {
+    if (isDevMode) return false;
     if (!userProfile) return false;
     const plan = userProfile.billingPlan;
     if (plan === 'essential' || plan === 'visionary' || plan === 'master') return false;

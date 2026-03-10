@@ -11,32 +11,32 @@ interface FeatureCard {
 
 const FEATURES_KO: FeatureCard[] = [
   {
-    icon: <GitBranch size={18} style={{ color: '#CCFF00' }} />,
+    icon: <GitBranch size={18} style={{ color: '#5AA9FF' }} />,
     title: '목표를 눈에 보이게',
     desc: '머릿속 막연한 꿈을 4가지 레이아웃으로 구조화. AI가 목표별 이미지까지 생성합니다.',
   },
   {
-    icon: <Brain size={18} style={{ color: '#CCFF00' }} />,
+    icon: <Brain size={18} style={{ color: '#5AA9FF' }} />,
     title: '나만 아는 코치',
     desc: '대화할수록 당신을 깊이 이해하는 AI. 3단 기억으로 맥락을 잊지 않습니다.',
   },
   {
-    icon: <Sparkles size={18} style={{ color: '#CCFF00' }} />,
+    icon: <Sparkles size={18} style={{ color: '#5AA9FF' }} />,
     title: '성공을 미리 체험',
     desc: '텍스트·이미지·음성·영상으로 당신의 성공한 미래를 직접 보고 듣습니다.',
   },
   {
-    icon: <Calendar size={18} style={{ color: '#CCFF00' }} />,
+    icon: <Calendar size={18} style={{ color: '#5AA9FF' }} />,
     title: '매일이 미션',
     desc: '게임처럼 미션을 클리어하고 트로피를 모으세요. 습관이 자동으로 형성됩니다.',
   },
   {
-    icon: <ListTodo size={18} style={{ color: '#CCFF00' }} />,
+    icon: <ListTodo size={18} style={{ color: '#5AA9FF' }} />,
     title: '목표에 연결된 할 일',
     desc: '할 일이 목표와 직접 연결됩니다. "이걸 왜 하는지" 항상 보이니 동기가 유지됩니다.',
   },
   {
-    icon: <BarChart3 size={18} style={{ color: '#CCFF00' }} />,
+    icon: <BarChart3 size={18} style={{ color: '#5AA9FF' }} />,
     title: '데이터로 보는 성장',
     desc: '일·주·월 단위 AI 분석으로 "어디서 막히는지" 정확히 짚어줍니다.',
   },
@@ -44,32 +44,32 @@ const FEATURES_KO: FeatureCard[] = [
 
 const FEATURES_EN: FeatureCard[] = [
   {
-    icon: <GitBranch size={18} style={{ color: '#CCFF00' }} />,
+    icon: <GitBranch size={18} style={{ color: '#5AA9FF' }} />,
     title: 'Make Goals Visible',
     desc: 'Turn vague dreams into structure with 4 layout modes. AI generates images for each goal.',
   },
   {
-    icon: <Brain size={18} style={{ color: '#CCFF00' }} />,
+    icon: <Brain size={18} style={{ color: '#5AA9FF' }} />,
     title: 'A Coach Who Knows You',
     desc: 'The more you talk, the deeper AI understands you. 3-layer memory never forgets context.',
   },
   {
-    icon: <Sparkles size={18} style={{ color: '#CCFF00' }} />,
+    icon: <Sparkles size={18} style={{ color: '#5AA9FF' }} />,
     title: 'Experience Success Early',
     desc: 'See and hear your successful future through text, image, audio, and video.',
   },
   {
-    icon: <Calendar size={18} style={{ color: '#CCFF00' }} />,
+    icon: <Calendar size={18} style={{ color: '#5AA9FF' }} />,
     title: 'Every Day Is a Mission',
     desc: 'Clear missions like a game and collect trophies. Habits form automatically.',
   },
   {
-    icon: <ListTodo size={18} style={{ color: '#CCFF00' }} />,
+    icon: <ListTodo size={18} style={{ color: '#5AA9FF' }} />,
     title: 'Tasks Linked to Goals',
     desc: "Tasks connect directly to goals. Seeing \"why you're doing this\" keeps motivation alive.",
   },
   {
-    icon: <BarChart3 size={18} style={{ color: '#CCFF00' }} />,
+    icon: <BarChart3 size={18} style={{ color: '#5AA9FF' }} />,
     title: 'Growth Through Data',
     desc: "Daily, weekly, and monthly AI analysis pinpoints exactly where you're stuck.",
   },
@@ -103,7 +103,7 @@ export const FeatureShowcase: React.FC = () => {
         {/* Accent line */}
         <div
           className="w-12 h-0.5 rounded-full mt-2"
-          style={{ backgroundColor: '#CCFF00' }}
+          style={{ backgroundColor: '#5AA9FF' }}
         />
       </div>
 
@@ -130,13 +130,13 @@ interface FeatureCardProps {
 const FeatureCard: React.FC<FeatureCardProps> = ({ feature, index }) => {
   return (
     <div
-      className="bg-white/5 border border-white/10 rounded-2xl md:rounded-3xl p-3 md:p-6 hover:border-neon-lime/30 transition-all duration-300 group"
+      className="bg-white/5 border border-white/10 rounded-2xl md:rounded-3xl p-3 md:p-6 hover:border-[#5AA9FF]/30 transition-all duration-300 group"
       style={{
         transitionDelay: `${index * 60}ms`,
       }}
       onMouseEnter={(e) => {
-        (e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(204,255,0,0.3)';
-        (e.currentTarget as HTMLDivElement).style.boxShadow = '0 0 24px rgba(204,255,0,0.05)';
+        (e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(90,169,255,0.3)';
+        (e.currentTarget as HTMLDivElement).style.boxShadow = '0 0 24px rgba(90,169,255,0.12)';
       }}
       onMouseLeave={(e) => {
         (e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(255,255,255,0.1)';
@@ -146,7 +146,7 @@ const FeatureCard: React.FC<FeatureCardProps> = ({ feature, index }) => {
       {/* Icon wrapper */}
       <div
         className="p-1.5 md:p-3 rounded-xl md:rounded-2xl w-fit"
-        style={{ backgroundColor: 'rgba(204,255,0,0.1)' }}
+        style={{ backgroundColor: 'rgba(90,169,255,0.12)' }}
       >
         {feature.icon}
       </div>

@@ -15,11 +15,11 @@ export const FinalCTA: React.FC<FinalCTAProps> = ({ onCTAClick }) => {
       className="py-8 md:py-24 px-6 relative overflow-hidden"
       style={{ backgroundColor: '#050B14' }}
     >
-      {/* Radial neon-lime glow background */}
+      {/* Radial accent glow background */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
-          background: 'radial-gradient(circle at 50% 50%, rgba(204,255,0,0.06) 0%, transparent 65%)',
+          background: 'radial-gradient(circle at 50% 50%, rgba(90,169,255,0.1) 0%, transparent 65%)',
         }}
       />
 
@@ -40,7 +40,7 @@ export const FinalCTA: React.FC<FinalCTAProps> = ({ onCTAClick }) => {
           </h2>
           <h2
             className="text-xl md:text-5xl font-bold"
-            style={{ fontFamily: 'Inter, sans-serif', color: '#CCFF00' }}
+            style={{ fontFamily: 'Inter, sans-serif', color: '#5AA9FF' }}
           >
             {language === 'ko' ? '지금이 가장 빠른 시작입니다' : 'Right now is the fastest start'}
           </h2>
@@ -60,13 +60,13 @@ export const FinalCTA: React.FC<FinalCTAProps> = ({ onCTAClick }) => {
             onClick={onCTAClick}
             className="uppercase tracking-widest font-black text-base md:text-lg py-4 px-10 md:py-5 md:px-12 rounded-full text-black transition-all duration-200 hover:scale-105"
             style={{
-              backgroundColor: '#CCFF00',
+              backgroundColor: '#5AA9FF',
               fontFamily: 'Inter, sans-serif',
               animation: 'pulseCTAGlow 2.5s ease-in-out infinite',
             }}
             onMouseEnter={(e) => {
               (e.currentTarget as HTMLButtonElement).style.boxShadow =
-                '0 0 48px rgba(204,255,0,0.55)';
+                '0 0 48px rgba(90,169,255,0.4)';
             }}
             onMouseLeave={(e) => {
               (e.currentTarget as HTMLButtonElement).style.boxShadow = 'none';
@@ -88,8 +88,8 @@ export const FinalCTA: React.FC<FinalCTAProps> = ({ onCTAClick }) => {
       {/* Keyframes for CTA glow pulse */}
       <style>{`
         @keyframes pulseCTAGlow {
-          0%, 100% { box-shadow: 0 0 0 0 rgba(204,255,0,0); }
-          50%       { box-shadow: 0 0 32px rgba(204,255,0,0.4); }
+          0%, 100% { box-shadow: 0 0 0 0 rgba(90,169,255,0); }
+          50%       { box-shadow: 0 0 32px rgba(90,169,255,0.3); }
         }
       `}</style>
     </section>

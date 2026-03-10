@@ -27,7 +27,7 @@ const applyTheme = (resolved: 'light' | 'dark'): void => {
   }
   const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
   if (meta) {
-    meta.content = resolved === 'dark' ? '#050B14' : '#F8FAFC';
+    meta.content = resolved === 'dark' ? '#111214' : '#F8FAFC';
   }
 };
 

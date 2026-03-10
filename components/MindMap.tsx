@@ -137,10 +137,61 @@ interface MindMapProps {
 }
 
 // --- Status ??border color mapping ---
-const STATUS_COLORS: Record<string, string> = {
-  [NodeStatus.PENDING]: '#3B82F6',
-  [NodeStatus.COMPLETED]: '#10B981',
-  [NodeStatus.STUCK]: '#EF4444',
+const DARK_ACCENT = '#5AA9FF';
+const LIGHT_ACCENT = '#007AFF';
+const REWARD_ACCENT = '#4DE8E0';
+
+const DARK_BRANCH_PALETTE = [
+  { border: '#71B7FF', fill: 'rgba(24, 52, 92, 0.9)', text: '#F8FBFF' },
+  { border: '#8E7CFF', fill: 'rgba(43, 34, 86, 0.9)', text: '#F7F5FF' },
+  { border: '#FF9B5E', fill: 'rgba(77, 41, 24, 0.9)', text: '#FFF8F2' },
+  { border: '#57D6B8', fill: 'rgba(18, 63, 58, 0.9)', text: '#F2FFFC' },
+  { border: '#F27DB2', fill: 'rgba(83, 29, 56, 0.9)', text: '#FFF4FA' },
+  { border: '#FFD166', fill: 'rgba(78, 59, 18, 0.92)', text: '#FFFBEF' },
+];
+
+const LIGHT_BRANCH_PALETTE = [
+  { border: '#007AFF', fill: '#FFFFFF', text: '#1D1D1F' },
+  { border: '#5856D6', fill: '#FFFFFF', text: '#1D1D1F' },
+  { border: '#FF9500', fill: '#FFFFFF', text: '#1D1D1F' },
+  { border: '#248A3D', fill: '#FFFFFF', text: '#1D1D1F' },
+  { border: '#D70015', fill: '#FFFFFF', text: '#1D1D1F' },
+  { border: '#AF52DE', fill: '#FFFFFF', text: '#1D1D1F' },
+];
+
+const getBranchStyle = (branchIndex: number | null, isLight: boolean) => {
+  const palette = isLight ? LIGHT_BRANCH_PALETTE : DARK_BRANCH_PALETTE;
+  if (branchIndex === null) {
+    return {
+      border: isLight ? LIGHT_ACCENT : DARK_ACCENT,
+      fill: isLight ? '#FFFFFF' : '#122741',
+      text: isLight ? '#1D1D1F' : '#F8FBFF',
+    };
+  }
+  return palette[branchIndex % palette.length];
+};
+
+const getStatusStyle = (
+  status: NodeStatus,
+  branchIndex: number | null,
+  isLight: boolean,
+) => {
+  const branchStyle = getBranchStyle(branchIndex, isLight);
+  if (status === NodeStatus.COMPLETED) {
+    return {
+      border: REWARD_ACCENT,
+      fill: isLight ? 'rgba(15, 169, 181, 0.12)' : 'rgba(17, 89, 94, 0.9)',
+      text: isLight ? '#0D3B42' : '#ECFFFF',
+    };
+  }
+  if (status === NodeStatus.STUCK) {
+    return {
+      border: '#FF7B72',
+      fill: isLight ? 'rgba(255, 123, 114, 0.1)' : 'rgba(96, 28, 38, 0.9)',
+      text: isLight ? '#6E1C25' : '#FFF2F3',
+    };
+  }
+  return branchStyle;
 };
 
 // --- Data Conversion ---
@@ -190,9 +241,11 @@ function goalNodesToTree(
   selectedNodeId?: string,
   confirmedPreviewIds?: string[],
   defaultRootText?: string,
+  isLight = false,
 ): SMMNode | null {
   const root = nodes.find(n => n.type === NodeType.ROOT);
   if (!root) return null;
+  const accentColor = isLight ? LIGHT_ACCENT : DARK_ACCENT;
 
   // Build parent?뭖hildren mapping from links
   const childrenMap = new Map<string, string[]>();
@@ -205,7 +258,7 @@ function goalNodesToTree(
 
   const nodeMap = new Map(nodes.map(n => [n.id, n]));
 
-  function buildNode(goalNode: GoalNode): SMMNode {
+  function buildNode(goalNode: GoalNode, branchIndex: number | null = null): SMMNode {
     const isRoot = goalNode.type === NodeType.ROOT;
     const isSelected = goalNode.id === selectedNodeId;
     const childIds = childrenMap.get(goalNode.id) || [];
@@ -213,29 +266,38 @@ function goalNodesToTree(
       .map(id => nodeMap.get(id))
       .filter((n): n is GoalNode => !!n)
       .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
-      .map(buildNode);
+      .map((child, index) => buildNode(child, isRoot ? index : branchIndex));
 
-    const statusColor = STATUS_COLORS[goalNode.status] || '#3B82F6';
-
-    const nodeStyle: { borderColor: string; borderWidth: number; borderDasharray?: string; color?: string } = {
-      borderColor: isRoot ? '#CCFF00' : (isSelected ? '#CCFF00' : statusColor),
+    const branchStyle = getStatusStyle(goalNode.status, branchIndex, isLight);
+    const nodeStyle: {
+      borderColor: string;
+      borderWidth: number;
+      borderDasharray?: string;
+      color?: string;
+      fillColor?: string;
+    } = {
+      borderColor: isRoot ? accentColor : (isSelected ? accentColor : branchStyle.border),
       borderWidth: isSelected ? 3 : (isRoot ? 3 : 2),
+      fillColor: isRoot ? (isLight ? '#FFFFFF' : '#171B23') : branchStyle.fill,
+      color: branchStyle.text,
     };
 
     // Preview node styling (반투명 미리보기)
     if (goalNode.isPreview) {
       const isConfirmed = confirmedPreviewIds?.includes(goalNode.id);
       if (isConfirmed) {
-        // 확정됨 — 밝은 neon-lime 두꺼운 border + 정상 텍스트
+        // 확정됨 — accent border + 정상 텍스트
         Object.assign(nodeStyle, {
-          borderColor: '#CCFF00',
+          borderColor: accentColor,
           borderWidth: 3,
+          fillColor: branchStyle.fill,
         });
       } else {
         // 미확정 — 어두운 회색 얇은 border
         Object.assign(nodeStyle, {
           borderColor: '#444444',
           borderWidth: 1,
+          fillColor: isLight ? 'rgba(255,255,255,0.72)' : 'rgba(18, 24, 34, 0.72)',
           color: 'rgba(255, 255, 255, 0.4)',
         });
       }
@@ -243,7 +305,7 @@ function goalNodesToTree(
 
     // Selected node override (after preview so selection still shows)
     if (isSelected && !goalNode.isPreview) {
-      nodeStyle.borderColor = '#CCFF00';
+      nodeStyle.borderColor = accentColor;
       nodeStyle.borderWidth = 3;
     }
 
@@ -259,6 +321,7 @@ function goalNodesToTree(
       // Bake border color into node data so we never need setStyle()
       borderColor: nodeStyle.borderColor,
       borderWidth: nodeStyle.borderWidth,
+      ...(nodeStyle.fillColor && { fillColor: nodeStyle.fillColor }),
       ...(nodeStyle.borderDasharray && { borderDasharray: nodeStyle.borderDasharray }),
       ...(nodeStyle.color && { color: nodeStyle.color }),
     };
@@ -291,15 +354,15 @@ function computeStructureKey(
 
 // --- Dark Theme Config ---
 const DARK_THEME_CONFIG = {
-  backgroundColor: '#050B14',
-  lineColor: '#CCFF0066',
+  backgroundColor: '#111214',
+  lineColor: '#5AA9FF66',
   lineWidth: 2,
   lineDasharray: 'none',
   lineStyle: 'curve' as const,
   root: {
-    fillColor: '#0a1a2f',
+    fillColor: '#171B23',
     color: '#ffffff',
-    borderColor: '#CCFF00',
+    borderColor: DARK_ACCENT,
     borderWidth: 3,
     borderRadius: 24,
     fontSize: 18,
@@ -310,9 +373,9 @@ const DARK_THEME_CONFIG = {
     paddingY: 20,
   },
   second: {
-    fillColor: '#0f2340',
+    fillColor: '#1B2230',
     color: '#e2e8f0',
-    borderColor: '#3B82F6',
+    borderColor: '#68B2FF',
     borderWidth: 2,
     borderRadius: 12,
     fontSize: 14,
@@ -325,7 +388,7 @@ const DARK_THEME_CONFIG = {
     paddingY: 12,
   },
   node: {
-    fillColor: '#0d1b30',
+    fillColor: '#1C2028',
     color: '#cbd5e1',
     borderColor: '#334155',
     borderWidth: 1,
@@ -340,7 +403,7 @@ const DARK_THEME_CONFIG = {
     paddingY: 10,
   },
   generalization: {
-    fillColor: '#1e293b',
+    fillColor: '#22262E',
     color: '#94a3b8',
     borderColor: '#475569',
     borderWidth: 1,
@@ -416,8 +479,14 @@ const LIGHT_THEME_CONFIG = {
 };
 
 const RAINBOW_COLORS = [
-  '#CCFF00', '#00D4FF', '#FF6B6B', '#A78BFA',
-  '#34D399', '#FBBF24', '#F472B6', '#60A5FA',
+  '#71B7FF',
+  '#8E7CFF',
+  '#FF9B5E',
+  '#57D6B8',
+  '#F27DB2',
+  '#FFD166',
+  '#5AA9FF',
+  '#9CC7FF',
 ];
 
 const RAINBOW_COLORS_LIGHT = [
@@ -647,7 +716,14 @@ const MindMap: React.FC<MindMapProps> = ({
   useEffect(() => {
     if (!containerRef.current) return;
 
-    const treeData = goalNodesToTree(nodes, links, selectedNodeId, confirmedPreviewIds, t.mindmap.defaultRootText);
+    const treeData = goalNodesToTree(
+      nodes,
+      links,
+      selectedNodeId,
+      confirmedPreviewIds,
+      t.mindmap.defaultRootText,
+      isLight,
+    );
     if (!treeData) return;
 
     lastStructureKeyRef.current = computeStructureKey(nodes, links, selectedNodeId, confirmedPreviewIds);
@@ -685,10 +761,10 @@ const MindMap: React.FC<MindMapProps> = ({
         onAddSubNodeRef.current?.(goalId);
       },
       expandBtnStyle: {
-        color: isLight ? '#4D7C0F' : '#CCFF00',
-        fill: isLight ? '#F8FAFC' : '#050B14',
+        color: isLight ? LIGHT_ACCENT : DARK_ACCENT,
+        fill: isLight ? '#F8FAFC' : '#08111D',
         fontSize: 12,
-        strokeColor: isLight ? '#4D7C0F' : '#CCFF00',
+        strokeColor: isLight ? LIGHT_ACCENT : DARK_ACCENT,
       },
       fit: false,
       // Library-level node transition can throw rbox errors during rapid tab unmount/remount.
@@ -916,7 +992,14 @@ const MindMap: React.FC<MindMapProps> = ({
     if (newKey === lastStructureKeyRef.current) return;
     lastStructureKeyRef.current = newKey;
 
-    const treeData = goalNodesToTree(nodes, links, selectedNodeId, confirmedPreviewIds, t.mindmap.defaultRootText);
+    const treeData = goalNodesToTree(
+      nodes,
+      links,
+      selectedNodeId,
+      confirmedPreviewIds,
+      t.mindmap.defaultRootText,
+      isLight,
+    );
     if (!treeData) return;
 
     // Inject ghost nodes for Phase 2
@@ -929,9 +1012,9 @@ const MindMap: React.FC<MindMapProps> = ({
             uid: `ghost-${i}`,
             goalId: `ghost-${i}`,
             isGhost: true,
-            fillColor: '#0f2340',
-            color: '#ffffffbb',
-            borderColor: '#CCFF0088',
+            fillColor: isLight ? '#FFFFFF' : '#122741',
+            color: isLight ? '#1d1d1faa' : '#ffffffbb',
+            borderColor: isLight ? '#007AFF55' : '#5AA9FF88',
             borderWidth: 2,
           },
           children: [],
@@ -986,7 +1069,7 @@ const MindMap: React.FC<MindMapProps> = ({
       });
     }
     prevPreviewIdsRef.current = new Set(currentPreviewIds);
-  }, [nodes, links, selectedNodeId, confirmedPreviewIds, onboardingPhase, usedGhosts, getRenderedNodeByGoalId]);
+  }, [nodes, links, selectedNodeId, confirmedPreviewIds, onboardingPhase, usedGhosts, getRenderedNodeByGoalId, isLight]);
 
   // --- Sync layout prop → SDK ---
   useEffect(() => {
