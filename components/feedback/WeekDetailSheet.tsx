@@ -176,7 +176,7 @@ export const WeekDetailSheet: React.FC<WeekDetailSheetProps> = ({
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto pb-8">
+        <div className="flex-1 overflow-y-auto" style={{ paddingBottom: 'var(--dock-h)' }}>
           <div className="space-y-5">
             {/* 7-day horizontal scroll */}
             <WeeklyCardScroll

@@ -417,7 +417,7 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
   if (!isOpen) return null;
 
   return (
-    <div ref={focusTrapRef} className="apple-tab-shell fixed inset-0 z-50 pb-16 flex flex-row overflow-hidden text-th-text font-body">
+    <div ref={focusTrapRef} className="apple-tab-shell fixed inset-0 z-50 flex flex-row overflow-hidden text-th-text font-body" style={{ paddingBottom: 'var(--dock-h)' }}>
 
       {/* Ambient Background */}
       <div className="absolute top-[-20%] right-[-10%] w-[50%] h-[50%] bg-th-accent-muted rounded-full blur-[120px] pointer-events-none opacity-20"></div>
@@ -428,7 +428,7 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
       {isSidebarOpen && (
         <div className="fixed inset-0 bg-th-overlay/60 backdrop-blur-sm z-30 md:hidden" onClick={() => setIsSidebarOpen(false)} />
       )}
-      <div className={`fixed inset-y-0 left-0 w-[260px] z-40 pb-16 md:pb-0 md:relative md:z-10 transform transition-transform duration-300 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
+      <div className={`fixed inset-y-0 left-0 w-[260px] z-40 pb-[var(--dock-h)] md:pb-0 md:relative md:z-10 transform transition-transform duration-300 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
         <TodoSidebar
           todos={todos}
           lists={todoLists}

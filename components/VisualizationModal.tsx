@@ -674,7 +674,7 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
         )}
       </header>
 
-      <main className="flex-1 overflow-y-auto pb-[120px]">
+      <main className="flex-1 overflow-y-auto" style={{ paddingBottom: 'var(--dock-h)' }}>
         <div className="max-w-3xl mx-auto p-4 md:p-6 space-y-4">
           {errorMessage && (
             <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">

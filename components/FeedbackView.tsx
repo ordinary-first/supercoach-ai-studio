@@ -628,7 +628,7 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
             </div>
           </div>
 
-          <div className="space-y-5 pb-8">
+          <div className="space-y-5" style={{ paddingBottom: 'var(--dock-h)' }}>
             {SHOW_GOAL_ADJUSTMENTS && pendingAdjustments.map((adj) => (
               <div key={adj.goalId} className="px-4">
                 <GoalAdjustmentCard

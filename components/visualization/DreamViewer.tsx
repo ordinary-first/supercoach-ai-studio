@@ -120,7 +120,7 @@ function DreamViewer({
         </div>
       )}
 
-      <div className="flex-1 overflow-y-auto pt-16 pb-24" style={{ WebkitOverflowScrolling: 'touch' }}>
+      <div className="flex-1 overflow-y-auto pt-16" style={{ WebkitOverflowScrolling: 'touch', paddingBottom: 'var(--dock-h)' }}>
         <div className="flex flex-col gap-0.5 px-0.5">
           {showVideo && (
             <div style={{ opacity: 0, animation: 'sectionFadeIn 400ms ease forwards', animationDelay: '0ms' }}>
@@ -183,7 +183,7 @@ function DreamViewer({
         className="fixed bottom-0 left-0 right-0 flex items-center justify-center h-20 z-10"
         style={{
           background: 'linear-gradient(to top, var(--bg-base) 60%, transparent)',
-          paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+          paddingBottom: 'var(--sab)',
         }}
       >
         <div className="flex items-center gap-5">

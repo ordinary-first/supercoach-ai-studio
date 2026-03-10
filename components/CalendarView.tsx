@@ -542,7 +542,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
     };
 
     return (
-      <div className="flex-1 overflow-y-auto p-4 md:p-8 pb-[56px] md:pb-[64px] relative z-0">
+      <div className="flex-1 overflow-y-auto p-4 md:p-8 pb-[var(--dock-h)] relative z-0">
         {/* Stats Summary */}
         <div className="max-w-2xl mx-auto mb-8">
           <div className="bg-th-surface border border-th-border rounded-2xl p-5 backdrop-blur-sm">
@@ -634,7 +634,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
     }
 
     return (
-      <div className="flex-1 overflow-y-auto p-2 md:p-4 pb-[56px] md:pb-[64px] relative z-0">
+      <div className="flex-1 overflow-y-auto p-2 md:p-4 pb-[var(--dock-h)] relative z-0">
         <div className="space-y-1">
           {daysWithTodos.map(({ date, todos: dayTodos }) => {
             const isToday = normalizeDate(new Date()) === normalizeDate(date);
@@ -726,7 +726,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
 
       {/* Month View */}
       {viewMode === 'month' && (
-        <div className="flex-1 overflow-hidden flex flex-col p-1 md:p-3 lg:p-6 pb-[56px] md:pb-[64px] relative z-0 animate-in fade-in duration-300">
+        <div className="flex-1 overflow-hidden flex flex-col p-1 md:p-3 lg:p-6 pb-[var(--dock-h)] relative z-0 animate-in fade-in duration-300">
           {/* Week Headers */}
           <div className="apple-glass-panel grid grid-cols-7 border-b border-th-border mb-0 rounded-t-lg">
             {dayNames.map((day, idx) => (
@@ -745,7 +745,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
 
       {/* Week View (Vertical) */}
       {viewMode === 'week' && (
-        <div className="flex-1 overflow-y-auto flex flex-col p-1 md:p-3 pb-[56px] md:pb-[64px] relative z-0 animate-in fade-in duration-300">
+        <div className="flex-1 overflow-y-auto flex flex-col p-1 md:p-3 pb-[var(--dock-h)] relative z-0 animate-in fade-in duration-300">
           <div className="apple-glass-panel flex-1 flex flex-col rounded-lg overflow-hidden">
             {renderWeekDays()}
           </div>
