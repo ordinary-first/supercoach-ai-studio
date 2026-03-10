@@ -833,10 +833,18 @@ const App: React.FC = () => {
         userName={userProfile.name}
         externalCustomerId={userProfile.googleId || userId || undefined}
         profile={userProfile}
-        onSaveProfile={(p) => {
+        onSaveProfile={async (p) => {
           setUserProfile(p);
-          const uid = getUserId();
-          if (uid) saveProfile(uid, p).catch(() => addToast(t.app.toasts.profileSaveFailed, 'error'));
+          const uid = userId || p.googleId || getUserId();
+          if (!uid) {
+            addToast(t.app.toasts.profileSaveFailed, 'error');
+            return;
+          }
+          try {
+            await saveProfile(uid, p);
+          } catch {
+            addToast(t.app.toasts.profileSaveFailed, 'error');
+          }
           appendAction(getUserId(), 'UPDATE_PROFILE', `프로필 업데이트: ${p.name}`);
         }}
         onLogout={() => { logout(); setUserProfile(null); setActiveTab('GOALS'); setIsSettingsPageOpen(false); }}

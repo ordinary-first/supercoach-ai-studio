@@ -71,7 +71,7 @@ interface SettingsPageProps {
   userName?: string;
   externalCustomerId?: string;
   profile: UserProfile | null;
-  onSaveProfile: (updated: UserProfile) => void;
+  onSaveProfile: (updated: UserProfile) => Promise<void> | void;
   onLogout: () => void;
 }
 
@@ -137,6 +137,19 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
 
+  const updateMediaAndPersist = (
+    updater: (prev: UserProfile) => UserProfile,
+  ) => {
+    let nextProfile: UserProfile | null = null;
+    setFormData((prev) => {
+      nextProfile = updater(prev);
+      return nextProfile;
+    });
+    if (nextProfile) {
+      void onSaveProfile(nextProfile);
+    }
+  };
+
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -149,7 +162,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
       : undefined;
     setIsUploadingMedia(false);
     if (uploadedUrl) {
-      setFormData((prev) => ({ ...prev, avatarUrl: uploadedUrl }));
+      updateMediaAndPersist((prev) => ({ ...prev, avatarUrl: uploadedUrl }));
     }
     e.target.value = '';
   };
@@ -170,7 +183,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
     }
     setIsUploadingMedia(false);
     if (nextUrls.length > 0) {
-      setFormData((prev) => ({
+      updateMediaAndPersist((prev) => ({
         ...prev,
         gallery: [...(prev.gallery || []), ...nextUrls].slice(0, 6),
       }));
@@ -179,7 +192,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
   };
 
   const removeFromGallery = (index: number) => {
-    setFormData((prev) => ({
+    updateMediaAndPersist((prev) => ({
       ...prev,
       gallery: prev.gallery?.filter((_, i) => i !== index),
     }));
@@ -301,7 +314,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                   <span>{labels.profile}</span>
                 </div>
                 <button
-                  onClick={() => onSaveProfile(formData)}
+                  onClick={() => { void onSaveProfile(formData); }}
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-th-accent text-th-text-inverse font-bold rounded-full hover:bg-white transition-all text-[11px]"
                 >
                   <Save size={12} /> {t.common.save}

@@ -101,7 +101,29 @@ cd web-legacy-mindmap2 && npx vite --port 3016 --host
 
 ## Current Status
 
-_Last updated: 2026-02-28_
+_Last updated: 2026-03-02_
+
+- Settings 프로필 저장 신뢰성 보강(r2) 완료:
+  - `displayVersion` bumped to `V03.02r2`.
+  - `App.tsx`:
+    - Settings 저장 시 `uid`를 `userId -> profile.googleId -> getUserId()` 순으로 결정.
+    - `saveProfile`을 `await` 처리하고 실패 시 토스트 노출.
+  - `components/SettingsPage.tsx`:
+    - `onSaveProfile` 타입을 async 허용으로 확장.
+    - 저장 버튼/미디어 저장 호출을 `void onSaveProfile(...)`로 명시.
+    - 미디어 저장 시 상태 업데이트와 저장 호출 순서를 분리해 저장 데이터 일관성 보강.
+  - 다음 확인:
+    - 업로드 직후 바로 로그아웃하는 급한 시나리오에서 재로그인 후 갤러리 유지 확인.
+
+- Settings 포토갤러리 영속화 버그 수정 완료:
+  - `displayVersion` bumped to `V03.02r1`.
+  - `components/SettingsPage.tsx`:
+    - 아바타 변경 시 즉시 `onSaveProfile` 호출하도록 수정.
+    - 갤러리 추가/삭제 시 즉시 `onSaveProfile` 호출하도록 수정.
+  - 결과:
+    - 업로드 직후 UI 반영뿐 아니라 Firestore에 즉시 저장되어 로그아웃/재로그인 후 유지됨.
+  - 다음 확인:
+    - 실제 계정으로 Settings > 포토갤러리에서 업로드 후 재로그인 회귀 확인 필요.
 
 - Feedback section Light Mode visibility fixes completed:
   - `displayVersion` bumped to `V02.28r11`.
