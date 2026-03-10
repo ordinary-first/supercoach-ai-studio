@@ -256,9 +256,10 @@ export const saveTodoLists = async (
   groups: TodoGroup[],
 ): Promise<void> => {
   if (!userId) return;
-  const payload = { lists, groups, updatedAt: Date.now() };
+  // Firestore rejects undefined values — strip them via JSON round-trip
+  const clean = JSON.parse(JSON.stringify({ lists, groups, updatedAt: Date.now() }));
   const docRef = doc(db, 'users', userId, 'data', 'todoLists');
-  await setDoc(docRef, payload);
+  await setDoc(docRef, clean);
 };
 
 export const loadTodoLists = async (

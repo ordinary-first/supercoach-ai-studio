@@ -39,6 +39,7 @@ import {
   saveChatHistory,
   savePrinciples,
   saveProfile,
+  saveTodoLists,
   saveUserSettings,
 } from './services/firebaseService';
 import { useAuth } from './hooks/useAuth';
@@ -212,6 +213,30 @@ const App: React.FC = () => {
     setTodoGroups(groups);
   }, []);
 
+  // Wrapper: update state + flush to Firestore immediately (no 1.5s wait)
+  const handleTodoListsChange: React.Dispatch<React.SetStateAction<TodoList[]>> = useCallback((action) => {
+    setTodoLists((prev) => {
+      const next = typeof action === 'function' ? action(prev) : action;
+      const uid = getUserId();
+      if (uid) saveTodoLists(uid, next, todoGroupsRef.current).catch(() => {});
+      return next;
+    });
+  }, []);
+
+  const handleTodoGroupsChange: React.Dispatch<React.SetStateAction<TodoGroup[]>> = useCallback((action) => {
+    setTodoGroups((prev) => {
+      const next = typeof action === 'function' ? action(prev) : action;
+      const uid = getUserId();
+      if (uid) saveTodoLists(uid, todoListsRef.current, next).catch(() => {});
+      return next;
+    });
+  }, []);
+
+  const todoListsRef = useRef(todoLists);
+  const todoGroupsRef = useRef(todoGroups);
+  useEffect(() => { todoListsRef.current = todoLists; }, [todoLists]);
+  useEffect(() => { todoGroupsRef.current = todoGroups; }, [todoGroups]);
+
   // --- Theme ---
   const themeResolved = useThemeStore((s) => s.resolved);
   useEffect(() => useSystemThemeListener(useThemeStore), []);
@@ -245,6 +270,8 @@ const App: React.FC = () => {
     setNodes(createInitialGoalNodes());
     setLinks([]);
     setTodos([]);
+    setTodoLists([]);
+    setTodoGroups([]);
     setPrinciples([]);
     setSelectedNode(null);
     setChatMessages([]);
@@ -864,7 +891,7 @@ const App: React.FC = () => {
       <ToDoList isOpen={activeTab === 'TODO'} onClose={() => setActiveTab('GOALS')} todos={todos}
         todoLists={todoLists} todoGroups={todoGroups} activeListId={activeListId}
         onActiveListChange={setActiveListId}
-        onTodoListsChange={setTodoLists} onTodoGroupsChange={setTodoGroups}
+        onTodoListsChange={handleTodoListsChange} onTodoGroupsChange={handleTodoGroupsChange}
         principles={principles}
         showPrinciplesEditor={showPrinciplesEditor}
         onClosePrinciplesEditor={() => setShowPrinciplesEditor(false)}

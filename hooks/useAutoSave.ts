@@ -100,9 +100,11 @@ export function useAutoSave(
 
     goalDirtyRef.current = true;
     if (goalSaveTimerRef.current) clearTimeout(goalSaveTimerRef.current);
-    goalSaveTimerRef.current = setTimeout(() => {
-      goalDirtyRef.current = false;
-      saveGoalData(currentUserId, nodes, links).catch(e => console.error('Goal save error:', e));
+    goalSaveTimerRef.current = setTimeout(async () => {
+      try {
+        await saveGoalData(currentUserId, nodes, links);
+        goalDirtyRef.current = false;
+      } catch (e) { console.error('Goal save error:', e); }
     }, 1500);
 
     return () => {
@@ -118,9 +120,11 @@ export function useAutoSave(
 
     todoDirtyRef.current = true;
     if (todoSaveTimerRef.current) clearTimeout(todoSaveTimerRef.current);
-    todoSaveTimerRef.current = setTimeout(() => {
-      todoDirtyRef.current = false;
-      saveTodos(currentUserId, todos).catch(e => console.error('Todo save error:', e));
+    todoSaveTimerRef.current = setTimeout(async () => {
+      try {
+        await saveTodos(currentUserId, todos);
+        todoDirtyRef.current = false;
+      } catch (e) { console.error('Todo save error:', e); }
     }, 1500);
 
     return () => {
@@ -136,9 +140,11 @@ export function useAutoSave(
 
     listDirtyRef.current = true;
     if (listSaveTimerRef.current) clearTimeout(listSaveTimerRef.current);
-    listSaveTimerRef.current = setTimeout(() => {
-      listDirtyRef.current = false;
-      saveTodoLists(currentUserId, todoLists, todoGroups).catch(e => console.error('TodoLists save error:', e));
+    listSaveTimerRef.current = setTimeout(async () => {
+      try {
+        await saveTodoLists(currentUserId, todoLists, todoGroups);
+        listDirtyRef.current = false;
+      } catch (e) { console.error('TodoLists save error:', e); }
     }, 1500);
 
     return () => {
