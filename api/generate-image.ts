@@ -197,7 +197,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             image_urls: [faceUrl],
             aspect_ratio: '1:1',
             output_format: 'jpeg',
-            safety_tolerance: 4,
+            safety_tolerance: '4',
           },
           pollInterval: 2000,
         });
@@ -209,7 +209,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             prompt: textPrompt,
             aspect_ratio: '1:1',
             output_format: 'jpeg',
-            safety_tolerance: 4,
+            safety_tolerance: '4',
           },
           pollInterval: 2000,
         });
