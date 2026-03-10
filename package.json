@@ -2,7 +2,7 @@
   "name": "secret-coach",
   "private": true,
   "version": "1.1.0",
-  "displayVersion": "V03.02r2",
+  "displayVersion": "V03.10r1",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -25,6 +25,7 @@
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
+    "@fal-ai/client": "^1.9.4",
     "@polar-sh/sdk": "^0.43.1",
     "firebase": "^12.7.0",
     "firebase-admin": "^13.6.1",

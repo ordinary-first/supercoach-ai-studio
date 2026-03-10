@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { DayCard } from './DayCard';
 import type { DayCardState } from './DayCard';
 import type { FeedbackCard, ToDoItem } from '../../types';
@@ -80,6 +80,23 @@ export const WeeklyCardScroll: React.FC<WeeklyCardScrollProps> = ({
   onDayTap,
 }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Scroll to today's card on mount / week change
+  useEffect(() => {
+    if (!scrollRef.current) return;
+    const today = new Date();
+    const wsMs = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate()).getTime();
+    const todayMs = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+    const diff = Math.round((todayMs - wsMs) / 86400000);
+    if (diff >= 0 && diff < 7) {
+      requestAnimationFrame(() => {
+        scrollRef.current?.scrollTo({
+          left: diff * (146 + 10), // card width + gap
+          behavior: 'smooth',
+        });
+      });
+    }
+  }, [weekStart]);
 
   const days = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(weekStart);

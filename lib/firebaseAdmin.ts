@@ -1,6 +1,7 @@
 import { cert, getApps, initializeApp, type App } from 'firebase-admin/app';
 import { getAuth, type Auth } from 'firebase-admin/auth';
 import { getFirestore, type Firestore } from 'firebase-admin/firestore';
+import { getMessaging, type Messaging } from 'firebase-admin/messaging';
 
 const trim = (value: string | undefined): string => (value ?? '').trim();
 
@@ -16,6 +17,7 @@ const getPrivateKey = (): string => {
 let cachedApp: App | null = null;
 let cachedDb: Firestore | null = null;
 let cachedAuth: Auth | null = null;
+let cachedMessaging: Messaging | null = null;
 
 const getAdminApp = (): App => {
   if (cachedApp) return cachedApp;
@@ -48,4 +50,10 @@ export const getAdminAuth = (): Auth => {
   if (cachedAuth) return cachedAuth;
   cachedAuth = getAuth(getAdminApp());
   return cachedAuth;
+};
+
+export const getAdminMessaging = (): Messaging => {
+  if (cachedMessaging) return cachedMessaging;
+  cachedMessaging = getMessaging(getAdminApp());
+  return cachedMessaging;
 };

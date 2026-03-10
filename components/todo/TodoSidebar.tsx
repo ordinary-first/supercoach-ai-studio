@@ -13,7 +13,7 @@ import {
   FolderPlus,
   MoreHorizontal,
 } from 'lucide-react';
-import { ToDoItem, TodoList, TodoGroup, SmartListId } from '../../types';
+import { ToDoItem, TodoList, TodoGroup, SmartListId, UserPrinciple } from '../../types';
 import { useTranslation } from '../../i18n/useTranslation';
 import TodoSearchBar from './TodoSearchBar';
 
@@ -23,6 +23,8 @@ interface TodoSidebarProps {
   groups: TodoGroup[];
   activeListId: string;
   searchQuery: string;
+  principles: UserPrinciple[];
+  showPrinciplesEditor: boolean;
   onSelectList: (listId: string) => void;
   onSearchChange: (query: string) => void;
   onCreateList: () => void;
@@ -32,6 +34,7 @@ interface TodoSidebarProps {
   onRenameList: (id: string) => void;
   onRenameGroup: (id: string) => void;
   onToggleGroupCollapse: (id: string) => void;
+  onOpenPrinciples: () => void;
 }
 
 export default function TodoSidebar({
@@ -40,6 +43,7 @@ export default function TodoSidebar({
   groups,
   activeListId,
   searchQuery,
+  principles,
   onSelectList,
   onSearchChange,
   onCreateList,
@@ -49,9 +53,18 @@ export default function TodoSidebar({
   onRenameList,
   onRenameGroup,
   onToggleGroupCollapse,
+  showPrinciplesEditor,
+  onOpenPrinciples,
 }: TodoSidebarProps) {
   const { language } = useTranslation();
   const [contextMenuId, setContextMenuId] = useState<string | null>(null);
+  const todayPrinciple = useMemo(() => {
+    if (principles.length === 0) return null;
+    const now = new Date();
+    const start = new Date(now.getFullYear(), 0, 0);
+    const dayOfYear = Math.floor((now.getTime() - start.getTime()) / 86400000);
+    return principles[dayOfYear % principles.length];
+  }, [principles]);
 
   const ui = useMemo(() => {
     if (language === 'ko') {
@@ -139,7 +152,7 @@ export default function TodoSidebar({
 
   const renderListItem = (list: TodoList, indented = false) => {
     const count = getListCount(list.id);
-    const isActive = activeListId === list.id;
+    const isActive = !showPrinciplesEditor && activeListId === list.id;
     const isContextOpen = contextMenuId === list.id;
 
     return (
@@ -301,6 +314,37 @@ export default function TodoSidebar({
         <TodoSearchBar value={searchQuery} onChange={onSearchChange} />
       </div>
 
+      {/* Principles - same style as smart lists */}
+      <div className="px-3 pb-1 flex-shrink-0">
+        <button
+          onClick={() => onOpenPrinciples()}
+          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all ${
+            showPrinciplesEditor
+              ? 'bg-th-accent-muted text-th-text font-bold'
+              : 'text-th-text-secondary hover:bg-th-surface/50 hover:text-th-text'
+          }`}
+        >
+          <span className={`flex-shrink-0 ${showPrinciplesEditor ? 'text-th-accent' : ''}`}>✦</span>
+          <span className="flex-1 text-left truncate">
+            {language === 'ko' ? '이것만 지켜줘!' : 'My Principles'}
+          </span>
+          {principles.length > 0 && (
+            <span className="bg-th-surface text-th-text-tertiary text-xs px-1.5 py-0.5 rounded-full font-mono">
+              {principles.length}
+            </span>
+          )}
+        </button>
+        {todayPrinciple && (
+          <button
+            onClick={() => onOpenPrinciples()}
+            className="w-full mt-1 mx-1 px-3 py-2 rounded-lg bg-th-surface/60 text-sm text-th-text-secondary
+              text-left truncate hover:bg-th-surface transition-colors"
+          >
+            {todayPrinciple.text}
+          </button>
+        )}
+      </div>
+
       <div className="flex-1 overflow-y-auto py-2 scrollbar-hide">
         <div className="px-3 mb-1">
           <p className="font-display text-[10px] tracking-widest uppercase text-th-text-tertiary px-3 mb-1">
@@ -308,7 +352,7 @@ export default function TodoSidebar({
           </p>
           {smartLists.map((list) => {
             const count = todos.filter(list.filter).length;
-            const isActive = activeListId === list.id;
+            const isActive = !showPrinciplesEditor && activeListId === list.id;
             return (
               <button
                 key={list.id}

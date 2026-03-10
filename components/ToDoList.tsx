@@ -1,6 +1,6 @@
 ﻿import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { Check, Trash2, Plus, ListTodo, Circle, CheckCircle2, Target, Bell, Repeat, Sun, ArrowLeft, ChevronRight, ChevronDown, Layout, X, Calendar, Star, CalendarDays, Home, Menu, GripVertical } from 'lucide-react';
-import { ToDoItem, TodoList, TodoGroup, SmartListId, RepeatFrequency } from '../types';
+import { ToDoItem, TodoList, TodoGroup, TodoStep, SmartListId, RepeatFrequency, UserPrinciple } from '../types';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { useTranslation } from '../i18n/useTranslation';
 import TodoSidebar from './todo/TodoSidebar';
@@ -43,6 +43,80 @@ const SortableTodoItem: React.FC<SortableTodoItemProps> = ({ id, isSelected, isC
   );
 };
 
+// --- Steps (subtasks) sub-component ---
+const StepsSection: React.FC<{
+  steps: TodoStep[];
+  onUpdate: (steps: TodoStep[]) => void;
+  language: string;
+}> = ({ steps, onUpdate, language }) => {
+  const [newStepText, setNewStepText] = useState('');
+
+  const addStep = () => {
+    const text = newStepText.trim();
+    if (!text) return;
+    onUpdate([...steps, { id: crypto.randomUUID(), text, completed: false }]);
+    setNewStepText('');
+  };
+
+  const toggleStep = (stepId: string) => {
+    onUpdate(steps.map((s) => (s.id === stepId ? { ...s, completed: !s.completed } : s)));
+  };
+
+  const deleteStep = (stepId: string) => {
+    onUpdate(steps.filter((s) => s.id !== stepId));
+  };
+
+  const label = language === 'ko' ? '단계 추가' : 'Add step';
+  const done = steps.filter((s) => s.completed).length;
+
+  return (
+    <div className="space-y-1.5">
+      {steps.length > 0 && (
+        <div className="flex items-center gap-2 mb-1">
+          <div className="flex-1 h-1.5 rounded-full bg-th-border overflow-hidden">
+            <div
+              className="h-full rounded-full bg-th-accent transition-all"
+              style={{ width: `${steps.length ? (done / steps.length) * 100 : 0}%` }}
+            />
+          </div>
+          <span className="text-[11px] text-th-text-tertiary font-mono">{done}/{steps.length}</span>
+        </div>
+      )}
+
+      {steps.map((step) => (
+        <div key={step.id} className="flex items-center gap-2 group px-1">
+          <button onClick={() => toggleStep(step.id)} className="flex-shrink-0">
+            {step.completed
+              ? <CheckCircle2 size={16} className="text-th-accent" />
+              : <Circle size={16} className="text-th-text-tertiary" />}
+          </button>
+          <span className={`flex-1 text-sm ${step.completed ? 'line-through text-th-text-tertiary' : 'text-th-text'}`}>
+            {step.text}
+          </span>
+          <button
+            onClick={() => deleteStep(step.id)}
+            className="opacity-0 group-hover:opacity-100 p-0.5 text-th-text-tertiary hover:text-red-400 transition-all"
+          >
+            <X size={12} />
+          </button>
+        </div>
+      ))}
+
+      <div className="flex items-center gap-2 px-1">
+        <Plus size={16} className="text-th-text-tertiary flex-shrink-0" />
+        <input
+          type="text"
+          value={newStepText}
+          onChange={(e) => setNewStepText(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') addStep(); }}
+          placeholder={label}
+          className="flex-1 bg-transparent text-sm text-th-text placeholder:text-th-text-tertiary focus:outline-none py-1"
+        />
+      </div>
+    </div>
+  );
+};
+
 interface ToDoListProps {
   isOpen: boolean;
   onClose: () => void;
@@ -58,9 +132,16 @@ interface ToDoListProps {
   onDeleteToDo: (id: string) => void;
   onUpdateToDo: (id: string, updates: Partial<ToDoItem>) => void;
   onReorderTodos: (orderedIds: string[]) => void;
+  principles: UserPrinciple[];
+  showPrinciplesEditor: boolean;
+  onClosePrinciplesEditor: () => void;
+  onOpenPrinciples: () => void;
+  onAddPrinciple: (text: string) => void;
+  onDeletePrinciple: (id: string) => void;
+  onUpdatePrinciple: (id: string, text: string) => void;
 }
 
-const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, todoGroups, activeListId, onActiveListChange, onTodoListsChange, onTodoGroupsChange, onAddToDo, onToggleToDo, onDeleteToDo, onUpdateToDo, onReorderTodos }) => {
+const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, todoGroups, activeListId, onActiveListChange, onTodoListsChange, onTodoGroupsChange, onAddToDo, onToggleToDo, onDeleteToDo, onUpdateToDo, onReorderTodos, principles, showPrinciplesEditor, onClosePrinciplesEditor, onOpenPrinciples, onAddPrinciple, onDeletePrinciple, onUpdatePrinciple }) => {
   const { t, language } = useTranslation();
   const [inputText, setInputText] = useState('');
   const [selectedToDoId, setSelectedToDoId] = useState<string | null>(null);
@@ -354,7 +435,9 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
           groups={todoGroups}
           activeListId={activeListId}
           searchQuery={searchQuery}
-          onSelectList={(id) => { onActiveListChange(id); setIsSidebarOpen(false); }}
+          principles={principles}
+          showPrinciplesEditor={showPrinciplesEditor}
+          onSelectList={(id) => { onActiveListChange(id); setIsSidebarOpen(false); if (showPrinciplesEditor) onClosePrinciplesEditor(); }}
           onSearchChange={setSearchQuery}
           onCreateList={() => { setEditingListId(null); setShowCreateList(true); }}
           onCreateGroup={() => { setEditingGroupId(null); setShowCreateGroup(true); }}
@@ -363,6 +446,7 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
           onRenameList={handleRenameList}
           onRenameGroup={handleRenameGroup}
           onToggleGroupCollapse={handleToggleGroupCollapse}
+          onOpenPrinciples={() => { onOpenPrinciples(); setIsSidebarOpen(false); }}
         />
       </div>
 
@@ -375,15 +459,129 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
             <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="md:hidden p-1.5 rounded-lg hover:bg-th-surface-hover text-th-text-secondary hover:text-th-text transition-colors">
               <Menu size={18} />
             </button>
-            <div className={`p-1.5 rounded-lg ${activeListId === 'myDay' ? 'bg-yellow-400/10' : activeListId === 'important' ? 'bg-red-400/10' : activeListId === 'planned' ? 'bg-blue-400/10' : 'bg-th-accent-muted'}`}>
-              <span className={activeListInfo.color}>{activeListInfo.icon}</span>
-            </div>
+            {showPrinciplesEditor ? (
+              <div className="p-1.5 rounded-lg bg-th-accent-muted">
+                <span className="text-th-accent text-sm font-bold">✦</span>
+              </div>
+            ) : (
+              <div className={`p-1.5 rounded-lg ${activeListId === 'myDay' ? 'bg-yellow-400/10' : activeListId === 'important' ? 'bg-red-400/10' : activeListId === 'planned' ? 'bg-blue-400/10' : 'bg-th-accent-muted'}`}>
+                <span className={activeListInfo.color}>{activeListInfo.icon}</span>
+              </div>
+            )}
             <div>
-              <h1 className="text-base md:text-lg font-display font-bold tracking-wider text-th-text">{searchQuery ? uiText.searchResults : activeListInfo.name}</h1>
+              <h1 className="text-base md:text-lg font-display font-bold tracking-wider text-th-text">
+                {showPrinciplesEditor
+                  ? (language === 'ko' ? '이것만지켜줘!' : 'My Principles')
+                  : (searchQuery ? uiText.searchResults : activeListInfo.name)}
+              </h1>
             </div>
           </div>
         </div>
 
+        {/* === PRINCIPLES FULL VIEW === */}
+        {showPrinciplesEditor ? (
+          <>
+            <div className="flex-1 overflow-y-auto px-4 pt-3 pb-4 scrollbar-hide">
+              {principles.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-24 space-y-5">
+                  <div className="w-24 h-24 rounded-[28px] bg-gradient-to-br from-th-accent/20 to-th-accent/5
+                    flex items-center justify-center shadow-lg shadow-th-accent/5 ring-1 ring-th-accent/10">
+                    <span className="text-4xl">✦</span>
+                  </div>
+                  <div className="text-center space-y-1.5">
+                    <p className="text-lg font-bold text-th-text">
+                      {language === 'ko' ? '나만의 원칙 만들기' : 'Create Your Principles'}
+                    </p>
+                    <p className="text-sm text-th-text-tertiary leading-relaxed max-w-[240px] mx-auto">
+                      {language === 'ko'
+                        ? '매일 지킬 나만의 원칙을 적어보세요.'
+                        : 'Write principles to live by.'}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2.5">
+                  {/* 오늘의 포커스 하이라이트 카드 */}
+                  {(() => {
+                    const now = new Date();
+                    const startOfYear = new Date(now.getFullYear(), 0, 0);
+                    const dayOfYear = Math.floor((now.getTime() - startOfYear.getTime()) / 86400000);
+                    const todayIdx = dayOfYear % principles.length;
+                    return (
+                      <div className="mb-4 rounded-2xl bg-gradient-to-br from-th-accent/15 via-th-accent/8 to-transparent
+                        p-4 ring-1 ring-th-accent/20 shadow-lg shadow-th-accent/5">
+                        <p className="text-base font-semibold text-th-text leading-snug">
+                          {principles[todayIdx]?.text}
+                        </p>
+                      </div>
+                    );
+                  })()}
+                  {/* 원칙 리스트 */}
+                  <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-th-text-tertiary px-1 pt-1">
+                    {language === 'ko'
+                      ? `전체 원칙 · ${principles.length}개`
+                      : `All Principles · ${principles.length}`}
+                  </p>
+                  {principles.map((p, idx) => (
+                    <div
+                      key={p.id}
+                      className="group rounded-2xl bg-th-surface/40 px-4 py-3.5 flex items-center gap-3.5
+                        ring-1 ring-white/[0.04] hover:ring-th-accent/25 hover:bg-th-surface/60
+                        transition-all duration-200"
+                    >
+                      <span className="w-6 h-6 rounded-lg bg-th-accent/15 flex items-center justify-center
+                        text-[11px] font-bold text-th-accent flex-shrink-0 tabular-nums">
+                        {idx + 1}
+                      </span>
+                      <input
+                        type="text"
+                        value={p.text}
+                        onChange={(e) => onUpdatePrinciple(p.id, e.target.value)}
+                        className="flex-1 bg-transparent text-[15px] text-th-text focus:outline-none
+                          placeholder:text-th-text-tertiary min-w-0 font-medium"
+                      />
+                      <button
+                        onClick={() => onDeletePrinciple(p.id)}
+                        className="opacity-0 group-hover:opacity-100 flex-shrink-0 p-1.5
+                          text-th-text-tertiary hover:text-red-400 hover:bg-red-400/10
+                          rounded-lg transition-all duration-200"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            {/* Add principle input */}
+            <div className="border-t border-th-border/50 px-4 py-3.5 flex-shrink-0 bg-th-surface/30">
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const form = e.currentTarget;
+                  const input = form.elements.namedItem('principleInput') as HTMLInputElement;
+                  const text = input.value.trim();
+                  if (!text) return;
+                  onAddPrinciple(text);
+                  input.value = '';
+                }}
+                className="flex items-center gap-3 rounded-xl bg-th-surface/50 ring-1 ring-white/[0.06]
+                  px-3.5 py-2.5 focus-within:ring-th-accent/30 transition-all"
+              >
+                <Plus size={18} className="text-th-accent flex-shrink-0" />
+                <input
+                  name="principleInput"
+                  type="text"
+                  placeholder={language === 'ko' ? '새로운 원칙 추가하기...' : 'Add a new principle...'}
+                  className="flex-1 bg-transparent text-sm text-th-text
+                    placeholder-th-text-tertiary focus:outline-none"
+                  autoFocus
+                />
+              </form>
+            </div>
+          </>
+        ) : (
+        <>
         {/* List Content */}
         <div className="flex-1 overflow-y-auto px-0 pt-1 scrollbar-hide">
           <div className="max-w-4xl mx-auto">
@@ -497,6 +695,8 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
             </div>
           )}
         </div>
+        </>
+        )}
       </div>
 
       {/* === RIGHT DETAIL AREA (SIDEBAR) === */}
@@ -543,6 +743,13 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
                   rows={2}
                 />
               </div>
+
+              {/* Steps / Subtasks */}
+              <StepsSection
+                steps={selectedToDo.steps ?? []}
+                onUpdate={(steps) => onUpdateToDo(selectedToDo.id, { steps })}
+                language={language}
+              />
 
               {/* Action Toggles */}
               <div className="space-y-2">

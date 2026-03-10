@@ -22,7 +22,7 @@ import {
   query,
   setDoc,
 } from 'firebase/firestore';
-import type { ChatMessage, FeedbackCard, GoalLink, GoalNode, NotificationSettings, ToDoItem, TodoList, TodoGroup, UserProfile } from '../types';
+import type { ChatMessage, FeedbackCard, GoalLink, GoalNode, NotificationSettings, ToDoItem, TodoList, TodoGroup, UserPrinciple, UserProfile } from '../types';
 
 const isDev = typeof process !== 'undefined' && process.env.NODE_ENV === 'development';
 const log = isDev ? console.log : () => {};
@@ -182,6 +182,7 @@ const serializeGoalNodes = (nodes: GoalNode[]) => {
     parentId: n.parentId || null,
     imageUrl: n.imageUrl || null,
     collapsed: n.collapsed || false,
+    sortOrder: n.sortOrder ?? 0,
   }));
 };
 
@@ -714,8 +715,11 @@ export const loadNotificationSettings = async (
       morningTime: String(d.morningTime || '08:00'),
       eveningEnabled: Boolean(d.eveningEnabled),
       eveningTime: String(d.eveningTime || '21:00'),
+      timezone: typeof d.timezone === 'string' ? d.timezone : undefined,
       notificationPermission: (d.notificationPermission as 'granted' | 'denied' | 'default') || 'default',
       fcmToken: typeof d.fcmToken === 'string' ? d.fcmToken : undefined,
+      lastMorningSentDate: typeof d.lastMorningSentDate === 'string' ? d.lastMorningSentDate : undefined,
+      lastEveningSentDate: typeof d.lastEveningSentDate === 'string' ? d.lastEveningSentDate : undefined,
       updatedAt: Number(d.updatedAt || 0),
     };
   } catch (error: unknown) {
@@ -746,5 +750,36 @@ export const saveFcmToken = async (
   } catch (error: unknown) {
     const e = error as { code?: string; message?: string };
     log('[Save:FcmToken] failed:', e?.code || e?.message);
+  }
+};
+
+// ── UserPrinciples CRUD ──
+
+export const savePrinciples = async (
+  userId: string,
+  principles: UserPrinciple[],
+): Promise<void> => {
+  if (!db || !userId) return;
+  const ref = doc(db, 'users', userId, 'data', 'principles');
+  await setDoc(
+    ref,
+    { items: JSON.parse(JSON.stringify(principles)), updatedAt: Date.now() },
+    { merge: true },
+  );
+};
+
+export const loadPrinciples = async (
+  userId: string,
+): Promise<UserPrinciple[]> => {
+  if (!db || !userId) return [];
+  try {
+    const ref = doc(db, 'users', userId, 'data', 'principles');
+    const snap = await getDoc(ref);
+    if (!snap.exists()) return [];
+    return (snap.data()?.items ?? []) as UserPrinciple[];
+  } catch (error: unknown) {
+    const e = error as { code?: string; message?: string };
+    log('[Load:Principles] failed:', e?.code || e?.message);
+    return [];
   }
 };

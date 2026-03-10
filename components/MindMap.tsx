@@ -1,5 +1,4 @@
 ﻿import React, { useEffect, useRef, useCallback, useState } from 'react';
-import { Sparkles } from 'lucide-react';
 import MindMapSDK from 'simple-mind-map';
 import { useThemeStore } from '../stores/useThemeStore';
 import Drag from 'simple-mind-map/src/plugins/Drag.js';
@@ -26,7 +25,15 @@ const AddChildIcon = () => (
 );
 
 const AddSiblingIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5">
+  <svg
+    width="18"
+    height="18"
+    viewBox="0 0 18 18"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    style={{ transform: 'rotate(-90deg)', transformOrigin: '50% 50%' }}
+  >
     <circle cx="5" cy="13" r="2.5" />
     <circle cx="13" cy="13" r="2.5" />
     <circle cx="9" cy="4" r="2.5" />
@@ -41,6 +48,61 @@ const AddParentIcon = () => (
     <path d="M9 6.5V11.5" strokeLinecap="round" />
   </svg>
 );
+
+const TodoActionIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5">
+    <rect x="2.5" y="2.5" width="13" height="13" rx="3" />
+    <path d="M5.5 9L7.8 11.3L12.5 6.6" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+const DecomposeActionIcon = () => (
+  <svg
+    width="18"
+    height="18"
+    viewBox="0 0 18 18"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    style={{ transform: 'rotate(180deg)', transformOrigin: '50% 50%' }}
+  >
+    <circle cx="5" cy="4" r="1.7" />
+    <circle cx="13" cy="4" r="1.7" />
+    <circle cx="9" cy="14" r="1.9" />
+    <path d="M5 5.7V8H13V5.7M9 8V12.1" strokeLinecap="round" />
+  </svg>
+);
+
+const GenerateImageActionIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5">
+    <rect x="2.5" y="3.5" width="13" height="10" rx="2" />
+    <circle cx="6.2" cy="7.2" r="1" />
+    <path d="M4.5 12L7.4 9.2L9.6 11.2L11.4 9.4L13.5 12" strokeLinecap="round" strokeLinejoin="round" />
+    <circle cx="14.4" cy="3.35" r="2.95" fill="#FFFFFF" stroke="#94A3B8" strokeWidth="0.5" />
+    <path d="M14.4 1.15L15.9 2.65L14.4 3.35L12.9 2.65Z" fill="#EA4335" stroke="none" />
+    <path d="M15.9 2.65L16.6 3.35L15.9 4.05L14.4 3.35Z" fill="#4285F4" stroke="none" />
+    <path d="M14.4 3.35L15.9 4.05L14.4 5.55L12.9 4.05Z" fill="#34A853" stroke="none" />
+    <path d="M12.2 3.35L12.9 2.65L14.4 3.35L12.9 4.05Z" fill="#FBBC05" stroke="none" />
+  </svg>
+);
+
+const InsertImageActionIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5">
+    <rect x="2.5" y="4.5" width="13" height="9" rx="2" />
+    <path d="M4.8 12L7.4 9.5L9.4 11.2L11.2 9.4L13.2 12" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M13.5 1.8H16.2M14.9 0.5V3.2" strokeLinecap="round" />
+  </svg>
+);
+
+const DeleteActionIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5">
+    <path d="M3.5 5H14.5" strokeLinecap="round" />
+    <path d="M6.5 5V3.5H11.5V5" strokeLinecap="round" strokeLinejoin="round" />
+    <rect x="5.2" y="5.2" width="7.6" height="9.2" rx="1.4" />
+    <path d="M8 7.7V12M10 7.7V12" strokeLinecap="round" />
+  </svg>
+);
+
 
 // --- Types ---
 export type LayoutMode = 'mindMap' | 'logicalStructure' | 'logicalStructureLeft' | 'organizationStructure';
@@ -118,7 +180,6 @@ interface ActionBarState {
   nodeId: string;
   scale: number;
   placement: 'top' | 'bottom';
-  isMoreOpen: boolean;
 }
 
 /** Convert flat GoalNode[] + GoalLink[] to simple-mind-map tree format.
@@ -151,6 +212,7 @@ function goalNodesToTree(
     const children = childIds
       .map(id => nodeMap.get(id))
       .filter((n): n is GoalNode => !!n)
+      .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
       .map(buildNode);
 
     const statusColor = STATUS_COLORS[goalNode.status] || '#3B82F6';
@@ -453,7 +515,7 @@ const MindMap: React.FC<MindMapProps> = ({
     }
   }, []);
 
-  const computeActionBarFromRenderedNode = useCallback((node: any): Omit<ActionBarState, 'nodeId' | 'isMoreOpen'> | null => {
+  const computeActionBarFromRenderedNode = useCallback((node: any): Omit<ActionBarState, 'nodeId'> | null => {
     const rect = containerRef.current?.getBoundingClientRect();
     if (!rect || !node) return null;
     const nodeRect = safeGetNodeRectInSvg(node);
@@ -507,6 +569,7 @@ const MindMap: React.FC<MindMapProps> = ({
   const onTogglePreviewConfirmRef = useRef(onTogglePreviewConfirm);
   const onFinalizePreviewRef = useRef(onFinalizePreview);
   const previewNodeIdsRef = useRef(previewNodeIds);
+  const prevPreviewIdsRef = useRef<Set<string>>(new Set());
   const setActionBarRef = useRef(setActionBar);
   const actionBarRef = useRef<ActionBarState | null>(null);
   const lastTapRef = useRef<{ nodeId: string; ts: number }>({
@@ -738,18 +801,16 @@ const MindMap: React.FC<MindMapProps> = ({
         nodeId: goalId,
         scale: position.scale,
         placement: position.placement,
-        isMoreOpen: false,
       });
     });
 
-    // --- Event: data_change ??sync text edits back to React ---
-    // ONLY syncs text changes from in-place editing. Ignores changes we caused.
+    // --- Event: data_change — sync text edits + sibling order back to React ---
+    // Syncs text changes AND children order (from drag-and-drop).
+    // Ignores changes we caused via setData/updateData.
     mindMap.on('data_change', (data: SMMNode) => {
-      // Ignore if we caused this change via setData/updateData
       if (Date.now() - lastSetDataTimeRef.current < 500) return;
 
-      // Walk the tree and check for text differences
-      const syncTextChanges = (smmNode: SMMNode) => {
+      const syncChanges = (smmNode: SMMNode) => {
         const goalId = smmNode.data?.goalId || smmNode.data?.uid;
         if (goalId?.startsWith('ghost-')) return;
         if (goalId) {
@@ -758,11 +819,21 @@ const MindMap: React.FC<MindMapProps> = ({
             onUpdateNodeRef.current(goalId, { text: smmNode.data.text });
           }
         }
-        for (const child of smmNode.children || []) {
-          syncTextChanges(child);
+        // Sync children sortOrder from tree position
+        const children = smmNode.children || [];
+        children.forEach((child, idx) => {
+          const childId = child.data?.goalId || child.data?.uid;
+          if (!childId || childId.startsWith('ghost-')) return;
+          const existing = nodesRef.current.find(n => n.id === childId);
+          if (existing && (existing.sortOrder ?? 0) !== idx) {
+            onUpdateNodeRef.current(childId, { sortOrder: idx });
+          }
+        });
+        for (const child of children) {
+          syncChanges(child);
         }
       };
-      syncTextChanges(data);
+      syncChanges(data);
     });
 
     // Close context menu on background click
@@ -894,6 +965,27 @@ const MindMap: React.FC<MindMapProps> = ({
         }, 300);
       });
     }
+
+    // Decompose animation: staggered scale-up for newly added preview nodes
+    const currentPreviewIds = previewNodeIdsRef.current || [];
+    const newPreviews = currentPreviewIds.filter(id => !prevPreviewIdsRef.current.has(id));
+    if (newPreviews.length > 0) {
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          newPreviews.forEach((id, i) => {
+            const nodeIns = getRenderedNodeByGoalId(id);
+            if (nodeIns?.group?.node) {
+              const el = nodeIns.group.node as HTMLElement;
+              el.style.opacity = '0';
+              el.style.transform = 'scale(0.3)';
+              el.style.transformOrigin = 'center center';
+              el.style.animation = `decomposeAppear 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) ${i * 80}ms forwards`;
+            }
+          });
+        }, 300);
+      });
+    }
+    prevPreviewIdsRef.current = new Set(currentPreviewIds);
   }, [nodes, links, selectedNodeId, confirmedPreviewIds, onboardingPhase, usedGhosts, getRenderedNodeByGoalId]);
 
   // --- Sync layout prop → SDK ---
@@ -982,6 +1074,11 @@ const MindMap: React.FC<MindMapProps> = ({
         }
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .animate-fade-in-up { animation: fadeInUp 0.6s ease-out forwards; }
+        @keyframes decomposeAppear {
+          0%   { opacity: 0; transform: scale(0.3); }
+          60%  { opacity: 1; transform: scale(1.08); }
+          100% { opacity: 1; transform: scale(1); }
+        }
       `}</style>
 
       {/* Mind Map Container */}
@@ -1004,7 +1101,7 @@ const MindMap: React.FC<MindMapProps> = ({
             transformOrigin: 'top center',
           }}
         >
-          <div className="flex items-center gap-1.5 rounded-full border border-th-border/40 bg-th-elevated/98 p-1.5 shadow-[0_12px_40px_-12px_rgba(0,0,0,0.25)] backdrop-blur-xl">
+          <div className="flex items-center gap-1 rounded-full border border-th-border/40 bg-th-elevated/98 p-1 shadow-[0_12px_40px_-12px_rgba(0,0,0,0.25)] backdrop-blur-xl">
             <button
               onClick={() => {
                 onAddSubNode(actionBar.nodeId);
@@ -1012,6 +1109,7 @@ const MindMap: React.FC<MindMapProps> = ({
               }}
               className="rounded-full p-2.5 text-th-text-secondary hover:text-th-accent hover:bg-th-accent-muted transition-all active:scale-90"
               title={t.mindmap.onboarding.addChildTitle}
+              aria-label={t.mindmap.onboarding.addChildTitle}
             >
               <AddChildIcon />
             </button>
@@ -1028,6 +1126,7 @@ const MindMap: React.FC<MindMapProps> = ({
                   }}
                   className="rounded-full p-2.5 text-th-text-secondary hover:text-th-accent hover:bg-th-accent-muted transition-all active:scale-90"
                   title={t.mindmap.onboarding.addSiblingTitle}
+                  aria-label={t.mindmap.onboarding.addSiblingTitle}
                 >
                   <AddSiblingIcon />
                 </button>
@@ -1038,6 +1137,7 @@ const MindMap: React.FC<MindMapProps> = ({
                   }}
                   className="rounded-full p-2.5 text-th-text-secondary hover:text-th-accent hover:bg-th-accent-muted transition-all active:scale-90"
                   title={t.mindmap.onboarding.addParentTitle}
+                  aria-label={t.mindmap.onboarding.addParentTitle}
                 >
                   <AddParentIcon />
                 </button>
@@ -1046,9 +1146,11 @@ const MindMap: React.FC<MindMapProps> = ({
                     onConvertNodeToTask?.(actionBar.nodeId);
                     setActionBar(null);
                   }}
-                  className="rounded-full px-4 py-2 text-xs font-bold text-th-text hover:text-th-accent hover:bg-th-accent-muted transition-all"
+                  className="rounded-full p-2.5 text-th-text-secondary hover:text-th-accent hover:bg-th-accent-muted transition-all active:scale-90"
+                  title={labels.todo}
+                  aria-label={labels.todo}
                 >
-                  {labels.todo}
+                  <TodoActionIcon />
                 </button>
               </>
             )}
@@ -1056,10 +1158,11 @@ const MindMap: React.FC<MindMapProps> = ({
             {!isRootActionNode && (
               <button
                 onClick={() => { onDecomposeGoal?.(actionBar.nodeId); setActionBar(null); }}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold bg-th-accent text-th-text-inverse hover:brightness-110 shadow-sm transition-all active:scale-95 whitespace-nowrap"
+                className="rounded-full p-2.5 text-th-accent bg-th-accent-muted hover:brightness-110 transition-all active:scale-90"
+                title={labels.decompose}
+                aria-label={labels.decompose}
               >
-                <Sparkles className="w-3.5 h-3.5" />
-                {labels.decompose}
+                <DecomposeActionIcon />
               </button>
             )}
 
@@ -1068,58 +1171,39 @@ const MindMap: React.FC<MindMapProps> = ({
                 onGenerateImage?.(actionBar.nodeId);
                 setActionBar(null);
               }}
-              className="rounded-full px-4 py-2 text-xs font-bold text-th-text hover:text-th-accent hover:bg-th-accent-muted transition-all"
+              className="rounded-full p-2.5 text-th-text-secondary hover:text-th-accent hover:bg-th-accent-muted transition-all active:scale-90"
+              title={labels.generate}
+              aria-label={labels.generate}
             >
-              {labels.generate}
+              <GenerateImageActionIcon />
             </button>
 
-            {isRootActionNode ? (
-              <button
-                onClick={() => {
-                  onInsertImage?.(actionBar.nodeId);
-                  setActionBar(null);
-                }}
-                className="rounded-full px-4 py-2 text-xs font-bold text-th-text hover:text-th-accent hover:bg-th-accent-muted transition-all"
-              >
-                {labels.insert}
-              </button>
-            ) : (
-              <button
-                onClick={() => {
-                  setActionBar((prev) => (
-                    prev ? { ...prev, isMoreOpen: !prev.isMoreOpen } : prev
-                  ));
-                }}
-                className={`rounded-full px-4 py-2 text-xs font-bold transition-all ${actionBar.isMoreOpen ? 'bg-th-accent text-th-text-inverse' : 'text-th-text hover:text-th-accent hover:bg-th-accent-muted'
-                  }`}
-              >
-                {labels.more}
-              </button>
-            )}
-          </div>
+            <button
+              onClick={() => {
+                onInsertImage?.(actionBar.nodeId);
+                setActionBar(null);
+              }}
+              className="rounded-full p-2.5 text-th-text-secondary hover:text-th-accent hover:bg-th-accent-muted transition-all active:scale-90"
+              title={labels.insertImage}
+              aria-label={labels.insertImage}
+            >
+              <InsertImageActionIcon />
+            </button>
 
-          {!isRootActionNode && actionBar.isMoreOpen && (
-            <div className="mt-2 min-w-[150px] rounded-xl border border-th-border bg-th-elevated/95 p-1 shadow-2xl backdrop-blur-md">
-              <button
-                onClick={() => {
-                  onInsertImage?.(actionBar.nodeId);
-                  setActionBar(null);
-                }}
-                className="w-full rounded-lg px-3 py-2 text-left text-xs font-semibold text-th-text hover:bg-th-surface-hover"
-              >
-                {labels.insertImage}
-              </button>
+            {!isRootActionNode && (
               <button
                 onClick={() => {
                   onDeleteNode(actionBar.nodeId);
                   setActionBar(null);
                 }}
-                className="mt-1 w-full rounded-lg px-3 py-2 text-left text-xs font-semibold text-red-400 hover:bg-red-500/15"
+                className="rounded-full p-2.5 text-red-400 hover:text-red-300 hover:bg-red-500/15 transition-all active:scale-90"
+                title={labels.delete}
+                aria-label={labels.delete}
               >
-                {labels.delete}
+                <DeleteActionIcon />
               </button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       )}
 

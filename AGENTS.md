@@ -103,27 +103,100 @@ cd web-legacy-mindmap2 && npx vite --port 3016 --host
 
 _Last updated: 2026-03-02_
 
-- Settings 프로필 저장 신뢰성 보강(r2) 완료:
-  - `displayVersion` bumped to `V03.02r2`.
-  - `App.tsx`:
-    - Settings 저장 시 `uid`를 `userId -> profile.googleId -> getUserId()` 순으로 결정.
-    - `saveProfile`을 `await` 처리하고 실패 시 토스트 노출.
-  - `components/SettingsPage.tsx`:
-    - `onSaveProfile` 타입을 async 허용으로 확장.
-    - 저장 버튼/미디어 저장 호출을 `void onSaveProfile(...)`로 명시.
-    - 미디어 저장 시 상태 업데이트와 저장 호출 순서를 분리해 저장 데이터 일관성 보강.
-  - 다음 확인:
-    - 업로드 직후 바로 로그아웃하는 급한 시나리오에서 재로그인 후 갤러리 유지 확인.
+- 알림 설정 UX + 푸시 발송 안정화 핫픽스 완료:
+  - `displayVersion`를 `V03.02r7`로 갱신.
+  - `components/feedback/FeedbackSettingsSheet.tsx`
+    - 시간/토글 변경 후 상태를 명확히 확정할 수 있도록 하단 `저장` 버튼 추가.
+    - 권한 `차단(denied)` 상태에서 브라우저별 허용 경로 안내(ios/android)와
+      `권한 다시 요청` 버튼 추가.
+    - 토글 영역 문구를 `알림 활성화`로 명확히 변경하고 상태 텍스트를 분리해 가독성 개선.
+    - 브라우저 권한값 동기화 시 Firestore에도 저장되도록 보강.
+  - `api/push-reminders.ts`
+    - 크론 인증을 `x-vercel-cron` 헤더 우선 허용으로 완화해 실발송 누락 위험 축소.
+    - 발송 대상 필터를 `token 존재 + permission !== denied` 기준으로 조정.
+  - 검증:
+    - `npm run build` 통과.
 
-- Settings 포토갤러리 영속화 버그 수정 완료:
-  - `displayVersion` bumped to `V03.02r1`.
-  - `components/SettingsPage.tsx`:
-    - 아바타 변경 시 즉시 `onSaveProfile` 호출하도록 수정.
-    - 갤러리 추가/삭제 시 즉시 `onSaveProfile` 호출하도록 수정.
-  - 결과:
-    - 업로드 직후 UI 반영뿐 아니라 Firestore에 즉시 저장되어 로그아웃/재로그인 후 유지됨.
-  - 다음 확인:
-    - 실제 계정으로 Settings > 포토갤러리에서 업로드 후 재로그인 회귀 확인 필요.
+- PWA 푸시 알람(웹 종료 상태 수신) 머지 반영 완료:
+  - `claude/mindmap마인드맵2-xkWkn` 브랜치 변경을 `master`로 병합.
+  - 핵심 반영:
+    - `api/push-reminders.ts` 추가 + Vercel cron(`*/5 * * * *`) 설정.
+    - FCM Admin Messaging/Service Worker 딥링크(`/?alarm=...`) 연동.
+    - 알림 설정에 `timezone`, 일일 발송 dedupe 필드 확장.
+    - 앱 로컬 타이머 알람 제거, 푸시 딥링크 기반 코치 대화 진입으로 전환.
+  - 검증:
+    - `npm run build` 통과.
+
+- 랜딩 첫 화면 언어 선택기 추가 완료:
+  - `displayVersion`를 `V03.02r6`로 갱신.
+  - `components/landing/StickyNav.tsx`
+    - 우측 상단 CTA 옆에 `EN/KO` 세그먼트 언어 토글 추가.
+    - 초기 미로그인 랜딩에서도 즉시 언어 전환 가능하도록 `setLanguage` 연결.
+    - 선택 상태 강조(네온 라임) + `aria-pressed`/`aria-label` 접근성 반영.
+  - 검증:
+    - `npm run build` 통과.
+
+- MindMap 이미지 생성 Gemini 배지 2차 확대 완료:
+  - `displayVersion`를 `V03.02r5`로 갱신.
+  - `components/MindMap.tsx`
+    - `GenerateImageActionIcon`의 Gemini 배지 반경/마크를 추가 확대해
+      모바일에서도 즉시 식별되도록 가시성 강화.
+  - 검증:
+    - `npm run build` 통과.
+
+- MindMap 이미지 생성 아이콘 가시성 핫픽스 완료:
+  - `displayVersion`를 `V03.02r4`로 갱신.
+  - `components/MindMap.tsx`
+    - `GenerateImageActionIcon` 우상단 Gemini 마크를 크게 확대.
+    - 작은 점 형태 대신 흰색 원형 배지 + 4색 다이아 마크로 변경해
+      다크/라이트 배경 모두에서 식별되도록 대비 강화.
+  - 검증:
+    - `npm run build` 통과.
+
+- MindMap 액션 아이콘 방향/의미 강화 리파인먼트 완료:
+  - `displayVersion`를 `V03.02r3`로 갱신.
+  - `components/MindMap.tsx`
+    - `형제 노드` 아이콘을 반시계 90도 회전.
+    - `분해` 아이콘을 180도 회전.
+    - `이미지 생성` 아이콘의 우상단 플러스 표시를 Gemini 컬러 마크(4색)로 교체해
+      `이미지 삽입` 아이콘과 즉시 구분되도록 개선.
+  - 검증:
+    - `npm run build` 통과.
+
+- MindMap 노드 액션바 1줄 아이콘 통합 리디자인 완료:
+  - `displayVersion`를 `V03.02r2`로 갱신.
+  - `components/MindMap.tsx`
+    - 텍스트 버튼(`할일`, `분해`, `이미지 생성`, `더보기`)을 아이콘 버튼으로 통합.
+    - `더보기` 및 하단 2차 패널(`이미지 삽입`, `삭제`) 제거 후,
+      동일 기능을 메인 액션바 1줄에 직접 배치.
+    - 기존 앞쪽 구조 아이콘(자식/형제/부모 추가)은 유지.
+    - 신규 액션 아이콘(`할일`, `분해`, `이미지 생성`, `이미지 삽입`, `삭제`)을
+      인라인 SVG로 추가해 언어 비의존 직관성 강화.
+    - 모든 액션 버튼에 `title` + `aria-label`을 적용해 기존 hover 설명(툴팁) 유지.
+  - 검증:
+    - `npm run build` 실행 시, 기존 이슈로 실패
+      (`components/feedback/WeekCoverFlow.tsx`의 `swiper/react` import resolve 실패).
+      이번 변경과 직접 무관한 기존 의존성 문제.
+  - 다음 작업:
+    - 모바일 실기기에서 1줄 액션바 가독성(터치 영역/아이콘 인지성) 확인.
+
+- Mobile 일정 탭 롱프레스(주간) 라우팅 핫픽스 완료:
+  - `displayVersion`를 `V03.02r1`로 갱신.
+  - `components/BottomDock.tsx`
+    - 캘린더 모드 선택 이벤트를 `onPointerUp` -> `onPointerDown`으로 변경.
+    - 선택 시 `preventDefault()` + `stopPropagation()`을 적용해 모바일 터치 클릭 스루로
+      하단 캘린더 셀 클릭(`day` 진입)이 같이 발생하는 경로를 차단.
+  - `components/CalendarView.tsx`
+    - 외부 `viewMode` 동기화 시 `day` 상태 예외를 제거.
+    - 외부 모드 변경 시 항상 반영하고 `selectedDate`를 초기화해,
+      롱프레스 메뉴에서 `month/week/list` 선택 시 `day` 화면에 고정되지 않도록 수정.
+  - 검증:
+    - `npm run build` 실행 시, 기존 이슈로 실패
+      (`components/feedback/WeekCoverFlow.tsx`의 `swiper/react` import resolve 실패).
+      본 핫픽스 변경 파일과 직접 연관 없는 기존 의존성 문제.
+  - 다음 작업:
+    - Android/iOS 실기기에서 일정 탭 롱프레스 `주간` 선택 시 주간 화면으로
+      일관되게 진입하는지 확인 필요.
 
 - Feedback section Light Mode visibility fixes completed:
   - `displayVersion` bumped to `V02.28r11`.

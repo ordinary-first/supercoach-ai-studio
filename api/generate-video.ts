@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
-import sharp from 'sharp';
+import { getFalClient } from '../lib/falClient.js';
 import { checkAndIncrement, limitExceededResponse } from '../lib/usageGuard.js';
 import { authenticateRequest } from '../lib/authMiddleware.js';
 import { setCorsHeaders } from '../lib/corsHeaders.js';
@@ -21,7 +21,11 @@ const r2 = new S3Client({
   },
 });
 
-type VideoStatus = 'queued' | 'in_progress' | 'completed' | 'failed' | 'unknown';
+// 얼굴 사진 있으면 Subject Reference, 없으면 Text-to-Video
+const MODEL_SUBJECT_REF = 'fal-ai/minimax/video-01-subject-reference';
+const MODEL_TEXT_TO_VIDEO = 'fal-ai/minimax/video-01/text-to-video';
+
+type VideoStatus = 'queued' | 'in_progress' | 'completed' | 'failed';
 
 type VideoPayload = {
   durationSec: number;
@@ -37,51 +41,37 @@ const createRequestId = (): string => {
   return `video_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 };
 
-function clampDurationSec(input: unknown): number {
-  const parsed = Number(input);
-  if (!Number.isFinite(parsed)) return 4;
-  return Math.max(2, Math.min(6, Math.round(parsed)));
-}
-
-function asVideoStatus(input: unknown): VideoStatus {
-  const normalized = String(input || '').toLowerCase();
-  if (normalized === 'queued') return 'queued';
-  if (normalized === 'in_progress') return 'in_progress';
-  if (normalized === 'completed' || normalized === 'succeeded') return 'completed';
-  if (normalized === 'failed') return 'failed';
-  return 'unknown';
-}
-
-function pickVideoUrlFromJob(job: unknown): string | null {
-  if (!job || typeof job !== 'object') return null;
-  const source = job as Record<string, unknown>;
-  const directCandidates = [source.url, source.video_url, source.result_url];
-  for (const candidate of directCandidates) {
-    if (typeof candidate === 'string' && candidate.trim()) return candidate;
+function pickFaceImageUrl(profile: unknown): string | null {
+  if (!profile || typeof profile !== 'object') return null;
+  const p = profile as Record<string, unknown>;
+  if (Array.isArray(p.gallery) && p.gallery.length > 0) {
+    const first = String(p.gallery[0]).trim();
+    if (first) return first;
   }
-
-  if (!Array.isArray(source.output)) return null;
-  for (const entry of source.output) {
-    if (entry && typeof entry === 'object' && typeof (entry as Record<string, unknown>).url === 'string') {
-      return (entry as Record<string, unknown>).url as string;
-    }
+  if (typeof p.avatarUrl === 'string' && p.avatarUrl.trim()) {
+    return p.avatarUrl.trim();
   }
   return null;
 }
 
-async function fetchProfileImageForVideo(
-  avatarUrl: string,
-  width: number,
-  height: number,
-): Promise<Buffer | null> {
-  try {
-    const response = await fetch(avatarUrl);
-    if (!response.ok) return null;
-    const raw = Buffer.from(await response.arrayBuffer());
-    return sharp(raw).resize(width, height, { fit: 'cover' }).jpeg({ quality: 85 }).toBuffer();
-  } catch {
-    return null;
+function mapFalStatus(falStatus: string): VideoStatus {
+  const s = (falStatus || '').toUpperCase();
+  if (s === 'IN_QUEUE') return 'queued';
+  if (s === 'IN_PROGRESS') return 'in_progress';
+  if (s === 'COMPLETED') return 'completed';
+  return 'failed';
+}
+
+// videoId 형식: "subref:{request_id}" 또는 "t2v:{request_id}"
+function parseVideoId(videoId: string): { model: string; requestId: string } {
+  if (videoId.startsWith('subref:')) {
+    return { model: MODEL_SUBJECT_REF, requestId: videoId.slice(7) };
   }
+  if (videoId.startsWith('t2v:')) {
+    return { model: MODEL_TEXT_TO_VIDEO, requestId: videoId.slice(4) };
+  }
+  // 레거시 호환: prefix 없으면 subject ref로 시도
+  return { model: MODEL_SUBJECT_REF, requestId: videoId };
 }
 
 async function uploadVideoToR2(key: string, buffer: Buffer): Promise<string> {
@@ -94,35 +84,6 @@ async function uploadVideoToR2(key: string, buffer: Buffer): Promise<string> {
     }),
   );
   return `${R2_PUBLIC_URL}/${key}`;
-}
-
-async function parseUpstreamError(response: Response): Promise<{ code: string; message: string }> {
-  const fallbackCode = `UPSTREAM_HTTP_${response.status}`;
-  const fallbackMessage = `Upstream request failed (${response.status})`;
-
-  try {
-    const payload = await response.json();
-    const body = payload as Record<string, unknown>;
-    const nestedError =
-      body.error && typeof body.error === 'object'
-        ? (body.error as Record<string, unknown>)
-        : null;
-    const message =
-      typeof body.error === 'string'
-        ? body.error
-        : typeof body.message === 'string'
-          ? body.message
-          : fallbackMessage;
-    const code =
-      typeof body.code === 'string'
-        ? body.code
-        : nestedError && typeof nestedError.code === 'string'
-          ? nestedError.code
-          : fallbackCode;
-    return { code, message };
-  } catch {
-    return { code: fallbackCode, message: fallbackMessage };
-  }
 }
 
 function respondVideo(res: VercelResponse, payload: VideoPayload) {
@@ -155,143 +116,133 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (authError) return res.status(authError.status).json(authError.body);
   const uid = user!.uid;
 
-  const apiKey = process.env.OPENAI_API_KEY?.trim();
-  if (!apiKey) {
+  if (!process.env.FAL_KEY?.trim()) {
     return res.status(500).json({
       errorCode: 'API_KEY_NOT_CONFIGURED',
-      errorMessage: 'API key not configured',
+      errorMessage: 'FAL_KEY not configured',
       requestId,
     });
   }
 
   try {
-    const { prompt, profile, videoId, durationSec } = req.body || {};
-    const effectiveDurationSec = clampDurationSec(durationSec);
+    const { prompt, profile, videoId } = req.body || {};
+    const DURATION = 6; // MiniMax 고정 ~6초
 
-    // 신규 생성만 체크 (폴링 재요청은 스킵)
-    if (!videoId) {
-      const usage = await checkAndIncrement(uid, 'videoGenerations');
-      if (!usage.allowed) {
-        return res.status(429).json(limitExceededResponse('videoGenerations', usage));
+    const fal = getFalClient();
+
+    // ── 폴링 (기존 영상 상태 확인) ──
+    if (videoId) {
+      const { model, requestId: falRequestId } = parseVideoId(String(videoId));
+
+      try {
+        const statusRes = await fal.queue.status(model, {
+          requestId: falRequestId,
+          logs: false,
+        });
+
+        const status = mapFalStatus((statusRes as any).status);
+
+        if (status === 'queued' || status === 'in_progress') {
+          return respondVideo(res, {
+            durationSec: DURATION,
+            requestId,
+            videoId: String(videoId),
+            status,
+          });
+        }
+
+        if (status !== 'completed') {
+          return respondVideo(res, {
+            durationSec: DURATION,
+            requestId,
+            videoId: String(videoId),
+            status: 'failed',
+            errorCode: 'VIDEO_JOB_FAILED',
+            errorMessage: 'Video generation failed',
+          });
+        }
+
+        // 완료 → 결과 가져오기
+        const result = await fal.queue.result(model, {
+          requestId: falRequestId,
+        });
+
+        const videoUrl: string | null =
+          (result as any)?.data?.video?.url || null;
+
+        if (!videoUrl) {
+          return respondVideo(res, {
+            durationSec: DURATION,
+            requestId,
+            videoId: String(videoId),
+            status: 'failed',
+            errorCode: 'VIDEO_EMPTY_RESULT',
+            errorMessage: 'Video result is empty',
+          });
+        }
+
+        // fal.ai temp URL → 다운로드 → R2 업로드
+        const vidResponse = await fetch(videoUrl);
+        if (!vidResponse.ok) {
+          // R2 실패 시 fal.ai temp URL 직접 반환
+          return respondVideo(res, {
+            durationSec: DURATION,
+            requestId,
+            videoId: String(videoId),
+            videoUrl,
+            status: 'completed',
+          });
+        }
+
+        const videoBuffer = Buffer.from(await vidResponse.arrayBuffer());
+
+        if (R2_PUBLIC_URL) {
+          try {
+            const key = `videos/${safePathSegment(uid)}/${safePathSegment(falRequestId)}.mp4`;
+            const uploadedUrl = await uploadVideoToR2(key, videoBuffer);
+            return respondVideo(res, {
+              durationSec: DURATION,
+              requestId,
+              videoId: String(videoId),
+              videoUrl: uploadedUrl,
+              status: 'completed',
+            });
+          } catch (uploadErr: unknown) {
+            console.error('[generate-video][r2]', requestId, uploadErr);
+          }
+        }
+
+        // R2 실패 폴백: fal.ai temp URL
+        return respondVideo(res, {
+          durationSec: DURATION,
+          requestId,
+          videoId: String(videoId),
+          videoUrl,
+          status: 'completed',
+        });
+      } catch (pollErr: unknown) {
+        console.error('[generate-video][poll]', requestId, pollErr);
+        return respondVideo(res, {
+          durationSec: DURATION,
+          requestId,
+          videoId: String(videoId),
+          status: 'failed',
+          errorCode: 'VIDEO_POLL_ERROR',
+          errorMessage: pollErr instanceof Error ? pollErr.message : 'Poll failed',
+        });
       }
     }
-    const baseUrl = (process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1').trim();
-    const authHeaders = { Authorization: `Bearer ${apiKey}` };
 
-    if (videoId) {
-      const pollRes = await fetch(`${baseUrl}/videos/${encodeURIComponent(String(videoId))}`, {
-        method: 'GET',
-        headers: authHeaders,
-      });
-
-      if (!pollRes.ok) {
-        const upstream = await parseUpstreamError(pollRes);
-        return respondVideo(res, {
-          durationSec: effectiveDurationSec,
-          requestId,
-          videoId: String(videoId),
-          status: 'failed',
-          errorCode: `VIDEO_POLL_${upstream.code}`,
-          errorMessage: upstream.message,
-        });
-      }
-
-      const job = (await pollRes.json()) as Record<string, unknown>;
-      const status = asVideoStatus(job.status);
-
-      if (status === 'queued' || status === 'in_progress') {
-        return respondVideo(res, {
-          durationSec: effectiveDurationSec,
-          requestId,
-          videoId: String(videoId),
-          status,
-        });
-      }
-
-      if (status === 'failed') {
-        return respondVideo(res, {
-          durationSec: effectiveDurationSec,
-          requestId,
-          videoId: String(videoId),
-          status: 'failed',
-          errorCode: 'VIDEO_JOB_FAILED',
-          errorMessage: 'Video generation job failed',
-        });
-      }
-
-      if (status !== 'completed') {
-        return respondVideo(res, {
-          durationSec: effectiveDurationSec,
-          requestId,
-          videoId: String(videoId),
-          status: 'failed',
-          errorCode: 'VIDEO_STATUS_UNKNOWN',
-          errorMessage: `Unknown video status: ${String(job.status || 'n/a')}`,
-        });
-      }
-
-      const contentRes = await fetch(
-        `${baseUrl}/videos/${encodeURIComponent(String(videoId))}/content`,
-        { method: 'GET', headers: authHeaders },
-      );
-
-      if (!contentRes.ok) {
-        const fallbackUrl = pickVideoUrlFromJob(job);
-        if (fallbackUrl) {
-          return respondVideo(res, {
-            durationSec: effectiveDurationSec,
-            requestId,
-            videoId: String(videoId),
-            videoUrl: fallbackUrl,
-            status: 'completed',
-          });
-        }
-        const upstream = await parseUpstreamError(contentRes);
-        return respondVideo(res, {
-          durationSec: effectiveDurationSec,
-          requestId,
-          videoId: String(videoId),
-          status: 'failed',
-          errorCode: `VIDEO_CONTENT_${upstream.code}`,
-          errorMessage: upstream.message,
-        });
-      }
-
-      const videoBuffer = Buffer.from(await contentRes.arrayBuffer());
-
-      if (R2_PUBLIC_URL) {
-        try {
-          const owner = safePathSegment(uid);
-          const key = `videos/${owner}/${safePathSegment(String(videoId))}.mp4`;
-          const uploadedUrl = await uploadVideoToR2(key, videoBuffer);
-          return respondVideo(res, {
-            durationSec: effectiveDurationSec,
-            requestId,
-            videoId: String(videoId),
-            videoUrl: uploadedUrl,
-            status: 'completed',
-          });
-        } catch (uploadError: unknown) {
-          const message =
-            uploadError instanceof Error ? uploadError.message : 'R2 upload failed';
-          console.error('[generate-video][r2-upload]', requestId, message);
-        }
-      }
-
-      const dataUrl = `data:video/mp4;base64,${videoBuffer.toString('base64')}`;
-      return respondVideo(res, {
-        durationSec: effectiveDurationSec,
-        requestId,
-        videoId: String(videoId),
-        videoUrl: dataUrl,
-        status: 'completed',
-      });
+    // ── 신규 생성 ──
+    const usage = await checkAndIncrement(uid, 'videoGenerations');
+    if (!usage.allowed) {
+      return res.status(429).json(limitExceededResponse('videoGenerations', usage));
     }
 
     const promptText = String(prompt || '').trim();
     if (!promptText) {
       return respondVideo(res, {
-        durationSec: effectiveDurationSec,
+        durationSec: DURATION,
         requestId,
         status: 'failed',
         errorCode: 'EMPTY_PROMPT',
@@ -299,91 +250,68 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    const personDesc = profile
-      ? `${profile.name}, a ${profile.age}yo person in ${profile.location}`
+    const faceUrl = pickFaceImageUrl(profile);
+    const p = (profile || {}) as Record<string, unknown>;
+    const personDesc = p.name
+      ? `${p.name}, ${p.age ? `${p.age}yo` : ''} ${typeof p.gender === 'string' ? p.gender.toLowerCase() : ''} in ${p.location || 'a beautiful setting'}`
       : 'A determined person';
+
     const videoPrompt = `Cinematic scene of ${personDesc} living the reality of: "${promptText}". Aspirational, warm atmosphere. Smooth natural movement. Soft cinematic lighting.`;
 
-    // 프로필 아바타가 있으면 input_reference로 전달 (이미지→비디오)
-    const avatarUrl = typeof profile?.avatarUrl === 'string' ? profile.avatarUrl.trim() : '';
-    const profileImage = avatarUrl
-      ? await fetchProfileImageForVideo(avatarUrl, 1280, 720)
-      : null;
+    let submitted: unknown;
+    let prefixedId: string;
 
-    let createRes: Response;
-    if (profileImage) {
-      const formData = new FormData();
-      formData.append('model', 'sora-2');
-      formData.append('prompt', videoPrompt);
-      formData.append('size', '1280x720');
-      formData.append('seconds', String(effectiveDurationSec));
-      formData.append(
-        'input_reference',
-        new Blob([new Uint8Array(profileImage)], { type: 'image/jpeg' }),
-        'profile.jpg',
-      );
-
-      createRes = await fetch(`${baseUrl}/videos`, {
-        method: 'POST',
-        headers: authHeaders,
-        body: formData,
-      });
-    } else {
-      createRes = await fetch(`${baseUrl}/videos`, {
-        method: 'POST',
-        headers: {
-          ...authHeaders,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'sora-2',
+    if (faceUrl) {
+      // 얼굴 사진 있음 → MiniMax Subject Reference (얼굴 보존)
+      submitted = await fal.queue.submit(MODEL_SUBJECT_REF, {
+        input: {
           prompt: videoPrompt,
-          seconds: String(effectiveDurationSec),
-          size: '1280x720',
-        }),
+          subject_reference_image_url: faceUrl,
+          prompt_optimizer: true,
+        },
       });
-    }
-
-    if (!createRes.ok) {
-      const upstream = await parseUpstreamError(createRes);
-      return respondVideo(res, {
-        durationSec: effectiveDurationSec,
-        requestId,
-        status: 'failed',
-        errorCode: `VIDEO_CREATE_${upstream.code}`,
-        errorMessage: upstream.message,
+      const reqId = (submitted as any)?.request_id;
+      if (!reqId) {
+        return respondVideo(res, {
+          durationSec: DURATION,
+          requestId,
+          status: 'failed',
+          errorCode: 'VIDEO_ID_MISSING',
+          errorMessage: 'No request ID returned',
+        });
+      }
+      prefixedId = `subref:${reqId}`;
+    } else {
+      // 얼굴 사진 없음 → MiniMax Text-to-Video (일반 영상)
+      submitted = await fal.queue.submit(MODEL_TEXT_TO_VIDEO, {
+        input: {
+          prompt: videoPrompt,
+          prompt_optimizer: true,
+        },
       });
-    }
-
-    const created = (await createRes.json()) as Record<string, unknown>;
-    const createdVideoId =
-      typeof created.id === 'string'
-        ? created.id
-        : typeof created.video_id === 'string'
-          ? created.video_id
-          : null;
-    const createdStatus = asVideoStatus(created.status || 'queued');
-
-    if (!createdVideoId && createdStatus !== 'completed') {
-      return respondVideo(res, {
-        durationSec: effectiveDurationSec,
-        requestId,
-        status: 'failed',
-        errorCode: 'VIDEO_ID_MISSING',
-        errorMessage: 'Video ID is missing from create response',
-      });
+      const reqId = (submitted as any)?.request_id;
+      if (!reqId) {
+        return respondVideo(res, {
+          durationSec: DURATION,
+          requestId,
+          status: 'failed',
+          errorCode: 'VIDEO_ID_MISSING',
+          errorMessage: 'No request ID returned',
+        });
+      }
+      prefixedId = `t2v:${reqId}`;
     }
 
     return respondVideo(res, {
-      durationSec: effectiveDurationSec,
+      durationSec: DURATION,
       requestId,
-      videoId: createdVideoId,
-      status: createdStatus === 'unknown' ? 'queued' : createdStatus,
+      videoId: prefixedId,
+      status: 'queued',
     });
   } catch (error: unknown) {
     console.error('[generate-video]', requestId, error);
     return respondVideo(res, {
-      durationSec: 4,
+      durationSec: 6,
       requestId,
       status: 'failed',
       errorCode: 'VIDEO_GENERATION_EXCEPTION',

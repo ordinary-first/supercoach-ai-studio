@@ -41,6 +41,8 @@ interface FeedbackViewProps {
   todos: ToDoItem[];
   userProfile: UserProfile | null;
   userId: string | null;
+  notificationRuntimeEnabled?: boolean;
+  onNotificationSettingsChange?: (settings: NotificationSettings | null) => void;
   onUpdateNode?: (nodeId: string, updates: Partial<GoalNode>) => void;
   onUpdateTodo?: (todoId: string, updates: Partial<ToDoItem>) => void;
 }
@@ -86,6 +88,7 @@ const MAX_PAST_WEEKS = 52;
 const TIMER_INTERVAL = 60000;
 const COLLAPSE_THRESHOLD = 72;
 const COLLAPSE_MAX_DRAG = 120;
+const SHOW_GOAL_ADJUSTMENTS = false;
 type FeedbackViewMode = 'week-detail' | 'coverflow';
 
 const getDayStart = (d: Date): number =>
@@ -122,6 +125,8 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
   todos,
   userProfile,
   userId,
+  notificationRuntimeEnabled = true,
+  onNotificationSettingsChange,
   onUpdateNode,
   onUpdateTodo,
 }) => {
@@ -213,6 +218,10 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
       if (settings) setNotifSettings(settings);
     });
   }, [userId]);
+
+  useEffect(() => {
+    onNotificationSettingsChange?.(notifSettings);
+  }, [notifSettings, onNotificationSettingsChange]);
 
   const mergedCards = useMemo(() => {
     const map = new Map<string, FeedbackCard>(firestoreCards);
@@ -319,7 +328,10 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
         return next;
       });
 
-      if (userId) await saveFeedbackCard(userId, card);
+      if (userId) {
+        try { await saveFeedbackCard(userId, card); }
+        catch { /* silent — local state already updated */ }
+      }
       setSelectedDay(null);
     },
     [userId],
@@ -348,7 +360,10 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
         return next;
       });
 
-      if (userId) await saveFeedbackCard(userId, card);
+      if (userId) {
+        try { await saveFeedbackCard(userId, card); }
+        catch { /* silent — local state already updated */ }
+      }
       markVictoryGenerated();
 
       if (canShowNotification()) {
@@ -367,7 +382,7 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
   }, [todos, userProfile, userId, generatingVictory, t]);
 
   useEffect(() => {
-    if (!userId || !notifSettings) return;
+    if (!notificationRuntimeEnabled || !userId || !notifSettings) return;
 
     const tick = () => {
       const triggers = checkNotificationTriggers(notifSettings);
@@ -394,7 +409,7 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
     tick();
     timerRef.current = setInterval(tick, TIMER_INTERVAL);
     return () => clearInterval(timerRef.current);
-  }, [userId, notifSettings, generateDailyVictory, todos, t]);
+  }, [notificationRuntimeEnabled, userId, notifSettings, generateDailyVictory, todos, t]);
 
   useEffect(() => {
     if (!isOpen || mergedCards.size === 0 || nodes.length === 0) return;
@@ -614,7 +629,7 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
           </div>
 
           <div className="space-y-5 pb-8">
-            {pendingAdjustments.map((adj) => (
+            {SHOW_GOAL_ADJUSTMENTS && pendingAdjustments.map((adj) => (
               <div key={adj.goalId} className="px-4">
                 <GoalAdjustmentCard
                   adjustment={adj}
@@ -626,7 +641,7 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
               </div>
             ))}
 
-            {recentAccepted && undoData && (
+            {SHOW_GOAL_ADJUSTMENTS && recentAccepted && undoData && (
               <div className="mx-4 px-4 py-3 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center justify-between animate-fade-in fb-card-press">
                 <span className="text-[12px] text-green-400">{t.feedback.adjustComplete}</span>
                 <button
@@ -694,7 +709,10 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
           t={t}
           userId={userId}
           onClose={() => setShowSettings(false)}
-          onSettingsChange={setNotifSettings}
+          onSettingsChange={(settings) => {
+            setNotifSettings(settings);
+            onNotificationSettingsChange?.(settings);
+          }}
         />
       )}
     </div>

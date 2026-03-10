@@ -104,7 +104,7 @@ export const DayDetailSheet: React.FC<DayDetailSheetProps> = ({
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto px-5 pb-6">
+        <div className="flex-1 overflow-y-auto px-5" style={{ paddingBottom: 'calc(24px + env(safe-area-inset-bottom, 0px))' }}>
           {noData ? (
             <div className="flex flex-col items-center justify-center py-12">
               <p className="text-[13px] text-th-text-muted text-center whitespace-pre-line">
@@ -194,7 +194,7 @@ export const DayDetailSheet: React.FC<DayDetailSheetProps> = ({
 
         {/* Save Button */}
         {isEditing && (
-          <div className="px-5 pb-5 pt-2">
+          <div className="px-5 pt-2" style={{ paddingBottom: 'calc(20px + env(safe-area-inset-bottom, 0px))' }}>
             <button
               onClick={handleSave}
               className="w-full py-3 rounded-2xl bg-th-accent text-th-text-inverse font-bold text-sm transition-all hover:opacity-90"

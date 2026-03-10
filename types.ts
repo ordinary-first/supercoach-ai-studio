@@ -26,6 +26,7 @@ export interface GoalNode {
   vy?: number;
   fx?: number | null;
   fy?: number | null;
+  sortOrder?: number;
 }
 
 export interface GoalLink {
@@ -110,6 +111,19 @@ export interface ToDoItem {
   tags?: string[];
   listId?: string;
   sortOrder?: number;
+  steps?: TodoStep[];
+}
+
+export interface TodoStep {
+  id: string;
+  text: string;
+  completed: boolean;
+}
+
+export interface UserPrinciple {
+  id: string;
+  text: string;
+  createdAt: number;
 }
 
 // Coach Memory System
@@ -165,8 +179,11 @@ export interface NotificationSettings {
   morningTime: string; // "HH:mm"
   eveningEnabled: boolean;
   eveningTime: string; // "HH:mm"
+  timezone?: string;
   notificationPermission: 'granted' | 'denied' | 'default';
   fcmToken?: string;
+  lastMorningSentDate?: string;
+  lastEveningSentDate?: string;
   updatedAt: number;
 }
 
