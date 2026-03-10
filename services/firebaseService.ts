@@ -199,11 +199,12 @@ export const saveGoalData = async (
   links: GoalLink[],
 ): Promise<void> => {
   if (!userId) return;
-  const payload = {
+  // Firestore rejects undefined values — strip via JSON round-trip
+  const payload = JSON.parse(JSON.stringify({
     nodes: serializeGoalNodes(nodes),
     links: serializeGoalLinks(links),
     updatedAt: Date.now(),
-  };
+  }));
   const docRef = doc(db, 'users', userId, 'data', 'goals');
   await setDoc(docRef, payload);
 };
@@ -290,8 +291,10 @@ export const saveChatHistory = async (
 ): Promise<void> => {
   if (!userId) return;
   const trimmed = messages.slice(-MAX_CHAT_MESSAGES);
+  // Firestore rejects undefined values — strip via JSON round-trip
+  const clean = JSON.parse(JSON.stringify({ messages: trimmed, updatedAt: Date.now() }));
   const docRef = doc(db, 'users', userId, 'data', 'chatHistory');
-  await setDoc(docRef, { messages: trimmed, updatedAt: Date.now() });
+  await setDoc(docRef, clean);
 };
 
 export const loadChatHistory = async (

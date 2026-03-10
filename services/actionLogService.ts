@@ -41,7 +41,7 @@ export const appendAction = (
   addDoc(
     collection(db, 'users', userId!, 'actionLog'),
     { action: entry.action, detail: entry.detail, timestamp: entry.timestamp, metadata: entry.metadata || null },
-  ).catch(() => { /* fire-and-forget */ });
+  ).catch((e) => { console.error('[ActionLog] Write failed:', (e as { code?: string })?.code || e); });
 };
 
 export const getRecentActions = async (

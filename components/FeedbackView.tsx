@@ -330,7 +330,7 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
 
       if (userId) {
         try { await saveFeedbackCard(userId, card); }
-        catch { /* silent — local state already updated */ }
+        catch (e) { console.error('[FeedbackCard] Save failed:', (e as { code?: string })?.code || e); }
       }
       setSelectedDay(null);
     },
@@ -362,7 +362,7 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
 
       if (userId) {
         try { await saveFeedbackCard(userId, card); }
-        catch { /* silent — local state already updated */ }
+        catch (e) { console.error('[FeedbackCard] Save failed:', (e as { code?: string })?.code || e); }
       }
       markVictoryGenerated();
 
