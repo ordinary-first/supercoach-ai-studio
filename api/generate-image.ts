@@ -176,7 +176,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ? childTexts.join(', ')
       : '';
 
-    // 하위 노드가 있으면 활동 장면 중심, 없으면 목표 자체 묘사
+    // Kontext Pro: 얼굴 사진 변환 지시문 (image-to-image)
+    const kontextPrompt = activities
+      ? `Transform this photo into a cinematic scene where the person is actively doing: ${activities}. The overall theme is "${cleanPrompt}". Full body or upper body visible, vivid real-world setting. Aspirational and energetic mood. Photorealistic, cinematic lighting. No text, no letters, no watermarks.`
+      : `Transform this photo into a cinematic scene where the person is working towards: "${cleanPrompt}". Show them actively engaged in a concrete scene related to this goal, full body or upper body visible. Aspirational and warm mood. Photorealistic, cinematic lighting. No text, no letters, no watermarks.`;
+
+    // FLUX 1.1 Pro: 텍스트 only (얼굴 사진 없을 때)
     const textPrompt = activities
       ? `Photorealistic image of ${personDesc} actively doing these activities: ${activities}. The overall theme is "${cleanPrompt}". Show the person in the middle of the action, full body or upper body visible, in a vivid real-world setting. Aspirational and energetic mood. Square composition, cinematic lighting. No text, no letters, no watermarks.`
       : `Photorealistic image of ${personDesc} working towards their goal: "${cleanPrompt}". Show the person actively engaged in a concrete scene related to this goal, full body or upper body visible. Aspirational and warm mood. Square composition, cinematic lighting. No text, no letters, no watermarks.`;
@@ -184,39 +189,35 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let result: unknown;
 
     if (faceUrl) {
-      // PuLID FLUX — 갤러리/아바타 사진으로 얼굴 보존 생성
-      // fal.ai가 reference URL 접근 못하면 schnell로 폴백
+      // FLUX Kontext Pro — 얼굴 사진을 입력으로 꿈 장면 변환 (얼굴 보존)
       try {
-        result = await fal.subscribe('fal-ai/flux-pulid', {
+        result = await fal.subscribe('fal-ai/flux-pro/kontext', {
           input: {
-            prompt: textPrompt,
-            reference_image_url: faceUrl,
-            image_size: 'square_hd',
-            num_inference_steps: isNodeImage ? 16 : 20,
-            guidance_scale: 4.5,
-            id_weight: 0.5,
+            prompt: kontextPrompt,
+            image_url: faceUrl,
+            guidance_scale: 4.0,
+            output_format: 'jpeg',
+            safety_tolerance: 4,
           },
           pollInterval: 2000,
         });
-      } catch (pulidErr: unknown) {
-        console.error('[generate-image][pulid-fallback]', requestId, pulidErr instanceof Error ? pulidErr.message : pulidErr);
-        // PuLID 실패 → FLUX schnell 텍스트 only 폴백
-        result = await fal.subscribe('fal-ai/flux/schnell', {
+      } catch (kontextErr: unknown) {
+        console.error('[generate-image][kontext-fallback]', requestId, kontextErr instanceof Error ? kontextErr.message : kontextErr);
+        // Kontext 실패 → FLUX 1.1 Pro 텍스트 only 폴백
+        result = await fal.subscribe('fal-ai/flux-pro/v1.1', {
           input: {
             prompt: textPrompt,
             image_size: 'square_hd',
-            num_inference_steps: 4,
           },
           pollInterval: 2000,
         });
       }
     } else {
-      // 얼굴 사진 없음 — FLUX schnell 텍스트 only (빠르고 저렴)
-      result = await fal.subscribe('fal-ai/flux/schnell', {
+      // 얼굴 사진 없음 — FLUX 1.1 Pro 텍스트 only (고품질)
+      result = await fal.subscribe('fal-ai/flux-pro/v1.1', {
         input: {
           prompt: textPrompt,
           image_size: 'square_hd',
-          num_inference_steps: 4,
         },
         pollInterval: 2000,
       });
