@@ -223,14 +223,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           status: 'completed',
         });
       } catch (pollErr: unknown) {
-        console.error('[generate-video][poll]', requestId, pollErr);
+        // fal SDK 에러에서 상세 정보 추출
+        const errObj = pollErr as Record<string, unknown>;
+        const detail =
+          typeof errObj?.body === 'object' && errObj.body
+            ? JSON.stringify(errObj.body).slice(0, 300)
+            : typeof errObj?.detail === 'string'
+              ? errObj.detail
+              : pollErr instanceof Error
+                ? pollErr.message
+                : 'Poll failed';
+        console.error('[generate-video][poll]', requestId, detail, pollErr);
         return respondVideo(res, {
           durationSec: DURATION,
           requestId,
           videoId: String(videoId),
           status: 'failed',
           errorCode: 'VIDEO_POLL_ERROR',
-          errorMessage: pollErr instanceof Error ? pollErr.message : 'Poll failed',
+          errorMessage: detail,
         });
       }
     }
@@ -275,6 +285,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (faceUrl) {
       input.elements = [{
         frontal_image_url: faceUrl,
+        reference_image_urls: [faceUrl],
       }];
     }
 
@@ -298,13 +309,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       status: 'queued',
     });
   } catch (error: unknown) {
-    console.error('[generate-video]', requestId, error);
+    const errObj = error as Record<string, unknown>;
+    const detail =
+      typeof errObj?.body === 'object' && errObj.body
+        ? JSON.stringify(errObj.body).slice(0, 300)
+        : error instanceof Error
+          ? error.message
+          : 'Internal server error';
+    console.error('[generate-video]', requestId, detail, error);
     return respondVideo(res, {
       durationSec: 5,
       requestId,
       status: 'failed',
       errorCode: 'VIDEO_GENERATION_EXCEPTION',
-      errorMessage: 'Internal server error',
+      errorMessage: detail,
     });
   }
 }
