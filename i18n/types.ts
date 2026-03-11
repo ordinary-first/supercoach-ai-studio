@@ -146,6 +146,8 @@ export interface TranslationStrings {
     adjustReason: string;
     currentLabel: string;
     suggestedLabel: string;
+    userNote: string;
+    userNotePlaceholder: string;
   };
   settings: {
     title: string;

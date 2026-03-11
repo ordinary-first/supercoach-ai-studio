@@ -170,6 +170,8 @@ const ko: TranslationStrings = {
     adjustReason: '{weeks}주간 평균 달성률 {avg}%',
     currentLabel: '현재',
     suggestedLabel: '제안',
+    userNote: '나의 기록',
+    userNotePlaceholder: '오늘 하루를 자유롭게 기록하세요...',
   },
   settings: {
     title: '설정',

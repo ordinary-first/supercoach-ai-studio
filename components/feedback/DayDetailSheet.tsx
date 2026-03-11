@@ -30,6 +30,7 @@ export const DayDetailSheet: React.FC<DayDetailSheetProps> = ({
   const [isEditing, setIsEditing] = useState(false);
   const [showIncomplete, setShowIncomplete] = useState(false);
   const [editComment, setEditComment] = useState(card?.coachComment ?? '');
+  const [editNote, setEditNote] = useState(card?.userNote ?? '');
   const [editCompleted, setEditCompleted] = useState<string[]>(card?.completedTodos ?? []);
   const [editIncomplete, setEditIncomplete] = useState<string[]>(card?.incompleteTodos ?? []);
 
@@ -44,12 +45,13 @@ export const DayDetailSheet: React.FC<DayDetailSheetProps> = ({
       completedTodos: editCompleted,
       incompleteTodos: editIncomplete,
       coachComment: editComment || undefined,
+      userNote: editNote || undefined,
       userEdited: true,
       updatedAt: Date.now(),
     };
     onSave(updated);
     setIsEditing(false);
-  }, [card, editCompleted, editIncomplete, editComment, onSave]);
+  }, [card, editCompleted, editIncomplete, editComment, editNote, onSave]);
 
   const toggleItem = (item: string, fromCompleted: boolean) => {
     if (!isEditing) return;
@@ -184,6 +186,28 @@ export const DayDetailSheet: React.FC<DayDetailSheetProps> = ({
                   card?.coachComment && (
                     <p className="text-[13px] text-th-text-secondary italic">
                       &ldquo;{card.coachComment}&rdquo;
+                    </p>
+                  )
+                )}
+              </div>
+
+              {/* User Note (일기) */}
+              <div className="border-t border-th-border/50 pt-4">
+                <p className="text-[11px] text-th-text-tertiary mb-2">
+                  {t.feedback.userNote}
+                </p>
+                {isEditing ? (
+                  <textarea
+                    value={editNote}
+                    onChange={(e) => setEditNote(e.target.value)}
+                    className="w-full bg-th-surface border border-th-border rounded-xl px-3 py-2.5 text-[13px] text-th-text resize-none focus:outline-none focus:border-th-accent/50 leading-relaxed"
+                    rows={4}
+                    placeholder={t.feedback.userNotePlaceholder}
+                  />
+                ) : (
+                  card?.userNote && (
+                    <p className="text-[13px] text-th-text-secondary leading-relaxed whitespace-pre-wrap">
+                      {card.userNote}
                     </p>
                   )
                 )}

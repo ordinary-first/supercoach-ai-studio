@@ -170,6 +170,7 @@ export interface FeedbackCard {
   completedTodos: string[];
   incompleteTodos: string[];
   coachComment?: string;
+  userNote?: string;
   userEdited?: boolean;
   createdAt: number;
   updatedAt: number;

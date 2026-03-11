@@ -168,6 +168,8 @@ const en: TranslationStrings = {
     adjustReason: 'Average {avg}% over {weeks} weeks',
     currentLabel: 'Current',
     suggestedLabel: 'Suggested',
+    userNote: 'My Journal',
+    userNotePlaceholder: 'Write freely about your day...',
   },
   settings: {
     title: 'Settings',
