@@ -162,7 +162,7 @@ const BottomDock: React.FC<BottomDockProps> = ({
                 {...longPressHandlers}
                 className={`relative group flex flex-col items-center justify-center w-11 h-11 rounded-xl
                   transition-all duration-300 ${isActive
-                    ? 'text-white shadow-[0_0_26px_var(--shadow-glow)]'
+                    ? 'text-th-accent dark:text-white shadow-[0_0_26px_var(--shadow-glow)]'
                     : 'text-th-text-secondary hover:text-th-text hover:bg-th-surface/50'
                   }`}
                 aria-label={tab.label}
@@ -177,7 +177,7 @@ const BottomDock: React.FC<BottomDockProps> = ({
                   {tab.icon}
                 </div>
                 <span
-                  className={`text-[9px] font-display mt-0.5 tracking-wide transition-opacity duration-300 ${isActive ? 'opacity-100 font-bold text-white' : 'opacity-70'
+                  className={`text-[9px] font-display mt-0.5 tracking-wide transition-opacity duration-300 ${isActive ? 'opacity-100 font-bold text-th-accent dark:text-white' : 'opacity-70'
                     }`}
                 >
                   {tab.label}
