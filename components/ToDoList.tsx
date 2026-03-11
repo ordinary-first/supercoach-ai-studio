@@ -1,5 +1,5 @@
 ﻿import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import { Check, Trash2, Plus, ListTodo, Circle, CheckCircle2, Target, Bell, Repeat, Sun, ArrowLeft, ChevronRight, ChevronDown, Layout, X, Calendar, Star, CalendarDays, Home, Menu, GripVertical } from 'lucide-react';
+import { Check, Trash2, Plus, ListTodo, Circle, CheckCircle2, Target, Bell, Repeat, Sun, ArrowLeft, ArrowUp, ChevronRight, ChevronDown, Layout, X, Calendar, Star, CalendarDays, Home, Menu, GripVertical } from 'lucide-react';
 import { ToDoItem, TodoList, TodoGroup, TodoStep, SmartListId, RepeatFrequency, UserPrinciple } from '../types';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { useTranslation } from '../i18n/useTranslation';
@@ -647,6 +647,15 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
               className="flex-1 bg-transparent text-[15px] leading-[1.45] text-th-text placeholder-th-text-tertiary focus:outline-none"
               aria-label={t.todo.inputLabel}
             />
+            {inputText.trim() && (
+              <button
+                type="submit"
+                className="w-8 h-8 rounded-full bg-th-accent flex items-center justify-center flex-shrink-0 transition-all hover:scale-105 active:scale-95"
+                aria-label={t.todo.addLabel}
+              >
+                <ArrowUp size={18} className="text-th-text-inverse" />
+              </button>
+            )}
           </form>
 
           {/* Quick action buttons */}
