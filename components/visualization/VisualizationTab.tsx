@@ -143,7 +143,7 @@ export default function VisualizationTab({
     : '✨ Dream is ready — View result';
 
   return (
-    <div ref={focusTrapRef} className="apple-tab-shell fixed inset-0 z-50 flex flex-col font-body" style={{ paddingBottom: 'var(--dock-h)' }}>
+    <div ref={focusTrapRef} className="apple-tab-shell fixed inset-0 z-50 flex flex-col pb-16 font-body">
       <div className="apple-glass-header flex justify-center pt-3 pb-3">
         <DreamPillSwitcher activeTab={pillTab} onTabChange={setPillTab} />
       </div>

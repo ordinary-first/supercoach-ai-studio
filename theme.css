@@ -3,7 +3,6 @@
   --sar: env(safe-area-inset-right);
   --sab: env(safe-area-inset-bottom);
   --sal: env(safe-area-inset-left);
-  --dock-h: calc(60px + var(--sab));
 
   --bg-base: #111214;
   --bg-surface: rgba(29, 31, 37, 0.78);

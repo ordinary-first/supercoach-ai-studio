@@ -258,7 +258,7 @@ export const FeedbackSettingsSheet: React.FC<FeedbackSettingsSheetProps> = ({
         onClick={onClose}
       />
 
-      <div className="relative w-full max-w-lg bg-th-elevated rounded-t-3xl max-h-[70vh] flex flex-col animate-slide-up shadow-2xl border-t border-th-border" style={{ marginBottom: 'var(--dock-h)' }}>
+      <div className="relative w-full max-w-lg bg-th-elevated rounded-t-3xl max-h-[70vh] flex flex-col animate-slide-up shadow-2xl border-t border-th-border mb-[60px]">
         <div className="flex justify-center pt-3 pb-1">
           <div className="w-10 h-1 rounded-full bg-th-border" />
         </div>
