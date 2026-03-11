@@ -111,7 +111,7 @@ export const FeedbackSettingsSheet: React.FC<FeedbackSettingsSheetProps> = ({
   const [settings, setSettings] = useState<NotificationSettings>(DEFAULT_SETTINGS);
   const [loaded, setLoaded] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [saveConfirm, setSaveConfirm] = useState(false);
+  const [saveResult, setSaveResult] = useState<{ ok: boolean; msg: string } | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout>>();
   const confirmTimer = useRef<ReturnType<typeof setTimeout>>();
 
@@ -191,6 +191,7 @@ export const FeedbackSettingsSheet: React.FC<FeedbackSettingsSheetProps> = ({
 
   const handleManualSave = useCallback(async () => {
     if (!userId) return;
+    const lang = t.common.today === '오늘' ? 'ko' : 'en';
     const next = {
       ...settings,
       timezone: settings.timezone || getClientTimezone(),
@@ -199,17 +200,53 @@ export const FeedbackSettingsSheet: React.FC<FeedbackSettingsSheetProps> = ({
     setSettings(next);
     onSettingsChange?.(next);
     setIsSaving(true);
-    setSaveConfirm(false);
+    setSaveResult(null);
     clearTimeout(saveTimer.current);
     clearTimeout(confirmTimer.current);
+
     try {
       await saveNotificationSettings(userId, next);
-      setSaveConfirm(true);
-      confirmTimer.current = setTimeout(() => setSaveConfirm(false), 5000);
-    } finally {
+    } catch {
+      setSaveResult({ ok: false, msg: lang === 'ko' ? '저장 실패. 다시 시도해주세요.' : 'Save failed. Please retry.' });
       setIsSaving(false);
+      return;
     }
-  }, [onSettingsChange, settings, userId]);
+
+    // 알림이 하나도 켜져 있지 않으면 그냥 저장 완료
+    if (!next.morningEnabled && !next.eveningEnabled) {
+      setSaveResult({ ok: true, msg: lang === 'ko' ? '✓ 설정이 저장되었습니다.' : '✓ Settings saved.' });
+      confirmTimer.current = setTimeout(() => setSaveResult(null), 5000);
+      setIsSaving(false);
+      return;
+    }
+
+    // 알림 권한 확인
+    if (typeof Notification === 'undefined' || Notification.permission !== 'granted') {
+      setSaveResult({ ok: false, msg: lang === 'ko' ? '⚠ 알림 권한이 허용되지 않았습니다. 위에서 권한을 먼저 허용해주세요.' : '⚠ Notification permission not granted. Please allow above.' });
+      setIsSaving(false);
+      return;
+    }
+
+    // FCM 토큰 등록 시도
+    const token = await registerFcmToken(userId);
+    if (!token) {
+      setSaveResult({ ok: false, msg: lang === 'ko' ? '⚠ 푸시 알림 등록에 실패했습니다. 페이지를 새로고침 후 다시 시도해주세요.' : '⚠ Push registration failed. Please reload and retry.' });
+      setIsSaving(false);
+      return;
+    }
+
+    // 성공 — 실제 알림 시간 표시
+    const times: string[] = [];
+    if (next.morningEnabled) times.push(toDisplayTime(next.morningTime, lang));
+    if (next.eveningEnabled) times.push(toDisplayTime(next.eveningTime, lang));
+    const timeStr = times.join(', ');
+    const msg = lang === 'ko'
+      ? `✓ 알림 설정 완료! ${timeStr}에 알림이 갑니다.`
+      : `✓ Alarm set! You'll be notified at ${timeStr}.`;
+    setSaveResult({ ok: true, msg });
+    confirmTimer.current = setTimeout(() => setSaveResult(null), 8000);
+    setIsSaving(false);
+  }, [onSettingsChange, settings, userId, t]);
 
   const updateTimePart = useCallback((
     key: 'morningTime' | 'eveningTime',
@@ -433,11 +470,9 @@ export const FeedbackSettingsSheet: React.FC<FeedbackSettingsSheetProps> = ({
                 ? (language === 'ko' ? '저장 중...' : 'Saving...')
                 : t.common.save}
             </button>
-            {saveConfirm && (
-              <p className="text-[11px] text-th-accent text-center animate-fade-in">
-                {language === 'ko'
-                  ? '✓ 설정이 저장되었습니다. 설정한 시간에 알림이 갑니다.'
-                  : '✓ Settings saved. You will be notified at the scheduled time.'}
+            {saveResult && (
+              <p className={`text-[11px] text-center animate-fade-in ${saveResult.ok ? 'text-th-accent' : 'text-red-400'}`}>
+                {saveResult.msg}
               </p>
             )}
           </div>
