@@ -111,7 +111,9 @@ export const FeedbackSettingsSheet: React.FC<FeedbackSettingsSheetProps> = ({
   const [settings, setSettings] = useState<NotificationSettings>(DEFAULT_SETTINGS);
   const [loaded, setLoaded] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [saveConfirm, setSaveConfirm] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout>>();
+  const confirmTimer = useRef<ReturnType<typeof setTimeout>>();
 
   const scheduleSave = useCallback((next: NotificationSettings) => {
     onSettingsChange?.(next);
@@ -197,9 +199,13 @@ export const FeedbackSettingsSheet: React.FC<FeedbackSettingsSheetProps> = ({
     setSettings(next);
     onSettingsChange?.(next);
     setIsSaving(true);
+    setSaveConfirm(false);
     clearTimeout(saveTimer.current);
+    clearTimeout(confirmTimer.current);
     try {
       await saveNotificationSettings(userId, next);
+      setSaveConfirm(true);
+      confirmTimer.current = setTimeout(() => setSaveConfirm(false), 5000);
     } finally {
       setIsSaving(false);
     }
@@ -241,6 +247,7 @@ export const FeedbackSettingsSheet: React.FC<FeedbackSettingsSheetProps> = ({
   useEffect(
     () => () => {
       clearTimeout(saveTimer.current);
+      clearTimeout(confirmTimer.current);
     },
     [],
   );
@@ -416,7 +423,7 @@ export const FeedbackSettingsSheet: React.FC<FeedbackSettingsSheetProps> = ({
             </p>
           </div>
 
-          <div className="pt-2">
+          <div className="pt-2 space-y-2">
             <button
               onClick={handleManualSave}
               disabled={isSaving || !userId}
@@ -426,6 +433,13 @@ export const FeedbackSettingsSheet: React.FC<FeedbackSettingsSheetProps> = ({
                 ? (language === 'ko' ? '저장 중...' : 'Saving...')
                 : t.common.save}
             </button>
+            {saveConfirm && (
+              <p className="text-[11px] text-th-accent text-center animate-fade-in">
+                {language === 'ko'
+                  ? '✓ 설정이 저장되었습니다. 설정한 시간에 알림이 갑니다.'
+                  : '✓ Settings saved. You will be notified at the scheduled time.'}
+              </p>
+            )}
           </div>
         </div>
       </div>
