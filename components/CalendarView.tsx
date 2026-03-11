@@ -299,7 +299,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
     let glowEffect = "";
 
     if (todo.completed) {
-      itemStyle = "bg-[linear-gradient(180deg,rgba(28,31,38,0.96)_0%,rgba(14,16,20,0.98)_100%)] text-th-text border border-th-sacred";
+      itemStyle = "bg-th-sacred-muted text-th-text border border-th-sacred";
       glowEffect = "shadow-[0_0_16px_-4px_var(--shadow-sacred)] z-10 scale-[1.02]";
       icon = <Trophy size={10} className="text-th-sacred fill-current" />;
     } else if (isGhost) {
@@ -481,7 +481,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
       let labelStyle = "";
 
       if (todo.completed) {
-        cardStyle = "bg-[linear-gradient(180deg,rgba(28,31,38,0.98)_0%,rgba(13,15,19,1)_100%)] border-th-sacred shadow-[0_0_24px_-8px_var(--shadow-sacred)]";
+        cardStyle = "bg-th-card border-th-sacred shadow-[0_0_24px_-8px_var(--shadow-sacred)]";
         icon = <Trophy size={18} className="text-th-sacred fill-current" />;
         statusLabel = t.calendar.status.completed;
         labelStyle = "text-th-sacred bg-th-sacred-muted";
@@ -548,7 +548,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
           <div className="bg-th-surface border border-th-border rounded-2xl p-5 backdrop-blur-sm">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-[linear-gradient(180deg,rgba(28,31,38,0.96)_0%,rgba(14,16,20,0.98)_100%)] border border-th-sacred flex items-center justify-center shadow-[0_0_20px_-6px_var(--shadow-sacred)]">
+                <div className="w-10 h-10 rounded-xl bg-th-card border border-th-sacred flex items-center justify-center shadow-[0_0_20px_-6px_var(--shadow-sacred)]">
                   <Trophy size={18} className="text-th-sacred" />
                 </div>
                 <div>
