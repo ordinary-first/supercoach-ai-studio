@@ -249,7 +249,7 @@ const App: React.FC = () => {
 
   const t = getTranslations(language);
 
-  const { flushAll } = useAutoSave(nodes, links, todos, todoLists, todoGroups, userProfile, isDataLoaded, userId);
+  const { flushAll, resetDirty } = useAutoSave(nodes, links, todos, todoLists, todoGroups, userProfile, isDataLoaded, userId);
 
   const openAlarmConversation = useCallback((slot: AlarmSlot) => {
     setAlarmSlotForChat(slot);
@@ -258,6 +258,7 @@ const App: React.FC = () => {
   }, []);
 
   // Prevent cross-account data bleed: reset in-memory state when the uid changes.
+  // resetDirty() prevents auto-save from writing empty arrays to Firestore.
   const prevUserIdRef = useRef<string | null | undefined>(undefined);
   useEffect(() => {
     if (prevUserIdRef.current === undefined) {
@@ -267,6 +268,7 @@ const App: React.FC = () => {
     if (prevUserIdRef.current === userId) return;
 
     prevUserIdRef.current = userId;
+    resetDirty();
     setNodes(createInitialGoalNodes());
     setLinks([]);
     setTodos([]);
@@ -276,7 +278,7 @@ const App: React.FC = () => {
     setSelectedNode(null);
     setChatMessages([]);
     setIsSettingsPageOpen(false);
-  }, [userId]);
+  }, [userId, resetDirty]);
 
   // 채팅 히스토리 Firestore 로딩
   useEffect(() => {
@@ -1034,7 +1036,7 @@ const App: React.FC = () => {
           }
           appendAction(getUserId(), 'UPDATE_PROFILE', `프로필 업데이트: ${p.name}`);
         }}
-        onLogout={async () => { await flushAll(); await logout(); setUserProfile(null); setActiveTab('GOALS'); setIsSettingsPageOpen(false); }}
+        onLogout={async () => { await flushAll(); resetDirty(); await logout(); setUserProfile(null); setActiveTab('GOALS'); setIsSettingsPageOpen(false); }}
       />
 
       {isTrialExpired && !isSettingsPageOpen && !trialDismissed && (

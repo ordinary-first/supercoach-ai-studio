@@ -10,6 +10,7 @@ export const getLinkId = (ref: string | GoalNode | { id: string }): string => {
 
 interface AutoSaveReturn {
   flushAll: () => Promise<void>;
+  resetDirty: () => void;
 }
 
 export function useAutoSave(
@@ -85,6 +86,16 @@ export function useAutoSave(
     if (saves.length > 0) await Promise.allSettled(saves);
   }, []);
 
+  // resetDirty: userId 변경 시 dirty flag + 타이머 클리어 (빈 배열 덮어쓰기 방지)
+  const resetDirty = useCallback(() => {
+    if (goalSaveTimerRef.current) { clearTimeout(goalSaveTimerRef.current); goalSaveTimerRef.current = null; }
+    if (todoSaveTimerRef.current) { clearTimeout(todoSaveTimerRef.current); todoSaveTimerRef.current = null; }
+    if (listSaveTimerRef.current) { clearTimeout(listSaveTimerRef.current); listSaveTimerRef.current = null; }
+    goalDirtyRef.current = false;
+    todoDirtyRef.current = false;
+    listDirtyRef.current = false;
+  }, []);
+
   // beforeunload — 브라우저 닫힘/새로고침 시 pending save flush
   useEffect(() => {
     const handleBeforeUnload = () => { flushAll(); };
@@ -152,5 +163,5 @@ export function useAutoSave(
     };
   }, [todoLists, todoGroups, userProfile, isDataLoaded]);
 
-  return { flushAll };
+  return { flushAll, resetDirty };
 }
