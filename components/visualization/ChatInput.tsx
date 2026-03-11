@@ -209,7 +209,8 @@ const ChatInput: FC<ChatInputProps> = ({
           onClick={onGenerate}
           disabled={isGenerating}
           className="flex items-center gap-1.5 h-8 rounded-full bg-th-accent px-3.5 text-[13px]
-            font-bold text-th-text-inverse active:scale-[0.97] transition-transform shadow-sm"
+            font-bold text-white active:scale-[0.97] transition-transform shadow-sm"
+          style={{ textShadow: '0 1px 2px rgba(4, 18, 38, 0.32)' }}
         >
           {isGenerating ? (
             <Loader2 size={14} className="animate-spin" />
@@ -247,8 +248,9 @@ const ChatInput: FC<ChatInputProps> = ({
         <button
           type="button"
           onClick={handleSend}
-          className={`w-7 h-7 rounded-full mb-0.5 flex items-center justify-center transition-colors ${hasText ? 'bg-th-accent text-th-text-inverse shadow-sm' : 'bg-th-surface border border-th-border text-th-text-tertiary'
+          className={`w-7 h-7 rounded-full mb-0.5 flex items-center justify-center transition-colors ${hasText ? 'bg-th-accent text-white shadow-sm' : 'bg-th-surface border border-th-border text-th-text-tertiary'
             }`}
+          style={hasText ? { textShadow: '0 1px 2px rgba(4, 18, 38, 0.32)' } : undefined}
         >
           <Send size={14} />
         </button>

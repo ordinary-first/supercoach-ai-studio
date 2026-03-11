@@ -96,7 +96,7 @@ const DreamChat: FC<DreamChatProps> = ({
             border-th-accent/30 cursor-pointer"
           style={{
             background:
-              'linear-gradient(90deg, rgba(204,255,0,0.12) 0%, rgba(204,255,0,0.05) 50%, rgba(204,255,0,0.12) 100%)',
+              'linear-gradient(90deg, rgba(90,169,255,0.12) 0%, rgba(90,169,255,0.05) 50%, rgba(90,169,255,0.12) 100%)',
             backgroundSize: '200% 100%',
             animation: 'shimmerSlide 2s linear infinite',
           }}
@@ -114,8 +114,8 @@ const DreamChat: FC<DreamChatProps> = ({
               <div key={message.id} className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
                 <div
                   className={`max-w-[75%] md:max-w-[70%] rounded-[17px] px-3.5 py-2 text-[14.5px] leading-[1.45] shadow-sm transition-all ${isUser
-                      ? 'bg-th-accent text-th-text-inverse dark:bg-emerald-700 dark:text-white rounded-tr-sm'
-                      : 'apple-card text-th-text rounded-tl-sm border border-th-border/15 backdrop-blur-md'
+                    ? 'bg-th-accent text-th-text-inverse rounded-tr-sm'
+                    : 'apple-card text-th-text rounded-tl-sm border border-th-border/15 backdrop-blur-md'
                     }`}
                 >
                   <span className="whitespace-pre-wrap">{message.content}</span>

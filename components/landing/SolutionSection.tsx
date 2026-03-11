@@ -11,19 +11,19 @@ interface SolutionPillar {
 
 const PILLARS_KO: SolutionPillar[] = [
   {
-    icon: <Brain size={18} color="#CCFF00" />,
+    icon: <Brain size={18} color="#5AA9FF" />,
     title: '심리학 기반 AI 코치',
     description:
       '3단 기억 시스템이 당신의 성격·목표·히스토리를 축적합니다. 대화할수록 정교해지는 AI가 "지금 당신에게 필요한 한 마디"를 건넵니다.',
   },
   {
-    icon: <GitBranch size={18} color="#CCFF00" />,
+    icon: <GitBranch size={18} color="#5AA9FF" />,
     title: '구조화 (마인드맵)',
     description:
       '10년 비전 → 올해 목표 → 이번 주 할 일. 뇌가 처리할 수 있는 단위로 자동 분해하고, 진행도를 눈에 보이게 만듭니다.',
   },
   {
-    icon: <Eye size={18} color="#CCFF00" />,
+    icon: <Eye size={18} color="#5AA9FF" />,
     title: '시각화 (잠재의식 각인)',
     description:
       '심리학 연구: 성공 장면을 반복 시각화하면 뇌가 "이미 달성한 것"으로 인식합니다. AI가 텍스트·이미지·음성·영상 4가지로 당신의 성공을 생성합니다.',
@@ -32,19 +32,19 @@ const PILLARS_KO: SolutionPillar[] = [
 
 const PILLARS_EN: SolutionPillar[] = [
   {
-    icon: <Brain size={18} color="#CCFF00" />,
+    icon: <Brain size={18} color="#5AA9FF" />,
     title: 'Psychology-Based AI Coach',
     description:
       "A 3-layer memory system accumulates your personality, goals, and history. The more you talk, the sharper the AI gets—delivering exactly the words you need right now.",
   },
   {
-    icon: <GitBranch size={18} color="#CCFF00" />,
+    icon: <GitBranch size={18} color="#5AA9FF" />,
     title: 'Structuring (Mind Map)',
     description:
       "10-year vision → This year's goals → This week's tasks. Auto-decompose into brain-processable units and make progress visible.",
   },
   {
-    icon: <Eye size={18} color="#CCFF00" />,
+    icon: <Eye size={18} color="#5AA9FF" />,
     title: 'Visualization (Subconscious Imprinting)',
     description:
       "Psychology research: Repeatedly visualizing success tricks your brain into believing it's already achieved. AI generates your success in text, image, audio, and video.",
@@ -61,14 +61,14 @@ export const SolutionSection: React.FC = () => {
       id="solution"
       ref={ref}
       className="relative py-8 md:py-24 px-6 overflow-hidden"
-      style={{ background: 'rgba(204,255,0,0.02)' }}
+      style={{ background: 'rgba(90,169,255,0.04)' }}
     >
       {/* Background glow */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
           background:
-            'radial-gradient(ellipse 70% 40% at 50% 0%, rgba(204,255,0,0.08) 0%, transparent 70%)',
+            'radial-gradient(ellipse 70% 40% at 50% 0%, rgba(90,169,255,0.12) 0%, transparent 70%)',
         }}
       />
 
@@ -87,7 +87,7 @@ export const SolutionSection: React.FC = () => {
           </p>
           <h2
             className="font-bold text-2xl md:text-6xl"
-            style={{ fontFamily: 'Orbitron, sans-serif', color: '#CCFF00' }}
+            style={{ fontFamily: 'Orbitron, sans-serif', color: '#5AA9FF' }}
           >
             {language === 'ko' ? '해답' : 'Answer'}
           </h2>
@@ -118,13 +118,13 @@ export const SolutionSection: React.FC = () => {
               }`}
               style={{
                 transitionDelay: `${i * 150 + 200}ms`,
-                borderTop: '2px solid #CCFF00',
+                borderTop: '2px solid #5AA9FF',
               }}
             >
               {/* Icon wrapper */}
               <div
                 className="inline-flex items-center justify-center w-8 h-8 md:w-16 md:h-16 rounded-xl md:rounded-2xl mb-2 md:mb-6"
-                style={{ background: 'rgba(204,255,0,0.1)' }}
+                style={{ background: 'rgba(90,169,255,0.12)' }}
               >
                 {pillar.icon}
               </div>

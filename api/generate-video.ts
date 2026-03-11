@@ -21,9 +21,8 @@ const r2 = new S3Client({
   },
 });
 
-// 얼굴 사진 있으면 Subject Reference, 없으면 Text-to-Video
-const MODEL_SUBJECT_REF = 'fal-ai/minimax/video-01-subject-reference';
-const MODEL_TEXT_TO_VIDEO = 'fal-ai/minimax/video-01/text-to-video';
+// Kling v3 Pro — elements로 얼굴 바인딩 지원 (v2.6은 미지원!)
+const MODEL_KLING_V3 = 'fal-ai/kling-video/v3/pro/text-to-video';
 
 type VideoStatus = 'queued' | 'in_progress' | 'completed' | 'failed';
 
@@ -62,16 +61,19 @@ function mapFalStatus(falStatus: string): VideoStatus {
   return 'failed';
 }
 
-// videoId 형식: "subref:{request_id}" 또는 "t2v:{request_id}"
+// videoId 형식: "kling3:{request_id}" (레거시: "subref:" / "t2v:")
 function parseVideoId(videoId: string): { model: string; requestId: string } {
+  if (videoId.startsWith('kling3:')) {
+    return { model: MODEL_KLING_V3, requestId: videoId.slice(7) };
+  }
+  // 레거시 호환 (MiniMax 시절 진행 중 영상)
   if (videoId.startsWith('subref:')) {
-    return { model: MODEL_SUBJECT_REF, requestId: videoId.slice(7) };
+    return { model: 'fal-ai/minimax/video-01-subject-reference', requestId: videoId.slice(7) };
   }
   if (videoId.startsWith('t2v:')) {
-    return { model: MODEL_TEXT_TO_VIDEO, requestId: videoId.slice(4) };
+    return { model: 'fal-ai/minimax/video-01/text-to-video', requestId: videoId.slice(4) };
   }
-  // 레거시 호환: prefix 없으면 subject ref로 시도
-  return { model: MODEL_SUBJECT_REF, requestId: videoId };
+  return { model: MODEL_KLING_V3, requestId: videoId };
 }
 
 async function uploadVideoToR2(key: string, buffer: Buffer): Promise<string> {
@@ -126,7 +128,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const { prompt, profile, videoId } = req.body || {};
-    const DURATION = 6; // MiniMax 고정 ~6초
+    const DURATION = 5; // Kling v3 Pro
 
     const fal = getFalClient();
 
@@ -256,51 +258,38 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ? `${p.name}, ${p.age ? `${p.age}yo` : ''} ${typeof p.gender === 'string' ? p.gender.toLowerCase() : ''} in ${p.location || 'a beautiful setting'}`
       : 'A determined person';
 
-    const videoPrompt = `Cinematic scene of ${personDesc} living the reality of: "${promptText}". Aspirational, warm atmosphere. Smooth natural movement. Soft cinematic lighting.`;
+    // Kling v3: 얼굴 있으면 @Element1 참조, 없으면 텍스트 묘사
+    const videoPrompt = faceUrl
+      ? `Cinematic scene of @Element1 living the reality of: "${promptText}". Aspirational, warm atmosphere. Smooth natural movement. Soft cinematic lighting.`
+      : `Cinematic scene of ${personDesc} living the reality of: "${promptText}". Aspirational, warm atmosphere. Smooth natural movement. Soft cinematic lighting.`;
 
-    let submitted: unknown;
-    let prefixedId: string;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const input: Record<string, any> = {
+      prompt: videoPrompt,
+      duration: String(DURATION),
+      aspect_ratio: '1:1',
+      generate_audio: false,
+      negative_prompt: 'blur, distort, low quality, deformed face',
+    };
 
     if (faceUrl) {
-      // 얼굴 사진 있음 → MiniMax Subject Reference (얼굴 보존)
-      submitted = await fal.queue.submit(MODEL_SUBJECT_REF, {
-        input: {
-          prompt: videoPrompt,
-          subject_reference_image_url: faceUrl,
-          prompt_optimizer: true,
-        },
-      });
-      const reqId = (submitted as any)?.request_id;
-      if (!reqId) {
-        return respondVideo(res, {
-          durationSec: DURATION,
-          requestId,
-          status: 'failed',
-          errorCode: 'VIDEO_ID_MISSING',
-          errorMessage: 'No request ID returned',
-        });
-      }
-      prefixedId = `subref:${reqId}`;
-    } else {
-      // 얼굴 사진 없음 → MiniMax Text-to-Video (일반 영상)
-      submitted = await fal.queue.submit(MODEL_TEXT_TO_VIDEO, {
-        input: {
-          prompt: videoPrompt,
-          prompt_optimizer: true,
-        },
-      });
-      const reqId = (submitted as any)?.request_id;
-      if (!reqId) {
-        return respondVideo(res, {
-          durationSec: DURATION,
-          requestId,
-          status: 'failed',
-          errorCode: 'VIDEO_ID_MISSING',
-          errorMessage: 'No request ID returned',
-        });
-      }
-      prefixedId = `t2v:${reqId}`;
+      input.elements = [{
+        frontal_image_url: faceUrl,
+      }];
     }
+
+    const submitted = await fal.queue.submit(MODEL_KLING_V3, { input });
+    const reqId = (submitted as any)?.request_id;
+    if (!reqId) {
+      return respondVideo(res, {
+        durationSec: DURATION,
+        requestId,
+        status: 'failed',
+        errorCode: 'VIDEO_ID_MISSING',
+        errorMessage: 'No request ID returned',
+      });
+    }
+    const prefixedId = `kling3:${reqId}`;
 
     return respondVideo(res, {
       durationSec: DURATION,
@@ -311,7 +300,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   } catch (error: unknown) {
     console.error('[generate-video]', requestId, error);
     return respondVideo(res, {
-      durationSec: 6,
+      durationSec: 5,
       requestId,
       status: 'failed',
       errorCode: 'VIDEO_GENERATION_EXCEPTION',

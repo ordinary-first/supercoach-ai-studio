@@ -116,7 +116,7 @@ export const DayDetailSheet: React.FC<DayDetailSheetProps> = ({
               {/* Completed */}
               <div>
                 <div className="flex items-center gap-2 mb-3">
-                  <Trophy size={14} className="text-th-accent" />
+                  <Trophy size={14} className="text-th-reward" />
                   <span className="text-[12px] font-semibold text-th-text-secondary uppercase tracking-wider">
                     {t.feedback.completed}
                   </span>
@@ -130,7 +130,7 @@ export const DayDetailSheet: React.FC<DayDetailSheetProps> = ({
                     >
                       <Check
                         size={12}
-                        className={`mt-0.5 shrink-0 ${isEditing ? 'text-th-accent group-hover:text-red-400' : 'text-th-accent'}`}
+                        className={`mt-0.5 shrink-0 ${isEditing ? 'text-th-reward group-hover:text-red-400' : 'text-th-reward'}`}
                       />
                       <span className="text-[13px] text-th-text leading-snug">{item}</span>
                     </button>

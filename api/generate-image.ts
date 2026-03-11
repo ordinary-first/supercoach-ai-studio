@@ -176,7 +176,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ? childTexts.join(', ')
       : '';
 
-    // 하위 노드가 있으면 활동 장면 중심, 없으면 목표 자체 묘사
+    // Nano Banana Pro: 얼굴 사진 편집 프롬프트 (edit 엔드포인트)
+    const editPrompt = activities
+      ? `Transform this photo: show the person actively doing ${activities}. The overall theme is "${cleanPrompt}". Full body or upper body visible, vivid real-world setting. Aspirational and energetic mood. Photorealistic, cinematic lighting. No text, no letters, no watermarks.`
+      : `Transform this photo: show the person working towards "${cleanPrompt}". Actively engaged in a concrete scene related to this goal, full body or upper body visible. Aspirational and warm mood. Photorealistic, cinematic lighting. No text, no letters, no watermarks.`;
+
+    // Nano Banana Pro: 텍스트 only (얼굴 사진 없을 때)
     const textPrompt = activities
       ? `Photorealistic image of ${personDesc} actively doing these activities: ${activities}. The overall theme is "${cleanPrompt}". Show the person in the middle of the action, full body or upper body visible, in a vivid real-world setting. Aspirational and energetic mood. Square composition, cinematic lighting. No text, no letters, no watermarks.`
       : `Photorealistic image of ${personDesc} working towards their goal: "${cleanPrompt}". Show the person actively engaged in a concrete scene related to this goal, full body or upper body visible. Aspirational and warm mood. Square composition, cinematic lighting. No text, no letters, no watermarks.`;
@@ -184,39 +189,39 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let result: unknown;
 
     if (faceUrl) {
-      // PuLID FLUX — 갤러리/아바타 사진으로 얼굴 보존 생성
-      // fal.ai가 reference URL 접근 못하면 schnell로 폴백
+      // Google Nano Banana Pro /edit — 얼굴 사진 기반 꿈 장면 생성
       try {
-        result = await fal.subscribe('fal-ai/flux-pulid', {
+        result = await fal.subscribe('fal-ai/nano-banana-pro/edit', {
           input: {
-            prompt: textPrompt,
-            reference_image_url: faceUrl,
-            image_size: 'square_hd',
-            num_inference_steps: isNodeImage ? 16 : 20,
-            guidance_scale: 4.5,
-            id_weight: 0.5,
+            prompt: editPrompt,
+            image_urls: [faceUrl],
+            aspect_ratio: '1:1',
+            output_format: 'jpeg',
+            safety_tolerance: '4',
           },
           pollInterval: 2000,
         });
-      } catch (pulidErr: unknown) {
-        console.error('[generate-image][pulid-fallback]', requestId, pulidErr instanceof Error ? pulidErr.message : pulidErr);
-        // PuLID 실패 → FLUX schnell 텍스트 only 폴백
-        result = await fal.subscribe('fal-ai/flux/schnell', {
+      } catch (editErr: unknown) {
+        console.error('[generate-image][nano-banana-edit-fallback]', requestId, editErr instanceof Error ? editErr.message : editErr);
+        // edit 실패 → 텍스트 only 폴백
+        result = await fal.subscribe('fal-ai/nano-banana-pro', {
           input: {
             prompt: textPrompt,
-            image_size: 'square_hd',
-            num_inference_steps: 4,
+            aspect_ratio: '1:1',
+            output_format: 'jpeg',
+            safety_tolerance: '4',
           },
           pollInterval: 2000,
         });
       }
     } else {
-      // 얼굴 사진 없음 — FLUX schnell 텍스트 only (빠르고 저렴)
-      result = await fal.subscribe('fal-ai/flux/schnell', {
+      // 얼굴 사진 없음 — Nano Banana Pro 텍스트 only
+      result = await fal.subscribe('fal-ai/nano-banana-pro', {
         input: {
           prompt: textPrompt,
-          image_size: 'square_hd',
-          num_inference_steps: 4,
+          aspect_ratio: '1:1',
+          output_format: 'jpeg',
+          safety_tolerance: 4,
         },
         pollInterval: 2000,
       });

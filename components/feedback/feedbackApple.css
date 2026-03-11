@@ -57,8 +57,17 @@
 }
 
 .fb-day-card-completed {
-  background: linear-gradient(180deg, var(--bg-surface), var(--bg-elevated));
-  border-color: var(--border-strong);
+  background:
+    radial-gradient(80% 80% at 50% 0%, var(--sacred-muted) 0%, transparent 52%),
+    radial-gradient(120% 120% at 0% 0%, rgba(77, 232, 224, 0.08) 0%, transparent 58%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05), transparent 22%),
+    linear-gradient(180deg, rgba(23, 26, 31, 0.98), rgba(10, 11, 15, 1));
+  border-color: var(--sacred-border);
+  box-shadow:
+    0 18px 38px -28px var(--fb-shadow-key),
+    0 0 0 1px var(--sacred-border),
+    0 0 26px -14px var(--shadow-sacred),
+    inset 0 1px 0 var(--fb-highlight);
 }
 
 .fb-day-card-today {
@@ -160,8 +169,11 @@
 }
 
 .fb-mini-day-completed {
-  background: var(--bg-surface-hover);
-  border-color: var(--border-strong);
+  background:
+    radial-gradient(100% 100% at 50% 0%, var(--sacred-muted) 0%, transparent 58%),
+    linear-gradient(180deg, rgba(24, 27, 33, 0.96), rgba(12, 14, 18, 1));
+  border-color: var(--sacred-border);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.02), 0 0 18px -10px var(--shadow-sacred);
 }
 
 .fb-mini-day-today {

@@ -101,7 +101,305 @@ cd web-legacy-mindmap2 && npx vite --port 3016 --host
 
 ## Current Status
 
-_Last updated: 2026-03-02_
+_Last updated: 2026-03-11_
+
+- Sacred lime reward accents restored in limited spots:
+  - `displayVersion`를 `V03.11r4`로 갱신.
+  - `theme.css`, `index.html`
+    - 기존 네온 라임 계열을 `sacred` 보상 토큰으로 분리 추가.
+    - 기본 accent 블루는 유지하고, 라임은 성과 연출 전용으로만 사용 가능하게 정리.
+  - `components/CalendarView.tsx`
+    - 완료된 달력 아이템, 완료 카드, 진행률 퍼센트, 완료 섹션 헤더/도트에만
+      제한적으로 sacred lime 포인트를 적용.
+    - 진행률 바는 lime → reward cyan → accent blue로 이어지도록 조정.
+  - `components/feedback/feedbackApple.css`
+    - 완료된 승리/완료 카드에만 lime flare를 추가해
+      기존 게이밍 보상감의 장점만 일부 복구.
+  - 검증:
+    - `npm run build` 통과 예정.
+
+- Dark mode background neutralized:
+  - `displayVersion`를 `V03.11r5`로 갱신.
+  - `theme.css`
+    - 다크 배경/표면/헤더를 블루 베이스에서 뉴트럴 차콜 계열로 재정렬.
+    - 블루는 구조 강조와 glow에만 남기고, 전체 분위기는 더 절제되도록 조정.
+  - `index.html`, `stores/useThemeStore.ts`
+    - 브라우저 theme-color를 새로운 차콜 다크 베이스(`#111214`)로 동기화.
+  - `components/MindMap.tsx`
+    - 마인드맵 배경과 루트/노드 기본 바탕을 더 뉴트럴하게 내려
+      전체 다크모드 톤과 맞춤.
+  - 검증:
+    - `npm run build` 통과 예정.
+
+- Sacred reward moments intensified:
+  - `displayVersion`를 `V03.11r6`로 갱신.
+  - `theme.css`
+    - dark/light의 `sacred` reward 토큰을 한 단계 더 밝고 강한 네온 라임으로 조정.
+    - sacred border/glow도 강화해 보상 순간에만 더 과감하게 튀도록 보정.
+  - `components/CalendarView.tsx`
+    - 완료된 캘린더 아이템과 상세 완료 카드의 배경을
+      sacred lime -> reward cyan 그라데이션으로 바꿔 아이템 획득감 강화.
+    - 완료 카드 텍스트/트로피는 어두운 잉크 톤으로 바꿔 읽기와 임팩트를 동시에 확보.
+  - `components/feedback/feedbackApple.css`
+    - 완료된 피드백 카드/미니 카드의 lime flare를 더 강하게 조정.
+  - 검증:
+    - `npm run build` 통과 예정.
+
+- Sacred reward cards dialed back to dark-base style:
+  - `displayVersion`를 `V03.11r7`로 갱신.
+  - `components/CalendarView.tsx`
+    - 완료된 캘린더 아이템/상세 카드의 형광 배경을 제거.
+    - 다시 `dark base + sacred lime border/glow + subtle lime wash` 구조로 정리.
+    - 완료 카드 텍스트는 화이트로 복귀하고, 아이콘/배지만 lime 포인트를 유지.
+  - `components/feedback/feedbackApple.css`
+    - 완료된 피드백 카드/미니 카드도 full gradient fill 대신
+      어두운 카드 바탕 위의 lime halo 방식으로 다운튜닝.
+  - 검증:
+    - `npm run build` 통과 예정.
+
+- Todo add input height increased:
+  - `displayVersion`를 `V03.11r8`로 갱신.
+  - `components/ToDoList.tsx`
+    - 하단 `할 일 추가` 입력줄의 수직 패딩과 최소 높이를 늘려
+      터치 영역이 너무 낮아 보이던 문제를 완화.
+    - 입력 텍스트 크기도 `15px` 수준으로 올려
+      카톡/메모 앱처럼 더 편하게 읽고 입력할 수 있도록 조정.
+    - 플러스 아이콘도 한 단계 키워 입력줄 비례를 맞춤.
+  - 검증:
+    - `npm run build` 통과 예정.
+
+- AI coach input height increased:
+  - `displayVersion`를 `V03.11r9`로 갱신.
+  - `components/CoachChat.tsx`
+    - AI 코치 입력창이 그대로 낮게 남아 있던 문제를 수정.
+    - 입력 영역에 `min-h`를 주고 세로 패딩/텍스트 크기를 키워
+      카톡처럼 더 여유 있게 입력할 수 있도록 조정.
+    - 첨부/전송 아이콘도 함께 키워 전체 비율을 맞춤.
+  - 검증:
+    - `npm run build` 통과 예정.
+
+- Principles sidebar spacing tightened:
+  - `displayVersion`를 `V03.11r10`로 갱신.
+  - `components/todo/TodoSidebar.tsx`
+    - `이것만 지켜줘!` 버튼과 바로 아래 오늘의 원칙 미리보기 사이 간격을 축소.
+    - 좌우 정렬도 맞춰서 같은 묶음의 내용처럼 읽히도록 보정.
+  - 검증:
+    - `npm run build` 통과 예정.
+
+- Principles focus card redesigned:
+  - `displayVersion`를 `V03.11r11`로 갱신.
+  - `components/todo/TodoSidebar.tsx`
+    - `이것만 지켜줘!` 섹션을 단순 텍스트 줄에서
+      `헤더 + 오늘의 포커스 카드` 구조로 재디자인.
+    - lime 포인트 헤더, 좌측 sacred bar, 더 큰 포커스 텍스트를 넣어
+      레퍼런스처럼 한눈에 보이는 강조 카드로 조정.
+    - 제목과 본문이 서로 다른 블록처럼 보이던 문제를 구조적으로 해결.
+  - 검증:
+    - `npm run build` 통과 예정.
+
+- Principles focus card simplified and recolored:
+  - `displayVersion`를 `V03.11r12`로 갱신.
+  - `components/todo/TodoSidebar.tsx`
+    - 원칙 섹션은 보상 UI가 아니므로 sacred lime을 제거하고 다시 블루 계열로 정리.
+    - 헤더 문구를 더 심플하게 되돌리고,
+      포커스 카드를 낮은 높이의 compact 블루 카드로 축소.
+    - 공간 점유를 줄이면서도 같은 묶음의 내용으로 읽히는 구조는 유지.
+  - 검증:
+    - `npm run build` 통과 예정.
+
+- Principles block now highlights only when active:
+  - `displayVersion`를 `V03.11r13`로 갱신.
+  - `components/todo/TodoSidebar.tsx`
+    - 원칙 섹션 헤더와 오늘의 원칙 카드에
+      `오늘 할 일` 활성 상태와 같은 계열의 블루 강조를
+      `showPrinciplesEditor=true`일 때만 적용.
+    - 비활성 상태에서는 조용한 surface 톤으로 유지해
+      항상 튀어 보이던 문제를 제거.
+  - 검증:
+    - `npm run build` 통과 예정.
+
+- Principles block simplified further:
+  - `displayVersion`를 `V03.11r14`로 갱신.
+  - `components/todo/TodoSidebar.tsx`
+    - 중복 헤더 `이것만 지켜줘!` 버튼을 제거.
+    - 카드 내부 라벨을 `이것만 지켜줘!`로 바꿔 한 블록으로 더 간결하게 정리.
+    - 카드 외곽 border를 제거해 스마트 목록과 자연스럽게 이어지도록 조정.
+  - 검증:
+    - `npm run build` 통과 예정.
+
+- Representative principle setting added:
+  - `displayVersion`를 `V03.11r15`로 갱신.
+  - `types.ts`
+    - `UserPrinciple`에 `isRepresentative` 필드를 추가.
+  - `App.tsx`
+    - 첫 원칙은 자동으로 대표 원칙이 되도록 설정.
+    - 대표 원칙 삭제 시 다음 원칙이 자동 승계되도록 처리.
+    - 대표 원칙 지정 핸들러 추가.
+  - `components/ToDoList.tsx`
+    - 원칙 편집 화면 상단 카드를 랜덤/순환 대신 `대표 원칙` 고정 표시로 전환.
+    - 각 원칙 행에 대표 원칙 지정 버튼을 추가.
+    - 하단 입력 영역의 상단 구분선(`border-t`) 제거.
+  - `components/todo/TodoSidebar.tsx`
+    - 사이드바 미리보기 카드도 대표 원칙 기준으로 표시.
+    - 카드 라벨을 `대표 원칙`으로 변경.
+  - 검증:
+    - `npm run build` 통과 예정.
+
+- Representative principle copy cleanup:
+  - `displayVersion`를 `V03.11r16`로 갱신.
+  - `components/ToDoList.tsx`
+    - 원칙 화면 메인 제목을 `이것만지켜줘!`에서 `대표 원칙 설정`으로 변경.
+    - 하단 `새로운 원칙 추가하기...` 영역의 패널 배경/간격을 줄여
+      상단에 선처럼 보이던 시각적 끊김을 완화.
+  - 검증:
+    - `npm run build` 통과 예정.
+
+- Bottom dock top border cleanup:
+  - `displayVersion`를 `V03.11r17`로 갱신.
+  - `theme.css`
+    - `apple-dock-shell`의 상단 border 색을 투명 처리해
+      원칙 화면 하단에 가로선처럼 보이던 도크 경계 제거.
+  - 검증:
+    - `npm run build` 통과 예정.
+
+- Representative principle label placement fix:
+  - `displayVersion`를 `V03.11r18`로 갱신.
+  - `components/ToDoList.tsx`
+    - 원칙 화면 헤더 제목을 다시 `이것만지켜줘!`로 복구.
+    - 헤더 아래 대표 원칙 카드의 라벨을 `대표 원칙 설정`으로 이동해
+      사용자가 의도한 위치에만 문구 반영.
+  - 검증:
+    - `npm run build` 통과 예정.
+
+- Sidebar principle label copy fix:
+  - `displayVersion`를 `V03.11r19`로 갱신.
+  - `components/todo/TodoSidebar.tsx`
+    - 사이드바 대표 원칙 카드 라벨을 `대표 원칙`에서 `이것만 지켜줘!`로 복구.
+  - 검증:
+    - `npm run build` 통과 예정.
+
+- Principle highlight card removed:
+  - `displayVersion`를 `V03.11r20`로 갱신.
+  - `components/ToDoList.tsx`
+    - 원칙 편집 화면 상단의 큰 대표 원칙 카드 블록을 통째로 제거.
+    - 대표 원칙 지정은 각 원칙 행의 버튼으로만 남김.
+  - 검증:
+    - `npm run build` 통과 예정.
+
+- Sacred reward hue retuned for blue backgrounds:
+  - `displayVersion`를 `V03.11r21`로 갱신.
+  - `theme.css`
+    - 보상용 `sacred` 색을 초록기 강한 라임에서 노랑기 강한 `electric citron` 계열로 조정.
+    - 다크에서는 더 형광감 있게, 라이트에서는 조금 눌러서 유지.
+  - 검증:
+    - `npm run build` 통과 예정.
+
+- Bottom dock active emphasis retuned:
+  - `displayVersion`를 `V03.11r3`로 갱신.
+  - `components/BottomDock.tsx`
+    - 활성 탭의 배경을 작은 pill 강조 대신 더 넓은 radial glow로 변경해
+      예전처럼 한눈에 꽂히는 가시성을 확보.
+    - 활성 아이콘/텍스트는 화이트 유지.
+    - 활성 탭 아래 점은 제거해 시선 분산 없이 glow 자체로 상태를 표현.
+  - 검증:
+    - `npm run build` 통과 예정.
+
+- Bottom dock active contrast polish completed:
+  - `displayVersion`를 `V03.11r2`로 갱신.
+  - `components/BottomDock.tsx`
+    - 비활성 탭 색상은 유지.
+    - 활성 탭의 아이콘/텍스트만 더 밝은 화이트로 조정해 선택 상태가 더 또렷하게 보이도록 보정.
+    - 미세한 text shadow를 추가해 블루 glow 위에서 흐려 보이지 않게 정리.
+  - 검증:
+    - `npm run build` 통과 예정.
+
+- Visualization CTA contrast polish completed:
+  - `displayVersion`를 `V03.11r1`로 갱신.
+  - `components/visualization/ChatInput.tsx`
+    - 블루 accent CTA 위의 검정 텍스트가 눌려 보이던 문제를 수정.
+    - `드림 생성` 버튼과 활성 전송 버튼의 텍스트/아이콘을 흰색으로 변경.
+    - 미세한 text shadow를 추가해 밝은 블루 위에서도 또렷하게 유지되도록 보정.
+  - 검증:
+    - `npm run build` 통과 예정.
+
+- 마인드맵 브랜치 다색 팔레트 복구 완료:
+  - `displayVersion`를 `V03.10r6`로 갱신.
+  - `components/MindMap.tsx`
+    - 다크모드에서 루트 기준 브랜치별 색 팔레트를 다시 적용.
+    - 일반 노드는 브랜치 색을 상속하고, 완료 노드는 보상 시안,
+      막힘 노드는 붉은 경고색으로 유지.
+    - 선택 상태는 여전히 공통 블루 accent로 보여
+      조작 피드백과 브랜치 개성을 동시에 살림.
+    - rainbow line 팔레트도 노드 팔레트와 맞춰 더 덜 지루한 구성이 되도록 조정.
+  - 검증:
+    - `npm run build` 통과 예정.
+    - `?dev=1` 마인드맵에서 브랜치별 색 다양성 확인 예정.
+
+- 다크모드 분위기 리브라이트 완료:
+  - `displayVersion`를 `V03.10r5`로 갱신.
+  - `theme.css`
+    - 다크 배경을 검은색 중심에서 잉크 블루 중심으로 밝히고,
+      표면/입력/헤더를 한 톤 들어 올려 칙칙함을 줄임.
+    - 텍스트 보조색, 보더, accent glow를 조금 더 밝게 조정해
+      정보 위계와 공기감을 개선.
+    - `body`, `.apple-app-root`, `.apple-tab-shell`, `.apple-glass-header`,
+      `.apple-glass-panel`, `.apple-card`, `.apple-dock-shell`에
+      상단 광원과 블루 ambient shadow를 추가해
+      "빛이 떠오르는 성당" 느낌을 강화.
+  - `index.html`, `stores/useThemeStore.ts`
+    - 브라우저/모바일 theme-color를 새로운 다크 베이스(`#0A1730`)로 동기화.
+  - 검증:
+    - `npm run build` 통과 예정.
+    - `?dev=1` 다크모드 화면에서 밝기/깊이감 재확인 예정.
+
+- dev 로그인 복구/자동화 완료:
+  - `displayVersion`를 `V03.10r4`로 갱신.
+  - `vite.config.ts`
+    - dev 서버에 `/__dev/custom-token` 엔드포인트를 추가.
+    - 로컬 Firebase service account 키를 읽어 fresh custom token을 즉시 발급하도록 구성.
+  - `services/firebaseService.ts`
+    - `fetchDevAuthToken()` 추가.
+    - 프론트에서 dev 전용 토큰을 직접 받아올 수 있도록 정리.
+  - `hooks/useAuth.ts`
+    - `?dev=1` 진입 시, URL의 `devToken`이 없거나 만료되어도
+      새 custom token을 자동 요청해서 로그인하도록 변경.
+    - fresh token 발급 실패 시에만 익명 로그인으로 fallback.
+    - dev 모드에서는 `isTrialExpired`를 강제로 `false` 처리해
+      테스트를 가로막는 결제 모달이 뜨지 않도록 정리.
+  - 검증:
+    - `http://127.0.0.1:3017/__dev/custom-token?uid=dev-preview-user` 응답 확인 예정.
+    - `http://127.0.0.1:3017/?dev=1` 단독 URL로 앱 진입 및 체험 만료 모달 미노출 확인 예정.
+
+- 다크모드 블루 팔레트 전환 + 랜딩 네온 제거 + 성취 보상색 분리 완료:
+  - `displayVersion`를 `V03.10r2`로 갱신.
+  - `theme.css`, `index.html`, `stores/useThemeStore.ts`
+    - 다크 기본 accent를 네온 라임에서 성당 톤 블루 계열로 전환.
+    - `reward`/`reward-muted`/`reward-border`/`shadow-reward` 토큰을 추가해
+      완료/달성 순간만 별도 오로라 시안 계열이 뜨도록 분리.
+    - 다크 기본 배경/표면/글로우를 라이트의 블루 언어와 맞물리는 방향으로 재정렬.
+  - `components/CalendarView.tsx`
+    - 다크 기본 오늘/선택 강조는 블루 유지.
+    - 완료된 일정 카드, 일일 진행률 바, 완료 섹션을 보상색 기반으로 분리해
+      게임 아이템 획득 같은 느낌이 나도록 조정.
+  - `components/feedback/*`
+    - `DayCard`, `DayDetailSheet`, `WeeklySummaryCard`, `MonthlySummaryCard`,
+      `feedbackApple.css`에서 오늘의 승리/완료 카드에만 보상색 글로우를 적용.
+  - `components/MindMap.tsx`
+    - 다크모드 root/selection/preview 강조를 블루 계열로 정리.
+    - 완료 노드 상태색은 보상 시안으로 분리.
+  - `components/CoachChat.tsx`, `components/ToDoList.tsx`, `components/todo/TodoItem.tsx`
+    - 남아 있던 다크모드 emerald/neon-lime 계열 하드코딩을 블루/보상 토큰 체계로 정리.
+  - `components/visualization/DreamChat.tsx`
+    - 사용자 말풍선의 dark-mode emerald override를 제거해 기본 블루 accent와 일치시킴.
+    - 생성 배너의 남아 있던 네온 라임 그라데이션을 블루 계열로 정리.
+  - `components/LandingPage.tsx`, `components/landing/*`
+    - 랜딩의 `#CCFF00` / `rgba(204,255,0,...)` 하드코딩 accent를 전부 블루 계열로 치환.
+    - Hero, CTA, Pricing, Solution, Visualization, StickyNav, Feature grid까지 전부 같은 블루 언어로 통일.
+  - 검증:
+    - 워크트리 의존성 누락 확인:
+      `node_modules/swiper`가 비어 있어 `swiper/react` import가 실패하던 상태.
+    - `npm install`로 의존성 복구 후 `npm run build` 통과.
+    - 로컬 dev 서버 `http://127.0.0.1:3017/`에서 에러 오버레이 없이 렌더 확인.
 
 - 알림 설정 UX + 푸시 발송 안정화 핫픽스 완료:
   - `displayVersion`를 `V03.02r7`로 갱신.

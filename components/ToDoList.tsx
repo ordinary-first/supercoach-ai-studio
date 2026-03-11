@@ -139,9 +139,10 @@ interface ToDoListProps {
   onAddPrinciple: (text: string) => void;
   onDeletePrinciple: (id: string) => void;
   onUpdatePrinciple: (id: string, text: string) => void;
+  onSetRepresentativePrinciple: (id: string) => void;
 }
 
-const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, todoGroups, activeListId, onActiveListChange, onTodoListsChange, onTodoGroupsChange, onAddToDo, onToggleToDo, onDeleteToDo, onUpdateToDo, onReorderTodos, principles, showPrinciplesEditor, onClosePrinciplesEditor, onOpenPrinciples, onAddPrinciple, onDeletePrinciple, onUpdatePrinciple }) => {
+const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, todoGroups, activeListId, onActiveListChange, onTodoListsChange, onTodoGroupsChange, onAddToDo, onToggleToDo, onDeleteToDo, onUpdateToDo, onReorderTodos, principles, showPrinciplesEditor, onClosePrinciplesEditor, onOpenPrinciples, onAddPrinciple, onDeletePrinciple, onUpdatePrinciple, onSetRepresentativePrinciple }) => {
   const { t, language } = useTranslation();
   const [inputText, setInputText] = useState('');
   const [selectedToDoId, setSelectedToDoId] = useState<string | null>(null);
@@ -213,7 +214,7 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
     const smart = SMART_LIST_META[activeListId as SmartListId];
     if (smart) return smart;
     const customList = todoLists.find(l => l.id === activeListId);
-    if (customList) return { name: customList.name, icon: <ListTodo size={20} />, color: `text-[${customList.color || '#CCFF00'}]` };
+    if (customList) return { name: customList.name, icon: <ListTodo size={20} />, color: `text-[${customList.color || '#5AA9FF'}]` };
     return { name: uiText.smartTasks, icon: <Home size={20} />, color: 'text-neon-lime' };
   }, [activeListId, todoLists, uiText.smartTasks]);
 
@@ -335,7 +336,6 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
   const activeDragTodo = activeDragId ? incompleteTodos.find(t => t.id === activeDragId) : null;
 
   const selectedToDo = todos.find(t => t.id === selectedToDoId);
-
   // 카드형 기본 클래스
   const getCardClass = (todo: ToDoItem) =>
     `apple-card group flex items-center gap-2.5 py-2.5 px-3 mx-2 mb-1.5 rounded-lg cursor-pointer transition-all duration-150 ${selectedToDoId === todo.id
@@ -501,21 +501,6 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
                 </div>
               ) : (
                 <div className="space-y-2.5">
-                  {/* 오늘의 포커스 하이라이트 카드 */}
-                  {(() => {
-                    const now = new Date();
-                    const startOfYear = new Date(now.getFullYear(), 0, 0);
-                    const dayOfYear = Math.floor((now.getTime() - startOfYear.getTime()) / 86400000);
-                    const todayIdx = dayOfYear % principles.length;
-                    return (
-                      <div className="mb-4 rounded-2xl bg-gradient-to-br from-th-accent/15 via-th-accent/8 to-transparent
-                        p-4 ring-1 ring-th-accent/20 shadow-lg shadow-th-accent/5">
-                        <p className="text-base font-semibold text-th-text leading-snug">
-                          {principles[todayIdx]?.text}
-                        </p>
-                      </div>
-                    );
-                  })()}
                   {/* 원칙 리스트 */}
                   <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-th-text-tertiary px-1 pt-1">
                     {language === 'ko'
@@ -529,10 +514,17 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
                         ring-1 ring-white/[0.04] hover:ring-th-accent/25 hover:bg-th-surface/60
                         transition-all duration-200"
                     >
-                      <span className="w-6 h-6 rounded-lg bg-th-accent/15 flex items-center justify-center
-                        text-[11px] font-bold text-th-accent flex-shrink-0 tabular-nums">
-                        {idx + 1}
-                      </span>
+                      <button
+                        onClick={() => onSetRepresentativePrinciple(p.id)}
+                        className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-all ${
+                          p.isRepresentative
+                            ? 'bg-th-accent-muted text-th-accent shadow-[0_0_10px_var(--shadow-glow)]'
+                            : 'bg-th-surface text-th-text-tertiary hover:text-th-accent'
+                        }`}
+                        title={language === 'ko' ? '대표 원칙으로 설정' : 'Set as representative principle'}
+                      >
+                        {p.isRepresentative ? <Star size={15} fill="currentColor" /> : <span className="text-[11px] font-bold tabular-nums">{idx + 1}</span>}
+                      </button>
                       <input
                         type="text"
                         value={p.text}
@@ -554,7 +546,7 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
               )}
             </div>
             {/* Add principle input */}
-            <div className="border-t border-th-border/50 px-4 py-3.5 flex-shrink-0 bg-th-surface/30">
+            <div className="-mt-1 px-4 pt-2.5 pb-3.5 flex-shrink-0 bg-transparent">
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
@@ -641,8 +633,8 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
           className="apple-glass-header flex flex-col border-t border-th-border flex-shrink-0"
           style={keyboardHeight > 0 ? { position: 'fixed', bottom: `${keyboardHeight}px`, left: 0, right: 0, zIndex: 60 } : undefined}
         >
-          <form onSubmit={handleSubmit} className="flex items-center gap-2.5 py-2.5 px-3">
-            <Plus size={20} className="text-th-accent flex-shrink-0" />
+          <form onSubmit={handleSubmit} className="flex items-center gap-3 py-3.5 px-4 min-h-[56px]">
+            <Plus size={22} className="text-th-accent flex-shrink-0" />
             <input
               ref={inputRef}
               type="text"
@@ -652,7 +644,7 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
               onBlur={() => setTimeout(() => setIsInputFocused(false), 150)}
               onKeyDown={(e) => { if (e.key === 'Escape') { inputRef.current?.blur(); setInputText(''); } }}
               placeholder={t.todo.addLabel}
-              className="flex-1 bg-transparent text-sm text-th-text placeholder-th-text-tertiary focus:outline-none"
+              className="flex-1 bg-transparent text-[15px] leading-[1.45] text-th-text placeholder-th-text-tertiary focus:outline-none"
               aria-label={t.todo.inputLabel}
             />
           </form>
@@ -874,7 +866,7 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
         onSave={handleSaveRenamedList}
         groups={todoGroups}
         initialName={editingListId ? todoLists.find(l => l.id === editingListId)?.name : ''}
-        initialColor={editingListId ? todoLists.find(l => l.id === editingListId)?.color : '#CCFF00'}
+        initialColor={editingListId ? todoLists.find(l => l.id === editingListId)?.color : '#5AA9FF'}
         initialGroupId={editingListId ? todoLists.find(l => l.id === editingListId)?.groupId : undefined}
       />
       <CreateGroupModal

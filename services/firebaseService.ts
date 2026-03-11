@@ -122,6 +122,18 @@ export const loginWithDevToken = async (token: string): Promise<User | null> => 
   }
 };
 
+export const fetchDevAuthToken = async (uid = 'dev-preview-user'): Promise<string | null> => {
+  try {
+    const response = await fetch(`/__dev/custom-token?uid=${encodeURIComponent(uid)}`);
+    if (!response.ok) return null;
+    const data = (await response.json()) as { token?: unknown };
+    return typeof data.token === 'string' ? data.token : null;
+  } catch (error) {
+    console.error('[Auth] Dev token fetch failed:', error);
+    return null;
+  }
+};
+
 export const completeOnboarding = async (userId: string): Promise<void> => {
   if (!db || !userId) return;
   await setDoc(

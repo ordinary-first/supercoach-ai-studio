@@ -58,7 +58,7 @@ const TodoItem: React.FC<TodoItemProps> = ({ todo, onToggle, onEdit, onDelete, i
           onToggle(todo.id);
         }}
         className={`flex-shrink-0 p-1 rounded-full transition-all hover:bg-th-surface-hover hover:scale-110 ${
-          todo.completed ? 'text-th-accent' : 'text-th-text-tertiary hover:text-th-accent'
+          todo.completed ? 'text-th-reward' : 'text-th-text-tertiary hover:text-th-accent'
         }`}
       >
         {todo.completed ? (

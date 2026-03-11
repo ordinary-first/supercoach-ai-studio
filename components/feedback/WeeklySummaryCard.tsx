@@ -90,7 +90,7 @@ export const WeeklySummaryCard: React.FC<WeeklySummaryCardProps> = ({
           <div className="space-y-1.5 mb-4">
             {topItems.map(([item, count], i) => (
               <div key={i} className="flex items-start gap-2">
-                <Trophy size={10} className="text-th-accent mt-0.5 shrink-0" />
+                <Trophy size={10} className="text-th-reward mt-0.5 shrink-0" />
                 <span className="text-[12px] text-th-text leading-snug">
                   {item}
                   {count > 1 ? ` x${count}` : ''}

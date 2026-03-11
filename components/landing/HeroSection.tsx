@@ -20,7 +20,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onCTAClick }) => {
         className="absolute inset-0 pointer-events-none"
         style={{
           background:
-            'radial-gradient(circle at 50% 40%, rgba(204,255,0,0.08) 0%, transparent 70%)',
+            'radial-gradient(circle at 50% 40%, rgba(90,169,255,0.12) 0%, transparent 70%)',
         }}
       />
 
@@ -53,7 +53,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onCTAClick }) => {
         style={{
           width: '256px',
           height: '256px',
-          background: 'rgba(204,255,0,0.04)',
+          background: 'rgba(90,169,255,0.08)',
           top: '15%',
           left: '10%',
           animationDuration: '6s',
@@ -64,7 +64,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onCTAClick }) => {
         style={{
           width: '320px',
           height: '320px',
-          background: 'rgba(204,255,0,0.03)',
+          background: 'rgba(90,169,255,0.06)',
           bottom: '20%',
           right: '8%',
           animationDuration: '8s',
@@ -113,7 +113,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onCTAClick }) => {
             className="text-2xl sm:text-3xl md:text-5xl font-bold leading-tight"
             style={{ fontFamily: 'Inter, sans-serif' }}
           >
-            <span style={{ color: '#CCFF00' }}>{language === 'ko' ? '과학적' : 'Scientific'}</span>
+            <span style={{ color: '#5AA9FF' }}>{language === 'ko' ? '과학적' : 'Scientific'}</span>
             <span className="text-white">{language === 'ko' ? ' AI 밀착 관리 시스템' : ' AI Close-Management System'}</span>
           </p>
         </div>
@@ -140,18 +140,18 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onCTAClick }) => {
             onClick={onCTAClick}
             className="px-8 py-3 md:px-10 md:py-4 rounded-full text-black font-black uppercase tracking-widest text-sm md:text-base transition-all duration-200 hover:scale-105"
             style={{
-              backgroundColor: '#CCFF00',
+              backgroundColor: '#5AA9FF',
               fontFamily: 'Inter, sans-serif',
-              boxShadow: '0 0 0 0 rgba(204,255,0,0)',
+              boxShadow: '0 0 0 0 rgba(90,169,255,0)',
               transition: 'transform 0.2s ease, box-shadow 0.2s ease',
             }}
             onMouseEnter={(e) => {
               (e.currentTarget as HTMLButtonElement).style.boxShadow =
-                '0 0 32px rgba(204,255,0,0.45)';
+                '0 0 32px rgba(90,169,255,0.32)';
             }}
             onMouseLeave={(e) => {
               (e.currentTarget as HTMLButtonElement).style.boxShadow =
-                '0 0 0 0 rgba(204,255,0,0)';
+                '0 0 0 0 rgba(90,169,255,0)';
             }}
           >
             {language === 'ko' ? '무료로 시작하기' : 'Start Free'}
@@ -161,7 +161,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onCTAClick }) => {
           <div className="flex items-center gap-2">
             <span
               className="inline-block w-2 h-2 rounded-full animate-ping"
-              style={{ backgroundColor: '#CCFF00', opacity: 0.8 }}
+              style={{ backgroundColor: '#5AA9FF', opacity: 0.8 }}
             />
             <span
               className="text-xs text-gray-400"

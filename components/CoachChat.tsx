@@ -641,7 +641,7 @@ If no todo change intent exists, return an empty list [].`;
       }
     >
       <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-th-accent-muted rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-emerald-700/5 rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-th-accent-muted rounded-full blur-[120px] pointer-events-none opacity-60" />
 
       <div className="h-14 md:h-20 border-b border-th-border/5 dark:border-th-border flex items-center justify-between px-4 md:px-8 bg-th-base/40 dark:bg-th-header backdrop-blur-md shrink-0 z-10 shadow-sm">
         <div className="flex items-center gap-4">
@@ -652,7 +652,7 @@ If no todo change intent exists, return an empty list [].`;
             <h1 className="text-lg md:text-2xl font-display font-bold tracking-wider text-th-text">
               {t.coach.title}
             </h1>
-            <p className="text-[10px] text-th-text-tertiary dark:text-neon-lime/60 font-mono mt-0.5">
+            <p className="text-[10px] text-th-accent/70 font-mono mt-0.5">
               {t.coach.coachingStatus.replace('{tab}', tabLabels[activeTab])}
             </p>
           </div>
@@ -667,7 +667,7 @@ If no todo change intent exists, return an empty list [].`;
               <div
                 className={`max-w-[78%] rounded-xl px-3 py-2 text-[13px] leading-relaxed ${
                   msg.sender === 'user'
-                    ? 'bg-th-accent text-th-text-inverse dark:bg-emerald-700 dark:text-white rounded-tr-sm'
+                    ? 'bg-th-accent text-th-text-inverse rounded-tr-sm'
                     : 'bg-th-surface text-th-text dark:text-gray-100 rounded-tl-sm border border-th-border/20 dark:border-th-border shadow-lg backdrop-blur-sm'
                 }`}
               >
@@ -824,13 +824,13 @@ If no todo change intent exists, return an empty list [].`;
             />
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="shrink-0 p-2 text-th-text-tertiary hover:text-th-accent transition-colors"
+              className="shrink-0 p-2.5 text-th-text-tertiary hover:text-th-accent transition-colors"
               aria-label="Attach image"
             >
-              <Plus size={20} />
+              <Plus size={22} />
             </button>
 
-            <div className="flex-1 flex items-center bg-th-elevated/50 dark:bg-th-elevated border border-th-border/30 dark:border-th-border rounded-full shadow-lg overflow-hidden transition-colors hover:border-th-accent-border">
+            <div className="flex-1 flex items-center min-h-[52px] bg-th-elevated/50 dark:bg-th-elevated border border-th-border/30 dark:border-th-border rounded-[26px] shadow-lg overflow-hidden transition-colors hover:border-th-accent-border">
               <input
                 type="text"
                 value={inputText}
@@ -841,7 +841,7 @@ If no todo change intent exists, return an empty list [].`;
                   setTimeout(() => scrollToBottom(), 600);
                 }}
                 placeholder={t.coach.placeholder}
-                className="w-full bg-transparent border-none py-2.5 px-4 text-sm text-th-text placeholder-th-text-tertiary focus:outline-none focus:ring-0"
+                className="w-full bg-transparent border-none py-3.5 px-4 text-[15px] leading-[1.45] text-th-text placeholder-th-text-tertiary focus:outline-none focus:ring-0"
                 aria-label={t.coach.sendMessage}
               />
             </div>
@@ -849,10 +849,10 @@ If no todo change intent exists, return an empty list [].`;
             <button
               onClick={handleSend}
               disabled={!inputText.trim() && !pendingImage}
-              className="shrink-0 p-2.5 bg-th-accent rounded-full text-th-text-inverse hover:bg-white transition-all disabled:opacity-0 disabled:scale-95"
+              className="shrink-0 p-3 bg-th-accent rounded-full text-th-text-inverse hover:bg-white transition-all disabled:opacity-0 disabled:scale-95"
               aria-label={t.coach.sendLabel}
             >
-              <Send size={16} />
+              <Send size={18} />
             </button>
           </div>
         </div>

@@ -29,7 +29,7 @@ const LandingPage: React.FC<LandingPageProps> = () => {
   return (
     <div className="fixed inset-0 bg-th-base flex items-center justify-center font-body text-th-text overflow-hidden">
       <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-[radial-gradient(circle_at_center,rgba(204,255,0,0.08)_0%,transparent_70%)]" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-[radial-gradient(circle_at_center,rgba(90,169,255,0.12)_0%,transparent_70%)]" />
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20" />
       </div>
 
