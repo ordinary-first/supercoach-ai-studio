@@ -354,7 +354,7 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
       </button>
       <div className="flex-1 min-w-0">
         <p className={`text-sm truncate ${todo.completed ? 'line-through text-th-text-muted' : 'text-th-text'}`}>{todo.text}</p>
-        {(todo.isMyDay || todo.dueDate || todo.repeat || todo.linkedNodeText) && (
+        {(todo.isMyDay || todo.dueDate || todo.repeat) && (
           <div className="flex flex-wrap gap-1.5 mt-0.5">
             {todo.isMyDay && (
               <span className="flex items-center gap-0.5 text-[10px] text-yellow-400">
@@ -367,7 +367,6 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
               </span>
             )}
             {todo.repeat && <span className="flex items-center gap-0.5 text-[10px] text-blue-400"><Repeat size={10} /> {getRepeatLabel(todo.repeat)}</span>}
-            {todo.linkedNodeText && <span className="flex items-center gap-0.5 text-[10px] text-electric-orange/80"><Target size={10} /> {todo.linkedNodeText}</span>}
           </div>
         )}
       </div>
