@@ -25,16 +25,16 @@
   --reward-hover: #74f2ec;
   --reward-muted: rgba(77, 232, 224, 0.16);
   --reward-border: rgba(77, 232, 224, 0.34);
-  --sacred: #f0ff4b;
-  --sacred-hover: #f7ff88;
-  --sacred-muted: rgba(240, 255, 75, 0.22);
-  --sacred-border: rgba(240, 255, 75, 0.5);
+  --sacred: #f0d264;
+  --sacred-hover: #f5dd88;
+  --sacred-muted: rgba(240, 210, 100, 0.20);
+  --sacred-border: rgba(240, 210, 100, 0.42);
   --border: rgba(176, 186, 206, 0.18);
   --border-subtle: rgba(176, 186, 206, 0.1);
   --border-strong: rgba(176, 186, 206, 0.3);
   --shadow-glow: rgba(113, 183, 255, 0.42);
   --shadow-reward: rgba(77, 232, 224, 0.34);
-  --shadow-sacred: rgba(240, 255, 75, 0.5);
+  --shadow-sacred: rgba(240, 210, 100, 0.38);
   --shadow-card:
     0 26px 52px -30px rgba(0, 0, 0, 0.62),
     0 8px 28px -18px rgba(113, 183, 255, 0.12);
@@ -78,16 +78,16 @@
   --reward-hover: #0d96a1;
   --reward-muted: rgba(15, 169, 181, 0.12);
   --reward-border: rgba(15, 169, 181, 0.24);
-  --sacred: #b7c600;
-  --sacred-hover: #9ead00;
-  --sacred-muted: rgba(183, 198, 0, 0.16);
-  --sacred-border: rgba(183, 198, 0, 0.3);
+  --sacred: #c49b00;
+  --sacred-hover: #a88400;
+  --sacred-muted: rgba(196, 155, 0, 0.14);
+  --sacred-border: rgba(196, 155, 0, 0.26);
   --border: rgba(0, 0, 0, 0.12);
   --border-subtle: rgba(0, 0, 0, 0.06);
   --border-strong: rgba(0, 0, 0, 0.2);
   --shadow-glow: rgba(0, 122, 255, 0.3);
   --shadow-reward: rgba(15, 169, 181, 0.2);
-  --shadow-sacred: rgba(183, 198, 0, 0.24);
+  --shadow-sacred: rgba(196, 155, 0, 0.18);
   --shadow-card: 0 4px 12px rgba(0, 0, 0, 0.08);
 
   --fb-bg: #F2F2F7;
