@@ -72,13 +72,31 @@ export const canShowNotification = (): boolean => {
   return typeof Notification !== 'undefined' && Notification.permission === 'granted';
 };
 
-export const showBrowserNotification = (
+export const showBrowserNotification = async (
   title: string,
   body: string,
   tag?: string,
   slot: AlarmSlot | null = null,
-): void => {
+): Promise<void> => {
   if (!canShowNotification()) return;
+
+  // Mobile browsers require ServiceWorker.showNotification (new Notification() throws)
+  try {
+    const reg = await navigator.serviceWorker?.getRegistration();
+    if (reg) {
+      await reg.showNotification(title, {
+        body,
+        tag,
+        icon: '/icon-192.png',
+        data: { slot, tag, link: slot ? `/?alarm=${slot}` : '/' },
+      });
+      return;
+    }
+  } catch {
+    // SW not available — fall through to Notification constructor
+  }
+
+  // Desktop fallback
   try {
     const notification = new Notification(title, {
       body,
