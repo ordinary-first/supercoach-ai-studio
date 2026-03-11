@@ -78,16 +78,16 @@
   --reward-hover: #0d96a1;
   --reward-muted: rgba(15, 169, 181, 0.12);
   --reward-border: rgba(15, 169, 181, 0.24);
-  --sacred: #c49b00;
-  --sacred-hover: #a88400;
-  --sacred-muted: rgba(196, 155, 0, 0.14);
-  --sacred-border: rgba(196, 155, 0, 0.26);
+  --sacred: #b7c600;
+  --sacred-hover: #9ead00;
+  --sacred-muted: rgba(183, 198, 0, 0.16);
+  --sacred-border: rgba(183, 198, 0, 0.3);
   --border: rgba(0, 0, 0, 0.12);
   --border-subtle: rgba(0, 0, 0, 0.06);
   --border-strong: rgba(0, 0, 0, 0.2);
   --shadow-glow: rgba(0, 122, 255, 0.3);
   --shadow-reward: rgba(15, 169, 181, 0.2);
-  --shadow-sacred: rgba(196, 155, 0, 0.18);
+  --shadow-sacred: rgba(183, 198, 0, 0.24);
   --shadow-card: 0 4px 12px rgba(0, 0, 0, 0.08);
 
   --fb-bg: #F2F2F7;
