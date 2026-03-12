@@ -77,6 +77,7 @@ const CoachChat: React.FC<CoachChatProps> = ({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const feedbackInFlightRef = useRef(false);
   const focusTrapRef = useFocusTrap(isOpen);
 
   const memory = useCoachMemory(userId, isOpen, nodes || [], todos, language);
@@ -371,9 +372,10 @@ If no todo change intent exists, return an empty list [].`;
   }, [isOpen]);
 
   useEffect(() => {
-    if (!isOpen || !pendingDirective || isLoading || selectedTopic) return;
+    if (!isOpen || !pendingDirective || feedbackInFlightRef.current || selectedTopic) return;
 
     let cancelled = false;
+    feedbackInFlightRef.current = true;
     setIsLoading(true);
     setShowTopicCards(false);
 
@@ -434,6 +436,7 @@ If no todo change intent exists, return an empty list [].`;
           ]);
         }
       } finally {
+        feedbackInFlightRef.current = false;
         if (!cancelled) setIsLoading(false);
       }
     })();
@@ -441,10 +444,10 @@ If no todo change intent exists, return an empty list [].`;
     return () => {
       cancelled = true;
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- isLoading deliberately excluded to prevent cancellation loop
   }, [
     isOpen,
     pendingDirective,
-    isLoading,
     selectedTopic,
     nodes,
     todos,
