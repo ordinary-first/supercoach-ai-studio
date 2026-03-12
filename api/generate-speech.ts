@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
-import { getOpenAIClient } from '../lib/openaiClient.js';
+import { getGeminiClient } from '../lib/geminiClient.js';
 import { getAdminDb } from '../lib/firebaseAdmin.js';
 import { checkAndIncrement, limitExceededResponse } from '../lib/usageGuard.js';
 import { authenticateRequest } from '../lib/authMiddleware.js';
@@ -113,11 +113,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (authError) return res.status(authError.status).json(authError.body);
   const uid = user!.uid;
 
-  if (!process.env.OPENAI_API_KEY?.trim()) {
+  if (!process.env.GOOGLE_API_KEY?.trim()) {
     return res.status(500).json({
       status: 'failed',
       errorCode: 'API_KEY_NOT_CONFIGURED',
-      errorMessage: 'API key not configured',
+      errorMessage: 'Google API key not configured',
       requestId,
     });
   }
@@ -132,7 +132,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    const openai = getOpenAIClient();
+    const ai = getGeminiClient();
 
     const cleanText = String(text || '').replace(/\*\*/g, '').trim();
     if (!cleanText) {
@@ -144,14 +144,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    const audio = await openai.audio.speech.create({
-      model: 'gpt-4o-mini-tts',
-      voice: 'onyx',
-      input: `Speak slowly in a calm and steady voice. ${cleanText}`,
-      response_format: 'pcm',
+    const ttsResponse = await ai.models.generateContent({
+      model: 'gemini-2.5-flash-preview-tts',
+      contents: [{ parts: [{ text: `Speak slowly in a calm and steady voice. ${cleanText}` }] }],
+      config: {
+        responseModalities: ['AUDIO'],
+        speechConfig: {
+          voiceConfig: {
+            prebuiltVoiceConfig: { voiceName: 'Kore' },
+          },
+        },
+      },
     });
 
-    const audioBuffer = Buffer.from(await audio.arrayBuffer());
+    const audioData = (ttsResponse as any).candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+    if (!audioData) {
+      throw new Error('No audio data in TTS response');
+    }
+    const audioBuffer = Buffer.from(audioData, 'base64');
 
     const cleanVisualizationId = typeof visualizationId === 'string' ? visualizationId.trim() : '';
 

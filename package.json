@@ -26,6 +26,7 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@fal-ai/client": "^1.9.4",
+    "@google/genai": "^1.44.0",
     "@polar-sh/sdk": "^0.43.1",
     "firebase": "^12.7.0",
     "firebase-admin": "^13.6.1",

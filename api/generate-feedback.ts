@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getOpenAIClient } from '../lib/openaiClient.js';
+import { geminiGenerate } from '../lib/geminiClient.js';
 import { checkAndIncrement, limitExceededResponse } from '../lib/usageGuard.js';
 import { authenticateRequest } from '../lib/authMiddleware.js';
 import { setCorsHeaders } from '../lib/corsHeaders.js';
@@ -50,8 +50,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (authError) return res.status(authError.status).json(authError.body);
   const uid = user!.uid;
 
-  if (!process.env.OPENAI_API_KEY?.trim()) {
-    return res.status(500).json({ error: 'API key not configured' });
+  if (!process.env.GOOGLE_API_KEY?.trim()) {
+    return res.status(500).json({ error: 'Google API key not configured' });
   }
 
   try {
@@ -67,7 +67,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const safePeriod: FeedbackPeriod =
       period === 'weekly' ? 'weekly' : period === 'monthly' ? 'monthly' : 'daily';
 
-    const openai = getOpenAIClient();
     const systemPrompt = FEEDBACK_SYSTEM_PROMPTS[safePeriod];
 
     const personDesc = profile
@@ -81,15 +80,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       `[달성 통계]\n${String(statsContext || '통계 없음')}`,
     ].join('\n\n');
 
-    const response: any = await openai.responses.create({
-      model: 'gpt-4o-mini',
-      input: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userContent },
-      ],
-    });
-
-    return res.status(200).json({ text: response?.output_text || '' });
+    const text = await geminiGenerate(systemPrompt, userContent);
+    return res.status(200).json({ text });
   } catch (error: unknown) {
     console.error('[generate-feedback]', error);
     return res.status(200).json({ text: '' });

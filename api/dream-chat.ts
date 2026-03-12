@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getOpenAIClient } from '../lib/openaiClient.js';
+import { geminiChat } from '../lib/geminiClient.js';
 import { authenticateRequest } from '../lib/authMiddleware.js';
 import { setCorsHeaders } from '../lib/corsHeaders.js';
 
@@ -38,24 +38,17 @@ export default async function handler(
     ? `\n\n사용자의 목표: ${goals.join(', ')}`
     : '';
 
-  const openai = getOpenAIClient();
-  const messages: { role: 'system' | 'user' | 'assistant'; content: string }[] = [
-    { role: 'system', content: SYSTEM_PROMPT + goalCtx },
-    ...(history || []).map((m) => ({
-      role: (m.role === 'user' ? 'user' : 'assistant') as 'user' | 'assistant',
-      content: m.content,
-    })),
-    { role: 'user', content: message },
-  ];
+  // Convert history to Gemini format
+  const geminiHistory = (history || []).map((m) => ({
+    role: (m.role === 'user' ? 'user' : 'model') as 'user' | 'model',
+    parts: [{ text: m.content }],
+  }));
 
-  const completion = await openai.chat.completions.create({
-    model: 'gpt-4o-mini',
-    messages,
-    max_tokens: 500,
-    user: user!.uid,
-  });
-
-  const reply = completion.choices[0]?.message?.content || '';
+  const reply = await geminiChat(
+    SYSTEM_PROMPT + goalCtx,
+    geminiHistory,
+    message,
+  );
   const promptMatch = reply.match(/\[PROMPT\]([\s\S]*?)\[\/PROMPT\]/);
   const prompt = promptMatch ? promptMatch[1].trim() : null;
 

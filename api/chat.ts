@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getOpenAIClient } from '../lib/openaiClient.js';
+import { geminiGenerate, geminiChat } from '../lib/geminiClient.js';
 import { getAdminDb } from '../lib/firebaseAdmin.js';
 import { checkAndIncrement, limitExceededResponse } from '../lib/usageGuard.js';
 import { authenticateRequest } from '../lib/authMiddleware.js';
@@ -54,15 +54,7 @@ async function summarizeWithAI(
   systemPrompt: string,
   userContent: string,
 ): Promise<string> {
-  const openai = getOpenAIClient();
-  const response: any = await openai.responses.create({
-    model: 'gpt-4o-mini',
-    input: [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: userContent },
-    ],
-  });
-  return (response?.output_text || '').trim();
+  return geminiGenerate(systemPrompt, userContent);
 }
 
 async function handleMemoryAction(
@@ -191,25 +183,23 @@ const COACH_SYSTEM_PROMPT = `[최우선 원칙 - 현실의 재배열]
 [톤 앤 매너]
 대화의 포문은 언제나 사용자를 무장 해제시키는 밝고 환대하는 톤으로 열되, 사용자가 자기 파괴적 패턴을 반복할 때는 부드럽지만 절대 타협하지 않는 묵직한 카리스마로 이끌어야 한다. 코치는 사용자의 과거 데이터(기억)를 자연스럽게 언급하여, '당신을 오랫동안 지켜봐 온 내가 당신의 잠재력을 완벽히 믿고 있다'는 깊은 신뢰와 이해를 기저에 깔고 대화하라.
 
-[응답 길이 규칙 - 필수]
-- 가벼운 인사/짧은 질문 → 1~2문장으로 짧게
-- 고민 상담/방향 질문 → 3~5문장으로 핵심만
-- 깊은 분석 요청 시에만 → 상세 분석 (최대 7문장)
-- 절대 불필요하게 길게 쓰지 마세요. 친구와 대화하듯 자연스럽게.
+[응답 길이]
+대화 맥락에 맞게 자연스럽게 조절하라.
+- 가벼운 대화엔 짧게, 깊은 이야기엔 충분히 길게.
+- 숫자 제한 없음. 친구와 대화하듯 필요한 만큼만.
+- 단, 불필요한 반복이나 늘어지는 건 금지.
 `.trim();
 
-type InputRole = 'user' | 'assistant' | 'system' | 'developer';
-type ContentPart = { type: 'input_text'; text: string } | { type: 'input_image'; image_url: string };
-type EasyInputMessage = { role: InputRole; content: string | ContentPart[] };
-
-function mapHistoryToInput(history: unknown): EasyInputMessage[] {
+function mapHistoryToGemini(
+  history: unknown,
+): Array<{ role: 'user' | 'model'; parts: Array<{ text: string }> }> {
   if (!Array.isArray(history)) return [];
-  const items: EasyInputMessage[] = [];
+  const items: Array<{ role: 'user' | 'model'; parts: Array<{ text: string }> }> = [];
   for (const h of history as any[]) {
-    const role: InputRole = h?.role === 'model' ? 'assistant' : 'user';
+    const role: 'user' | 'model' = h?.role === 'model' ? 'model' : 'user';
     const text = h?.parts?.[0]?.text;
     if (!text) continue;
-    items.push({ role, content: String(text) });
+    items.push({ role, parts: [{ text: String(text) }] });
   }
   const MAX_HISTORY = 12;
   return items.length > MAX_HISTORY
@@ -288,8 +278,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (authError) return res.status(authError.status).json(authError.body);
   const uid = user!.uid;
 
-  if (!process.env.OPENAI_API_KEY?.trim()) {
-    return res.status(500).json({ error: 'API key not configured' });
+  if (!process.env.GOOGLE_API_KEY?.trim()) {
+    return res.status(500).json({ error: 'Google API key not configured' });
   }
 
   try {
@@ -307,8 +297,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    const openai = getOpenAIClient();
-
     const contextBlock = buildContextBlock(body);
     const systemContent = contextBlock
       ? `${contextBlock}\n\n---\n\n${COACH_SYSTEM_PROMPT}`
@@ -320,28 +308,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         ? '코칭을 시작해주세요.'
         : '';
 
-    // 이미지가 있으면 multimodal content 배열로 빌드
-    const userContent: string | ContentPart[] = body.imageDataUrl
+    // Build Gemini history from chat history
+    const geminiHistory = mapHistoryToGemini(body.history);
+
+    // Build user content (text or multimodal)
+    const userContent = body.imageDataUrl
       ? [
-          { type: 'input_text' as const, text: userMessage || '이 이미지를 봐주세요.' },
-          { type: 'input_image' as const, image_url: body.imageDataUrl },
+          { text: userMessage || '이 이미지를 봐주세요.' },
+          { inlineData: { mimeType: 'image/jpeg', data: body.imageDataUrl.replace(/^data:image\/\w+;base64,/, '') } },
         ]
       : userMessage;
 
-    const input: EasyInputMessage[] = [
-      { role: 'system', content: systemContent },
-      ...mapHistoryToInput(body.history),
-      { role: 'user', content: userContent },
-    ];
-
-    const response = await openai.responses.create({
-      model: 'gpt-4o-mini',
-      input,
-    });
-
-    const outputText = typeof (response as any)?.output_text === 'string'
-      ? (response as any).output_text.trim()
-      : '';
+    const outputText = await geminiChat(systemContent, geminiHistory, userContent);
 
     return res.status(200).json({
       candidates: [{
