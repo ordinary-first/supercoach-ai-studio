@@ -1,5 +1,5 @@
 ﻿import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Menu, Settings } from 'lucide-react';
+import { Bell, Menu, Settings } from 'lucide-react';
 import type {
   FeedbackCard,
   GoalAdjustment,
@@ -20,6 +20,7 @@ import {
   markEveningSent,
   markMorningSent,
   markVictoryGenerated,
+  registerFcmToken,
   showBrowserNotification,
   wasVictoryGenerated,
 } from '../services/notificationService';
@@ -151,6 +152,10 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
 
   const [notifSettings, setNotifSettings] = useState<NotificationSettings | null>(null);
   const [generatingVictory, setGeneratingVictory] = useState(false);
+  const [notifPermission, setNotifPermission] = useState<NotificationPermission | 'unsupported'>(
+    typeof Notification !== 'undefined' ? Notification.permission : 'unsupported',
+  );
+  const [notifBannerDismissed, setNotifBannerDismissed] = useState(false);
 
   const [adjustments, setAdjustments] = useState<GoalAdjustment[]>([]);
   const [adjustingId, setAdjustingId] = useState<string | null>(null);
@@ -532,6 +537,20 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
     [adjustments, undoData],
   );
 
+  const handleRequestNotifPermission = useCallback(async () => {
+    if (typeof Notification === 'undefined') return;
+    const result = await Notification.requestPermission();
+    setNotifPermission(result);
+    if (result === 'granted' && userId) {
+      registerFcmToken(userId);
+    }
+  }, [userId]);
+
+  const showNotifBanner =
+    notifPermission !== 'granted' &&
+    notifPermission !== 'unsupported' &&
+    !notifBannerDismissed;
+
   if (!isOpen) return null;
 
   return (
@@ -553,6 +572,39 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
 
         <div className="w-10 h-10" /> {/* Spacer to maintain centering since global menu icon covers this spot */}
       </div>
+
+      {showNotifBanner && (
+        <div className="mx-4 mt-2 px-3 py-2.5 rounded-xl bg-th-accent/10 border border-th-accent/20 animate-fade-in">
+          <div className="flex items-center gap-2">
+            <Bell size={14} className="text-th-accent shrink-0" />
+            <p className="text-[12px] text-th-text-secondary flex-1">
+              {t.common.today === '오늘'
+                ? '피드백 알림을 받으려면 알림 권한을 허용해주세요.'
+                : 'Allow notifications to receive feedback alerts.'}
+            </p>
+            <button
+              onClick={() => setNotifBannerDismissed(true)}
+              className="text-[11px] text-th-text-tertiary shrink-0"
+            >
+              ✕
+            </button>
+          </div>
+          {notifPermission === 'denied' ? (
+            <p className="text-[11px] text-th-text-tertiary mt-1.5">
+              {t.common.today === '오늘'
+                ? '브라우저 설정 → 사이트 설정 → 알림에서 직접 허용해주세요.'
+                : 'Go to browser Settings → Site Settings → Notifications to allow.'}
+            </p>
+          ) : (
+            <button
+              onClick={handleRequestNotifPermission}
+              className="w-full mt-2 py-2 rounded-lg bg-th-accent/15 text-th-accent text-[12px] font-semibold hover:bg-th-accent/25 transition-colors"
+            >
+              {t.common.today === '오늘' ? '알림 허용하기' : 'Allow Notifications'}
+            </button>
+          )}
+        </div>
+      )}
 
       {generatingVictory && (
         <div className="mx-4 mt-2 px-4 py-2 rounded-xl bg-th-accent/10 text-th-accent text-[12px] font-medium text-center animate-fade-in">
