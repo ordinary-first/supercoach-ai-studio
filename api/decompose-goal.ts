@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getOpenAIClient } from '../lib/openaiClient.js';
+import { geminiGenerate } from '../lib/geminiClient.js';
 import { checkAndIncrement, limitExceededResponse } from '../lib/usageGuard.js';
 import { authenticateRequest } from '../lib/authMiddleware.js';
 import { setCorsHeaders } from '../lib/corsHeaders.js';
@@ -34,8 +34,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (authError) return res.status(authError.status).json(authError.body);
   const uid = user!.uid;
 
-  if (!process.env.OPENAI_API_KEY?.trim()) {
-    return res.status(500).json({ error: 'API key not configured' });
+  if (!process.env.GOOGLE_API_KEY?.trim()) {
+    return res.status(500).json({ error: 'Google API key not configured' });
   }
 
   try {
@@ -52,23 +52,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(429).json(limitExceededResponse('chatMessages', usage));
     }
 
-    const openai = getOpenAIClient();
-
     const userContent = childTexts.length > 0
       ? `목표: "${parentText}"\n\n이미 존재하는 하위 목표 (중복 금지): ${childTexts.map(t => `"${t}"`).join(', ')}`
       : `목표: "${parentText}"`;
 
-    const response = await openai.responses.create({
-      model: 'gpt-4o-mini',
-      input: [
-        { role: 'system', content: DECOMPOSE_SYSTEM_PROMPT },
-        { role: 'user', content: userContent },
-      ],
-    });
-
-    const outputText = typeof (response as any)?.output_text === 'string'
-      ? (response as any).output_text.trim()
-      : '[]';
+    const outputText = await geminiGenerate(DECOMPOSE_SYSTEM_PROMPT, userContent) || '[]';
 
     let suggestions: string[];
     try {
