@@ -313,32 +313,30 @@ export default function TodoSidebar({
 
       {/* Principles - same style as smart lists */}
       <div className="px-3 pb-1 flex-shrink-0">
-        {todayPrinciple && (
-          <button
-            onClick={() => onOpenPrinciples()}
-            className={`w-full rounded-xl text-left overflow-hidden transition-all duration-200 ${
-              showPrinciplesEditor
-                ? 'bg-th-accent-muted shadow-[0_10px_22px_-20px_var(--shadow-glow)]'
-                : 'bg-th-surface/40 hover:bg-th-surface/70'
-            }`}
-          >
-            <div className="flex items-stretch">
-              <div className={`w-1 ${showPrinciplesEditor ? 'bg-th-accent shadow-[0_0_10px_var(--shadow-glow)]' : 'bg-th-accent/60'}`} />
-              <div className="flex-1 px-3 py-2.5">
-                <p className={`text-[10px] uppercase tracking-[0.14em] font-bold ${
-                  showPrinciplesEditor ? 'text-th-accent' : 'text-th-text-tertiary'
-                }`}>
-                  {language === 'ko' ? '이것만 지켜줘!' : 'Keep This'}
-                </p>
-                <p className={`mt-0.5 text-[13px] leading-[1.3] font-semibold truncate ${
-                  showPrinciplesEditor ? 'text-th-text' : 'text-th-text-secondary'
-                }`}>
-                  {todayPrinciple.text}
-                </p>
-              </div>
+        <button
+          onClick={() => onOpenPrinciples()}
+          className={`w-full rounded-xl text-left overflow-hidden transition-all duration-200 ${
+            showPrinciplesEditor
+              ? 'bg-th-accent-muted shadow-[0_10px_22px_-20px_var(--shadow-glow)]'
+              : 'bg-th-surface/40 hover:bg-th-surface/70'
+          }`}
+        >
+          <div className="flex items-stretch">
+            <div className={`w-1 ${showPrinciplesEditor ? 'bg-th-accent shadow-[0_0_10px_var(--shadow-glow)]' : 'bg-th-accent/60'}`} />
+            <div className="flex-1 px-3 py-2.5">
+              <p className={`text-[10px] uppercase tracking-[0.14em] font-bold ${
+                showPrinciplesEditor ? 'text-th-accent' : 'text-th-text-tertiary'
+              }`}>
+                {language === 'ko' ? '이것만 지켜줘!' : 'Keep This'}
+              </p>
+              <p className={`mt-0.5 text-[13px] leading-[1.3] font-semibold truncate ${
+                showPrinciplesEditor ? 'text-th-text' : 'text-th-text-secondary'
+              }`}>
+                {todayPrinciple ? todayPrinciple.text : (language === 'ko' ? '나만의 규칙을 적어보세요' : 'Add your rules')}
+              </p>
             </div>
-          </button>
-        )}
+          </div>
+        </button>
       </div>
 
       <div className="flex-1 overflow-y-auto py-2 scrollbar-hide">

@@ -18,19 +18,18 @@ const createDevAuthPlugin = () => ({
   configureServer(server) {
     server.middlewares.use('/__dev/custom-token', async (req, res) => {
       try {
-        const serviceAccountPath = resolveDevServiceAccountPath();
-        if (!serviceAccountPath) {
-          res.statusCode = 500;
-          res.setHeader('Content-Type', 'application/json');
-          res.end(JSON.stringify({ error: 'Missing Firebase service account key for dev auth.' }));
-          return;
-        }
-
-        const serviceAccount = JSON.parse(readFileSync(serviceAccountPath, 'utf-8'));
-        const { cert, getApps, initializeApp } = await import('firebase-admin/app');
+        const { cert, applicationDefault, getApps, initializeApp } = await import('firebase-admin/app');
         const { getAuth } = await import('firebase-admin/auth');
+
         if (!getApps().length) {
-          initializeApp({ credential: cert(serviceAccount) });
+          const serviceAccountPath = resolveDevServiceAccountPath();
+          if (serviceAccountPath) {
+            const serviceAccount = JSON.parse(readFileSync(serviceAccountPath, 'utf-8'));
+            initializeApp({ credential: cert(serviceAccount) });
+          } else {
+            // Fallback: use Application Default Credentials (Firebase CLI login)
+            initializeApp({ credential: applicationDefault(), projectId: 'coach-52bf4' });
+          }
         }
 
         const requestUrl = new URL(req.url ?? '/', 'http://localhost');

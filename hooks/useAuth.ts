@@ -51,6 +51,7 @@ export function useAuth(
     import.meta.env.DEV ? new URLSearchParams(window.location.search).get('devToken') : null;
 
   // In dev mode, authenticate against Firebase so backend paths are exercised.
+  // Falls back to a dummy profile when Firebase auth is unavailable (e.g. anonymous login disabled).
   useEffect(() => {
     if (!isDevMode) return;
     devAuthBootstrappingRef.current = true;
@@ -58,20 +59,56 @@ export function useAuth(
     let resolved = false;
     const timeout = setTimeout(() => {
       if (!resolved && !cancelled) {
+        // Timeout: fall back to dummy dev profile
+        devAuthBootstrappingRef.current = false;
+        setUserProfile({
+          name: 'Dev User',
+          email: 'dev@localhost',
+          googleId: 'dev-local-user',
+          avatarUrl: '',
+          onboardingCompleted: true,
+        } as UserProfile);
         setIsInitializing(false);
+        setIsDataLoaded(true);
       }
-    }, 8000);
+    }, 5000);
     (async () => {
-      let user = devAuthToken ? await loginWithDevToken(devAuthToken) : null;
-      if (!user) {
-        const freshToken = await fetchDevAuthToken();
-        user = freshToken ? await loginWithDevToken(freshToken) : await loginAnonymously();
-      }
-      resolved = true;
-      devAuthBootstrappingRef.current = false;
-      clearTimeout(timeout);
-      if (!user && !cancelled) {
-        setIsInitializing(false);
+      try {
+        let user = devAuthToken ? await loginWithDevToken(devAuthToken) : null;
+        if (!user) {
+          const freshToken = await fetchDevAuthToken();
+          user = freshToken ? await loginWithDevToken(freshToken) : await loginAnonymously();
+        }
+        resolved = true;
+        devAuthBootstrappingRef.current = false;
+        clearTimeout(timeout);
+        if (!user && !cancelled) {
+          // All auth methods failed: use dummy profile
+          setUserProfile({
+            name: 'Dev User',
+            email: 'dev@localhost',
+            googleId: 'dev-local-user',
+            avatarUrl: '',
+            onboardingCompleted: true,
+          } as UserProfile);
+          setIsInitializing(false);
+          setIsDataLoaded(true);
+        }
+      } catch {
+        resolved = true;
+        devAuthBootstrappingRef.current = false;
+        clearTimeout(timeout);
+        if (!cancelled) {
+          setUserProfile({
+            name: 'Dev User',
+            email: 'dev@localhost',
+            googleId: 'dev-local-user',
+            avatarUrl: '',
+            onboardingCompleted: true,
+          } as UserProfile);
+          setIsInitializing(false);
+          setIsDataLoaded(true);
+        }
       }
     })();
     return () => {
@@ -126,6 +163,12 @@ export function useAuth(
       isLoadingRef.current = false;
       setIsDataLoaded(false);
       setSyncStatus('offline');
+      return;
+    }
+
+    // Skip Firestore loading for dev dummy user (no real Firebase auth)
+    if (isDevMode && userProfile.googleId === 'dev-local-user') {
+      setIsDataLoaded(true);
       return;
     }
 

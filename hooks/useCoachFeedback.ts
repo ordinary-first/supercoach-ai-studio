@@ -2,11 +2,6 @@ import { useState, useEffect, useCallback } from 'react';
 import type { ToDoItem } from '../types';
 import type { AppLanguage } from '../i18n/types';
 
-const MORNING_START = 5;
-const MORNING_END = 12;
-const EVENING_START = 18;
-const EVENING_END = 24;
-
 const todayKey = (): string => {
   const d = new Date();
   const y = d.getFullYear();
@@ -82,13 +77,6 @@ When wrapping up, append:
 <!-- COMMENT: one-line summary of today's win -->`;
 };
 
-const getTimeBasedSlot = (): 'morning' | 'evening' | null => {
-  const hour = new Date().getHours();
-  if (hour >= MORNING_START && hour < MORNING_END) return 'morning';
-  if (hour >= EVENING_START && hour < EVENING_END) return 'evening';
-  return null;
-};
-
 export type FeedbackSlot = 'morning' | 'evening' | null;
 
 interface CoachFeedbackResult {
@@ -114,16 +102,13 @@ export const useCoachFeedback = (
     }
     if (pendingDirective) return;
 
-    const targetSlot = forcedSlot && !wasDone(forcedSlot)
-      ? forcedSlot
-      : getTimeBasedSlot();
-
-    if (!targetSlot || wasDone(targetSlot)) {
+    // Only trigger from alarm click (forcedSlot), never from time-based auto-detection
+    if (!forcedSlot || wasDone(forcedSlot)) {
       setFeedbackSlot(null);
       return;
     }
 
-    if (targetSlot === 'morning') {
+    if (forcedSlot === 'morning') {
       setPendingDirective(getMorningDirective(language));
       setFeedbackSlot('morning');
       return;

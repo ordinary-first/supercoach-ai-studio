@@ -388,7 +388,7 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
       const triggers = checkNotificationTriggers(notifSettings);
 
       if (triggers.shouldNotifyMorning && canShowNotification()) {
-        showBrowserNotification(t.feedback.morningNotifTitle, t.feedback.morningNotifBody, 'morning');
+        showBrowserNotification(t.feedback.morningNotifTitle, t.feedback.morningNotifBody, 'morning', 'morning');
         markMorningSent();
       }
 
@@ -400,6 +400,7 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
         showBrowserNotification(
           t.feedback.eveningNotifTitle,
           t.feedback.eveningNotifBody.replace('{count}', String(count)),
+          'evening',
           'evening',
         );
         markEveningSent();
