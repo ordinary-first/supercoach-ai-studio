@@ -425,7 +425,8 @@ If no todo change intent exists, return an empty list [].`;
         }
 
         onAlarmSlotConsumed?.();
-      } catch {
+      } catch (err) {
+        console.error('[CoachChat] auto-feedback failed:', err);
         if (!cancelled) {
           onMessagesChange((prev) => [
             ...prev,
@@ -665,9 +666,9 @@ If no todo change intent exists, return an empty list [].`;
           {messages.map((msg) => (
             <div key={msg.id} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
               <div
-                className={`max-w-[78%] rounded-xl px-3 py-2 text-[13px] leading-relaxed ${
+                className={`max-w-[78%] rounded-xl px-3 py-2 text-[15px] leading-relaxed ${
                   msg.sender === 'user'
-                    ? 'bg-th-accent text-th-text-inverse rounded-tr-sm'
+                    ? 'bg-blue-500 text-white rounded-tr-sm'
                     : 'bg-th-surface text-th-text dark:text-gray-100 rounded-tl-sm border border-th-border/20 dark:border-th-border shadow-lg backdrop-blur-sm'
                 }`}
               >
@@ -706,12 +707,12 @@ If no todo change intent exists, return an empty list [].`;
           {pendingTodoActions.length > 0 && (
             <div className="flex justify-start">
               <div className="max-w-[85%] rounded-xl rounded-tl-sm bg-th-surface border border-th-border/30 shadow-lg px-4 py-3 space-y-2">
-                <p className="text-[12px] font-semibold text-th-text-secondary">
+                <p className="text-[13px] font-semibold text-th-text-secondary">
                   {language === 'ko' ? '할일 반영 제안' : 'Todo changes suggested'}
                 </p>
                 <div className="space-y-1">
                   {pendingTodoActions.map((action, idx) => (
-                    <p key={`todo-action-${idx}`} className="text-[12px] text-th-text-tertiary">
+                    <p key={`todo-action-${idx}`} className="text-[13px] text-th-text-tertiary">
                       - {describeAction(action)}
                     </p>
                   ))}
@@ -719,13 +720,13 @@ If no todo change intent exists, return an empty list [].`;
                 <div className="flex items-center gap-2 pt-1">
                   <button
                     onClick={applyTodoActions}
-                    className="px-3 py-1.5 rounded-full bg-th-accent text-th-text-inverse text-[11px] font-semibold"
+                    className="px-3 py-1.5 rounded-full bg-th-accent text-th-text-inverse text-[12px] font-semibold"
                   >
                     {language === 'ko' ? '반영' : 'Apply'}
                   </button>
                   <button
                     onClick={() => setPendingTodoActions([])}
-                    className="px-3 py-1.5 rounded-full bg-th-surface-hover text-th-text-secondary text-[11px] font-semibold"
+                    className="px-3 py-1.5 rounded-full bg-th-surface-hover text-th-text-secondary text-[12px] font-semibold"
                   >
                     {language === 'ko' ? '취소' : 'Cancel'}
                   </button>
@@ -737,7 +738,7 @@ If no todo change intent exists, return an empty list [].`;
           {!isLoading && showTopicCards && questions.length > 0 && (
             <div className="flex justify-start">
               <div className="max-w-[85%] rounded-xl rounded-tl-sm bg-th-surface border border-th-border/20 shadow-lg px-4 py-3">
-                <p className="text-[13px] text-th-text leading-relaxed mb-2.5">
+                <p className="text-[15px] text-th-text leading-relaxed mb-2.5">
                   {t.coach.selectQuestion}
                 </p>
                 <div className="space-y-2">

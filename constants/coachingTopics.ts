@@ -280,7 +280,11 @@ export function getCoachingQuestions(
   nodes: GoalNode[],
   language: AppLanguage = 'ko'
 ): CoachingQuestion[] {
-  if (!nodes.length || !selectedNode) {
+  if (!selectedNode) {
+    return [];
+  }
+
+  if (!nodes.length) {
     return language === 'ko' ? SITUATION_1_QUESTIONS : SITUATION_1_QUESTIONS_EN;
   }
 

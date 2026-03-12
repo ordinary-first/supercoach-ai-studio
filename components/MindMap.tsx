@@ -659,20 +659,64 @@ const MindMap: React.FC<MindMapProps> = ({
   const tRef = useRef(t);
   tRef.current = t;
 
-  // --- Onboarding: Root node position tracking ---
+  // --- Onboarding: Root node position tracking + centering ---
   const [rootNodeCenter, setRootNodeCenter] = useState<{ x: number; y: number } | null>(null);
 
+  const centerRootNodeInView = useCallback(() => {
+    const renderedRoot = getRenderedNodeByGoalId('root');
+    if (!renderedRoot) return;
+    const container = containerRef.current;
+    const mindMap = mindMapRef.current;
+
+    if (mindMap?.view && container) {
+      // Reset view to origin first to avoid accumulated drift
+      const currentScale = mindMap.view.scale || 1;
+      mindMap.view.x = 0;
+      mindMap.view.y = 0;
+      mindMap.view.transform();
+
+      // Now get node position from clean origin
+      const rect = safeGetNodeRectInSvg(renderedRoot);
+      if (rect) {
+        const containerRect = container.getBoundingClientRect();
+        const nodeCx = rect.left + rect.width / 2;
+        const nodeCy = rect.top + rect.height / 2;
+        const viewCx = containerRect.width / 2;
+        const viewCy = containerRect.height / 2;
+        const dx = viewCx - nodeCx;
+        const dy = viewCy - nodeCy;
+        mindMap.view.translateXY(dx, dy);
+      }
+    }
+
+    // Update overlay position
+    const rectAfter = safeGetNodeRectInSvg(renderedRoot);
+    if (rectAfter) {
+      setRootNodeCenter({ x: rectAfter.left + rectAfter.width / 2, y: rectAfter.top + rectAfter.height / 2 });
+    }
+  }, [getRenderedNodeByGoalId, safeGetNodeRectInSvg]);
+
+  // Initial centering after render
   useEffect(() => {
     if (onboardingPhase === 'done') return;
-    const timer = setTimeout(() => {
-      const renderedRoot = getRenderedNodeByGoalId('root');
-      if (!renderedRoot) return;
-      const rect = safeGetNodeRectInSvg(renderedRoot);
-      if (!rect) return;
-      setRootNodeCenter({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
-    }, 500);
+    const timer = setTimeout(centerRootNodeInView, 500);
     return () => clearTimeout(timer);
-  }, [nodes, onboardingPhase, getRenderedNodeByGoalId, safeGetNodeRectInSvg]);
+  }, [nodes, onboardingPhase, centerRootNodeInView]);
+
+  // Re-center on window resize during onboarding
+  useEffect(() => {
+    if (onboardingPhase !== 'identity') return;
+    let timer: ReturnType<typeof setTimeout>;
+    const handleResize = () => {
+      clearTimeout(timer);
+      timer = setTimeout(centerRootNodeInView, 100);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [onboardingPhase, centerRootNodeInView]);
 
   // --- Onboarding: Phase 3 auto-dismiss ---
   useEffect(() => {
@@ -711,6 +755,42 @@ const MindMap: React.FC<MindMapProps> = ({
       container.removeEventListener('gestureend', preventGestureDefault);
     };
   }, []);
+
+  // During onboarding identity phase, block pan/zoom/drag on the mindmap container
+  // while still allowing click/dblclick events to pass through to nodes.
+  useEffect(() => {
+    if (onboardingPhase !== 'identity') return;
+    const container = containerRef.current;
+    if (!container) return;
+
+    const blockWheel = (e: Event) => { e.preventDefault(); e.stopPropagation(); };
+    const blockDrag = (e: Event) => {
+      const te = e as globalThis.TouchEvent;
+      // Allow single-finger tap/dblclick, block multi-touch & drag
+      if (te.touches && te.touches.length >= 2) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+    const blockMouseDrag = (e: Event) => {
+      // Block mouse-drag panning (mousedown + mousemove = drag)
+      const me = e as MouseEvent;
+      if (me.buttons > 0) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+
+    container.addEventListener('wheel', blockWheel, { passive: false, capture: true });
+    container.addEventListener('touchmove', blockDrag, { passive: false, capture: true });
+    container.addEventListener('mousemove', blockMouseDrag, { capture: true });
+
+    return () => {
+      container.removeEventListener('wheel', blockWheel, { capture: true } as EventListenerOptions);
+      container.removeEventListener('touchmove', blockDrag, { capture: true } as EventListenerOptions);
+      container.removeEventListener('mousemove', blockMouseDrag, { capture: true } as EventListenerOptions);
+    };
+  }, [onboardingPhase]);
 
   // --- Initialize MindMap (once) ---
   useEffect(() => {
@@ -1291,49 +1371,41 @@ const MindMap: React.FC<MindMapProps> = ({
       )}
 
       {/* Phase 1: Identity Node Awakening */}
-      {onboardingPhase === 'identity' && (
+      {onboardingPhase === 'identity' && rootNodeCenter && (
         <>
-          {/* Dim overlay with radial cutout for root node */}
+          {/* Dim overlay — pointer-events:none so dblclick passes through to the node.
+              Pan/zoom is blocked separately via event listeners on the container. */}
           <div
             className="absolute inset-0 z-30 pointer-events-none"
             style={{
-              background: rootNodeCenter
-                ? `radial-gradient(ellipse 180px 120px at ${rootNodeCenter.x}px ${rootNodeCenter.y}px, transparent 0%, rgba(0,0,0,0.7) 100%)`
-                : 'rgba(0,0,0,0.7)',
+              background: `radial-gradient(ellipse 200px 130px at ${rootNodeCenter.x}px ${rootNodeCenter.y}px, transparent 0%, ${isLight ? 'rgba(0,0,0,0.18)' : 'rgba(0,0,0,0.7)'} 100%)`,
             }}
           />
-
           {/* "정체성 노드" label above root node */}
-          {rootNodeCenter && (
-            <div
-              className="absolute z-40 pointer-events-none"
-              style={{ left: rootNodeCenter.x, top: rootNodeCenter.y - 70, transform: 'translate(-50%, 0)' }}
-            >
-              <span className="text-[10px] text-th-text-secondary uppercase tracking-[0.2em] font-mono">
-                {t.mindmap.onboarding.identityLabel}
-              </span>
-            </div>
-          )}
-
+          <div
+            className="absolute z-40 pointer-events-none"
+            style={{ left: rootNodeCenter.x, top: rootNodeCenter.y - 80, transform: 'translate(-50%, 0)' }}
+          >
+            <span className="text-[10px] text-th-text-secondary uppercase tracking-[0.2em] font-mono">
+              {t.mindmap.onboarding.identityLabel}
+            </span>
+          </div>
           {/* Popup message below root node */}
-          {rootNodeCenter && (
-            <div
-              className="absolute z-40 pointer-events-none"
-              style={{ left: rootNodeCenter.x, top: rootNodeCenter.y + 60, transform: 'translate(-50%, 0)' }}
-            >
-              <div className="bg-th-elevated/95 border border-th-border rounded-2xl px-4 py-3 max-w-[260px] backdrop-blur-md shadow-2xl">
-                <p className="text-th-text text-xs leading-relaxed text-center">
-                  {t.mindmap.onboarding.identityPrompt}
-                  <br />
-                  <span className="text-th-accent/80 font-semibold">{t.mindmap.onboarding.identityMotivation}</span>
-                </p>
-                <div className="mt-2 flex justify-center">
-                  <span className="text-[10px] text-th-text-tertiary animate-pulse">{t.mindmap.onboarding.doubleTapToEdit}</span>
-                </div>
+          <div
+            className="absolute z-40 pointer-events-none"
+            style={{ left: rootNodeCenter.x, top: rootNodeCenter.y + 60, transform: 'translate(-50%, 0)' }}
+          >
+            <div className="bg-th-elevated/95 border border-th-border rounded-2xl px-4 py-3 max-w-[260px] backdrop-blur-md shadow-2xl">
+              <p className="text-th-text text-xs leading-relaxed text-center">
+                {t.mindmap.onboarding.identityPrompt}
+                <br />
+                <span className="text-th-accent/80 font-semibold">{t.mindmap.onboarding.identityMotivation}</span>
+              </p>
+              <div className="mt-2 flex justify-center">
+                <span className="text-[10px] text-th-text-tertiary animate-pulse">{t.mindmap.onboarding.doubleTapToEdit}</span>
               </div>
             </div>
-          )}
-
+          </div>
           {/* Skip button */}
           <button
             onClick={() => setIdentitySkipped(true)}
