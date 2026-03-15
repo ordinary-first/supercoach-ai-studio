@@ -161,16 +161,14 @@ export const FeedbackSettingsSheet: React.FC<FeedbackSettingsSheetProps> = ({
     const browserPermission = Notification.permission as 'granted' | 'denied' | 'default';
     setSettings((prev) => {
       if (prev.notificationPermission === browserPermission) return prev;
-      const next = {
+      return {
         ...prev,
         notificationPermission: browserPermission,
         timezone: prev.timezone || getClientTimezone(),
         updatedAt: Date.now(),
       };
-      scheduleSave(next);
-      return next;
     });
-  }, [scheduleSave]);
+  }, []);
 
   useEffect(() => {
     if (!userId) return;
@@ -220,9 +218,18 @@ export const FeedbackSettingsSheet: React.FC<FeedbackSettingsSheetProps> = ({
       return;
     }
 
-    // 알림 권한 확인
-    if (typeof Notification === 'undefined' || Notification.permission !== 'granted') {
-      setSaveResult({ ok: false, msg: lang === 'ko' ? '⚠ 알림 권한이 허용되지 않았습니다. 위에서 권한을 먼저 허용해주세요.' : '⚠ Notification permission not granted. Please allow above.' });
+    // 알림 권한 확인 — 없으면 자동으로 요청
+    if (typeof Notification !== 'undefined' && Notification.permission !== 'granted') {
+      const result = await Notification.requestPermission();
+      updateField('notificationPermission', result as 'granted' | 'denied' | 'default');
+      if (result !== 'granted') {
+        setSaveResult({ ok: false, msg: lang === 'ko' ? '⚠ 알림 권한이 허용되지 않았습니다. 브라우저 설정에서 알림을 허용해주세요.' : '⚠ Notification permission not granted. Please allow in browser settings.' });
+        setIsSaving(false);
+        return;
+      }
+    }
+    if (typeof Notification === 'undefined') {
+      setSaveResult({ ok: false, msg: lang === 'ko' ? '⚠ 이 브라우저에서는 알림이 지원되지 않습니다.' : '⚠ Notifications not supported in this browser.' });
       setIsSaving(false);
       return;
     }
@@ -335,12 +342,6 @@ export const FeedbackSettingsSheet: React.FC<FeedbackSettingsSheetProps> = ({
                       <li key={line} className="text-[11px] text-red-200/85">{`- ${line}`}</li>
                     ))}
                   </ul>
-                  <button
-                    onClick={requestPermission}
-                    className="w-full py-2 rounded-lg bg-red-500/15 text-red-200 text-[12px] font-semibold hover:bg-red-500/25 transition-colors"
-                  >
-                    {language === 'ko' ? '권한 다시 요청' : 'Request permission again'}
-                  </button>
                 </div>
               ) : (
                 <button
