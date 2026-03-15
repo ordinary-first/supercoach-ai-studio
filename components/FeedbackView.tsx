@@ -548,7 +548,6 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
 
   const showNotifBanner =
     notifPermission !== 'granted' &&
-    notifPermission !== 'unsupported' &&
     !notifBannerDismissed;
 
   if (!isOpen) return null;
@@ -589,7 +588,13 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
               ✕
             </button>
           </div>
-          {notifPermission === 'denied' ? (
+          {notifPermission === 'unsupported' ? (
+            <p className="text-[11px] text-th-text-tertiary mt-1.5">
+              {t.common.today === '오늘'
+                ? '이 브라우저에서는 알림이 지원되지 않습니다. 홈 화면에 앱을 추가한 뒤 다시 시도해주세요.'
+                : 'Notifications are not supported in this browser. Add to Home Screen and try again.'}
+            </p>
+          ) : notifPermission === 'denied' ? (
             <p className="text-[11px] text-th-text-tertiary mt-1.5">
               {t.common.today === '오늘'
                 ? '브라우저 설정 → 사이트 설정 → 알림에서 직접 허용해주세요.'
