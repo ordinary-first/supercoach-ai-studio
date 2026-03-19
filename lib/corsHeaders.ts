@@ -4,8 +4,9 @@ const ALLOWED_ORIGINS = new Set([
   'https://web-legacy-ruddy.vercel.app',
 ]);
 
+// Only allow our own Vercel preview deployments (project slug: web-legacy)
 const isVercelPreview = (origin: string): boolean =>
-  /^https:\/\/[\w-]+\.vercel\.app$/.test(origin);
+  /^https:\/\/web-legacy[\w-]*\.vercel\.app$/.test(origin);
 
 export const setCorsHeaders = (
   req: { headers: { origin?: string } },
