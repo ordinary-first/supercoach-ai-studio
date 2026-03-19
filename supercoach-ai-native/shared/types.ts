@@ -1,0 +1,199 @@
+
+export enum NodeType {
+  ROOT = 'ROOT',
+  SUB = 'SUB',
+}
+
+export enum NodeStatus {
+  PENDING = 'PENDING',
+  COMPLETED = 'COMPLETED',
+  STUCK = 'STUCK',
+}
+
+export interface GoalNode {
+  id: string;
+  text: string;
+  type: NodeType;
+  status: NodeStatus;
+  progress: number;
+  parentId?: string;
+  imageUrl?: string;
+  collapsed?: boolean;
+  isPreview?: boolean;
+  x?: number;
+  y?: number;
+  vx?: number;
+  vy?: number;
+  fx?: number | null;
+  fy?: number | null;
+  sortOrder?: number;
+}
+
+export interface GoalLink {
+  source: string | GoalNode;
+  target: string | GoalNode;
+}
+
+export interface ChatMessage {
+  id: string;
+  sender: 'user' | 'ai';
+  text: string;
+  timestamp: number;
+  imageDataUrl?: string;
+}
+
+export interface UserProfile {
+  name: string;
+  email?: string;
+  gender: 'Male' | 'Female' | 'Other';
+  age: string;
+  location: string;
+  avatarUrl?: string;
+  googleId?: string;
+  bio?: string;
+  gallery?: string[];
+  billingPlan?: 'explorer' | 'essential' | 'visionary' | 'master' | null;
+  billingIsActive?: boolean;
+  billingSubscriptionId?: string | null;
+  billingCancelAtPeriodEnd?: boolean;
+  createdAt?: number;
+  onboardingCompleted?: boolean;
+}
+
+export type RepeatFrequency =
+  | 'daily'
+  | 'weekdays'
+  | 'weekly'
+  | 'monthly'
+  | 'weekly-2'
+  | 'weekly-3'
+  | 'weekly-4'
+  | 'weekly-5'
+  | 'weekly-6'
+  | null;
+
+export type TodoPriority = 'low' | 'medium' | 'high';
+
+export type SmartListId = 'myDay' | 'important' | 'planned' | 'tasks';
+
+export interface TodoList {
+  id: string;
+  name: string;
+  icon?: string;
+  color?: string;
+  groupId?: string;
+  sortOrder: number;
+  createdAt: number;
+}
+
+export interface TodoGroup {
+  id: string;
+  name: string;
+  isCollapsed: boolean;
+  sortOrder: number;
+  createdAt: number;
+}
+
+export interface ToDoItem {
+  id: string;
+  text: string;
+  completed: boolean;
+  linkedNodeId?: string;
+  linkedNodeText?: string;
+  linkedGoalId?: string;
+  createdAt: number;
+  isMyDay?: boolean;
+  dueDate?: number | null;
+  reminder?: number | null;
+  repeat?: RepeatFrequency;
+  note?: string;
+  priority?: TodoPriority;
+  tags?: string[];
+  listId?: string;
+  sortOrder?: number;
+  steps?: TodoStep[];
+}
+
+export interface TodoStep {
+  id: string;
+  text: string;
+  completed: boolean;
+}
+
+export interface UserPrinciple {
+  id: string;
+  text: string;
+  createdAt: number;
+  isRepresentative?: boolean;
+}
+
+export type ActionType =
+  | 'ADD_NODE' | 'UPDATE_NODE' | 'DELETE_NODE' | 'COMPLETE_NODE'
+  | 'ADD_TODO' | 'COMPLETE_TODO' | 'DELETE_TODO' | 'UPDATE_TODO'
+  | 'UPDATE_PROGRESS' | 'UPDATE_PROFILE' | 'VIEW_TAB'
+  | 'CREATE_VISUALIZATION' | 'OPEN_COACH' | 'COACH_CONVERSATION';
+
+export interface ActionLogEntry {
+  id: string;
+  action: ActionType;
+  detail: string;
+  timestamp: number;
+  metadata?: Record<string, unknown>;
+}
+
+export interface ShortTermMemory {
+  summary: string;
+  lastActionTimestamp: number;
+  updatedAt: number;
+}
+
+export interface MidTermMemory {
+  summary: string;
+  updatedAt: number;
+}
+
+export interface LongTermMemory {
+  summary: string;
+  updatedAt: number;
+}
+
+export interface CoachMemoryContext {
+  shortTerm: string | null;
+  midTerm: string | null;
+  longTerm: string | null;
+}
+
+export interface FeedbackCard {
+  date: string;
+  completedTodos: string[];
+  incompleteTodos: string[];
+  coachComment?: string;
+  userNote?: string;
+  userEdited?: boolean;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface NotificationSettings {
+  morningEnabled: boolean;
+  morningTime: string;
+  eveningEnabled: boolean;
+  eveningTime: string;
+  timezone?: string;
+  notificationPermission: 'granted' | 'denied' | 'default';
+  fcmToken?: string;
+  lastMorningSentDate?: string;
+  lastEveningSentDate?: string;
+  updatedAt: number;
+}
+
+export interface GoalAdjustment {
+  goalId: string;
+  goalText: string;
+  currentMetric: string;
+  suggestedMetric: string;
+  reason: string;
+  avgCompletion: number;
+  weeks: number;
+  status: 'pending' | 'accepted' | 'dismissed';
+}

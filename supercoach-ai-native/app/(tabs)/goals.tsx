@@ -1,9 +1,12 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { View, Text, TouchableOpacity, Alert, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import { Plus } from 'lucide-react-native';
 import { MindMapCanvas } from '../../components/mindmap/MindMapCanvas';
 import { MindMapControls } from '../../components/mindmap/MindMapControls';
+import { VisionBoardView } from '../../components/mindmap/VisionBoardView';
+import CoachBubble, { type CoachBubbleRef } from '../../components/CoachBubble';
 import type { GoalNode, GoalLink } from '../../shared/types';
 import { NodeType, NodeStatus } from '../../shared/types';
 import { getLinkId } from '../../hooks/useAutoSave';
@@ -40,6 +43,9 @@ function createSubNode(parentId: string): { node: GoalNode; link: GoalLink } {
 }
 
 export default function GoalsScreen() {
+  const router = useRouter();
+  const coachRef = useRef<CoachBubbleRef>(null);
+  const [viewMode, setViewMode] = useState<'visionboard' | 'mindmap'>('visionboard');
   const [nodes, setNodes] = useState<GoalNode[]>(INITIAL_NODES);
   const [links, setLinks] = useState<GoalLink[]>(INITIAL_LINKS);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
@@ -183,18 +189,53 @@ export default function GoalsScreen() {
     addNodeUnder(rootNode.id);
   }, [nodes, addNodeUnder]);
 
+  const handleVisionNodePress = useCallback((nodeId: string) => {
+    router.push({ pathname: '/goal-detail', params: { nodeId } });
+  }, [router]);
+
+  const handleExploreWithAI = useCallback(() => {
+    if (!selectedNode) return;
+    coachRef.current?.openWithContext({
+      nodeId: selectedNode.id,
+      nodeText: selectedNode.text,
+    });
+  }, [selectedNode]);
+
   return (
     <SafeAreaView className="flex-1 bg-slate-900" edges={['top']}>
       {/* Header */}
       <View className="flex-row items-center justify-between px-4 py-2 border-b border-slate-700/50">
         <Text className="text-lg font-bold text-white">Goals</Text>
-        <TouchableOpacity
-          onPress={handleAddRootChild}
-          className="w-9 h-9 rounded-full bg-blue-500/20 items-center justify-center"
-          activeOpacity={0.7}
-        >
-          <Plus size={20} color="#5AA9FF" />
-        </TouchableOpacity>
+        <View className="flex-row items-center">
+          {/* View mode toggle */}
+          <View className="flex-row rounded-full overflow-hidden mr-2">
+            <TouchableOpacity
+              onPress={() => setViewMode('visionboard')}
+              className={`px-3 py-1.5 rounded-l-full ${viewMode === 'visionboard' ? 'bg-blue-500' : 'bg-slate-700'}`}
+              activeOpacity={0.7}
+            >
+              <Text className={`text-xs font-medium ${viewMode === 'visionboard' ? 'text-white' : 'text-slate-400'}`}>
+                비전보드
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setViewMode('mindmap')}
+              className={`px-3 py-1.5 rounded-r-full ${viewMode === 'mindmap' ? 'bg-blue-500' : 'bg-slate-700'}`}
+              activeOpacity={0.7}
+            >
+              <Text className={`text-xs font-medium ${viewMode === 'mindmap' ? 'text-white' : 'text-slate-400'}`}>
+                마인드맵
+              </Text>
+            </TouchableOpacity>
+          </View>
+          <TouchableOpacity
+            onPress={handleAddRootChild}
+            className="w-9 h-9 rounded-full bg-blue-500/20 items-center justify-center"
+            activeOpacity={0.7}
+          >
+            <Plus size={20} color="#5AA9FF" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Inline edit input */}
@@ -216,28 +257,42 @@ export default function GoalsScreen() {
 
       {/* Canvas */}
       <View className="flex-1">
-        <MindMapCanvas
-          nodes={nodes}
-          links={links}
-          selectedNodeId={selectedNodeId}
-          onNodePress={handleNodePress}
-          onNodeLongPress={handleNodeLongPress}
-        />
+        {viewMode === 'visionboard' ? (
+          <VisionBoardView
+            nodes={nodes}
+            links={links}
+            onNodePress={handleVisionNodePress}
+          />
+        ) : (
+          <MindMapCanvas
+            nodes={nodes}
+            links={links}
+            selectedNodeId={selectedNodeId}
+            onNodePress={handleNodePress}
+            onNodeLongPress={handleNodeLongPress}
+          />
+        )}
       </View>
 
-      {/* Controls bar */}
-      <MindMapControls
-        visible={selectedNodeId !== null}
-        onAddChild={handleAddChild}
-        onAddSibling={handleAddSibling}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
-        onToggleComplete={handleToggleComplete}
-        onCreateTodo={handleCreateTodo}
-        onGenerateImage={handleGenerateImage}
-        onDecompose={handleDecompose}
-        isRoot={selectedNode?.type === NodeType.ROOT}
-      />
+      {/* Controls bar — only in mindmap mode */}
+      {viewMode === 'mindmap' && (
+        <MindMapControls
+          visible={selectedNodeId !== null}
+          onAddChild={handleAddChild}
+          onAddSibling={handleAddSibling}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+          onToggleComplete={handleToggleComplete}
+          onCreateTodo={handleCreateTodo}
+          onGenerateImage={handleGenerateImage}
+          onDecompose={handleDecompose}
+          onExploreWithAI={handleExploreWithAI}
+          isRoot={selectedNode?.type === NodeType.ROOT}
+        />
+      )}
+
+      {/* Coach bubble */}
+      <CoachBubble ref={coachRef} sourceTab="goals" />
     </SafeAreaView>
   );
 }

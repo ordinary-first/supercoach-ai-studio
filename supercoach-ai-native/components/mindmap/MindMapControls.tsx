@@ -8,6 +8,7 @@ import {
   CheckCircle,
   CheckSquare,
   ImageIcon,
+  Compass,
 } from 'lucide-react-native';
 
 interface MindMapControlsProps {
@@ -20,6 +21,7 @@ interface MindMapControlsProps {
   onCreateTodo: () => void;
   onGenerateImage: () => void;
   onDecompose: () => void;
+  onExploreWithAI?: () => void;
   isRoot?: boolean;
 }
 
@@ -50,6 +52,7 @@ export const MindMapControls: React.FC<MindMapControlsProps> = ({
   onCreateTodo,
   onGenerateImage,
   onDecompose,
+  onExploreWithAI,
   isRoot,
 }) => {
   if (!visible) return null;
@@ -92,6 +95,13 @@ export const MindMapControls: React.FC<MindMapControlsProps> = ({
         icon={<ImageIcon size={iconSize} color={iconColor} />}
         onPress={onGenerateImage}
       />
+      {onExploreWithAI && (
+        <ActionButton
+          icon={<Compass size={iconSize} color="#5AA9FF" />}
+          onPress={onExploreWithAI}
+          color="rgba(90, 169, 255, 0.15)"
+        />
+      )}
       <ActionButton
         icon={
           <GitBranch
