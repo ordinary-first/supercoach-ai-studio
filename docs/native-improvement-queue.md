@@ -39,7 +39,7 @@
 - [x] DONE: 화면 전환 애니메이션 (Shared Element Transition)
 - [x] DONE: Pull-to-refresh 전체 화면 적용
 - [x] DONE: 에러/빈 상태 UI 전체 점검 및 개선
-- [ ] PENDING: 접근성 라벨 (VoiceOver/TalkBack) 전체 추가
+- [ ] IN_PROGRESS: 접근성 라벨 (VoiceOver/TalkBack) 전체 추가
 
 ### P3 — 앱스토어 제출 준비
 - [ ] PENDING: 앱 스크린샷 생성 (iPhone 15 Pro Max, iPad Pro)
