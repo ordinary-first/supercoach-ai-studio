@@ -457,9 +457,6 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
         {/* Header */}
         <div className="apple-glass-header h-11 md:h-12 flex items-center justify-between px-3 md:px-6 shrink-0">
           <div className="flex items-center gap-2.5">
-            <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="md:hidden p-1.5 rounded-lg hover:bg-th-surface-hover text-th-text-secondary hover:text-th-text transition-colors">
-              <Menu size={18} />
-            </button>
             {showPrinciplesEditor ? (
               <div className="p-1.5 rounded-lg bg-th-accent-muted">
                 <span className="text-th-accent text-sm font-bold">✦</span>
@@ -477,6 +474,9 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
               </h1>
             </div>
           </div>
+          <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="md:hidden p-1.5 rounded-lg hover:bg-th-surface-hover text-th-text-secondary hover:text-th-text transition-colors">
+            <Menu size={18} />
+          </button>
         </div>
 
         {/* === PRINCIPLES FULL VIEW === */}
