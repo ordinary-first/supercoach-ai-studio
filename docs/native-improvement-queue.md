@@ -38,7 +38,7 @@
 - [x] DONE: 스켈레톤 로딩 스크린 (모든 데이터 로딩 구간)
 - [x] DONE: 화면 전환 애니메이션 (Shared Element Transition)
 - [x] DONE: Pull-to-refresh 전체 화면 적용
-- [ ] PENDING: 에러/빈 상태 UI 전체 점검 및 개선
+- [ ] IN_PROGRESS: 에러/빈 상태 UI 전체 점검 및 개선
 - [ ] PENDING: 접근성 라벨 (VoiceOver/TalkBack) 전체 추가
 
 ### P3 — 앱스토어 제출 준비
