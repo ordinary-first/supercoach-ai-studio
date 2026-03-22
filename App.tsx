@@ -900,7 +900,7 @@ const App: React.FC = () => {
         />
       </div>
  
-       <div className="absolute top-3 right-3 md:top-6 md:right-6 z-[60]">
+       <div className="absolute top-[2px] right-2 md:top-[8px] md:right-6 z-[60]">
          <button
            onClick={() => setIsSettingsPageOpen(true)}
            className="apple-chip w-10 h-10 rounded-full text-th-text-secondary hover:bg-th-surface-hover transition-all flex items-center justify-center"
