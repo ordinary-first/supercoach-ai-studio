@@ -266,6 +266,10 @@ const en: TranslationStrings = {
     insertImage: 'Insert image',
     delete: 'Delete',
     decompose: 'Decompose',
+    exploreWithAI: 'Explore with AI',
+    visionBoard: 'Vision Board',
+    mindMapLabel: 'Mind Map',
+    noSubGoals: 'No sub-goals yet',
     layoutModes: {
       mindMap: 'Mind Map',
       logicalStructure: 'Logic',

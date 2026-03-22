@@ -635,28 +635,42 @@ If no todo change intent exists, return an empty list [].`;
   );
 
   return (
-    <div
-      ref={focusTrapRef}
-      className="fixed inset-0 z-[60] bg-th-base flex flex-col overflow-hidden text-th-text font-body"
-      style={
-        effectiveKeyboardHeight > 0
-          ? { height: `calc(100% - ${effectiveKeyboardHeight}px)` }
-          : undefined
-      }
-    >
+    <div className="fixed inset-0 z-[60] flex items-end md:items-center justify-center md:justify-end pointer-events-none">
+      {/* 배경 오버레이 */}
+      <div
+        className="absolute inset-0 bg-black/40 backdrop-blur-[2px] pointer-events-auto animate-[fadeIn_0.2s_ease-out]"
+        onClick={onClose}
+      />
+
+      {/* 플로팅 모달 카드 */}
+      <div
+        ref={focusTrapRef}
+        className="relative pointer-events-auto flex flex-col overflow-hidden text-th-text font-body
+          w-full h-[85vh] md:w-[420px] md:h-[70vh] md:max-h-[680px]
+          md:mr-6 md:mb-0
+          bg-th-elevated rounded-t-3xl md:rounded-3xl
+          border border-th-border/20
+          shadow-[0_-8px_40px_rgba(0,0,0,0.3)] md:shadow-[0_16px_60px_rgba(0,0,0,0.4)]
+          animate-[slideUp_0.3s_ease-out] md:animate-[scaleIn_0.25s_ease-out]"
+        style={
+          effectiveKeyboardHeight > 0
+            ? { height: `calc(85vh - ${effectiveKeyboardHeight}px)` }
+            : undefined
+        }
+      >
       <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-th-accent-muted rounded-full blur-[120px] pointer-events-none" />
       <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-th-accent-muted rounded-full blur-[120px] pointer-events-none opacity-60" />
 
-      <div className="h-14 md:h-20 border-b border-th-border/5 dark:border-th-border flex items-center justify-between px-4 md:px-8 bg-th-base/40 dark:bg-th-header backdrop-blur-md shrink-0 z-10 shadow-sm">
-        <div className="flex items-center gap-4">
-          <div className="p-2 md:p-3 bg-th-accent/15 dark:bg-th-accent-muted rounded-lg md:rounded-xl border border-th-accent/20 dark:border-transparent">
-            <MessageCircle className="text-th-accent w-5 h-5 md:w-8 md:h-8" />
+      <div className="h-14 border-b border-th-border/10 flex items-center justify-between px-4 bg-th-elevated/80 backdrop-blur-md shrink-0 z-10">
+        <div className="flex items-center gap-3">
+          <div className="p-1.5 bg-th-accent/15 rounded-lg border border-th-accent/20">
+            <MessageCircle className="text-th-accent w-5 h-5" />
           </div>
           <div>
-            <h1 className="text-lg md:text-2xl font-display font-bold tracking-wider text-th-text">
+            <h1 className="text-base font-display font-bold tracking-wider text-th-text">
               {t.coach.title}
             </h1>
-            <p className="text-[10px] text-th-accent/70 font-mono mt-0.5">
+            <p className="text-[10px] text-th-accent/70 font-mono">
               {t.coach.coachingStatus.replace('{tab}', tabLabels[activeTab])}
             </p>
           </div>
@@ -860,6 +874,22 @@ If no todo change intent exists, return an empty list [].`;
             </button>
           </div>
         </div>
+      </div>
+
+      <style>{`
+        @keyframes slideUp {
+          from { opacity: 0; transform: translateY(100%); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes scaleIn {
+          from { opacity: 0; transform: scale(0.92); }
+          to { opacity: 1; transform: scale(1); }
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+      `}</style>
       </div>
     </div>
   );

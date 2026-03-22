@@ -268,6 +268,10 @@ const ko: TranslationStrings = {
     insertImage: '이미지 삽입',
     delete: '삭제',
     decompose: '분해',
+    exploreWithAI: 'AI와 탐색',
+    visionBoard: '비전보드',
+    mindMapLabel: '마인드맵',
+    noSubGoals: '하위 목표가 없습니다',
     layoutModes: {
       mindMap: '마인드맵',
       logicalStructure: '논리',

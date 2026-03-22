@@ -229,6 +229,10 @@ export interface TranslationStrings {
     insertImage: string;
     delete: string;
     decompose: string;
+    exploreWithAI: string;
+    visionBoard: string;
+    mindMapLabel: string;
+    noSubGoals: string;
     layoutModes: Record<string, string>;
     defaultRootText: string;
     ghostTemplates: string[];
