@@ -1,0 +1,65 @@
+{
+  "app": "Secret Coach AI",
+  "screenshots": {
+    "ios": {
+      "iPhone_6.7": {
+        "device": "iPhone 15 Pro Max",
+        "resolution": "1290x2796",
+        "required": true,
+        "screens": [
+          { "route": "/(tabs)/goals", "label": "Vision Board — Set meaningful goals" },
+          { "route": "/(tabs)/todo", "label": "Smart Todo — Track daily progress" },
+          { "route": "/(tabs)/calendar", "label": "Calendar — Plan your week" },
+          { "route": "/(tabs)/feedback", "label": "AI Feedback — Personalized coaching" },
+          { "route": "/coach-chat", "label": "Coach Chat — Talk to your AI coach" }
+        ]
+      },
+      "iPhone_6.5": {
+        "device": "iPhone 14 Plus",
+        "resolution": "1284x2778",
+        "required": true,
+        "screens": "same as iPhone_6.7"
+      },
+      "iPad_12.9": {
+        "device": "iPad Pro 12.9-inch (6th gen)",
+        "resolution": "2048x2732",
+        "required": false,
+        "screens": "same as iPhone_6.7"
+      }
+    },
+    "android": {
+      "phone": {
+        "device": "Pixel 8 Pro",
+        "resolution": "1344x2992",
+        "required": true,
+        "screens": "same as iOS"
+      },
+      "tablet_7": {
+        "device": "7-inch tablet",
+        "resolution": "1200x1920",
+        "required": false
+      },
+      "tablet_10": {
+        "device": "10-inch tablet",
+        "resolution": "1600x2560",
+        "required": false
+      }
+    }
+  },
+  "captions": {
+    "en": [
+      "Set meaningful goals with AI-powered decomposition",
+      "Track daily progress with smart todo management",
+      "Plan your week with an intuitive calendar",
+      "Get personalized AI coaching feedback",
+      "Talk to your personal AI life coach"
+    ],
+    "ko": [
+      "AI 기반 목표 분해로 의미 있는 목표 설정",
+      "스마트 할일 관리로 매일의 진행 추적",
+      "직관적인 캘린더로 주간 계획 수립",
+      "맞춤형 AI 코칭 피드백 받기",
+      "나만의 AI 라이프 코치와 대화"
+    ]
+  }
+}

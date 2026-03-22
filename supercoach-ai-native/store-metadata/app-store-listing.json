@@ -1,0 +1,24 @@
+{
+  "ios": {
+    "appName": "Secret Coach AI",
+    "subtitle": "AI Life Coach & Goal Tracker",
+    "category": "Health & Fitness",
+    "secondaryCategory": "Lifestyle",
+    "ageRating": "4+",
+    "privacyPolicyUrl": "https://secretcoach.ai/privacy",
+    "supportUrl": "https://secretcoach.ai/support",
+    "marketingUrl": "https://secretcoach.ai",
+    "keywords": "life coach,AI,goals,todo,habit,productivity,mindmap,feedback,coaching,planner"
+  },
+  "android": {
+    "appName": "Secret Coach AI",
+    "shortDescription": "Your personal AI life coach for goal setting & daily coaching",
+    "category": "Health & Fitness",
+    "contentRating": "Everyone",
+    "privacyPolicyUrl": "https://secretcoach.ai/privacy"
+  },
+  "description": {
+    "en": "Secret Coach AI is your personal AI life coach that helps you achieve your goals through intelligent decomposition, daily tracking, and personalized feedback.\n\n🎯 GOAL MANAGEMENT\n• Vision Board: Visualize your goals in a beautiful 3x3 grid\n• Mind Map: Break down goals into actionable sub-goals\n• AI Decomposition: Let AI help you break complex goals into steps\n\n✅ SMART TODO\n• Create tasks linked to your goals\n• Priority levels, due dates, and recurring tasks\n• Swipe to complete or delete\n• Drag to reorder your priorities\n\n📅 CALENDAR\n• Month, week, and day views\n• Swipe to navigate between periods\n• Track completion rates per day\n\n💬 AI COACHING\n• Chat with your personal AI coach\n• Get contextualized advice based on your goals\n• Receive daily, weekly, and monthly feedback\n\n📊 PROGRESS TRACKING\n• Completion rate charts and graphs\n• Weekly summary with top achievements\n• Monthly trend analysis\n\n🔔 SMART NOTIFICATIONS\n• Morning and evening check-in reminders\n• Customizable notification times\n\nStart your 3-day free trial today!",
+    "ko": "Secret Coach AI는 지능형 목표 분해, 일일 추적, 맞춤형 피드백을 통해 목표 달성을 돕는 AI 라이프 코치입니다.\n\n🎯 목표 관리\n• 비전 보드: 3x3 그리드로 목표 시각화\n• 마인드맵: 목표를 실행 가능한 하위 목표로 분해\n• AI 분해: AI가 복잡한 목표를 단계별로 분해\n\n✅ 스마트 할일\n• 목표와 연결된 할일 생성\n• 우선순위, 마감일, 반복 설정\n• 스와이프로 완료 또는 삭제\n• 드래그로 우선순위 재정렬\n\n📅 캘린더\n• 월간, 주간, 일간 뷰\n• 스와이프로 기간 이동\n• 일별 완료율 추적\n\n💬 AI 코칭\n• 개인 AI 코치와 대화\n• 목표 기반 맞춤 조언\n• 일간/주간/월간 피드백\n\n📊 진행 추적\n• 완료율 차트와 그래프\n• 주간 요약 및 주요 성과\n• 월간 트렌드 분석\n\n🔔 스마트 알림\n• 아침/저녁 체크인 알림\n• 커스터마이징 가능한 알림 시간\n\n오늘 3일 무료 체험을 시작하세요!"
+  }
+}
