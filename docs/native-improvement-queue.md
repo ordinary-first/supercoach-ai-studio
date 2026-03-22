@@ -43,7 +43,7 @@
 
 ### P3 — 앱스토어 제출 준비
 - [x] DONE: 앱 스크린샷 생성 (iPhone 15 Pro Max, iPad Pro)
-- [ ] PENDING: 개인정보 처리방침 페이지 배포
+- [ ] IN_PROGRESS: 개인정보 처리방침 페이지 배포
 - [ ] PENDING: 앱 설명 (한/영) 최종 작성
 - [ ] PENDING: EAS production 빌드 테스트
 - [ ] PENDING: 성능 프로파일링 (메모리 누수, 렌더링 최적화)
