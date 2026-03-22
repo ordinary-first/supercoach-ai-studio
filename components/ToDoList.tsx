@@ -103,7 +103,9 @@ const StepsSection: React.FC<{
       ))}
 
       <div className="flex items-center gap-2 px-1">
-        <Plus size={16} className="text-th-text-tertiary flex-shrink-0" />
+        <button onClick={addStep} className="flex-shrink-0 text-th-text-tertiary hover:text-th-accent transition-colors">
+          <Plus size={16} />
+        </button>
         <input
           type="text"
           value={newStepText}
