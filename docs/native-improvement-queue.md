@@ -37,7 +37,7 @@
 - [x] DONE: 전역 햅틱 피드백 (버튼, 토글, 완료 액션)
 - [x] DONE: 스켈레톤 로딩 스크린 (모든 데이터 로딩 구간)
 - [x] DONE: 화면 전환 애니메이션 (Shared Element Transition)
-- [ ] PENDING: Pull-to-refresh 전체 화면 적용
+- [ ] IN_PROGRESS: Pull-to-refresh 전체 화면 적용
 - [ ] PENDING: 에러/빈 상태 UI 전체 점검 및 개선
 - [ ] PENDING: 접근성 라벨 (VoiceOver/TalkBack) 전체 추가
 
