@@ -34,7 +34,7 @@
 - [x] DONE: Coach Chat 타이핑 인디케이터 + 메시지 버블 애니메이션
 
 ### P2 — 전체 앱 폴리시
-- [ ] IN_PROGRESS: 전역 햅틱 피드백 (버튼, 토글, 완료 액션)
+- [x] DONE: 전역 햅틱 피드백 (버튼, 토글, 완료 액션)
 - [ ] PENDING: 스켈레톤 로딩 스크린 (모든 데이터 로딩 구간)
 - [ ] PENDING: 화면 전환 애니메이션 (Shared Element Transition)
 - [ ] PENDING: Pull-to-refresh 전체 화면 적용

@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Settings } from 'lucide-react-native';
+import * as Haptics from 'expo-haptics';
 import { useTodoStore } from '../../stores/useTodoStore';
 import { DayCard } from '../../components/feedback/DayCard';
 import type { DayCardState } from '../../components/feedback/DayCard';
@@ -232,7 +233,7 @@ export default function FeedbackScreen() {
     <SafeAreaView className="flex-1" style={{ backgroundColor: '#0A0E1A' }}>
       {/* Header */}
       <View className="h-14 px-4 flex-row items-center justify-between">
-        <Pressable onPress={() => setShowSettings(true)} className="p-2 rounded-full">
+        <Pressable onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setShowSettings(true); }} className="p-2 rounded-full">
           <Settings size={16} color="#888" />
         </Pressable>
         <Text className="text-sm font-semibold text-white flex-1 text-center">
@@ -246,7 +247,7 @@ export default function FeedbackScreen() {
         {tabs.map((tab) => (
           <Pressable
             key={tab.key}
-            onPress={() => setActiveTab(tab.key)}
+            onPress={() => { Haptics.selectionAsync(); setActiveTab(tab.key); }}
             className={`flex-1 py-2 rounded-lg items-center ${activeTab === tab.key ? 'bg-accent/20' : ''}`}
           >
             <Text

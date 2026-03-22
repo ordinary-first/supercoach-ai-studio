@@ -14,6 +14,7 @@ import DraggableFlatList, {
 } from 'react-native-draggable-flatlist';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Plus, Search, X, ListTodo } from 'lucide-react-native';
+import * as Haptics from 'expo-haptics';
 import type { ToDoItem, GoalNode } from '../../shared/types';
 import TodoItem from '../../components/todo/TodoItem';
 import TodoFilters, {
@@ -176,6 +177,7 @@ export default function TodoScreen() {
   const handleQuickAdd = useCallback(() => {
     const text = quickAddText.trim();
     if (!text) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     const newTodo: ToDoItem = {
       id: Date.now().toString(),
       text,

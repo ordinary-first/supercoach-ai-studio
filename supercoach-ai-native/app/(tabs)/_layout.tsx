@@ -7,6 +7,7 @@ import {
   Sparkles,
   MessageSquare,
 } from 'lucide-react-native';
+import * as Haptics from 'expo-haptics';
 import { useTranslation } from '../../shared/i18n/useTranslation';
 
 export default function TabLayout() {
@@ -22,6 +23,11 @@ export default function TabLayout() {
         },
         tabBarActiveTintColor: '#71B7FF',
         tabBarInactiveTintColor: '#6B7280',
+      }}
+      screenListeners={{
+        tabPress: () => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        },
       }}
     >
       <Tabs.Screen

@@ -38,6 +38,7 @@ import {
 } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import * as Haptics from 'expo-haptics';
 import { useThemeStore } from '../stores/useThemeStore';
 import { useTranslation } from '../shared/i18n/useTranslation';
 import { usePurchases } from '../hooks/usePurchases';
@@ -99,7 +100,7 @@ function SettingRow({
   const Wrapper = onPress ? TouchableOpacity : View;
   return (
     <Wrapper
-      onPress={onPress}
+      onPress={onPress ? () => { Haptics.selectionAsync(); onPress(); } : undefined}
       className={`flex-row items-center px-4 py-3 gap-3 ${border ? 'border-b border-neutral-100 dark:border-neutral-700' : ''}`}
     >
       {icon && <View className="w-5 items-center">{icon}</View>}
@@ -450,7 +451,7 @@ export default function SettingsScreen() {
             right={
               <Switch
                 value={language === 'ko'}
-                onValueChange={toggleLanguage}
+                onValueChange={() => { Haptics.selectionAsync(); toggleLanguage(); }}
                 trackColor={{ false: '#d4d4d4', true: '#6366f1' }}
                 thumbColor="#fff"
               />
@@ -503,7 +504,7 @@ export default function SettingsScreen() {
             right={
               <Switch
                 value={notificationsEnabled}
-                onValueChange={setNotificationsEnabled}
+                onValueChange={(v) => { Haptics.selectionAsync(); setNotificationsEnabled(v); }}
                 trackColor={{ false: '#d4d4d4', true: '#6366f1' }}
                 thumbColor="#fff"
               />
