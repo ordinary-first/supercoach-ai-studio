@@ -103,6 +103,15 @@ const DeleteActionIcon = () => (
   </svg>
 );
 
+const CompassIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5">
+    <circle cx="9" cy="9" r="7" />
+    <polygon points="7,11 5,13 9,9" fill="currentColor" stroke="none" opacity="0.6" />
+    <polygon points="11,7 13,5 9,9" fill="currentColor" stroke="none" />
+    <circle cx="9" cy="9" r="1" fill="currentColor" stroke="none" />
+  </svg>
+);
+
 
 // --- Types ---
 export type LayoutMode = 'mindMap' | 'logicalStructure' | 'logicalStructureLeft' | 'organizationStructure';
@@ -123,6 +132,7 @@ interface MindMapProps {
   onAddSubNode: (parentId: string, text?: string) => void;
   onAddParentNode?: (nodeId: string) => void;
   onDecomposeGoal?: (nodeId: string) => void;
+  onExploreWithAI?: (nodeId: string) => void;
   previewNodeIds?: string[];
   confirmedPreviewIds?: string[];
   onTogglePreviewConfirm?: (nodeId: string) => void;
@@ -510,7 +520,7 @@ const LAYOUT_MODES: LayoutMode[] = [
 const MindMap: React.FC<MindMapProps> = ({
   nodes, links, language, selectedNodeId, onNodeClick, onEditNode, onUpdateNode, onDeleteNode,
   onReparentNode, onConvertNodeToTask, onGenerateImage, onInsertImage, onAddSubNode, onAddParentNode,
-  onDecomposeGoal, previewNodeIds, confirmedPreviewIds, onTogglePreviewConfirm, onFinalizePreview,
+  onDecomposeGoal, onExploreWithAI, previewNodeIds, confirmedPreviewIds, onTogglePreviewConfirm, onFinalizePreview,
   width, height, editingNodeId, onEditEnd, imageLoadingNodes,
   layout: layoutProp = 'mindMap', onLayoutChange,
 }) => {
@@ -1328,6 +1338,15 @@ const MindMap: React.FC<MindMapProps> = ({
                 <DecomposeActionIcon />
               </button>
             )}
+
+            <button
+              onClick={() => { onExploreWithAI?.(actionBar.nodeId); setActionBar(null); }}
+              className="rounded-full p-2.5 text-th-accent bg-th-accent-muted hover:brightness-110 transition-all active:scale-90"
+              title={labels.exploreWithAI}
+              aria-label={labels.exploreWithAI}
+            >
+              <CompassIcon />
+            </button>
 
             <button
               onClick={() => {

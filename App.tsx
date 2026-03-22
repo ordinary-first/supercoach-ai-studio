@@ -2,6 +2,8 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import MindMap, { type LayoutMode } from './components/MindMap';
+import VisionBoard from './components/VisionBoard';
+import GoalDetailModal from './components/GoalDetailModal';
 import CoachChat from './components/CoachChat';
 import CoachBubble from './components/CoachBubble';
 import ShortcutsPanel from './components/ShortcutsPanel';
@@ -181,6 +183,8 @@ const App: React.FC = () => {
   const [selectedNode, setSelectedNode] = useState<GoalNode | null>(null);
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
   const [mindmapLayout, setMindmapLayout] = useState<LayoutMode>('mindMap');
+  const [goalsViewMode, setGoalsViewMode] = useState<'visionboard' | 'mindmap'>('visionboard');
+  const [goalDetailNodeId, setGoalDetailNodeId] = useState<string | null>(null);
   const [trialDismissed, setTrialDismissed] = useState(false);
   const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
   const [deleteConfirmNodeId, setDeleteConfirmNodeId] = useState<string | null>(null);
@@ -895,10 +899,70 @@ const App: React.FC = () => {
             : 'absolute inset-0 z-0 opacity-0 pointer-events-none'
         }
       >
-        <MindMap
-          nodes={visibleNodes} links={visibleLinks} language={language} selectedNodeId={selectedNode?.id} onNodeClick={setSelectedNode} onEditNode={(nodeId) => setEditingNodeId(nodeId)} onUpdateNode={handleUpdateNode} onDeleteNode={handleDeleteNode} onReparentNode={handleReparentNode} onAddSubNode={handleAddSubNode} onAddParentNode={handleAddParentNode} onGenerateImage={handleGenerateNodeImage} onInsertImage={handleInsertNodeImage} onConvertNodeToTask={handleConvertNodeToTodo} onDecomposeGoal={handleDecomposeGoal} previewNodeIds={previewNodeIds} confirmedPreviewIds={confirmedPreviewIds} onTogglePreviewConfirm={handleTogglePreviewConfirm} onFinalizePreview={handleFinalizePreview} editingNodeId={editingNodeId} onEditEnd={() => setEditingNodeId(null)} width={dimensions.width} height={dimensions.height} imageLoadingNodes={imageLoadingNodes} layout={mindmapLayout} onLayoutChange={setMindmapLayout}
-        />
+        {/* View Toggle: 비전보드 / 마인드맵 */}
+        {activeTab === 'GOALS' && (
+          <div className="fixed top-3 left-1/2 -translate-x-1/2 z-[56] flex items-center bg-th-elevated/90 backdrop-blur-xl border border-th-border/40 rounded-full p-0.5 shadow-lg">
+            <button
+              onClick={() => setGoalsViewMode('visionboard')}
+              className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${
+                goalsViewMode === 'visionboard'
+                  ? 'bg-th-accent text-white shadow-sm'
+                  : 'text-th-text-secondary hover:text-th-text'
+              }`}
+            >
+              {t.mindmap.visionBoard}
+            </button>
+            <button
+              onClick={() => setGoalsViewMode('mindmap')}
+              className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${
+                goalsViewMode === 'mindmap'
+                  ? 'bg-th-accent text-white shadow-sm'
+                  : 'text-th-text-secondary hover:text-th-text'
+              }`}
+            >
+              {t.mindmap.mindMapLabel}
+            </button>
+          </div>
+        )}
+
+        {/* 비전보드 뷰 */}
+        {goalsViewMode === 'visionboard' && (
+          <VisionBoard
+            nodes={nodes}
+            links={links}
+            onNodeClick={(node) => {
+              if (node.type === NodeType.ROOT) {
+                setSelectedNode(node);
+              } else {
+                setGoalDetailNodeId(node.id);
+              }
+            }}
+            onAddSubNode={(parentId) => {
+              const name = window.prompt('새 목표 이름을 입력하세요');
+              if (name?.trim()) handleAddSubNode(parentId, name.trim());
+            }}
+          />
+        )}
+
+        {/* 마인드맵 뷰 */}
+        {goalsViewMode === 'mindmap' && (
+          <MindMap
+            nodes={visibleNodes} links={visibleLinks} language={language} selectedNodeId={selectedNode?.id} onNodeClick={setSelectedNode} onEditNode={(nodeId) => setEditingNodeId(nodeId)} onUpdateNode={handleUpdateNode} onDeleteNode={handleDeleteNode} onReparentNode={handleReparentNode} onAddSubNode={handleAddSubNode} onAddParentNode={handleAddParentNode} onGenerateImage={handleGenerateNodeImage} onInsertImage={handleInsertNodeImage} onConvertNodeToTask={handleConvertNodeToTodo} onDecomposeGoal={handleDecomposeGoal} onExploreWithAI={(nodeId) => { setSelectedNode(nodes.find(n => n.id === nodeId) || null); setIsChatOpen(true); }} previewNodeIds={previewNodeIds} confirmedPreviewIds={confirmedPreviewIds} onTogglePreviewConfirm={handleTogglePreviewConfirm} onFinalizePreview={handleFinalizePreview} editingNodeId={editingNodeId} onEditEnd={() => setEditingNodeId(null)} width={dimensions.width} height={dimensions.height} imageLoadingNodes={imageLoadingNodes} layout={mindmapLayout} onLayoutChange={setMindmapLayout}
+          />
+        )}
       </div>
+
+      {/* Goal Detail Modal */}
+      {goalDetailNodeId && (
+        <GoalDetailModal
+          nodeId={goalDetailNodeId}
+          nodes={nodes}
+          onClose={() => setGoalDetailNodeId(null)}
+          onUpdateNode={handleUpdateNode}
+          onAddSubNode={handleAddSubNode}
+          onDeleteNode={handleDeleteNode}
+        />
+      )}
  
        <div className="absolute top-3 right-3 md:top-6 md:right-6 z-[60]">
          <button
@@ -990,7 +1054,7 @@ const App: React.FC = () => {
 
       {/* Sync Status Indicator */}
       {syncStatus === 'offline' && userProfile && (
-        <div className="fixed top-3 left-1/2 -translate-x-1/2 z-[52] flex items-center gap-2 bg-th-elevated backdrop-blur-md border border-th-border rounded-full px-3 py-1.5 animate-fade-in">
+        <div className="fixed top-14 left-1/2 -translate-x-1/2 z-[52] flex items-center gap-2 bg-th-elevated backdrop-blur-md border border-th-border rounded-full px-3 py-1.5 animate-fade-in">
           <div className="w-2 h-2 rounded-full bg-red-400 animate-pulse" />
           <span className="text-[10px] font-bold text-th-text-secondary tracking-wide">
             {t.app.syncOffline}
