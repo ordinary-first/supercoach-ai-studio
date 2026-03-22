@@ -8,7 +8,7 @@ import Animated, {
 import type { GoalNode, GoalLink } from '../../shared/types';
 import { NodeStatus } from '../../shared/types';
 import { getLinkId } from '../../hooks/useAutoSave';
-import { useMindMapLayout } from './useMindMapLayout';
+import { useMindMapLayout, type LayoutNode } from './useMindMapLayout';
 import { useMindMapGestures } from './useMindMapGestures';
 import { MindMapNode, getStatusColor } from './MindMapNode';
 import { MindMapEdge } from './MindMapEdge';
@@ -81,8 +81,8 @@ export const MindMapCanvas: React.FC<MindMapCanvasProps> = ({
   const edges = useMemo(() => {
     const result: Array<{
       key: string;
-      parentLayout: { x: number; y: number; width: number; height: number };
-      childLayout: { x: number; y: number; width: number; height: number };
+      parentLayout: LayoutNode;
+      childLayout: LayoutNode;
       color: string;
     }> = [];
 

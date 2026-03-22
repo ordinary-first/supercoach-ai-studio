@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import { Appearance } from 'react-native';
+import { Appearance, type ColorSchemeName } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type ThemePreference = 'light' | 'dark' | 'system';

@@ -21,9 +21,9 @@ export interface ChatApiResponse {
 }
 
 type ApiErrorPayload = {
-  errorCode?: string | null;
-  errorMessage?: string | null;
-  requestId?: string | null;
+  errorCode?: string | undefined;
+  errorMessage?: string | undefined;
+  requestId?: string | undefined;
 };
 
 const toOptionalString = (value: unknown): string | undefined => {
