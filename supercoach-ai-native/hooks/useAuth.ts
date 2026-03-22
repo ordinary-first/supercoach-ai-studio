@@ -12,6 +12,7 @@ import {
   testFirestoreConnection,
   type SyncStatus,
 } from '../services/firebaseService';
+import { identifyUser, logOutPurchases, getCustomerInfo, getPlanFromCustomerInfo } from '../services/purchaseService';
 
 export interface AuthState {
   userProfile: UserProfile | null;
@@ -130,6 +131,18 @@ export function useAuth(
         if (savedProfile) {
           const needsOnboarding = savedProfile.onboardingCompleted === false;
           setIsNewUser(needsOnboarding);
+
+          // Sync RevenueCat identity
+          try {
+            const rcInfo = await identifyUser(userId);
+            const rcPlan = getPlanFromCustomerInfo(rcInfo);
+            if (rcPlan !== 'explorer') {
+              savedProfile.billingPlan = rcPlan;
+              savedProfile.billingIsActive = true;
+            }
+          } catch (rcErr) {
+            console.warn('[Auth] RevenueCat identify failed:', rcErr);
+          }
 
           setUserProfile((prev) => {
             if (!prev) return savedProfile;

@@ -40,27 +40,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useThemeStore } from '../stores/useThemeStore';
 import { useTranslation } from '../shared/i18n/useTranslation';
+import { usePurchases } from '../hooks/usePurchases';
+import { logOutPurchases } from '../services/purchaseService';
+import { logout } from '../services/firebaseService';
 import type { UserProfile } from '../shared/types';
-
-// ---------------------------------------------------------------------------
-// Plan data
-// ---------------------------------------------------------------------------
-
-type PlanTier = 'explorer' | 'essential' | 'visionary' | 'master';
-
-const PLANS: { plan: PlanTier; title: string; price: string }[] = [
-  { plan: 'explorer', title: 'Explorer', price: 'Free' },
-  { plan: 'essential', title: 'Essential', price: '$9.99/mo' },
-  { plan: 'visionary', title: 'Visionary', price: '$19.99/mo' },
-  { plan: 'master', title: 'Master', price: '$49.99/mo' },
-];
-
-const PLAN_ORDER: Record<string, number> = {
-  explorer: 0,
-  essential: 1,
-  visionary: 2,
-  master: 3,
-};
 
 const LEGAL_LINKS = ['terms', 'privacy', 'refund'] as const;
 
@@ -163,7 +146,7 @@ export default function SettingsScreen() {
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
 
-  const currentPlan: PlanTier = formData.billingPlan ?? 'explorer';
+  const { plan: rcPlan, offerings, purchase, restore, loading: rcLoading } = usePurchases();
   const hasAvatar = !!(formData.avatarUrl && formData.avatarUrl.length > 0);
 
   // --- Handlers ------------------------------------------------------------
@@ -220,8 +203,9 @@ export default function SettingsScreen() {
       {
         text: labels.logoutTitle,
         style: 'destructive',
-        onPress: () => {
-          // TODO: call Firebase auth signOut
+        onPress: async () => {
+          try { await logOutPurchases(); } catch {}
+          await logout();
         },
       },
     ]);
@@ -533,20 +517,21 @@ export default function SettingsScreen() {
             icon={<Crown size={14} color={ICON_COLOR} />}
             label={labels.subscription}
             right={
-              <Text className="text-xs text-neutral-500 dark:text-neutral-400">
-                {labels.choosePlan}
-              </Text>
+              <TouchableOpacity onPress={restore}>
+                <Text className="text-xs text-indigo-500">Restore</Text>
+              </TouchableOpacity>
             }
           />
 
           <View className="px-4 pb-4 gap-2">
-            {PLANS.map((item) => {
-              const isCurrent = item.plan === currentPlan;
-              const features =
-                (labels.planFeatures as Record<string, string[]>)[item.plan] ?? [];
+            {offerings?.current?.availablePackages.map((pkg) => {
+              const product = pkg.product;
+              const isCurrent = rcPlan === pkg.identifier;
               return (
-                <View
-                  key={item.plan}
+                <TouchableOpacity
+                  key={pkg.identifier}
+                  disabled={isCurrent || rcLoading}
+                  onPress={() => purchase(pkg)}
                   className={`rounded-xl border px-3 py-2.5 ${
                     isCurrent
                       ? 'border-indigo-400 dark:border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30'
@@ -556,10 +541,10 @@ export default function SettingsScreen() {
                   <View className="flex-row items-center justify-between">
                     <View>
                       <Text className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
-                        {item.title}
+                        {product.title}
                       </Text>
                       <Text className="text-xs text-neutral-500 dark:text-neutral-400">
-                        {item.price}
+                        {product.priceString}
                       </Text>
                     </View>
                     {isCurrent && (
@@ -569,28 +554,21 @@ export default function SettingsScreen() {
                         </Text>
                       </View>
                     )}
-                    {!isCurrent && item.plan !== 'explorer' && (
-                      <TouchableOpacity onPress={() => openLink('pricing')}>
-                        <Text className="text-xs text-indigo-500 font-medium">
-                          {(PLAN_ORDER[item.plan] ?? 0) > (PLAN_ORDER[currentPlan] ?? 0)
-                            ? labels.upgrade
-                            : labels.downgrade}
-                        </Text>
-                      </TouchableOpacity>
-                    )}
                   </View>
-                  {features.length > 0 && (
-                    <View className="flex-row flex-wrap gap-x-2 gap-y-0.5 mt-1.5">
-                      {features.map((f) => (
-                        <Text key={f} className="text-[10px] text-neutral-400">
-                          {f}
-                        </Text>
-                      ))}
-                    </View>
-                  )}
-                </View>
+                  {product.description ? (
+                    <Text className="text-[10px] text-neutral-400 mt-1">
+                      {product.description}
+                    </Text>
+                  ) : null}
+                </TouchableOpacity>
               );
             })}
+
+            {!offerings?.current && !rcLoading && (
+              <Text className="text-xs text-neutral-500 text-center py-4">
+                {labels.currentPlan}: {rcPlan}
+              </Text>
+            )}
           </View>
 
           {/* Legal links */}
