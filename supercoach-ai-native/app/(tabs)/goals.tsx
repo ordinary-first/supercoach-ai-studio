@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, Alert, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Plus } from 'lucide-react-native';
+import * as Haptics from 'expo-haptics';
 import { MindMapCanvas } from '../../components/mindmap/MindMapCanvas';
 import { MindMapControls } from '../../components/mindmap/MindMapControls';
 import { VisionBoardView } from '../../components/mindmap/VisionBoardView';
@@ -202,53 +203,55 @@ export default function GoalsScreen() {
   }, [selectedNode]);
 
   return (
-    <SafeAreaView className="flex-1 bg-slate-900" edges={['top']}>
+    <SafeAreaView className="flex-1 bg-[#0A0E1A]" edges={['top']}>
       {/* Header */}
-      <View className="flex-row items-center justify-between px-4 py-2 border-b border-slate-700/50">
+      <View className="flex-row items-center justify-between px-4 py-2 border-b border-white/5">
         <Text className="text-lg font-bold text-white">Goals</Text>
         <View className="flex-row items-center">
           {/* View mode toggle */}
           <View className="flex-row rounded-full overflow-hidden mr-2">
             <TouchableOpacity
-              onPress={() => setViewMode('visionboard')}
-              className={`px-3 py-1.5 rounded-l-full ${viewMode === 'visionboard' ? 'bg-blue-500' : 'bg-slate-700'}`}
+              onPress={() => { Haptics.selectionAsync(); setViewMode('visionboard'); }}
+              className={`px-3 py-1.5 rounded-l-full ${viewMode === 'visionboard' ? 'bg-[#71B7FF]' : 'bg-[#1A1F2E]'}`}
               activeOpacity={0.7}
             >
-              <Text className={`text-xs font-medium ${viewMode === 'visionboard' ? 'text-white' : 'text-slate-400'}`}>
+              <Text className={`text-xs font-medium ${viewMode === 'visionboard' ? 'text-white' : 'text-neutral-400'}`}>
                 비전보드
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
-              onPress={() => setViewMode('mindmap')}
-              className={`px-3 py-1.5 rounded-r-full ${viewMode === 'mindmap' ? 'bg-blue-500' : 'bg-slate-700'}`}
+              onPress={() => { Haptics.selectionAsync(); setViewMode('mindmap'); }}
+              className={`px-3 py-1.5 rounded-r-full ${viewMode === 'mindmap' ? 'bg-[#71B7FF]' : 'bg-[#1A1F2E]'}`}
               activeOpacity={0.7}
             >
-              <Text className={`text-xs font-medium ${viewMode === 'mindmap' ? 'text-white' : 'text-slate-400'}`}>
+              <Text className={`text-xs font-medium ${viewMode === 'mindmap' ? 'text-white' : 'text-neutral-400'}`}>
                 마인드맵
               </Text>
             </TouchableOpacity>
           </View>
           <TouchableOpacity
-            onPress={handleAddRootChild}
-            className="w-9 h-9 rounded-full bg-blue-500/20 items-center justify-center"
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); handleAddRootChild(); }}
+            className="w-9 h-9 rounded-full bg-[#71B7FF]/20 items-center justify-center"
             activeOpacity={0.7}
           >
-            <Plus size={20} color="#5AA9FF" />
+            <Plus size={20} color="#71B7FF" />
           </TouchableOpacity>
         </View>
       </View>
 
       {/* Inline edit input */}
       {editingNodeId && (
-        <View className="absolute top-16 left-4 right-4 z-50 bg-slate-800 rounded-xl px-4 py-3 border border-slate-600">
-          <Text className="text-slate-400 text-xs mb-1">Edit node name</Text>
+        <View className="absolute top-16 left-4 right-4 z-50 rounded-xl px-4 py-3 border border-white/10"
+          style={{ backgroundColor: 'rgba(26,31,46,0.95)' }}>
+          <Text className="text-neutral-400 text-xs mb-1">Edit node name</Text>
           <TextInput
             value={editText}
             onChangeText={setEditText}
             onSubmitEditing={handleEditSubmit}
             onBlur={handleEditSubmit}
             autoFocus
-            className="text-white text-base bg-slate-700 rounded-lg px-3 py-2"
+            className="text-white text-base rounded-lg px-3 py-2"
+            style={{ backgroundColor: 'rgba(255,255,255,0.08)' }}
             placeholderTextColor="#64748b"
             returnKeyType="done"
           />

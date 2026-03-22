@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, TouchableOpacity } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import {
   Plus,
   GitBranch,
@@ -33,7 +34,7 @@ interface ActionButtonProps {
 
 const ActionButton: React.FC<ActionButtonProps> = ({ icon, onPress, color }) => (
   <TouchableOpacity
-    onPress={onPress}
+    onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onPress(); }}
     className="w-9 h-9 rounded-full items-center justify-center mx-0.5"
     style={{ backgroundColor: color ?? 'rgba(255,255,255,0.12)' }}
     activeOpacity={0.7}
