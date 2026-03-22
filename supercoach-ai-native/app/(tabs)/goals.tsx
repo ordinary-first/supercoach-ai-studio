@@ -214,6 +214,9 @@ export default function GoalsScreen() {
               onPress={() => { Haptics.selectionAsync(); setViewMode('visionboard'); }}
               className={`px-3 py-1.5 rounded-l-full ${viewMode === 'visionboard' ? 'bg-[#71B7FF]' : 'bg-[#1A1F2E]'}`}
               activeOpacity={0.7}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: viewMode === 'visionboard' }}
+              accessibilityLabel="Vision board view"
             >
               <Text className={`text-xs font-medium ${viewMode === 'visionboard' ? 'text-white' : 'text-neutral-400'}`}>
                 비전보드
@@ -223,6 +226,9 @@ export default function GoalsScreen() {
               onPress={() => { Haptics.selectionAsync(); setViewMode('mindmap'); }}
               className={`px-3 py-1.5 rounded-r-full ${viewMode === 'mindmap' ? 'bg-[#71B7FF]' : 'bg-[#1A1F2E]'}`}
               activeOpacity={0.7}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: viewMode === 'mindmap' }}
+              accessibilityLabel="Mind map view"
             >
               <Text className={`text-xs font-medium ${viewMode === 'mindmap' ? 'text-white' : 'text-neutral-400'}`}>
                 마인드맵
@@ -233,6 +239,8 @@ export default function GoalsScreen() {
             onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); handleAddRootChild(); }}
             className="w-9 h-9 rounded-full bg-[#71B7FF]/20 items-center justify-center"
             activeOpacity={0.7}
+            accessibilityLabel="Add new goal"
+            accessibilityRole="button"
           >
             <Plus size={20} color="#71B7FF" />
           </TouchableOpacity>

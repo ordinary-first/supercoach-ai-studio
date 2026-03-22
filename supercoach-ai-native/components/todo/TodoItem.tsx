@@ -198,6 +198,8 @@ const TodoItem: React.FC<TodoItemProps> = ({
             onPress={() => { Haptics.selectionAsync(); onPress(todo); }}
             onLongPress={drag}
             disabled={isActive}
+            accessibilityRole="button"
+            accessibilityLabel={`${todo.text}${todo.completed ? ', completed' : ''}${todo.priority ? ', priority ' + todo.priority : ''}`}
             style={[
               containerStyle,
               isActive && {
@@ -221,7 +223,13 @@ const TodoItem: React.FC<TodoItemProps> = ({
 
             {/* Checkbox */}
             <Animated.View style={checkAnimStyle}>
-              <Pressable onPress={handleToggle} hitSlop={8}>
+              <Pressable
+                onPress={handleToggle}
+                hitSlop={8}
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: todo.completed }}
+                accessibilityLabel={`Mark ${todo.text} as ${todo.completed ? 'incomplete' : 'complete'}`}
+              >
                 {todo.completed ? (
                   <CheckCircle2 size={24} color="#71B7FF" />
                 ) : (
@@ -314,7 +322,13 @@ const TodoItem: React.FC<TodoItemProps> = ({
 
             {/* Drag handle */}
             {!todo.completed && (
-              <Pressable onLongPress={drag} hitSlop={8} className="p-1">
+              <Pressable
+                onLongPress={drag}
+                hitSlop={8}
+                accessibilityLabel="Reorder"
+                accessibilityHint="Long press to drag and reorder"
+                className="p-1"
+              >
                 <GripVertical size={18} color="#4B5563" />
               </Pressable>
             )}

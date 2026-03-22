@@ -279,6 +279,7 @@ const CoachChat: React.FC<CoachChatProps> = ({ sourceTab, sourceContext }) => {
           onChangeText={setInputText}
           placeholder="메시지를 입력하세요..."
           placeholderTextColor="#4B5563"
+          accessibilityLabel="Message input"
           className="flex-1 rounded-2xl px-4 py-2.5 text-white text-sm mr-2 max-h-24"
           style={{ backgroundColor: 'rgba(255,255,255,0.06)' }}
           multiline
@@ -288,6 +289,9 @@ const CoachChat: React.FC<CoachChatProps> = ({ sourceTab, sourceContext }) => {
           <TouchableOpacity
             onPress={handleSend}
             disabled={!canSend}
+            accessibilityLabel="Send message"
+            accessibilityRole="button"
+            accessibilityState={{ disabled: !canSend }}
             className={`w-10 h-10 rounded-full items-center justify-center ${
               canSend ? 'bg-[#71B7FF]' : ''
             }`}

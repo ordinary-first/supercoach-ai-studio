@@ -101,6 +101,8 @@ function SettingRow({
   return (
     <Wrapper
       onPress={onPress ? () => { Haptics.selectionAsync(); onPress(); } : undefined}
+      accessibilityRole={onPress ? "button" : undefined}
+      accessibilityLabel={label}
       className={`flex-row items-center px-4 py-3 gap-3 ${border ? 'border-b border-neutral-100 dark:border-neutral-700' : ''}`}
     >
       {icon && <View className="w-5 items-center">{icon}</View>}
@@ -247,6 +249,8 @@ export default function SettingsScreen() {
       <View className="h-14 flex-row items-center justify-between px-4 border-b border-neutral-200 dark:border-neutral-700 bg-white/80 dark:bg-neutral-800/80">
         <TouchableOpacity
           onPress={handleGoBack}
+          accessibilityLabel="Go back"
+          accessibilityRole="button"
           className="w-9 h-9 rounded-full bg-neutral-100 dark:bg-neutral-700 items-center justify-center"
         >
           <ChevronLeft size={18} color={MUTED_COLOR} />

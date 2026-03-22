@@ -198,6 +198,8 @@ export default function LoginScreen() {
                 onPress={handleGoogleLogin}
                 disabled={isLoading}
                 activeOpacity={0.85}
+                accessibilityRole="button"
+                accessibilityLabel="Sign in with Google"
                 className="w-full flex-row items-center justify-center rounded-full bg-white py-4 gap-3"
                 style={{
                   shadowColor: '#71B7FF',
@@ -221,6 +223,8 @@ export default function LoginScreen() {
                 onPress={handleAnonymousLogin}
                 disabled={isLoading}
                 activeOpacity={0.85}
+                accessibilityRole="button"
+                accessibilityLabel="Continue as guest"
                 className="w-full flex-row items-center justify-center rounded-full border border-white/20 py-4 gap-3"
               >
                 <User size={16} color="#9CA3AF" />

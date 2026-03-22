@@ -34,6 +34,7 @@ export default function TabLayout() {
         name="goals"
         options={{
           title: t.nav.goals,
+          tabBarAccessibilityLabel: 'Goals tab',
           tabBarIcon: ({ color, size }) => (
             <Target color={color} size={size} />
           ),
@@ -43,6 +44,7 @@ export default function TabLayout() {
         name="calendar"
         options={{
           title: t.nav.calendar,
+          tabBarAccessibilityLabel: 'Calendar tab',
           tabBarIcon: ({ color, size }) => (
             <Calendar color={color} size={size} />
           ),
@@ -52,6 +54,7 @@ export default function TabLayout() {
         name="todo"
         options={{
           title: t.nav.todo,
+          tabBarAccessibilityLabel: 'Todo tab',
           tabBarIcon: ({ color, size }) => (
             <CheckSquare color={color} size={size} />
           ),
@@ -61,6 +64,7 @@ export default function TabLayout() {
         name="visualize"
         options={{
           title: t.nav.visualize,
+          tabBarAccessibilityLabel: 'Visualize tab',
           tabBarIcon: ({ color, size }) => (
             <Sparkles color={color} size={size} />
           ),
@@ -70,6 +74,7 @@ export default function TabLayout() {
         name="feedback"
         options={{
           title: t.nav.feedback,
+          tabBarAccessibilityLabel: 'Feedback tab',
           tabBarIcon: ({ color, size }) => (
             <MessageSquare color={color} size={size} />
           ),
