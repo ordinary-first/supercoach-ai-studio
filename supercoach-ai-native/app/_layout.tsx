@@ -39,20 +39,48 @@ export default function RootLayout() {
           screenOptions={{
             headerShown: false,
             contentStyle: { backgroundColor: '#0A0E1A' },
+            animation: 'fade',
+            animationDuration: 200,
           }}
         >
-          <Stack.Screen name="(tabs)" />
-          <Stack.Screen name="(auth)/login" />
-          <Stack.Screen name="(onboarding)/welcome" />
-          <Stack.Screen name="(onboarding)/plan-selection" />
+          <Stack.Screen
+            name="(tabs)"
+            options={{ animation: 'fade' }}
+          />
+          <Stack.Screen
+            name="(auth)/login"
+            options={{ animation: 'fade' }}
+          />
+          <Stack.Screen
+            name="(onboarding)/welcome"
+            options={{ animation: 'slide_from_bottom' }}
+          />
+          <Stack.Screen
+            name="(onboarding)/plan-selection"
+            options={{ animation: 'slide_from_right' }}
+          />
           <Stack.Screen
             name="coach-chat"
-            options={{ presentation: 'modal' }}
+            options={{
+              presentation: 'modal',
+              animation: 'slide_from_bottom',
+              gestureEnabled: true,
+              gestureDirection: 'vertical',
+            }}
           />
-          <Stack.Screen name="settings" />
+          <Stack.Screen
+            name="settings"
+            options={{
+              animation: 'slide_from_right',
+              gestureEnabled: true,
+            }}
+          />
           <Stack.Screen
             name="goal-detail"
-            options={{ animation: 'slide_from_right' }}
+            options={{
+              animation: 'slide_from_right',
+              gestureEnabled: true,
+            }}
           />
         </Stack>
       </LanguageContext.Provider>
