@@ -741,6 +741,7 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
                 <textarea
                   value={selectedToDo.text}
                   onChange={(e) => onUpdateToDo(selectedToDo.id, { text: e.target.value })}
+                  onFocus={(e) => e.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'nearest' })}
                   className="bg-transparent text-base font-semibold text-th-text w-full focus:outline-none resize-none h-auto min-h-[2rem]"
                   rows={2}
                 />
@@ -837,6 +838,7 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
                   placeholder={t.todo.notePlaceholder}
                   value={selectedToDo.note || ''}
                   onChange={(e) => onUpdateToDo(selectedToDo.id, { note: e.target.value })}
+                  onFocus={(e) => e.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'center' })}
                   className="w-full h-full bg-transparent text-sm text-th-text-secondary resize-none focus:outline-none placeholder:text-th-text-tertiary font-medium"
                 />
               </div>
