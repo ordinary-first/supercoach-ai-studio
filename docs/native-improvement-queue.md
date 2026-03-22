@@ -42,7 +42,7 @@
 - [x] DONE: 접근성 라벨 (VoiceOver/TalkBack) 전체 추가
 
 ### P3 — 앱스토어 제출 준비
-- [ ] PENDING: 앱 스크린샷 생성 (iPhone 15 Pro Max, iPad Pro)
+- [ ] IN_PROGRESS: 앱 스크린샷 생성 (iPhone 15 Pro Max, iPad Pro)
 - [ ] PENDING: 개인정보 처리방침 페이지 배포
 - [ ] PENDING: 앱 설명 (한/영) 최종 작성
 - [ ] PENDING: EAS production 빌드 테스트
