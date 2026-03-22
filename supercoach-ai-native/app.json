@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "SuperCoach AI",
-    "slug": "supercoach-ai",
+    "name": "Secret Coach AI",
+    "slug": "secret-coach-ai",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "scheme": "supercoach",
+    "scheme": "secretcoach",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
@@ -15,14 +15,14 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.supercoach.ai"
+      "bundleIdentifier": "ai.secretcoach.app"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0A0E1A"
       },
-      "package": "com.supercoach.ai"
+      "package": "ai.secretcoach.app"
     },
     "web": {
       "bundler": "metro",
