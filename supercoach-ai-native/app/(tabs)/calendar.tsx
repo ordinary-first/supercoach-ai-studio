@@ -6,6 +6,16 @@ import {
   ScrollView,
   useWindowDimensions,
 } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withSpring,
+  runOnJS,
+  Easing,
+} from 'react-native-reanimated';
+import * as Haptics from 'expo-haptics';
 import {
   ChevronLeft,
   ChevronRight,
@@ -697,10 +707,48 @@ export default function CalendarScreen() {
 
   const showViewControls = viewMode !== 'day';
 
+  // Swipe gesture for month/week/day navigation
+  const contentTranslateX = useSharedValue(0);
+  const contentOpacity = useSharedValue(1);
+
+  const navigateWithAnimation = useCallback((direction: 'prev' | 'next') => {
+    Haptics.selectionAsync();
+    const exitX = direction === 'next' ? -60 : 60;
+    const enterX = direction === 'next' ? 60 : -60;
+
+    contentTranslateX.value = withTiming(exitX, { duration: 120, easing: Easing.in(Easing.cubic) }, () => {
+      if (direction === 'next') {
+        runOnJS(handleNext)();
+      } else {
+        runOnJS(handlePrev)();
+      }
+      contentTranslateX.value = enterX;
+      contentOpacity.value = 0.3;
+      contentTranslateX.value = withSpring(0, { damping: 18, stiffness: 120 });
+      contentOpacity.value = withTiming(1, { duration: 200 });
+    });
+  }, [handlePrev, handleNext]);
+
+  const swipeGesture = Gesture.Pan()
+    .activeOffsetX([-30, 30])
+    .failOffsetY([-15, 15])
+    .onEnd((e) => {
+      if (e.translationX < -50 && Math.abs(e.velocityX) > 100) {
+        runOnJS(navigateWithAnimation)('next');
+      } else if (e.translationX > 50 && Math.abs(e.velocityX) > 100) {
+        runOnJS(navigateWithAnimation)('prev');
+      }
+    });
+
+  const contentAnimStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: contentTranslateX.value }],
+    opacity: contentOpacity.value,
+  }));
+
   return (
-    <View className="flex-1 bg-gray-900">
+    <View className="flex-1 bg-[#0A0E1A]">
       {/* Header */}
-      <View className="bg-gray-900/95 px-3 py-2 flex-row items-center justify-between border-b border-gray-800">
+      <View className="bg-[#0A0E1A] px-3 py-2 flex-row items-center justify-between border-b border-white/5">
         <View className="flex-row items-center gap-3">
           {viewMode === 'day' && (
             <Pressable onPress={handleBackFromDay} className="p-1.5 rounded-full" accessibilityLabel={t.common.back}>
@@ -709,7 +757,7 @@ export default function CalendarScreen() {
           )}
 
           <View className="flex-row items-center gap-2">
-            <Pressable onPress={handlePrev} className="p-1.5 rounded-full" accessibilityLabel={t.calendar.prev}>
+            <Pressable onPress={() => { Haptics.selectionAsync(); handlePrev(); }} className="p-1.5 rounded-full" accessibilityLabel={t.calendar.prev}>
               <ChevronLeft size={18} color="#9ca3af" />
             </Pressable>
             <Text
@@ -717,7 +765,7 @@ export default function CalendarScreen() {
             >
               {getHeaderTitle()}
             </Text>
-            <Pressable onPress={handleNext} className="p-1.5 rounded-full" accessibilityLabel={t.calendar.next}>
+            <Pressable onPress={() => { Haptics.selectionAsync(); handleNext(); }} className="p-1.5 rounded-full" accessibilityLabel={t.calendar.next}>
               <ChevronRight size={18} color="#9ca3af" />
             </Pressable>
           </View>
@@ -750,10 +798,14 @@ export default function CalendarScreen() {
         )}
       </View>
 
-      {viewMode === 'month' && renderMonthView()}
-      {viewMode === 'week' && renderWeekView()}
-      {viewMode === 'list' && renderListView()}
-      {viewMode === 'day' && renderDayView()}
+      <GestureDetector gesture={swipeGesture}>
+        <Animated.View style={[{ flex: 1 }, contentAnimStyle]}>
+          {viewMode === 'month' && renderMonthView()}
+          {viewMode === 'week' && renderWeekView()}
+          {viewMode === 'list' && renderListView()}
+          {viewMode === 'day' && renderDayView()}
+        </Animated.View>
+      </GestureDetector>
     </View>
   );
 }
