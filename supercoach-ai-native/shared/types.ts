@@ -1,4 +1,3 @@
-
 export enum NodeType {
   ROOT = 'ROOT',
   SUB = 'SUB',
@@ -162,7 +161,6 @@ export interface CoachMemoryContext {
   midTerm: string | null;
   longTerm: string | null;
 }
-
 export interface FeedbackCard {
   date: string;
   completedTodos: string[];
