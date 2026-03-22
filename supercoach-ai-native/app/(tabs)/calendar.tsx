@@ -4,6 +4,7 @@ import {
   Text,
   Pressable,
   ScrollView,
+  RefreshControl,
   useWindowDimensions,
 } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -180,6 +181,13 @@ export default function CalendarScreen() {
   const [viewMode, setViewMode] = useState<ViewMode>('month');
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [previousViewMode, setPreviousViewMode] = useState<ViewMode>('month');
+  const [refreshing, setRefreshing] = useState(false);
+  const handleCalendarRefresh = useCallback(async () => {
+    setRefreshing(true);
+    // Simulate refresh delay — real implementation would reload from Firestore
+    await new Promise((r) => setTimeout(r, 800));
+    setRefreshing(false);
+  }, []);
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -488,7 +496,17 @@ export default function CalendarScreen() {
       );
     }
 
-    return <ScrollView className="flex-1">{days}</ScrollView>;
+    return (
+      <ScrollView
+        className="flex-1"
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleCalendarRefresh}
+            tintColor="#71B7FF" colors={['#71B7FF']} progressBackgroundColor="#1A1F2E" />
+        }
+      >
+        {days}
+      </ScrollView>
+    );
   };
 
   // ==================== LIST VIEW ====================
@@ -501,7 +519,11 @@ export default function CalendarScreen() {
     }
 
     return (
-      <ScrollView className="flex-1 px-2 py-2">
+      <ScrollView className="flex-1 px-2 py-2"
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleCalendarRefresh}
+            tintColor="#71B7FF" colors={['#71B7FF']} progressBackgroundColor="#1A1F2E" />
+        }>
         {daysWithTodos.map(({ date, todos: dayTodos }) => {
           const dateNorm = normalizeDate(date);
           const isToday = todayNorm === dateNorm;
@@ -626,7 +648,11 @@ export default function CalendarScreen() {
     };
 
     return (
-      <ScrollView className="flex-1 px-4 py-4">
+      <ScrollView className="flex-1 px-4 py-4"
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleCalendarRefresh}
+            tintColor="#71B7FF" colors={['#71B7FF']} progressBackgroundColor="#1A1F2E" />
+        }>
         {/* Stats summary */}
         <View className="bg-gray-800/60 border border-gray-700 rounded-2xl p-5 mb-6">
           <View className="flex-row items-center justify-between mb-3">

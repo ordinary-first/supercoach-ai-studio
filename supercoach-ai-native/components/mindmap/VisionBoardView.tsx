@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   ScrollView,
   Dimensions,
   Pressable,
+  RefreshControl,
 } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -26,6 +27,7 @@ interface VisionBoardViewProps {
   nodes: GoalNode[];
   links: GoalLink[];
   onNodePress: (nodeId: string) => void;
+  onRefresh?: () => Promise<void>;
 }
 
 const GRID_PADDING = 16;
@@ -107,7 +109,14 @@ export const VisionBoardView: React.FC<VisionBoardViewProps> = ({
   nodes,
   links,
   onNodePress,
+  onRefresh,
 }) => {
+  const [refreshing, setRefreshing] = useState(false);
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await onRefresh?.();
+    setRefreshing(false);
+  }, [onRefresh]);
   const screenWidth = Dimensions.get('window').width;
   const cellSize = Math.floor(
     (screenWidth - GRID_PADDING * 2 - CELL_GAP * (COLUMNS - 1)) / COLUMNS,
@@ -239,6 +248,17 @@ export const VisionBoardView: React.FC<VisionBoardViewProps> = ({
         paddingHorizontal: GRID_PADDING,
         paddingVertical: GRID_PADDING,
       }}
+      refreshControl={
+        onRefresh ? (
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor="#71B7FF"
+            colors={['#71B7FF']}
+            progressBackgroundColor="#1A1F2E"
+          />
+        ) : undefined
+      }
     >
       <View className="flex-row flex-wrap" style={{ gap: CELL_GAP }}>
         {gridCells.map((cell, index) => renderCell(cell, index))}
