@@ -269,6 +269,7 @@ const en: TranslationStrings = {
     exploreWithAI: 'Explore with AI',
     visionBoard: 'Vision Board',
     mindMapLabel: 'Mind Map',
+    outlineLabel: 'Outline',
     noSubGoals: 'No sub-goals yet',
     layoutModes: {
       mindMap: 'Mind Map',

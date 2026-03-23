@@ -232,6 +232,7 @@ export interface TranslationStrings {
     exploreWithAI: string;
     visionBoard: string;
     mindMapLabel: string;
+    outlineLabel: string;
     noSubGoals: string;
     layoutModes: Record<string, string>;
     defaultRootText: string;

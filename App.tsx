@@ -3,6 +3,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { createPortal } from 'react-dom';
 import MindMap, { type LayoutMode } from './components/MindMap';
 import VisionBoard from './components/VisionBoard';
+import OutlineView from './components/OutlineView';
 import GoalDetailModal from './components/GoalDetailModal';
 import CoachChat from './components/CoachChat';
 import CoachBubble from './components/CoachBubble';
@@ -183,7 +184,7 @@ const App: React.FC = () => {
   const [selectedNode, setSelectedNode] = useState<GoalNode | null>(null);
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
   const [mindmapLayout, setMindmapLayout] = useState<LayoutMode>('mindMap');
-  const [goalsViewMode, setGoalsViewMode] = useState<'visionboard' | 'mindmap'>('visionboard');
+  const [goalsViewMode, setGoalsViewMode] = useState<'visionboard' | 'mindmap' | 'outline'>('visionboard');
   const [goalDetailNodeId, setGoalDetailNodeId] = useState<string | null>(null);
   const [trialDismissed, setTrialDismissed] = useState(false);
   const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
@@ -900,31 +901,7 @@ const App: React.FC = () => {
             : 'absolute inset-0 z-0 opacity-0 pointer-events-none'
         }
       >
-        {/* View Toggle: 비전보드 / 마인드맵 */}
-        {activeTab === 'GOALS' && (
-          <div className="fixed top-3 left-1/2 -translate-x-1/2 z-[56] flex items-center bg-th-elevated/90 backdrop-blur-xl border border-th-border/40 rounded-full p-0.5 shadow-lg">
-            <button
-              onClick={() => setGoalsViewMode('visionboard')}
-              className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${
-                goalsViewMode === 'visionboard'
-                  ? 'bg-th-accent text-white shadow-sm'
-                  : 'text-th-text-secondary hover:text-th-text'
-              }`}
-            >
-              {t.mindmap.visionBoard}
-            </button>
-            <button
-              onClick={() => setGoalsViewMode('mindmap')}
-              className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${
-                goalsViewMode === 'mindmap'
-                  ? 'bg-th-accent text-white shadow-sm'
-                  : 'text-th-text-secondary hover:text-th-text'
-              }`}
-            >
-              {t.mindmap.mindMapLabel}
-            </button>
-          </div>
-        )}
+        {/* View mode is now controlled via long-press on Goals tab in BottomDock */}
 
         {/* 비전보드 뷰 */}
         {goalsViewMode === 'visionboard' && (
@@ -949,6 +926,18 @@ const App: React.FC = () => {
         {goalsViewMode === 'mindmap' && (
           <MindMap
             nodes={visibleNodes} links={visibleLinks} language={language} selectedNodeId={selectedNode?.id} onNodeClick={setSelectedNode} onEditNode={(nodeId) => setEditingNodeId(nodeId)} onUpdateNode={handleUpdateNode} onDeleteNode={handleDeleteNode} onReparentNode={handleReparentNode} onAddSubNode={handleAddSubNode} onAddParentNode={handleAddParentNode} onGenerateImage={handleGenerateNodeImage} onInsertImage={handleInsertNodeImage} onConvertNodeToTask={handleConvertNodeToTodo} onDecomposeGoal={handleDecomposeGoal} onExploreWithAI={(nodeId) => { setSelectedNode(nodes.find(n => n.id === nodeId) || null); setIsChatOpen(true); }} previewNodeIds={previewNodeIds} confirmedPreviewIds={confirmedPreviewIds} onTogglePreviewConfirm={handleTogglePreviewConfirm} onFinalizePreview={handleFinalizePreview} editingNodeId={editingNodeId} onEditEnd={() => setEditingNodeId(null)} width={dimensions.width} height={dimensions.height} imageLoadingNodes={imageLoadingNodes} layout={mindmapLayout} onLayoutChange={setMindmapLayout}
+          />
+        )}
+
+        {/* 개요 뷰 */}
+        {goalsViewMode === 'outline' && (
+          <OutlineView
+            nodes={nodes}
+            links={links}
+            onNodeClick={setSelectedNode}
+            onUpdateNode={handleUpdateNode}
+            onDeleteNode={handleDeleteNode}
+            onAddSubNode={handleAddSubNode}
           />
         )}
       </div>
@@ -1033,7 +1022,7 @@ const App: React.FC = () => {
       />
       <VisualizationTab isOpen={activeTab === 'VISUALIZE'} onClose={() => setActiveTab('GOALS')} userProfile={userProfile} nodes={nodes} />
       <ShortcutsPanel isOpen={isShortcutsOpen} onClose={() => setIsShortcutsOpen(false)} />
-      <BottomDock activeTab={activeTab} onTabChange={handleTabChange} calendarViewMode={calendarViewMode} onCalendarViewModeChange={setCalendarViewMode} mindmapLayout={mindmapLayout} onMindmapLayoutChange={setMindmapLayout} />
+      <BottomDock activeTab={activeTab} onTabChange={handleTabChange} calendarViewMode={calendarViewMode} onCalendarViewModeChange={setCalendarViewMode} goalsViewMode={goalsViewMode} onGoalsViewModeChange={setGoalsViewMode} mindmapLayout={mindmapLayout} onMindmapLayoutChange={setMindmapLayout} />
       <CoachBubble
         isOpen={isChatOpen}
         onToggle={() => {

@@ -1,16 +1,19 @@
 ﻿import React, { useState, useRef, useEffect } from 'react';
-import { Target, ListTodo, Eye, Calendar, BarChart3 } from 'lucide-react';
+import { Target, ListTodo, Eye, Calendar, BarChart3, ChevronRight } from 'lucide-react';
 import { useTranslation } from '../i18n/useTranslation';
 import type { LayoutMode } from './MindMap';
 
 export type TabType = 'GOALS' | 'TODO' | 'VISUALIZE' | 'CALENDAR' | 'FEEDBACK';
 export type CalendarViewMode = 'month' | 'week' | 'list';
+export type GoalsViewMode = 'mindmap' | 'outline' | 'visionboard';
 
 interface BottomDockProps {
   activeTab: TabType;
   onTabChange: (tab: TabType) => void;
   calendarViewMode?: CalendarViewMode;
   onCalendarViewModeChange?: (mode: CalendarViewMode) => void;
+  goalsViewMode?: GoalsViewMode;
+  onGoalsViewModeChange?: (mode: GoalsViewMode) => void;
   mindmapLayout?: LayoutMode;
   onMindmapLayoutChange?: (layout: LayoutMode) => void;
 }
@@ -20,6 +23,8 @@ const BottomDock: React.FC<BottomDockProps> = ({
   onTabChange,
   calendarViewMode,
   onCalendarViewModeChange,
+  goalsViewMode,
+  onGoalsViewModeChange,
   mindmapLayout,
   onMindmapLayoutChange,
 }) => {
@@ -211,26 +216,85 @@ const BottomDock: React.FC<BottomDockProps> = ({
                 <div
                   ref={layoutPopupRef}
                   className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 apple-glass-panel
-                    rounded-xl shadow-2xl overflow-hidden min-w-[120px] z-[60]"
+                    rounded-xl shadow-2xl overflow-hidden min-w-[160px] z-[60]"
                 >
-                  {layoutModes.map((item) => (
+                  {/* 마인드맵 + 하위 레이아웃 */}
+                  <div
+                    role="button"
+                    onPointerUp={() => {
+                      onGoalsViewModeChange?.('mindmap');
+                      onTabChange('GOALS');
+                      setShowLayoutPopup(false);
+                    }}
+                    className={`w-full px-4 py-2.5 text-sm text-left transition-colors cursor-pointer select-none ${goalsViewMode === 'mindmap'
+                      ? 'text-th-accent font-bold bg-th-surface'
+                      : 'text-th-text-secondary hover:text-th-text hover:bg-th-surface'
+                    }`}
+                  >
+                    {t.mindmap.mindMapLabel}
+                    {goalsViewMode === 'mindmap' && ' ✓'}
+                  </div>
+                  {goalsViewMode === 'mindmap' && (
+                    <div className="border-t border-th-border/20">
+                      {layoutModes.map((item) => (
+                        <div
+                          key={item.mode}
+                          role="button"
+                          onPointerUp={(e) => {
+                            e.stopPropagation();
+                            onMindmapLayoutChange?.(item.mode);
+                            onTabChange('GOALS');
+                            setShowLayoutPopup(false);
+                          }}
+                          className={`w-full pl-8 pr-4 py-2 text-xs text-left transition-colors cursor-pointer select-none ${mindmapLayout === item.mode
+                            ? 'text-th-accent font-semibold bg-th-surface/60'
+                            : 'text-th-text-tertiary hover:text-th-text hover:bg-th-surface/40'
+                          }`}
+                        >
+                          {item.label}
+                          {mindmapLayout === item.mode && ' ✓'}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* 개요 */}
+                  <div className="border-t border-th-border/20">
                     <div
-                      key={item.mode}
                       role="button"
                       onPointerUp={() => {
-                        onMindmapLayoutChange?.(item.mode);
+                        onGoalsViewModeChange?.('outline');
                         onTabChange('GOALS');
                         setShowLayoutPopup(false);
                       }}
-                      className={`w-full px-4 py-2.5 text-sm text-left transition-colors cursor-pointer select-none ${mindmapLayout === item.mode
+                      className={`w-full px-4 py-2.5 text-sm text-left transition-colors cursor-pointer select-none ${goalsViewMode === 'outline'
                         ? 'text-th-accent font-bold bg-th-surface'
                         : 'text-th-text-secondary hover:text-th-text hover:bg-th-surface'
-                        }`}
+                      }`}
                     >
-                      {item.label}
-                      {mindmapLayout === item.mode && ' ✓'}
+                      {t.mindmap.outlineLabel}
+                      {goalsViewMode === 'outline' && ' ✓'}
                     </div>
-                  ))}
+                  </div>
+
+                  {/* 비전보드 */}
+                  <div className="border-t border-th-border/20">
+                    <div
+                      role="button"
+                      onPointerUp={() => {
+                        onGoalsViewModeChange?.('visionboard');
+                        onTabChange('GOALS');
+                        setShowLayoutPopup(false);
+                      }}
+                      className={`w-full px-4 py-2.5 text-sm text-left transition-colors cursor-pointer select-none ${goalsViewMode === 'visionboard'
+                        ? 'text-th-accent font-bold bg-th-surface'
+                        : 'text-th-text-secondary hover:text-th-text hover:bg-th-surface'
+                      }`}
+                    >
+                      {t.mindmap.visionBoard}
+                      {goalsViewMode === 'visionboard' && ' ✓'}
+                    </div>
+                  </div>
                 </div>
               )}
             </div>

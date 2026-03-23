@@ -271,6 +271,7 @@ const ko: TranslationStrings = {
     exploreWithAI: 'AI와 탐색',
     visionBoard: '비전보드',
     mindMapLabel: '마인드맵',
+    outlineLabel: '개요',
     noSubGoals: '하위 목표가 없습니다',
     layoutModes: {
       mindMap: '마인드맵',
