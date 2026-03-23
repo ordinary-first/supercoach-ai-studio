@@ -22,6 +22,7 @@ import {
   NodeType,
   NodeStatus,
   ToDoItem,
+  NoteItem,
   ChatMessage,
   RepeatFrequency,
   UserProfile,
@@ -180,6 +181,7 @@ const App: React.FC = () => {
   const [todos, setTodos] = useState<ToDoItem[]>([]);
   const [todoLists, setTodoLists] = useState<TodoList[]>([]);
   const [todoGroups, setTodoGroups] = useState<TodoGroup[]>([]);
+  const [notes, setNotes] = useState<NoteItem[]>([]);
   const [activeListId, setActiveListId] = useState<string | SmartListId>('myDay');
   const [selectedNode, setSelectedNode] = useState<GoalNode | null>(null);
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
@@ -218,6 +220,10 @@ const App: React.FC = () => {
     setTodoGroups(groups);
   }, []);
 
+  const handleNotesLoaded = useCallback((loadedNotes: NoteItem[]) => {
+    setNotes(loadedNotes);
+  }, []);
+
   // Wrapper: update state + flush to Firestore immediately (no 1.5s wait)
   const handleTodoListsChange: React.Dispatch<React.SetStateAction<TodoList[]>> = useCallback((action) => {
     setTodoLists((prev) => {
@@ -250,11 +256,11 @@ const App: React.FC = () => {
   const { toasts, addToast, removeToast } = useToast();
 
   const { userProfile, setUserProfile, isInitializing, isDataLoaded, syncStatus, userId, isTrialExpired, isNewUser, setIsNewUser } =
-    useAuth(handleGoalDataLoaded, handleTodosLoaded, handleTodoListsLoaded);
+    useAuth(handleGoalDataLoaded, handleTodosLoaded, handleTodoListsLoaded, handleNotesLoaded);
 
   const t = getTranslations(language);
 
-  const { flushAll, resetDirty } = useAutoSave(nodes, links, todos, todoLists, todoGroups, userProfile, isDataLoaded, userId);
+  const { flushAll, resetDirty } = useAutoSave(nodes, links, todos, todoLists, todoGroups, notes, userProfile, isDataLoaded, userId);
 
   const openAlarmConversation = useCallback((slot: AlarmSlot) => {
     setAlarmSlotForChat(slot);
@@ -997,7 +1003,7 @@ const App: React.FC = () => {
     });
     return updated;
   });
-}} />
+}} notes={notes} onNotesChange={setNotes} />
       <CalendarView isOpen={activeTab === 'CALENDAR'} onClose={() => setActiveTab('GOALS')} todos={todos} onToggleToDo={handleToggleToDo} viewMode={calendarViewMode} onViewModeChange={setCalendarViewMode} />
       <CoachChat
         isOpen={isChatOpen}

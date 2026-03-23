@@ -86,6 +86,16 @@ const en: TranslationStrings = {
       monthly: 'Every month',
     },
   },
+  notes: {
+    title: 'Notes',
+    newNote: 'New Note',
+    untitled: 'Untitled',
+    placeholder: 'Start writing...',
+    empty: 'No notes yet',
+    emptyHint: 'Create your first note',
+    pinned: 'Pinned',
+    deleteConfirm: 'Delete this note?',
+  },
   calendar: {
     title: 'Mission Calendar',
     dayNames: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],

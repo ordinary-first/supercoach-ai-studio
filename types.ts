@@ -74,7 +74,7 @@ export type RepeatFrequency =
 
 export type TodoPriority = 'low' | 'medium' | 'high';
 
-export type SmartListId = 'myDay' | 'important' | 'planned' | 'tasks';
+export type SmartListId = 'myDay' | 'important' | 'planned' | 'tasks' | 'notes';
 
 export interface TodoList {
   id: string;
@@ -119,6 +119,15 @@ export interface TodoStep {
   id: string;
   text: string;
   completed: boolean;
+}
+
+export interface NoteItem {
+  id: string;
+  title: string;
+  content: Record<string, unknown>;
+  isPinned?: boolean;
+  createdAt: number;
+  updatedAt: number;
 }
 
 export interface UserPrinciple {

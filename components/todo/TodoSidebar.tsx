@@ -4,6 +4,7 @@ import {
   Star,
   CalendarDays,
   Home,
+  FileText,
   ChevronDown,
   ChevronRight,
   FolderOpen,
@@ -14,7 +15,7 @@ import {
   MoreHorizontal,
   GripVertical,
 } from 'lucide-react';
-import { ToDoItem, TodoList, TodoGroup, SmartListId, UserPrinciple } from '../../types';
+import { ToDoItem, TodoList, TodoGroup, NoteItem, SmartListId, UserPrinciple } from '../../types';
 import { useTranslation } from '../../i18n/useTranslation';
 import TodoSearchBar from './TodoSearchBar';
 import { DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
@@ -139,6 +140,7 @@ interface TodoSidebarProps {
   onToggleGroupCollapse: (id: string) => void;
   onOpenPrinciples: () => void;
   onReorderLists?: (reorderedLists: TodoList[]) => void;
+  notes?: NoteItem[];
 }
 
 export default function TodoSidebar({
@@ -160,6 +162,7 @@ export default function TodoSidebar({
   showPrinciplesEditor,
   onOpenPrinciples,
   onReorderLists,
+  notes = [],
 }: TodoSidebarProps) {
   const { language } = useTranslation();
   const [contextMenuId, setContextMenuId] = useState<string | null>(null);
@@ -445,6 +448,32 @@ export default function TodoSidebar({
               </button>
             );
           })}
+          {/* Notes smart list item */}
+          {(() => {
+            const isActive = !showPrinciplesEditor && activeListId === 'notes';
+            const noteCount = notes.length;
+            return (
+              <button
+                key="notes"
+                onClick={() => {
+                  onSelectList('notes');
+                  setContextMenuId(null);
+                }}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all ${isActive
+                  ? 'bg-th-accent-muted text-th-text font-bold'
+                  : 'text-th-text-secondary hover:bg-th-surface/50 hover:text-th-text'
+                }`}
+              >
+                <span className={`flex-shrink-0 ${isActive ? 'text-purple-400' : ''}`}><FileText size={18} /></span>
+                <span className="flex-1 text-left truncate">{language === 'ko' ? '메모' : 'Notes'}</span>
+                {noteCount > 0 && (
+                  <span className="bg-th-surface text-th-text-tertiary text-xs px-1.5 py-0.5 rounded-full font-mono">
+                    {noteCount}
+                  </span>
+                )}
+              </button>
+            );
+          })()}
         </div>
 
         <div className="border-t border-th-border mx-3 my-2" />

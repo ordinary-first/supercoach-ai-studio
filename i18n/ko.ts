@@ -88,6 +88,16 @@ const ko: TranslationStrings = {
       monthly: '매월',
     },
   },
+  notes: {
+    title: '메모',
+    newNote: '새 메모',
+    untitled: '제목 없음',
+    placeholder: '여기에 작성하세요...',
+    empty: '메모가 없습니다',
+    emptyHint: '새 메모를 만들어보세요',
+    pinned: '고정됨',
+    deleteConfirm: '이 메모를 삭제할까요?',
+  },
   calendar: {
     title: '미션 달력',
     dayNames: ['일', '월', '화', '수', '목', '금', '토'],
