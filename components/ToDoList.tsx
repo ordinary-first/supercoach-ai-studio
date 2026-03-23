@@ -1,5 +1,5 @@
 ﻿import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import { Check, Trash2, Plus, ListTodo, Circle, CheckCircle2, Target, Bell, Repeat, Sun, ArrowLeft, ArrowUp, ChevronRight, ChevronDown, Layout, X, Calendar, Star, CalendarDays, Home, Menu, GripVertical } from 'lucide-react';
+import { Check, Trash2, Plus, ListTodo, Circle, CheckCircle2, Target, Bell, Repeat, Sun, ArrowLeft, ArrowUp, ChevronRight, ChevronDown, Layout, X, Calendar, Star, CalendarDays, Home, Menu, GripVertical, FolderOutput } from 'lucide-react';
 import { ToDoItem, TodoList, TodoGroup, TodoStep, SmartListId, RepeatFrequency, UserPrinciple } from '../types';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { useTranslation } from '../i18n/useTranslation';
@@ -837,6 +837,38 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
                     <option value="monthly">{t.todo.repeatOptions.monthly}</option>
                   </select>
                   {selectedToDo.repeat && <button onClick={() => onUpdateToDo(selectedToDo.id, { repeat: null })} className="p-1 hover:text-red-500 text-th-text-tertiary hover:bg-red-500/10 rounded transition-colors z-10"><X size={14} /></button>}
+                </div>
+
+                {/* Move to List */}
+                <div className="py-3 px-3.5 flex items-center gap-3 hover:bg-th-surface-hover relative group transition-colors">
+                  <FolderOutput size={16} className={selectedToDo.listId && selectedToDo.listId !== 'tasks' ? 'text-th-accent' : 'text-th-text-tertiary'} />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-th-text-secondary">{language === 'ko' ? '목록 이동' : 'Move to List'}</p>
+                    {(() => {
+                      const currentList = todoLists.find(l => l.id === selectedToDo.listId);
+                      return currentList ? (
+                        <p className="text-xs text-th-accent mt-0.5 font-semibold flex items-center gap-1">
+                          <span className="w-2 h-2 rounded-full inline-block" style={{ backgroundColor: currentList.color || 'var(--accent)' }} />
+                          {currentList.name}
+                        </p>
+                      ) : (
+                        <p className="text-xs text-th-text-tertiary mt-0.5">{language === 'ko' ? '작업' : 'Tasks'}</p>
+                      );
+                    })()}
+                  </div>
+                  <select
+                    value={selectedToDo.listId || 'tasks'}
+                    onChange={(e) => {
+                      const newListId = e.target.value === 'tasks' ? undefined : e.target.value;
+                      onUpdateToDo(selectedToDo.id, { listId: newListId });
+                    }}
+                    className="absolute inset-0 opacity-0 cursor-pointer bg-th-base text-th-text"
+                  >
+                    <option value="tasks">{language === 'ko' ? '작업' : 'Tasks'}</option>
+                    {todoLists.map(list => (
+                      <option key={list.id} value={list.id}>{list.name}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
