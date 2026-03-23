@@ -720,7 +720,7 @@ const App: React.FC = () => {
 
       // Non-recurring or un-completing: just toggle
       if (!todo.repeat || todo.completed) {
-        return prev.map(t => t.id === id ? {...t, completed: !t.completed} : t);
+        return prev.map(t => t.id === id ? {...t, completed: !t.completed, completedAt: !t.completed ? Date.now() : null} : t);
       }
 
       // Recurring todo being completed (false -> true)
@@ -731,6 +731,7 @@ const App: React.FC = () => {
       const completedInstance: ToDoItem = {
         ...todo,
         completed: true,
+        completedAt: Date.now(),
         dueDate: todo.dueDate || today.getTime(),
         repeat: null, // Remove repeat so it stays as historical record only
       };

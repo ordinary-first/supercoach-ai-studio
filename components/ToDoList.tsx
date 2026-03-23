@@ -314,7 +314,12 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
     return a.isMyDay ? -1 : 1;
   };
   const incompleteTodos = [...filteredTodos].filter(t => !t.completed).sort(sortTodos);
-  const completedTodos = [...filteredTodos].filter(t => t.completed).sort(sortTodos);
+  const completedTodos = [...filteredTodos].filter(t => t.completed).sort((a, b) => {
+    // Sort by completedAt descending (most recently completed first)
+    const aTime = a.completedAt ?? a.createdAt;
+    const bTime = b.completedAt ?? b.createdAt;
+    return bTime - aTime;
+  });
 
   // DnD
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
@@ -446,6 +451,12 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
           onRenameGroup={handleRenameGroup}
           onToggleGroupCollapse={handleToggleGroupCollapse}
           onOpenPrinciples={() => { onOpenPrinciples(); setIsSidebarOpen(false); }}
+          onReorderLists={(reordered) => {
+            onTodoListsChange(prev => {
+              const reorderedMap = new Map(reordered.map(l => [l.id, l.sortOrder]));
+              return prev.map(l => reorderedMap.has(l.id) ? { ...l, sortOrder: reorderedMap.get(l.id)! } : l);
+            });
+          }}
         />
       </div>
 

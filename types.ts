@@ -111,6 +111,7 @@ export interface ToDoItem {
   tags?: string[];
   listId?: string;
   sortOrder?: number;
+  completedAt?: number | null;
   steps?: TodoStep[];
 }
 
