@@ -140,6 +140,7 @@ export default async function handler(
           billingStatus: subscriptionStatus,
           billingIsActive: true,
           billingSubscriptionId: subscriptionId,
+          billingCancelAtPeriodEnd: cancelAtPeriodEnd,
           billingUpdatedAt: Date.now(),
         },
         { merge: true },
