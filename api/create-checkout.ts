@@ -86,6 +86,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const payload: Record<string, unknown> = {
     products: [productId],
     success_url: successUrl,
+    allow_discount_codes: true,
     metadata: {
       app: 'secret-coach-web-legacy',
       plan,
