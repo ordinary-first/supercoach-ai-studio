@@ -1,0 +1,127 @@
+# Layer 2: Domain Criteria
+# 파일 유형별 자동 적용되는 추가 기준
+# 변경된 파일이 해당 패턴에 매칭되면 자동으로 기준 추가
+
+"components/**/*.tsx":
+  - id: theme-css-vars
+    description: "theme.css 변수 사용 (하드코딩 색상 금지)"
+    check: "grep -n '#[0-9a-fA-F]\\{3,6\\}' {file} — theme.css 변수(var(--th-*))로 대체해야 함"
+    expect: "0 hardcoded colors (except in comments)"
+    severity: block
+
+  - id: dark-light-mode
+    description: "다크/라이트 모드 양쪽에서 정상 작동"
+    check: "th-accent, th-base, th-surface 등 양쪽 테마 변수 사용 확인"
+    severity: block
+
+  - id: i18n-complete
+    description: "useTranslation 사용, 새 키는 en.ts + ko.ts 양쪽에 추가"
+    check: "하드코딩 한국어/영어 문자열 없음, t() 함수 사용"
+    expect: "all user-facing strings use t() function"
+    severity: block
+
+  - id: aria-labels
+    description: "인터랙티브 요소에 ARIA 라벨"
+    check: "button, input, select 등에 aria-label 또는 의미있는 텍스트"
+    severity: warn
+
+  - id: props-interface
+    description: "types.ts에 Props 인터페이스 정의"
+    check: "컴포넌트 props가 types.ts 또는 인라인으로 타입 정의됨"
+    severity: block
+
+  - id: component-size-limit
+    description: "300줄 초과 시 하위 컴포넌트로 분리"
+    check: "wc -l {file} <= 300"
+    severity: block
+
+"api/*.ts":
+  - id: try-catch-wrapper
+    description: "전체 핸들러 try/catch로 래핑"
+    check: "handler 함수 내부에 try/catch 존재"
+    severity: block
+
+  - id: error-response-format
+    description: "에러 응답: { error: string } 형태"
+    check: "catch 블록에서 res.status(4xx/5xx).json({ error: ... })"
+    severity: block
+
+  - id: hide-internal-errors
+    description: "500 에러 시 내부 상세 숨기기"
+    check: "catch에서 원본 에러 메시지를 그대로 클라이언트에 전송하지 않음"
+    severity: block
+
+  - id: firebase-id-token
+    description: "Firebase ID 토큰 검증"
+    check: "authMiddleware 또는 verifyIdToken 호출"
+    severity: block
+
+  - id: method-check
+    description: "HTTP 메서드 체크 (POST/GET)"
+    check: "req.method 확인 후 405 응답"
+    severity: warn
+
+"hooks/*.ts":
+  - id: cleanup-function
+    description: "useEffect에 cleanup 함수 반환 (구독/타이머 해제)"
+    check: "useEffect 내부에 return () => { ... } 존재 (해당하는 경우)"
+    severity: warn
+
+  - id: dependency-array
+    description: "의존성 배열 정확 (stale closure 방지)"
+    check: "useEffect/useCallback/useMemo 의존성 배열에 사용되는 변수 포함"
+    severity: block
+
+  - id: hook-naming
+    description: "use 접두사 + camelCase"
+    check: "export 함수명이 use로 시작"
+    severity: block
+
+"services/*.ts":
+  - id: firestore-path-pattern
+    description: "Firestore 경로: users/{uid}/... 패턴"
+    check: "Firestore 경로에 동적 uid 사용"
+    severity: block
+
+  - id: external-api-error-handling
+    description: "외부 API 호출 시 에러 핸들링"
+    check: "fetch/axios 호출에 try/catch 또는 .catch()"
+    severity: block
+
+  - id: named-exports-service
+    description: "named export 사용"
+    check: "export default 대신 export function/const"
+    severity: block
+
+"stores/*.ts":
+  - id: zustand-create
+    description: "Zustand create/createStore 사용"
+    check: "import { create } from 'zustand'"
+    severity: block
+
+  - id: selector-pattern
+    description: "컴포넌트에서 셀렉터 패턴으로 구독"
+    check: "store 전체가 아닌 필요한 slice만 subscribe하도록 가이드"
+    severity: warn
+
+"i18n/*.ts":
+  - id: both-languages
+    description: "en.ts와 ko.ts에 동일한 키 세트"
+    check: "새로 추가된 키가 양쪽 파일에 모두 존재"
+    severity: block
+
+  - id: natural-translation
+    description: "번역이 자연스러움 (기계 번역 느낌 X)"
+    check: "manual review"
+    severity: warn
+
+"*.css":
+  - id: css-variables
+    description: "CSS 변수(custom properties) 사용"
+    check: "하드코딩 색상 대신 var(--th-*) 사용"
+    severity: block
+
+  - id: dark-mode-support
+    description: "[data-theme='dark'] 변형 존재"
+    check: "새 스타일에 다크모드 대응 있는지"
+    severity: block
