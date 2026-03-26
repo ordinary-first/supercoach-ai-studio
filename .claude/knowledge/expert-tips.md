@@ -29,3 +29,28 @@
 - **출처**: 프로젝트 실제 경험 (2026-03-25)
 - **핵심**: Polar external_id와 Firebase Auth uid가 다를 수 있음. 계정 삭제/재생성 시 uid 변경
 - **적용**: 결제 코드에서 uid 하드코딩 금지, 항상 auth.currentUser.uid 사용
+
+## [Productivity] Boris Cherny 팀 — 병렬 워크트리가 최대 생산성 향상
+- **출처**: @bcherny (Boris Cherny, Claude Code 창시자) via ToolScout 2026-03-26
+- **핵심**: 3-5개 git worktree 병렬 세션이 가장 큰 생산성 향상
+- **적용**: 독립적 기능은 워크트리 분리 후 병렬 에이전트 디스패치
+
+## [Mindset] Karpathy — vibe coding ≠ professional AI-assisted engineering
+- **출처**: @karpathy via ToolScout 2026-03-26
+- **핵심**: 컨텍스트 전부 채우기 → diff 직접 확인 → 테스트 검증. 느슨한 코딩과 전문 AI 코딩은 다름
+- **적용**: /build 파이프라인에서 리뷰 게이트 + 빌드 검증 필수화
+
+## [Mindset] levelsio — 기술 스택은 가장 덜 중요
+- **출처**: @levelsio (Peter Levels) via ToolScout 2026-03-26
+- **핵심**: 고객이 돈 내는 제품이 핵심. 기술 스택 고민에 시간 낭비 금지
+- **적용**: 기술 결정 시 "이게 유저에게 가치를 주나?"를 첫 번째 질문으로
+
+## [Tool] Cursor 2.0 — parallel agents + 동작 확인 녹화
+- **출처**: Cursor 2.0 발표 via ToolScout 2026-03-26
+- **핵심**: 병렬 에이전트 + 코드 변경 후 동작 확인 녹화 (long-running code agent)
+- **적용**: /build Phase 4에서 병렬 빌더 디스패치와 유사한 패턴
+
+## [리서치 소스] X(Twitter) AI 큐레이션 리스트
+- **출처**: ToolScout config (2026-03-25 구축)
+- **핵심**: 15명의 X 큐레이터 + 8개 검색 쿼리 로테이션
+- **적용**: `/research` 스킬이나 막혔을 때 `~/.claude/projects/C--Users-moon/memory/toolscout/config.md` 참조. 주요 소스: @karpathy, @bcherny, @steipete, @levelsio, @rowancheung, @ClaudeCodeLog
