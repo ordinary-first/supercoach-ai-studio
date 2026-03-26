@@ -50,6 +50,16 @@
 - **핵심**: 병렬 에이전트 + 코드 변경 후 동작 확인 녹화 (long-running code agent)
 - **적용**: /build Phase 4에서 병렬 빌더 디스패치와 유사한 패턴
 
+## [Browser] 기존 브라우저 로그인 세션을 헤드리스에서 재활용
+- **출처**: gstack `setup-browser-cookies` 스킬 (설치 완료)
+- **핵심**: 실제 Chromium 브라우저(Edge, Chrome, Arc, Brave, Comet)의 쿠키를 복호화 → Playwright 헤드리스 세션에 로드. 로그인 다시 안 해도 됨
+- **적용**: QA 테스트나 인증 필요한 페이지 자동화 전에 `/setup-browser-cookies` 실행. `$B cookie-import-browser`로 도메인 선택 UI 열림. 특정 도메인만: `$B cookie-import-browser edge --domain secretcoach.ai`
+
+## [Browser] CDP로 기존 로그인 브라우저에 직접 연결
+- **출처**: 프로젝트 실제 경험 + feedback_env_optimization 메모리
+- **핵심**: Edge를 `--remote-debugging-port=9222`로 실행하면 CDP로 기존 로그인 세션(Gmail, GCP, Vercel 등) 그대로 접근 가능
+- **적용**: 로그인 필요한 외부 서비스 자동화 시 CDP 연결 우선 시도. Playwright MCP의 `browser_navigate`로 localhost:9222에 연결
+
 ## [리서치 소스] X(Twitter) AI 큐레이션 리스트
 - **출처**: ToolScout config (2026-03-25 구축)
 - **핵심**: 15명의 X 큐레이터 + 8개 검색 쿼리 로테이션
