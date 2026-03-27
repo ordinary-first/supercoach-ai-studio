@@ -6,7 +6,7 @@ import TaskList from '@tiptap/extension-task-list';
 import TaskItem from '@tiptap/extension-task-item';
 import Underline from '@tiptap/extension-underline';
 import {
-  ArrowLeft, Trash2, Pin, PinOff,
+  ArrowLeft, Trash2, Pin, PinOff, FilePlus,
   Bold, Italic, Underline as UnderlineIcon, Strikethrough,
   Heading1, Heading2, List, ListOrdered, CheckSquare, Quote, Minus, Code,
 } from 'lucide-react';
@@ -18,9 +18,10 @@ interface NoteEditorProps {
   onUpdate: (id: string, updates: Partial<NoteItem>) => void;
   onDelete: (id: string) => void;
   onBack: () => void;
+  onCreateNote?: () => void;
 }
 
-export default function NoteEditor({ note, onUpdate, onDelete, onBack }: NoteEditorProps) {
+export default function NoteEditor({ note, onUpdate, onDelete, onBack, onCreateNote }: NoteEditorProps) {
   const { t } = useTranslation();
   const [title, setTitle] = useState(note.title);
   const titleRef = useRef<HTMLInputElement>(null);
@@ -116,6 +117,11 @@ export default function NoteEditor({ note, onUpdate, onDelete, onBack }: NoteEdi
           <span className="text-xs text-th-text-tertiary font-medium uppercase tracking-wider">{t.notes.title}</span>
         </div>
         <div className="flex items-center gap-1">
+          {onCreateNote && (
+            <button onClick={onCreateNote} className="p-1.5 rounded-lg text-th-text-tertiary hover:bg-th-surface-hover hover:text-th-accent transition-colors" title={t.notes.newNote}>
+              <FilePlus size={16} />
+            </button>
+          )}
           <button onClick={handleTogglePin} className={`p-1.5 rounded-lg transition-colors ${note.isPinned ? 'text-yellow-400 hover:bg-yellow-400/10' : 'text-th-text-tertiary hover:bg-th-surface-hover hover:text-th-text'}`}>
             {note.isPinned ? <PinOff size={16} /> : <Pin size={16} />}
           </button>

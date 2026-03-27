@@ -542,6 +542,7 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
               onUpdate={handleUpdateNote}
               onDelete={handleDeleteNote}
               onBack={() => setActiveNoteId(null)}
+              onCreateNote={handleCreateNote}
             />
           ) : (
             <>
@@ -612,8 +613,8 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
           )
         )}
 
-        {/* === PRINCIPLES FULL VIEW === */}
-        {showPrinciplesEditor ? (
+        {/* === PRINCIPLES / TODO LIST (hidden when notes view is active) === */}
+        {activeListId === 'notes' ? null : showPrinciplesEditor ? (
           <>
             <div className="flex-1 overflow-y-auto px-4 pt-3 pb-4 scrollbar-hide">
               {principles.length === 0 ? (

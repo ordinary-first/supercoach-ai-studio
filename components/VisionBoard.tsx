@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { GoalNode, GoalLink, NodeType } from '../types';
-import { Plus, Compass } from 'lucide-react';
-import { useTranslation } from '../i18n/useTranslation';
+import { Plus, Compass, Sparkles } from 'lucide-react';
+// useTranslation: t is an object (TranslationStrings), not a function
 
 interface VisionBoardProps {
   nodes: GoalNode[];
@@ -10,20 +10,52 @@ interface VisionBoardProps {
   onAddSubNode: (parentId: string) => void;
 }
 
-/* 각 셀에 개성을 주는 팔레트 — 이미지가 없을 때 사용 */
-const CELL_STYLES = [
-  { bg: 'linear-gradient(160deg, #0f172a 0%, #1e3a5f 100%)', glow: 'rgba(56,189,248,0.12)' },
-  { bg: 'linear-gradient(160deg, #1a1025 0%, #4c1d95 100%)', glow: 'rgba(139,92,246,0.12)' },
-  { bg: 'linear-gradient(160deg, #1c1917 0%, #78350f 100%)', glow: 'rgba(251,146,60,0.10)' },
-  { bg: 'linear-gradient(160deg, #0c1a1a 0%, #134e4a 100%)', glow: 'rgba(45,212,191,0.10)' },
-  { bg: 'linear-gradient(160deg, #1a0b2e 0%, #581c87 100%)', glow: 'rgba(192,132,252,0.12)' },
-  { bg: 'linear-gradient(160deg, #1c0f0f 0%, #7f1d1d 100%)', glow: 'rgba(248,113,113,0.10)' },
-  { bg: 'linear-gradient(160deg, #0f1629 0%, #1e40af 100%)', glow: 'rgba(96,165,250,0.12)' },
-  { bg: 'linear-gradient(160deg, #1a1a0e 0%, #713f12 100%)', glow: 'rgba(250,204,21,0.10)' },
+/*
+ * Instagram Explore–style Bento Vision Board
+ * - 풀스크린, 화면 전체를 채우는 몰입형 레이아웃
+ * - 4:5 비율 카드 (인스타 2025+ 기준)
+ * - 중앙 Identity 카드는 2×2 히어로
+ * - 글래스모피즘 + 시네마틱 비네트
+ */
+
+const CELL_PALETTES = [
+  { from: '#0c1220', via: '#1a3a5f', to: '#2563eb', accent: '56,189,248' },
+  { from: '#1a0525', via: '#4c1d95', to: '#8b5cf6', accent: '139,92,246' },
+  { from: '#1c0f07', via: '#78350f', to: '#f59e0b', accent: '251,146,60' },
+  { from: '#041a1a', via: '#134e4a', to: '#14b8a6', accent: '45,212,191' },
+  { from: '#200818', via: '#831843', to: '#ec4899', accent: '236,72,153' },
+  { from: '#0f0f1c', via: '#1e3a8a', to: '#3b82f6', accent: '59,130,246' },
+  { from: '#1a0a0a', via: '#7f1d1d', to: '#ef4444', accent: '239,68,68' },
+  { from: '#0f1a0a', via: '#365314', to: '#84cc16', accent: '132,204,22' },
 ];
 
+/*
+ * Bento grid-template-areas:
+ *   Desktop (4 cols):  "a  a  b  c"
+ *                      "a  a  d  e"
+ *                      "f  g  h  h"
+ *
+ *   Mobile (3 cols):   "a  a  b"
+ *                      "a  a  c"
+ *                      "d  e  f"
+ *                      "g  h  h"
+ */
+const GRID_AREAS_DESKTOP = `
+  "a a b c"
+  "a a d e"
+  "f g h h"
+`;
+const GRID_AREAS_MOBILE = `
+  "a a b"
+  "a a c"
+  "d e f"
+  "g h h"
+`;
+
+const AREA_NAMES = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+
 const VisionBoard: React.FC<VisionBoardProps> = ({ nodes, links, onNodeClick, onAddSubNode }) => {
-  const { t } = useTranslation();
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
   const rootNode = nodes.find(n => n.type === NodeType.ROOT);
   if (!rootNode) return null;
 
@@ -31,123 +63,190 @@ const VisionBoard: React.FC<VisionBoardProps> = ({ nodes, links, onNodeClick, on
     n.parentId === rootNode.id && n.type === NodeType.SUB
   );
 
-  // 3x3 그리드: 가운데(index 4) = ROOT, 나머지 = 1차 노드
-  const gridSlots: (GoalNode | null)[] = Array(9).fill(null);
-  gridSlots[4] = rootNode;
-  const positions = [0, 1, 2, 3, 5, 6, 7, 8];
+  // 슬롯 배열: index 0 = ROOT(2×2 히어로), 나머지 = sub goals
+  const slots: (GoalNode | null)[] = Array(8).fill(null);
+  slots[0] = rootNode;
   firstLevelNodes.forEach((node, i) => {
-    if (i < positions.length) gridSlots[positions[i]] = node;
+    if (i + 1 < slots.length) slots[i + 1] = node;
   });
 
   return (
-    <div className="absolute inset-0 z-10 overflow-auto">
-      {/* 배경 분위기 — 미세한 방사형 글로우 */}
-      <div className="absolute inset-0 bg-th-base" />
-      <div
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full pointer-events-none"
-        style={{ background: 'radial-gradient(circle, rgba(113,183,255,0.06) 0%, transparent 70%)' }}
-      />
+    <div className="absolute inset-0 z-10 overflow-hidden bg-[#08090b]">
+      {/* Ambient glow layers */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] rounded-full opacity-30"
+          style={{ background: 'radial-gradient(circle, rgba(139,92,246,0.15) 0%, transparent 70%)' }} />
+        <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] rounded-full opacity-25"
+          style={{ background: 'radial-gradient(circle, rgba(56,189,248,0.12) 0%, transparent 70%)' }} />
+      </div>
 
-      <div className="relative w-full h-full flex items-center justify-center p-4 md:p-8">
-        <div className="grid grid-cols-3 gap-1.5 md:gap-2.5 w-full max-w-[520px] aspect-square">
-          {gridSlots.map((node, index) => {
-            const isCenter = index === 4;
-            const isEmpty = !node;
-            const style = CELL_STYLES[index % CELL_STYLES.length];
-            const delay = index * 60;
+      {/* Noise texture overlay */}
+      <div className="absolute inset-0 opacity-[0.03] pointer-events-none"
+        style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E")` }} />
 
-            if (isEmpty) {
-              return (
-                <button
-                  key={`empty-${index}`}
-                  onClick={() => onAddSubNode(rootNode.id)}
-                  className="relative aspect-square rounded-[18px] md:rounded-[22px] border border-dashed border-white/[0.08]
-                    flex items-center justify-center
-                    hover:border-white/20 hover:bg-white/[0.03]
-                    transition-all duration-300 group
-                    animate-[cellReveal_0.5s_ease-out_both]"
-                  style={{ animationDelay: `${delay}ms` }}
-                >
-                  <Plus
-                    className="w-6 h-6 text-white/15 group-hover:text-white/40 group-hover:scale-110 transition-all duration-300"
-                    strokeWidth={1.5}
-                  />
-                </button>
-              );
-            }
+      {/* Bento Grid — responsive via CSS */}
+      <div className="vb-grid relative w-full h-full p-2 md:p-3">
+        {slots.map((node, index) => {
+          const isHero = index === 0;
+          const isEmpty = !node;
+          const palette = CELL_PALETTES[index % CELL_PALETTES.length];
+          const area = AREA_NAMES[index];
+          const isHovered = node ? hoveredId === node.id : false;
 
+          if (isEmpty) {
             return (
               <button
-                key={node.id}
-                onClick={() => onNodeClick(node)}
-                className="relative aspect-square rounded-[18px] md:rounded-[22px] overflow-hidden
-                  group transition-all duration-500
-                  hover:scale-[1.03] hover:z-10
-                  active:scale-[0.97]
-                  animate-[cellReveal_0.5s_ease-out_both]
-                  shadow-[0_2px_20px_-4px_rgba(0,0,0,0.4)]
-                  hover:shadow-[0_8px_40px_-8px_rgba(0,0,0,0.6)]"
+                key={`empty-${index}`}
+                onClick={() => onAddSubNode(rootNode.id)}
+                className="relative overflow-hidden rounded-2xl md:rounded-3xl
+                  border border-dashed border-white/[0.06]
+                  flex items-center justify-center
+                  hover:border-white/15 hover:bg-white/[0.02]
+                  transition-all duration-500 group"
                 style={{
-                  animationDelay: `${delay}ms`,
-                  ...(isCenter ? { boxShadow: '0 0 60px -12px rgba(139,92,246,0.25)' } : {}),
+                  gridArea: area,
+                  animation: `cellFadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) ${index * 80}ms both`,
                 }}
               >
-                {/* 배경 */}
-                {node.imageUrl ? (
-                  <img
-                    src={node.imageUrl}
-                    alt={node.text}
-                    className="absolute inset-0 w-full h-full object-cover
-                      transition-transform duration-700 ease-out
-                      group-hover:scale-110"
-                  />
-                ) : (
-                  <div
-                    className="absolute inset-0"
-                    style={{ background: isCenter
-                      ? 'linear-gradient(135deg, #312e81 0%, #5b21b6 40%, #7c3aed 100%)'
-                      : style.bg
-                    }}
-                  />
-                )}
-
-                {/* 비네트 오버레이 — 영화 포스터 느낌 */}
-                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_30%,rgba(0,0,0,0.5)_100%)]" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/10
-                  group-hover:from-black/40 transition-colors duration-500" />
-
-                {/* 호버 시 미세한 글로우 테두리 */}
-                <div className="absolute inset-0 rounded-[18px] md:rounded-[22px] border border-white/[0.06]
-                  group-hover:border-white/[0.15] transition-colors duration-500" />
-
-                {/* 텍스트 */}
-                <div className="absolute inset-0 flex flex-col items-center justify-end p-3 pb-4">
-                  {isCenter && (
-                    <div className="mb-auto mt-3 flex items-center gap-1">
-                      <Compass size={10} className="text-purple-300/60" />
-                      <span className="text-[9px] font-medium text-purple-300/60 uppercase tracking-[0.2em]">
-                        Identity
-                      </span>
-                    </div>
-                  )}
-                  <span className="text-white font-semibold text-[13px] md:text-[15px] text-center leading-snug
-                    drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]
-                    group-hover:drop-shadow-[0_2px_12px_rgba(0,0,0,0.9)]
-                    transition-all duration-300">
-                    {node.text}
+                <div className="flex flex-col items-center gap-2">
+                  <div className="w-10 h-10 rounded-full border border-white/[0.08] flex items-center justify-center
+                    group-hover:border-white/20 group-hover:bg-white/[0.04] transition-all duration-500">
+                    <Plus className="w-5 h-5 text-white/20 group-hover:text-white/50 transition-colors duration-500" strokeWidth={1.5} />
+                  </div>
+                  <span className="text-[11px] text-white/20 group-hover:text-white/40 transition-colors duration-500 tracking-wide">
+                    Add Goal
                   </span>
                 </div>
               </button>
             );
-          })}
-        </div>
+          }
+
+          return (
+            <button
+              key={node.id}
+              onClick={() => onNodeClick(node)}
+              onMouseEnter={() => setHoveredId(node.id)}
+              onMouseLeave={() => setHoveredId(null)}
+              className={`relative overflow-hidden rounded-2xl md:rounded-3xl
+                group transition-all duration-700 ease-out
+                ${isHovered ? 'z-20 scale-[1.015]' : 'z-10 scale-100'}
+                active:scale-[0.98]`}
+              style={{
+                gridArea: area,
+                animation: `cellFadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) ${index * 80}ms both`,
+              }}
+            >
+              {/* Background: image or cinematic gradient */}
+              {node.imageUrl ? (
+                <img
+                  src={node.imageUrl}
+                  alt={node.text}
+                  className="absolute inset-0 w-full h-full object-cover
+                    transition-transform duration-[1.2s] ease-out
+                    group-hover:scale-[1.08]"
+                />
+              ) : (
+                <div className="absolute inset-0" style={{
+                  background: `linear-gradient(145deg, ${palette.from} 0%, ${palette.via} 50%, ${palette.to} 100%)`,
+                }}>
+                  {/* Subtle inner glow for gradient cards */}
+                  <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700"
+                    style={{ background: `radial-gradient(circle at 30% 30%, rgba(${palette.accent},0.2) 0%, transparent 60%)` }} />
+                </div>
+              )}
+
+              {/* Cinematic vignette — heavier on edges */}
+              <div className="absolute inset-0"
+                style={{ background: 'radial-gradient(ellipse at 50% 40%, transparent 20%, rgba(0,0,0,0.55) 100%)' }} />
+
+              {/* Bottom gradient for text readability */}
+              <div className={`absolute inset-0 transition-opacity duration-700
+                ${isHero
+                  ? 'bg-gradient-to-t from-black/70 via-black/20 to-transparent'
+                  : 'bg-gradient-to-t from-black/65 via-transparent to-black/5'
+                }`} />
+
+              {/* Glass border on hover */}
+              <div className="absolute inset-0 rounded-2xl md:rounded-3xl
+                border border-white/[0.04] group-hover:border-white/[0.12]
+                transition-all duration-700" />
+
+              {/* Shimmer effect on hover */}
+              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"
+                style={{
+                  background: 'linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.03) 45%, rgba(255,255,255,0.06) 50%, rgba(255,255,255,0.03) 55%, transparent 60%)',
+                }} />
+
+              {/* Content */}
+              <div className={`absolute inset-0 flex flex-col justify-end
+                ${isHero ? 'p-5 md:p-8' : 'p-3 md:p-4'}`}>
+
+                {/* Hero badge */}
+                {isHero && (
+                  <div className="mb-auto mt-1 self-start">
+                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full
+                      bg-white/[0.08] backdrop-blur-md border border-white/[0.08]
+                      group-hover:bg-white/[0.12] group-hover:border-white/[0.15]
+                      transition-all duration-500">
+                      <Sparkles size={11} className="text-purple-300/80" />
+                      <span className="text-[10px] font-medium text-purple-200/80 uppercase tracking-[0.18em]">
+                        Core Identity
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Title */}
+                <h3 className={`text-white font-semibold leading-tight
+                  drop-shadow-[0_2px_12px_rgba(0,0,0,0.9)]
+                  transition-transform duration-500 group-hover:translate-y-[-2px]
+                  ${isHero
+                    ? 'text-[20px] md:text-[28px] tracking-tight'
+                    : 'text-[13px] md:text-[15px]'
+                  }`}
+                >
+                  {node.text}
+                </h3>
+
+                {/* Sub-count indicator for hero */}
+                {isHero && firstLevelNodes.length > 0 && (
+                  <p className="mt-2 text-[11px] md:text-[12px] text-white/40 tracking-wide">
+                    {firstLevelNodes.length} goals connected
+                  </p>
+                )}
+              </div>
+            </button>
+          );
+        })}
       </div>
 
       <style>{`
-        @keyframes cellReveal {
+        .vb-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          grid-template-rows: repeat(4, 1fr);
+          grid-template-areas:
+            "a a b"
+            "a a c"
+            "d e f"
+            "g h h";
+          gap: 4px;
+        }
+        @media (min-width: 768px) {
+          .vb-grid {
+            grid-template-columns: repeat(4, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            grid-template-areas:
+              "a a b c"
+              "a a d e"
+              "f g h h";
+            gap: 6px;
+          }
+        }
+        @keyframes cellFadeIn {
           from {
             opacity: 0;
-            transform: scale(0.88) translateY(12px);
+            transform: scale(0.92) translateY(16px);
           }
           to {
             opacity: 1;

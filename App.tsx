@@ -944,6 +944,8 @@ const App: React.FC = () => {
             onUpdateNode={handleUpdateNode}
             onDeleteNode={handleDeleteNode}
             onAddSubNode={handleAddSubNode}
+            onReparentNode={handleReparentNode}
+            onAddParentNode={handleAddParentNode}
           />
         )}
       </div>
