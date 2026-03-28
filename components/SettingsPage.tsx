@@ -215,7 +215,9 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
   })();
 
   const isSubscriber = !!(
-    profile?.billingIsActive && profile?.billingSubscriptionId
+    profile?.billingIsActive &&
+    profile?.billingSubscriptionId &&
+    !profile?.billingCancelAtPeriodEnd
   );
 
   const PLAN_ORDER: Record<string, number> = {
