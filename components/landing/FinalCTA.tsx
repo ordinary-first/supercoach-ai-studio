@@ -1,67 +1,97 @@
 import React from 'react';
-import { ArrowRight } from 'lucide-react';
+import { useScrollReveal } from '../../hooks/useScrollReveal';
 import { useTranslation } from '../../i18n/useTranslation';
-import { landingContent } from './landingContent';
 
 interface FinalCTAProps {
   onCTAClick: () => void;
-  isLoggingIn?: boolean;
 }
 
-export const FinalCTA: React.FC<FinalCTAProps> = ({
-  onCTAClick,
-  isLoggingIn = false,
-}) => {
+export const FinalCTA: React.FC<FinalCTAProps> = ({ onCTAClick }) => {
+  const { ref, isVisible } = useScrollReveal();
   const { language } = useTranslation();
-  const copy = landingContent[language].finalCta;
 
   return (
-    <section className="relative overflow-hidden px-5 py-24 md:px-10 md:py-32">
+    <section
+      className="py-8 md:py-24 px-6 relative overflow-hidden"
+      style={{ backgroundColor: '#050B14' }}
+    >
+      {/* Radial accent glow background */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
-          background:
-            'radial-gradient(circle at 50% 0%, rgba(151,187,255,0.16) 0%, transparent 34%), radial-gradient(circle at 78% 28%, rgba(255,200,143,0.14) 0%, transparent 24%), radial-gradient(circle at 22% 80%, rgba(168,240,211,0.12) 0%, transparent 24%), linear-gradient(180deg, rgba(7,13,23,0.2) 0%, rgba(3,8,14,0.92) 42%, rgba(2,5,11,1) 100%)',
+          background: 'radial-gradient(circle at 50% 50%, rgba(90,169,255,0.1) 0%, transparent 65%)',
         }}
       />
-      <div className="relative z-10 mx-auto max-w-5xl rounded-[40px] border border-[#dce7fb]/14 bg-[linear-gradient(145deg,rgba(151,187,255,0.12),rgba(255,255,255,0.04),rgba(168,240,211,0.1))] px-6 py-10 text-center shadow-[0_50px_140px_-80px_rgba(0,0,0,1)] backdrop-blur-2xl md:px-12 md:py-16">
-        <p className="font-body text-[0.72rem] uppercase tracking-[0.34em] text-[#d9e4f9]/54">
-          {copy.eyebrow}
+
+      {/* Content */}
+      <div
+        ref={ref as React.RefObject<HTMLDivElement>}
+        className={`relative z-10 flex flex-col items-center text-center gap-3 md:gap-6 max-w-3xl mx-auto transition-all duration-700 ease-out ${
+          isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+        }`}
+      >
+        {/* Headline */}
+        <div className="flex flex-col gap-1">
+          <h2
+            className="text-xl md:text-5xl font-bold text-white"
+            style={{ fontFamily: 'Inter, sans-serif' }}
+          >
+            {language === 'ko' ? '1년 후에도 같은 자리에 서 있을 건가요?' : 'Will you still be standing in the same spot a year from now?'}
+          </h2>
+          <h2
+            className="text-xl md:text-5xl font-bold"
+            style={{ fontFamily: 'Inter, sans-serif', color: '#5AA9FF' }}
+          >
+            {language === 'ko' ? '지금이 가장 빠른 시작입니다' : 'Right now is the fastest start'}
+          </h2>
+        </div>
+
+        {/* Subtext */}
+        <p
+          className="text-gray-400 text-sm md:text-base max-w-sm"
+          style={{ fontFamily: 'Inter, sans-serif' }}
+        >
+          {language === 'ko' ? '매일 0.1%씩 성장하면, 1년 뒤 44% 더 나은 당신이 됩니다.' : 'Grow 0.1% every day, and you\'ll be 44% better in a year.'}
         </p>
-        <h2 className="mx-auto mt-5 max-w-3xl bg-[linear-gradient(120deg,#f9fafb,#dbe8ff,#a8f0d3)] bg-clip-text text-balance font-display text-4xl font-semibold tracking-[-0.06em] text-transparent md:text-6xl md:leading-[1.02]">
-          {copy.title}
-        </h2>
-        <p className="mx-auto mt-5 max-w-2xl text-balance text-lg leading-relaxed text-white/60 md:text-[1.2rem]">
-          {copy.body}
-        </p>
-        <div className="mt-10 flex flex-col items-center gap-4">
+
+        {/* CTA Button */}
+        <div className="flex flex-col items-center gap-3 mt-1 md:mt-2">
           <button
             onClick={onCTAClick}
-            disabled={isLoggingIn}
-            className={[
-              'group inline-flex items-center gap-3 rounded-full border border-[#d7e5ff]/34 px-6 py-3.5 text-[#05070c]',
-              'transition-all duration-200 hover:scale-[1.015]',
-              'disabled:cursor-not-allowed disabled:opacity-70',
-            ].join(' ')}
+            className="uppercase tracking-widest font-black text-base md:text-lg py-4 px-10 md:py-5 md:px-12 rounded-full text-black transition-all duration-200 hover:scale-105"
             style={{
-              background:
-                'linear-gradient(135deg, rgba(248,250,252,1) 0%, rgba(216,231,255,1) 55%, rgba(168,240,211,0.95) 100%)',
+              backgroundColor: '#5AA9FF',
+              fontFamily: 'Inter, sans-serif',
+              animation: 'pulseCTAGlow 2.5s ease-in-out infinite',
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.boxShadow =
+                '0 0 48px rgba(90,169,255,0.4)';
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.boxShadow = 'none';
             }}
           >
-            <span className="text-sm font-semibold tracking-[-0.01em] md:text-base">
-              {isLoggingIn ? 'Redirecting...' : copy.cta}
-            </span>
-            <ArrowRight
-              size={18}
-              className="transition-transform duration-200 group-hover:translate-x-0.5"
-            />
+            {language === 'ko' ? '무료로 시작하기' : 'Start Free'}
           </button>
 
-          <p className="text-sm leading-relaxed text-white/46 md:text-base">
-            {copy.finePrint}
+          {/* Below-CTA fine print */}
+          <p
+            className="text-xs text-gray-500"
+            style={{ fontFamily: 'Inter, sans-serif' }}
+          >
+            {language === 'ko' ? '3일 무료 · 카드 불필요 · 10초 가입' : '3-day free trial · No card required · 10-second signup'}
           </p>
         </div>
       </div>
+
+      {/* Keyframes for CTA glow pulse */}
+      <style>{`
+        @keyframes pulseCTAGlow {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(90,169,255,0); }
+          50%       { box-shadow: 0 0 32px rgba(90,169,255,0.3); }
+        }
+      `}</style>
     </section>
   );
 };
