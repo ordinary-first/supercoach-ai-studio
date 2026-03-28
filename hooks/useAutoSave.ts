@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react';
-import { GoalNode, GoalLink, ToDoItem, TodoList, TodoGroup, UserProfile } from '../types';
-import { saveGoalData, saveTodos, saveTodoLists } from '../services/firebaseService';
+import { GoalNode, GoalLink, ToDoItem, TodoList, TodoGroup, NoteItem, UserProfile } from '../types';
+import { saveGoalData, saveTodos, saveTodoLists, saveNotes } from '../services/firebaseService';
 
 // Helper to safely get link source/target ID (D3 may store objects or strings)
 export const getLinkId = (ref: string | GoalNode | { id: string }): string => {
@@ -19,6 +19,7 @@ export function useAutoSave(
   todos: ToDoItem[],
   todoLists: TodoList[],
   todoGroups: TodoGroup[],
+  notes: NoteItem[],
   userProfile: UserProfile | null,
   isDataLoaded: boolean,
   userId: string | null,
@@ -32,21 +33,25 @@ export function useAutoSave(
   const todosRef = useRef(todos);
   const todoListsRef = useRef(todoLists);
   const todoGroupsRef = useRef(todoGroups);
+  const notesRef = useRef(notes);
   useEffect(() => { nodesRef.current = nodes; }, [nodes]);
   useEffect(() => { linksRef.current = links; }, [links]);
   useEffect(() => { todosRef.current = todos; }, [todos]);
   useEffect(() => { todoListsRef.current = todoLists; }, [todoLists]);
   useEffect(() => { todoGroupsRef.current = todoGroups; }, [todoGroups]);
+  useEffect(() => { notesRef.current = notes; }, [notes]);
 
   // Debounce timers
   const goalSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const todoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const listSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const noteSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Track dirty state (pending saves)
   const goalDirtyRef = useRef(false);
   const todoDirtyRef = useRef(false);
   const listDirtyRef = useRef(false);
+  const noteDirtyRef = useRef(false);
 
   // Loading guard
   const isLoadingDataRef = useRef(false);
@@ -67,6 +72,7 @@ export function useAutoSave(
     if (goalSaveTimerRef.current) { clearTimeout(goalSaveTimerRef.current); goalSaveTimerRef.current = null; }
     if (todoSaveTimerRef.current) { clearTimeout(todoSaveTimerRef.current); todoSaveTimerRef.current = null; }
     if (listSaveTimerRef.current) { clearTimeout(listSaveTimerRef.current); listSaveTimerRef.current = null; }
+    if (noteSaveTimerRef.current) { clearTimeout(noteSaveTimerRef.current); noteSaveTimerRef.current = null; }
 
     // Save only dirty data from refs (latest values)
     const saves: Promise<void>[] = [];
@@ -82,6 +88,10 @@ export function useAutoSave(
       saves.push(saveTodoLists(uid, todoListsRef.current, todoGroupsRef.current).catch(() => {}));
       listDirtyRef.current = false;
     }
+    if (noteDirtyRef.current) {
+      saves.push(saveNotes(uid, notesRef.current).catch(() => {}));
+      noteDirtyRef.current = false;
+    }
 
     if (saves.length > 0) await Promise.allSettled(saves);
   }, []);
@@ -91,9 +101,11 @@ export function useAutoSave(
     if (goalSaveTimerRef.current) { clearTimeout(goalSaveTimerRef.current); goalSaveTimerRef.current = null; }
     if (todoSaveTimerRef.current) { clearTimeout(todoSaveTimerRef.current); todoSaveTimerRef.current = null; }
     if (listSaveTimerRef.current) { clearTimeout(listSaveTimerRef.current); listSaveTimerRef.current = null; }
+    if (noteSaveTimerRef.current) { clearTimeout(noteSaveTimerRef.current); noteSaveTimerRef.current = null; }
     goalDirtyRef.current = false;
     todoDirtyRef.current = false;
     listDirtyRef.current = false;
+    noteDirtyRef.current = false;
   }, []);
 
   // beforeunload — 브라우저 닫힘/새로고침 시 pending save flush
@@ -162,6 +174,26 @@ export function useAutoSave(
       if (listSaveTimerRef.current) clearTimeout(listSaveTimerRef.current);
     };
   }, [todoLists, todoGroups, userProfile, isDataLoaded]);
+
+  // Auto-save notes with debounce
+  useEffect(() => {
+    if (!userProfile || !isDataLoaded || isLoadingDataRef.current) return;
+    const currentUserId = userIdRef.current;
+    if (!currentUserId) return;
+
+    noteDirtyRef.current = true;
+    if (noteSaveTimerRef.current) clearTimeout(noteSaveTimerRef.current);
+    noteSaveTimerRef.current = setTimeout(async () => {
+      try {
+        await saveNotes(currentUserId, notes);
+        noteDirtyRef.current = false;
+      } catch (e) { console.error('Notes save error:', e); }
+    }, 1500);
+
+    return () => {
+      if (noteSaveTimerRef.current) clearTimeout(noteSaveTimerRef.current);
+    };
+  }, [notes, userProfile, isDataLoaded]);
 
   return { flushAll, resetDirty };
 }

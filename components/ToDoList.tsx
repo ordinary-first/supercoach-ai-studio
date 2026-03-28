@@ -1,9 +1,10 @@
 ﻿import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import { Check, Trash2, Plus, ListTodo, Circle, CheckCircle2, Target, Bell, Repeat, Sun, ArrowLeft, ArrowUp, ChevronRight, ChevronDown, Layout, X, Calendar, Star, CalendarDays, Home, Menu, GripVertical } from 'lucide-react';
-import { ToDoItem, TodoList, TodoGroup, TodoStep, SmartListId, RepeatFrequency, UserPrinciple } from '../types';
+import { Check, Trash2, Plus, ListTodo, Circle, CheckCircle2, Target, Bell, Repeat, Sun, ArrowLeft, ArrowUp, ChevronRight, ChevronDown, Layout, X, Calendar, Star, CalendarDays, Home, Menu, GripVertical, FolderOutput } from 'lucide-react';
+import { ToDoItem, NoteItem, TodoList, TodoGroup, TodoStep, SmartListId, RepeatFrequency, UserPrinciple } from '../types';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { useTranslation } from '../i18n/useTranslation';
 import TodoSidebar from './todo/TodoSidebar';
+import NoteEditor from './todo/NoteEditor';
 import CreateListModal from './todo/CreateListModal';
 import CreateGroupModal from './todo/CreateGroupModal';
 import { DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors, DragEndEvent, DragOverlay, DragStartEvent } from '@dnd-kit/core';
@@ -140,9 +141,11 @@ interface ToDoListProps {
   onDeletePrinciple: (id: string) => void;
   onUpdatePrinciple: (id: string, text: string) => void;
   onSetRepresentativePrinciple: (id: string) => void;
+  notes?: NoteItem[];
+  onNotesChange?: React.Dispatch<React.SetStateAction<NoteItem[]>>;
 }
 
-const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, todoGroups, activeListId, onActiveListChange, onTodoListsChange, onTodoGroupsChange, onAddToDo, onToggleToDo, onDeleteToDo, onUpdateToDo, onReorderTodos, principles, showPrinciplesEditor, onClosePrinciplesEditor, onOpenPrinciples, onAddPrinciple, onDeletePrinciple, onUpdatePrinciple, onSetRepresentativePrinciple }) => {
+const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, todoGroups, activeListId, onActiveListChange, onTodoListsChange, onTodoGroupsChange, onAddToDo, onToggleToDo, onDeleteToDo, onUpdateToDo, onReorderTodos, principles, showPrinciplesEditor, onClosePrinciplesEditor, onOpenPrinciples, onAddPrinciple, onDeletePrinciple, onUpdatePrinciple, onSetRepresentativePrinciple, notes = [], onNotesChange }) => {
   const { t, language } = useTranslation();
   const [inputText, setInputText] = useState('');
   const [selectedToDoId, setSelectedToDoId] = useState<string | null>(null);
@@ -156,6 +159,7 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const [editingListId, setEditingListId] = useState<string | null>(null);
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
+  const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
 
   const uiText = useMemo(() => {
     if (language === 'ko') {
@@ -227,6 +231,47 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
   const handleCreateGroup = (name: string) => {
     const newGroup: TodoGroup = { id: `grp_${Date.now()}`, name, isCollapsed: false, sortOrder: todoGroups.length, createdAt: Date.now() };
     onTodoGroupsChange(prev => [...prev, newGroup]);
+  };
+
+  // --- Notes handlers ---
+  const handleCreateNote = useCallback(() => {
+    const newNote: NoteItem = {
+      id: `note_${Date.now()}`,
+      title: '',
+      content: {},
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+    onNotesChange?.(prev => [newNote, ...prev]);
+    setActiveNoteId(newNote.id);
+  }, [onNotesChange]);
+
+  const handleUpdateNote = useCallback((id: string, updates: Partial<NoteItem>) => {
+    onNotesChange?.(prev => prev.map(n => n.id === id ? { ...n, ...updates } : n));
+  }, [onNotesChange]);
+
+  const handleDeleteNote = useCallback((id: string) => {
+    onNotesChange?.(prev => prev.filter(n => n.id !== id));
+    if (activeNoteId === id) setActiveNoteId(null);
+  }, [onNotesChange, activeNoteId]);
+
+  const sortedNotes = useMemo(() => {
+    const pinned = notes.filter(n => n.isPinned).sort((a, b) => b.updatedAt - a.updatedAt);
+    const unpinned = notes.filter(n => !n.isPinned).sort((a, b) => b.updatedAt - a.updatedAt);
+    return [...pinned, ...unpinned];
+  }, [notes]);
+
+  const activeNote = activeNoteId ? notes.find(n => n.id === activeNoteId) : null;
+
+  // Helper: extract plain text preview from Tiptap JSON
+  const getNotePreview = (content: Record<string, unknown>): string => {
+    const extractText = (node: any): string => {
+      if (!node) return '';
+      if (node.text) return node.text;
+      if (Array.isArray(node.content)) return node.content.map(extractText).join('');
+      return '';
+    };
+    return extractText(content).slice(0, 80);
   };
 
   const handleDeleteList = (id: string) => {
@@ -314,7 +359,12 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
     return a.isMyDay ? -1 : 1;
   };
   const incompleteTodos = [...filteredTodos].filter(t => !t.completed).sort(sortTodos);
-  const completedTodos = [...filteredTodos].filter(t => t.completed).sort(sortTodos);
+  const completedTodos = [...filteredTodos].filter(t => t.completed).sort((a, b) => {
+    // Sort by completedAt descending (most recently completed first)
+    const aTime = a.completedAt ?? a.createdAt;
+    const bTime = b.completedAt ?? b.createdAt;
+    return bTime - aTime;
+  });
 
   // DnD
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
@@ -446,14 +496,21 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
           onRenameGroup={handleRenameGroup}
           onToggleGroupCollapse={handleToggleGroupCollapse}
           onOpenPrinciples={() => { onOpenPrinciples(); setIsSidebarOpen(false); }}
+          notes={notes}
+          onReorderLists={(reordered) => {
+            onTodoListsChange(prev => {
+              const reorderedMap = new Map(reordered.map(l => [l.id, l.sortOrder]));
+              return prev.map(l => reorderedMap.has(l.id) ? { ...l, sortOrder: reorderedMap.get(l.id)! } : l);
+            });
+          }}
         />
       </div>
 
       {/* === LEFT MAIN AREA (LIST) === */}
       <div className="flex-1 flex flex-col min-w-0 relative z-10">
 
-        {/* Header */}
-        <div className="apple-glass-header h-11 md:h-12 flex items-center justify-between px-3 md:px-6 shrink-0">
+        {/* Header (hidden when notes view is active) */}
+        {activeListId !== 'notes' && <div className="apple-glass-header h-11 md:h-12 flex items-center justify-between px-3 md:px-6 shrink-0">
           <div className="flex items-center gap-2.5">
             <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="md:hidden p-1.5 rounded-lg hover:bg-th-surface-hover text-th-text-secondary hover:text-th-text transition-colors">
               <Menu size={18} />
@@ -475,10 +532,89 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
               </h1>
             </div>
           </div>
-        </div>
+        </div>}
 
-        {/* === PRINCIPLES FULL VIEW === */}
-        {showPrinciplesEditor ? (
+        {/* === NOTES VIEW === */}
+        {activeListId === 'notes' && !showPrinciplesEditor && (
+          activeNote ? (
+            <NoteEditor
+              note={activeNote}
+              onUpdate={handleUpdateNote}
+              onDelete={handleDeleteNote}
+              onBack={() => setActiveNoteId(null)}
+              onCreateNote={handleCreateNote}
+            />
+          ) : (
+            <>
+              {/* Notes Header */}
+              <div className="apple-glass-header h-11 md:h-12 flex items-center justify-between px-3 md:px-6 shrink-0">
+                <div className="flex items-center gap-2.5">
+                  <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="md:hidden p-1.5 rounded-lg hover:bg-th-surface-hover text-th-text-secondary hover:text-th-text transition-colors">
+                    <Menu size={18} />
+                  </button>
+                  <div className="p-1.5 rounded-lg bg-purple-400/10">
+                    <span className="text-purple-400"><ListTodo size={18} /></span>
+                  </div>
+                  <h1 className="text-base md:text-lg font-display font-bold tracking-wider text-th-text">{t.notes.title}</h1>
+                </div>
+              </div>
+
+              {/* Notes List */}
+              <div className="flex-1 overflow-y-auto scrollbar-hide">
+                {sortedNotes.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-20 text-th-text-tertiary space-y-4">
+                    <div className="w-20 h-20 rounded-full bg-th-surface border border-th-border/10 flex items-center justify-center shadow-sm">
+                      <ListTodo size={36} className="text-purple-400 opacity-40" />
+                    </div>
+                    <div className="text-center">
+                      <p className="text-base font-bold text-th-text-secondary">{t.notes.empty}</p>
+                      <p className="text-sm mt-1 text-th-text-tertiary">{t.notes.emptyHint}</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-1 p-2">
+                    {sortedNotes.map(note => (
+                      <button
+                        key={note.id}
+                        onClick={() => setActiveNoteId(note.id)}
+                        className="apple-card w-full text-left px-3 py-3 mx-0 rounded-lg bg-th-surface/50 hover:bg-th-surface transition-all"
+                      >
+                        <div className="flex items-start gap-2">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-th-text truncate">
+                              {note.isPinned && <span className="text-yellow-400 mr-1">📌</span>}
+                              {note.title || t.notes.untitled}
+                            </p>
+                            <p className="text-xs text-th-text-tertiary truncate mt-0.5">
+                              {getNotePreview(note.content) || t.notes.placeholder}
+                            </p>
+                          </div>
+                          <span className="text-[10px] text-th-text-tertiary font-mono flex-shrink-0 mt-0.5">
+                            {new Date(note.updatedAt).toLocaleDateString(language === 'ko' ? 'ko-KR' : 'en-US', { month: 'short', day: 'numeric' })}
+                          </span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* New note button */}
+              <div className="apple-glass-header flex items-center border-t border-th-border flex-shrink-0 py-3.5 px-4">
+                <button
+                  onClick={handleCreateNote}
+                  className="flex items-center gap-2 text-th-accent hover:text-th-accent/80 transition-colors"
+                >
+                  <Plus size={20} />
+                  <span className="text-sm font-semibold">{t.notes.newNote}</span>
+                </button>
+              </div>
+            </>
+          )
+        )}
+
+        {/* === PRINCIPLES / TODO LIST (hidden when notes view is active) === */}
+        {activeListId === 'notes' ? null : showPrinciplesEditor ? (
           <>
             <div className="flex-1 overflow-y-auto px-4 pt-3 pb-4 scrollbar-hide">
               {principles.length === 0 ? (
@@ -826,6 +962,38 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
                     <option value="monthly">{t.todo.repeatOptions.monthly}</option>
                   </select>
                   {selectedToDo.repeat && <button onClick={() => onUpdateToDo(selectedToDo.id, { repeat: null })} className="p-1 hover:text-red-500 text-th-text-tertiary hover:bg-red-500/10 rounded transition-colors z-10"><X size={14} /></button>}
+                </div>
+
+                {/* Move to List */}
+                <div className="py-3 px-3.5 flex items-center gap-3 hover:bg-th-surface-hover relative group transition-colors">
+                  <FolderOutput size={16} className={selectedToDo.listId && selectedToDo.listId !== 'tasks' ? 'text-th-accent' : 'text-th-text-tertiary'} />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-th-text-secondary">{language === 'ko' ? '목록 이동' : 'Move to List'}</p>
+                    {(() => {
+                      const currentList = todoLists.find(l => l.id === selectedToDo.listId);
+                      return currentList ? (
+                        <p className="text-xs text-th-accent mt-0.5 font-semibold flex items-center gap-1">
+                          <span className="w-2 h-2 rounded-full inline-block" style={{ backgroundColor: currentList.color || 'var(--accent)' }} />
+                          {currentList.name}
+                        </p>
+                      ) : (
+                        <p className="text-xs text-th-text-tertiary mt-0.5">{language === 'ko' ? '작업' : 'Tasks'}</p>
+                      );
+                    })()}
+                  </div>
+                  <select
+                    value={selectedToDo.listId || 'tasks'}
+                    onChange={(e) => {
+                      const newListId = e.target.value === 'tasks' ? undefined : e.target.value;
+                      onUpdateToDo(selectedToDo.id, { listId: newListId });
+                    }}
+                    className="absolute inset-0 opacity-0 cursor-pointer bg-th-base text-th-text"
+                  >
+                    <option value="tasks">{language === 'ko' ? '작업' : 'Tasks'}</option>
+                    {todoLists.map(list => (
+                      <option key={list.id} value={list.id}>{list.name}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 

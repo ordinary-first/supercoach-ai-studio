@@ -103,6 +103,15 @@ const DeleteActionIcon = () => (
   </svg>
 );
 
+const CompassIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5">
+    <circle cx="9" cy="9" r="7" />
+    <polygon points="7,11 5,13 9,9" fill="currentColor" stroke="none" opacity="0.6" />
+    <polygon points="11,7 13,5 9,9" fill="currentColor" stroke="none" />
+    <circle cx="9" cy="9" r="1" fill="currentColor" stroke="none" />
+  </svg>
+);
+
 
 // --- Types ---
 export type LayoutMode = 'mindMap' | 'logicalStructure' | 'logicalStructureLeft' | 'organizationStructure';
@@ -123,6 +132,7 @@ interface MindMapProps {
   onAddSubNode: (parentId: string, text?: string) => void;
   onAddParentNode?: (nodeId: string) => void;
   onDecomposeGoal?: (nodeId: string) => void;
+  onExploreWithAI?: (nodeId: string) => void;
   previewNodeIds?: string[];
   confirmedPreviewIds?: string[];
   onTogglePreviewConfirm?: (nodeId: string) => void;
@@ -510,7 +520,7 @@ const LAYOUT_MODES: LayoutMode[] = [
 const MindMap: React.FC<MindMapProps> = ({
   nodes, links, language, selectedNodeId, onNodeClick, onEditNode, onUpdateNode, onDeleteNode,
   onReparentNode, onConvertNodeToTask, onGenerateImage, onInsertImage, onAddSubNode, onAddParentNode,
-  onDecomposeGoal, previewNodeIds, confirmedPreviewIds, onTogglePreviewConfirm, onFinalizePreview,
+  onDecomposeGoal, onExploreWithAI, previewNodeIds, confirmedPreviewIds, onTogglePreviewConfirm, onFinalizePreview,
   width, height, editingNodeId, onEditEnd, imageLoadingNodes,
   layout: layoutProp = 'mindMap', onLayoutChange,
 }) => {
@@ -971,18 +981,30 @@ const MindMap: React.FC<MindMapProps> = ({
         if (goalId?.startsWith('ghost-')) return;
         if (goalId) {
           const current = nodesRef.current.find(n => n.id === goalId);
-          if (current && smmNode.data.text !== current.text) {
-            onUpdateNodeRef.current(goalId, { text: smmNode.data.text });
+          if (current) {
+            const updates: Record<string, any> = {};
+            if (smmNode.data.text !== current.text) updates.text = smmNode.data.text;
+            // Sync collapse/expand state from library to React
+            const smmCollapsed = smmNode.data.expand === false;
+            if (current.collapsed !== smmCollapsed) updates.collapsed = smmCollapsed;
+            if (Object.keys(updates).length > 0) {
+              onUpdateNodeRef.current(goalId, updates);
+            }
           }
         }
-        // Sync children sortOrder from tree position
+        // Sync children sortOrder and parentId from tree position
         const children = smmNode.children || [];
         children.forEach((child, idx) => {
           const childId = child.data?.goalId || child.data?.uid;
           if (!childId || childId.startsWith('ghost-')) return;
           const existing = nodesRef.current.find(n => n.id === childId);
-          if (existing && (existing.sortOrder ?? 0) !== idx) {
-            onUpdateNodeRef.current(childId, { sortOrder: idx });
+          if (!existing) return;
+          const updates: Record<string, any> = {};
+          if ((existing.sortOrder ?? 0) !== idx) updates.sortOrder = idx;
+          // Sync parentId when node is dragged to a different parent
+          if (goalId && existing.parentId !== goalId) updates.parentId = goalId;
+          if (Object.keys(updates).length > 0) {
+            onUpdateNodeRef.current(childId, updates);
           }
         });
         for (const child of children) {
@@ -990,6 +1012,20 @@ const MindMap: React.FC<MindMapProps> = ({
         }
       };
       syncChanges(data);
+    });
+
+    // --- Event: expand_btn_click — sync collapse state to React ---
+    mindMap.on('expand_btn_click', (node: any) => {
+      if (isDestroyedRef.current) return;
+      const goalId = node?.nodeData?.data?.goalId || node?.nodeData?.data?.uid;
+      if (!goalId || goalId.startsWith('ghost-')) return;
+      const current = nodesRef.current.find(n => n.id === goalId);
+      if (!current) return;
+      const isExpanded = node.nodeData?.data?.expand !== false;
+      const newCollapsed = !isExpanded;
+      if (current.collapsed !== newCollapsed) {
+        onUpdateNodeRef.current(goalId, { collapsed: newCollapsed });
+      }
     });
 
     // Close context menu on background click
@@ -1328,6 +1364,15 @@ const MindMap: React.FC<MindMapProps> = ({
                 <DecomposeActionIcon />
               </button>
             )}
+
+            <button
+              onClick={() => { onExploreWithAI?.(actionBar.nodeId); setActionBar(null); }}
+              className="rounded-full p-2.5 text-th-accent bg-th-accent-muted hover:brightness-110 transition-all active:scale-90"
+              title={labels.exploreWithAI}
+              aria-label={labels.exploreWithAI}
+            >
+              <CompassIcon />
+            </button>
 
             <button
               onClick={() => {

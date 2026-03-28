@@ -2,6 +2,9 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import MindMap, { type LayoutMode } from './components/MindMap';
+import VisionBoard from './components/VisionBoard';
+import OutlineView from './components/OutlineView';
+import GoalDetailModal from './components/GoalDetailModal';
 import CoachChat from './components/CoachChat';
 import CoachBubble from './components/CoachBubble';
 import ShortcutsPanel from './components/ShortcutsPanel';
@@ -19,6 +22,7 @@ import {
   NodeType,
   NodeStatus,
   ToDoItem,
+  NoteItem,
   ChatMessage,
   RepeatFrequency,
   UserProfile,
@@ -177,10 +181,13 @@ const App: React.FC = () => {
   const [todos, setTodos] = useState<ToDoItem[]>([]);
   const [todoLists, setTodoLists] = useState<TodoList[]>([]);
   const [todoGroups, setTodoGroups] = useState<TodoGroup[]>([]);
+  const [notes, setNotes] = useState<NoteItem[]>([]);
   const [activeListId, setActiveListId] = useState<string | SmartListId>('myDay');
   const [selectedNode, setSelectedNode] = useState<GoalNode | null>(null);
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
   const [mindmapLayout, setMindmapLayout] = useState<LayoutMode>('mindMap');
+  const [goalsViewMode, setGoalsViewMode] = useState<'visionboard' | 'mindmap' | 'outline'>('visionboard');
+  const [goalDetailNodeId, setGoalDetailNodeId] = useState<string | null>(null);
   const [trialDismissed, setTrialDismissed] = useState(false);
   const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
   const [deleteConfirmNodeId, setDeleteConfirmNodeId] = useState<string | null>(null);
@@ -211,6 +218,10 @@ const App: React.FC = () => {
   const handleTodoListsLoaded = useCallback((lists: TodoList[], groups: TodoGroup[]) => {
     setTodoLists(lists);
     setTodoGroups(groups);
+  }, []);
+
+  const handleNotesLoaded = useCallback((loadedNotes: NoteItem[]) => {
+    setNotes(loadedNotes);
   }, []);
 
   // Wrapper: update state + flush to Firestore immediately (no 1.5s wait)
@@ -245,11 +256,11 @@ const App: React.FC = () => {
   const { toasts, addToast, removeToast } = useToast();
 
   const { userProfile, setUserProfile, isInitializing, isDataLoaded, syncStatus, userId, isTrialExpired, isNewUser, setIsNewUser } =
-    useAuth(handleGoalDataLoaded, handleTodosLoaded, handleTodoListsLoaded);
+    useAuth(handleGoalDataLoaded, handleTodosLoaded, handleTodoListsLoaded, handleNotesLoaded);
 
   const t = getTranslations(language);
 
-  const { flushAll, resetDirty } = useAutoSave(nodes, links, todos, todoLists, todoGroups, userProfile, isDataLoaded, userId);
+  const { flushAll, resetDirty } = useAutoSave(nodes, links, todos, todoLists, todoGroups, notes, userProfile, isDataLoaded, userId);
 
   const openAlarmConversation = useCallback((slot: AlarmSlot) => {
     setAlarmSlotForChat(slot);
@@ -716,7 +727,7 @@ const App: React.FC = () => {
 
       // Non-recurring or un-completing: just toggle
       if (!todo.repeat || todo.completed) {
-        return prev.map(t => t.id === id ? {...t, completed: !t.completed} : t);
+        return prev.map(t => t.id === id ? {...t, completed: !t.completed, completedAt: !t.completed ? Date.now() : null} : t);
       }
 
       // Recurring todo being completed (false -> true)
@@ -727,6 +738,7 @@ const App: React.FC = () => {
       const completedInstance: ToDoItem = {
         ...todo,
         completed: true,
+        completedAt: Date.now(),
         dueDate: todo.dueDate || today.getTime(),
         repeat: null, // Remove repeat so it stays as historical record only
       };
@@ -895,10 +907,60 @@ const App: React.FC = () => {
             : 'absolute inset-0 z-0 opacity-0 pointer-events-none'
         }
       >
-        <MindMap
-          nodes={visibleNodes} links={visibleLinks} language={language} selectedNodeId={selectedNode?.id} onNodeClick={setSelectedNode} onEditNode={(nodeId) => setEditingNodeId(nodeId)} onUpdateNode={handleUpdateNode} onDeleteNode={handleDeleteNode} onReparentNode={handleReparentNode} onAddSubNode={handleAddSubNode} onAddParentNode={handleAddParentNode} onGenerateImage={handleGenerateNodeImage} onInsertImage={handleInsertNodeImage} onConvertNodeToTask={handleConvertNodeToTodo} onDecomposeGoal={handleDecomposeGoal} previewNodeIds={previewNodeIds} confirmedPreviewIds={confirmedPreviewIds} onTogglePreviewConfirm={handleTogglePreviewConfirm} onFinalizePreview={handleFinalizePreview} editingNodeId={editingNodeId} onEditEnd={() => setEditingNodeId(null)} width={dimensions.width} height={dimensions.height} imageLoadingNodes={imageLoadingNodes} layout={mindmapLayout} onLayoutChange={setMindmapLayout}
-        />
+        {/* View mode is now controlled via long-press on Goals tab in BottomDock */}
+
+        {/* 비전보드 뷰 */}
+        {goalsViewMode === 'visionboard' && (
+          <VisionBoard
+            nodes={nodes}
+            links={links}
+            onNodeClick={(node) => {
+              if (node.type === NodeType.ROOT) {
+                setSelectedNode(node);
+              } else {
+                setGoalDetailNodeId(node.id);
+              }
+            }}
+            onAddSubNode={(parentId) => {
+              const name = window.prompt('새 목표 이름을 입력하세요');
+              if (name?.trim()) handleAddSubNode(parentId, name.trim());
+            }}
+          />
+        )}
+
+        {/* 마인드맵 뷰 */}
+        {goalsViewMode === 'mindmap' && (
+          <MindMap
+            nodes={visibleNodes} links={visibleLinks} language={language} selectedNodeId={selectedNode?.id} onNodeClick={setSelectedNode} onEditNode={(nodeId) => setEditingNodeId(nodeId)} onUpdateNode={handleUpdateNode} onDeleteNode={handleDeleteNode} onReparentNode={handleReparentNode} onAddSubNode={handleAddSubNode} onAddParentNode={handleAddParentNode} onGenerateImage={handleGenerateNodeImage} onInsertImage={handleInsertNodeImage} onConvertNodeToTask={handleConvertNodeToTodo} onDecomposeGoal={handleDecomposeGoal} onExploreWithAI={(nodeId) => { setSelectedNode(nodes.find(n => n.id === nodeId) || null); setIsChatOpen(true); }} previewNodeIds={previewNodeIds} confirmedPreviewIds={confirmedPreviewIds} onTogglePreviewConfirm={handleTogglePreviewConfirm} onFinalizePreview={handleFinalizePreview} editingNodeId={editingNodeId} onEditEnd={() => setEditingNodeId(null)} width={dimensions.width} height={dimensions.height} imageLoadingNodes={imageLoadingNodes} layout={mindmapLayout} onLayoutChange={setMindmapLayout}
+          />
+        )}
+
+        {/* 개요 뷰 */}
+        {goalsViewMode === 'outline' && (
+          <OutlineView
+            nodes={nodes}
+            links={links}
+            onNodeClick={setSelectedNode}
+            onUpdateNode={handleUpdateNode}
+            onDeleteNode={handleDeleteNode}
+            onAddSubNode={handleAddSubNode}
+            onReparentNode={handleReparentNode}
+            onAddParentNode={handleAddParentNode}
+          />
+        )}
       </div>
+
+      {/* Goal Detail Modal */}
+      {goalDetailNodeId && (
+        <GoalDetailModal
+          nodeId={goalDetailNodeId}
+          nodes={nodes}
+          onClose={() => setGoalDetailNodeId(null)}
+          onUpdateNode={handleUpdateNode}
+          onAddSubNode={handleAddSubNode}
+          onDeleteNode={handleDeleteNode}
+        />
+      )}
  
        <div className="absolute top-3 right-3 md:top-6 md:right-6 z-[60]">
          <button
@@ -943,7 +1005,7 @@ const App: React.FC = () => {
     });
     return updated;
   });
-}} />
+}} notes={notes} onNotesChange={setNotes} />
       <CalendarView isOpen={activeTab === 'CALENDAR'} onClose={() => setActiveTab('GOALS')} todos={todos} onToggleToDo={handleToggleToDo} viewMode={calendarViewMode} onViewModeChange={setCalendarViewMode} />
       <CoachChat
         isOpen={isChatOpen}
@@ -968,7 +1030,7 @@ const App: React.FC = () => {
       />
       <VisualizationTab isOpen={activeTab === 'VISUALIZE'} onClose={() => setActiveTab('GOALS')} userProfile={userProfile} nodes={nodes} />
       <ShortcutsPanel isOpen={isShortcutsOpen} onClose={() => setIsShortcutsOpen(false)} />
-      <BottomDock activeTab={activeTab} onTabChange={handleTabChange} calendarViewMode={calendarViewMode} onCalendarViewModeChange={setCalendarViewMode} mindmapLayout={mindmapLayout} onMindmapLayoutChange={setMindmapLayout} />
+      <BottomDock activeTab={activeTab} onTabChange={handleTabChange} calendarViewMode={calendarViewMode} onCalendarViewModeChange={setCalendarViewMode} goalsViewMode={goalsViewMode} onGoalsViewModeChange={setGoalsViewMode} mindmapLayout={mindmapLayout} onMindmapLayoutChange={setMindmapLayout} />
       <CoachBubble
         isOpen={isChatOpen}
         onToggle={() => {
@@ -990,7 +1052,7 @@ const App: React.FC = () => {
 
       {/* Sync Status Indicator */}
       {syncStatus === 'offline' && userProfile && (
-        <div className="fixed top-3 left-1/2 -translate-x-1/2 z-[52] flex items-center gap-2 bg-th-elevated backdrop-blur-md border border-th-border rounded-full px-3 py-1.5 animate-fade-in">
+        <div className="fixed top-14 left-1/2 -translate-x-1/2 z-[52] flex items-center gap-2 bg-th-elevated backdrop-blur-md border border-th-border rounded-full px-3 py-1.5 animate-fade-in">
           <div className="w-2 h-2 rounded-full bg-red-400 animate-pulse" />
           <span className="text-[10px] font-bold text-th-text-secondary tracking-wide">
             {t.app.syncOffline}

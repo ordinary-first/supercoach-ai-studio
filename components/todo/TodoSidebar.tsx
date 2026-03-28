@@ -1,9 +1,10 @@
-﻿import React, { useMemo, useState } from 'react';
+﻿import React, { useMemo, useState, useCallback } from 'react';
 import {
   Sun,
   Star,
   CalendarDays,
   Home,
+  FileText,
   ChevronDown,
   ChevronRight,
   FolderOpen,
@@ -12,10 +13,113 @@ import {
   ListPlus,
   FolderPlus,
   MoreHorizontal,
+  GripVertical,
 } from 'lucide-react';
-import { ToDoItem, TodoList, TodoGroup, SmartListId, UserPrinciple } from '../../types';
+import { ToDoItem, TodoList, TodoGroup, NoteItem, SmartListId, UserPrinciple } from '../../types';
 import { useTranslation } from '../../i18n/useTranslation';
 import TodoSearchBar from './TodoSearchBar';
+import { DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
+import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+
+interface SortableListItemProps {
+  list: TodoList;
+  isActive: boolean;
+  count: number;
+  indented?: boolean;
+  onSelect: () => void;
+  onContextMenu: (id: string | null) => void;
+  isContextOpen: boolean;
+  onRename: () => void;
+  onDelete: () => void;
+  ui: { rename: string; delete: string };
+}
+
+function SortableListItem({ list, isActive, count, indented, onSelect, onContextMenu, isContextOpen, onRename, onDelete, ui }: SortableListItemProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: list.id });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+    zIndex: isDragging ? 10 : undefined,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`relative ${indented ? 'ml-2' : ''}`}
+      onClick={() => onContextMenu(null)}
+    >
+      <div className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all
+        group/list ${isActive
+          ? 'bg-th-accent-muted border-l-2 border-th-accent text-th-text font-bold'
+          : 'text-th-text-secondary hover:bg-th-surface/50 hover:text-th-text'
+        }`}
+      >
+        <button
+          {...attributes}
+          {...listeners}
+          className="opacity-0 group-hover/list:opacity-100 flex-shrink-0 text-th-text-tertiary cursor-grab active:cursor-grabbing touch-none"
+        >
+          <GripVertical size={14} />
+        </button>
+        <button
+          onClick={(event) => {
+            event.stopPropagation();
+            onSelect();
+            onContextMenu(null);
+          }}
+          className="flex-1 flex items-center gap-3 text-left"
+        >
+          <span
+            className="w-3 h-3 rounded-full flex-shrink-0"
+            style={{ backgroundColor: list.color || 'var(--accent)' }}
+          />
+          <span className="flex-1 text-left truncate">{list.name}</span>
+          {count > 0 && (
+            <span className="bg-th-surface text-th-text-tertiary text-xs px-1.5 py-0.5 rounded-full font-mono">
+              {count}
+            </span>
+          )}
+        </button>
+        <button
+          onClick={(event) => {
+            event.stopPropagation();
+            onContextMenu(isContextOpen ? null : list.id);
+          }}
+          className="opacity-0 group-hover/list:opacity-100 flex-shrink-0 text-th-text-tertiary
+            hover:text-th-text transition-opacity rounded-lg p-0.5 hover:bg-th-surface"
+        >
+          <MoreHorizontal size={14} />
+        </button>
+      </div>
+
+      {isContextOpen && (
+        <div
+          className="apple-glass-panel absolute right-0 top-full mt-1 rounded-xl shadow-xl z-50 py-1
+            min-w-[120px]"
+          onClick={(event) => event.stopPropagation()}
+        >
+          <button
+            onClick={() => { onRename(); onContextMenu(null); }}
+            className="w-full px-3 py-2 text-left text-sm text-th-text-secondary hover:bg-th-surface
+              flex items-center gap-2"
+          >
+            <Pencil size={14} /> {ui.rename}
+          </button>
+          <button
+            onClick={() => { onDelete(); onContextMenu(null); }}
+            className="w-full px-3 py-2 text-left text-sm text-red-400 hover:bg-red-400/10
+              flex items-center gap-2"
+          >
+            <Trash2 size={14} /> {ui.delete}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface TodoSidebarProps {
   todos: ToDoItem[];
@@ -35,6 +139,8 @@ interface TodoSidebarProps {
   onRenameGroup: (id: string) => void;
   onToggleGroupCollapse: (id: string) => void;
   onOpenPrinciples: () => void;
+  onReorderLists?: (reorderedLists: TodoList[]) => void;
+  notes?: NoteItem[];
 }
 
 export default function TodoSidebar({
@@ -55,6 +161,8 @@ export default function TodoSidebar({
   onToggleGroupCollapse,
   showPrinciplesEditor,
   onOpenPrinciples,
+  onReorderLists,
+  notes = [],
 }: TodoSidebarProps) {
   const { language } = useTranslation();
   const [contextMenuId, setContextMenuId] = useState<string | null>(null);
@@ -147,82 +255,20 @@ export default function TodoSidebar({
     return todos.filter((todo) => todo.listId === listId && !todo.completed).length;
   };
 
-  const renderListItem = (list: TodoList, indented = false) => {
-    const count = getListCount(list.id);
-    const isActive = !showPrinciplesEditor && activeListId === list.id;
-    const isContextOpen = contextMenuId === list.id;
-
-    return (
-      <div
-        key={list.id}
-        className={`relative ${indented ? 'ml-2' : ''}`}
-        onClick={() => setContextMenuId(null)}
-      >
-        <button
-          onClick={(event) => {
-            event.stopPropagation();
-            onSelectList(list.id);
-            setContextMenuId(null);
-          }}
-          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all
-            group/list ${isActive
-              ? 'bg-th-accent-muted border-l-2 border-th-accent text-th-text font-bold'
-              : 'text-th-text-secondary hover:bg-th-surface/50 hover:text-th-text'
-            }`}
-        >
-          <span
-            className="w-3 h-3 rounded-full flex-shrink-0"
-            style={{ backgroundColor: list.color || 'var(--accent)' }}
-          />
-          <span className="flex-1 text-left truncate">{list.name}</span>
-          {count > 0 && (
-            <span className="bg-th-surface text-th-text-tertiary text-xs px-1.5 py-0.5 rounded-full font-mono">
-              {count}
-            </span>
-          )}
-          <button
-            onClick={(event) => {
-              event.stopPropagation();
-              setContextMenuId(isContextOpen ? null : list.id);
-            }}
-            className="opacity-0 group-hover/list:opacity-100 flex-shrink-0 text-th-text-tertiary
-              hover:text-th-text transition-opacity rounded-lg p-0.5 hover:bg-th-surface"
-          >
-            <MoreHorizontal size={14} />
-          </button>
-        </button>
-
-        {isContextOpen && (
-          <div
-            className="apple-glass-panel absolute right-0 top-full mt-1 rounded-xl shadow-xl z-50 py-1
-              min-w-[120px]"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <button
-              onClick={() => {
-                onRenameList(list.id);
-                setContextMenuId(null);
-              }}
-              className="w-full px-3 py-2 text-left text-sm text-th-text-secondary hover:bg-th-surface
-                flex items-center gap-2"
-            >
-              <Pencil size={14} /> {ui.rename}
-            </button>
-            <button
-              onClick={() => {
-                onDeleteList(list.id);
-                setContextMenuId(null);
-              }}
-              className="w-full px-3 py-2 text-left text-sm text-red-400 hover:bg-red-400/10
-                flex items-center gap-2"
-            >
-              <Trash2 size={14} /> {ui.delete}
-            </button>
-          </div>
-        )}
-      </div>
-    );
-  };
+  // DnD for list reordering
+  const listSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
+  );
+  const handleListDragEnd = useCallback((e: DragEndEvent) => {
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    const oldIdx = ungroupedLists.findIndex(l => l.id === active.id);
+    const newIdx = ungroupedLists.findIndex(l => l.id === over.id);
+    if (oldIdx === -1 || newIdx === -1) return;
+    const reordered = arrayMove(ungroupedLists, oldIdx, newIdx).map((l, i) => ({ ...l, sortOrder: i }));
+    onReorderLists?.(reordered);
+  }, [ungroupedLists, onReorderLists]);
 
   const renderGroupItem = (group: TodoGroup) => {
     const groupLists = lists
@@ -298,7 +344,40 @@ export default function TodoSidebar({
           )}
         </div>
 
-        {!group.isCollapsed && <div className="ml-4">{groupLists.map((list) => renderListItem(list))}</div>}
+        {!group.isCollapsed && (
+          <div className="ml-4">
+            {groupLists.map((list) => {
+              const count = getListCount(list.id);
+              const isActive = !showPrinciplesEditor && activeListId === list.id;
+              const isCtxOpen = contextMenuId === list.id;
+              return (
+                <div key={list.id} className="relative ml-2" onClick={() => setContextMenuId(null)}>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onSelectList(list.id); setContextMenuId(null); }}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all group/list ${isActive
+                      ? 'bg-th-accent-muted border-l-2 border-th-accent text-th-text font-bold'
+                      : 'text-th-text-secondary hover:bg-th-surface/50 hover:text-th-text'
+                    }`}
+                  >
+                    <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: list.color || 'var(--accent)' }} />
+                    <span className="flex-1 text-left truncate">{list.name}</span>
+                    {count > 0 && <span className="bg-th-surface text-th-text-tertiary text-xs px-1.5 py-0.5 rounded-full font-mono">{count}</span>}
+                    <button onClick={(e) => { e.stopPropagation(); setContextMenuId(isCtxOpen ? null : list.id); }}
+                      className="opacity-0 group-hover/list:opacity-100 flex-shrink-0 text-th-text-tertiary hover:text-th-text transition-opacity rounded-lg p-0.5 hover:bg-th-surface">
+                      <MoreHorizontal size={14} />
+                    </button>
+                  </button>
+                  {isCtxOpen && (
+                    <div className="apple-glass-panel absolute right-0 top-full mt-1 rounded-xl shadow-xl z-50 py-1 min-w-[120px]" onClick={(e) => e.stopPropagation()}>
+                      <button onClick={() => { onRenameList(list.id); setContextMenuId(null); }} className="w-full px-3 py-2 text-left text-sm text-th-text-secondary hover:bg-th-surface flex items-center gap-2"><Pencil size={14} /> {ui.rename}</button>
+                      <button onClick={() => { onDeleteList(list.id); setContextMenuId(null); }} className="w-full px-3 py-2 text-left text-sm text-red-400 hover:bg-red-400/10 flex items-center gap-2"><Trash2 size={14} /> {ui.delete}</button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     );
   };
@@ -369,6 +448,32 @@ export default function TodoSidebar({
               </button>
             );
           })}
+          {/* Notes smart list item */}
+          {(() => {
+            const isActive = !showPrinciplesEditor && activeListId === 'notes';
+            const noteCount = notes.length;
+            return (
+              <button
+                key="notes"
+                onClick={() => {
+                  onSelectList('notes');
+                  setContextMenuId(null);
+                }}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all ${isActive
+                  ? 'bg-th-accent-muted text-th-text font-bold'
+                  : 'text-th-text-secondary hover:bg-th-surface/50 hover:text-th-text'
+                }`}
+              >
+                <span className={`flex-shrink-0 ${isActive ? 'text-purple-400' : ''}`}><FileText size={18} /></span>
+                <span className="flex-1 text-left truncate">{language === 'ko' ? '메모' : 'Notes'}</span>
+                {noteCount > 0 && (
+                  <span className="bg-th-surface text-th-text-tertiary text-xs px-1.5 py-0.5 rounded-full font-mono">
+                    {noteCount}
+                  </span>
+                )}
+              </button>
+            );
+          })()}
         </div>
 
         <div className="border-t border-th-border mx-3 my-2" />
@@ -378,7 +483,24 @@ export default function TodoSidebar({
             <p className="font-display text-[10px] tracking-widest uppercase text-th-text-tertiary px-3 mb-1">
               {ui.customSection}
             </p>
-            {ungroupedLists.map((list) => renderListItem(list))}
+            <DndContext sensors={listSensors} collisionDetection={closestCenter} onDragEnd={handleListDragEnd}>
+              <SortableContext items={ungroupedLists.map(l => l.id)} strategy={verticalListSortingStrategy}>
+                {ungroupedLists.map((list) => (
+                  <SortableListItem
+                    key={list.id}
+                    list={list}
+                    isActive={!showPrinciplesEditor && activeListId === list.id}
+                    count={getListCount(list.id)}
+                    onSelect={() => { onSelectList(list.id); setContextMenuId(null); }}
+                    onContextMenu={setContextMenuId}
+                    isContextOpen={contextMenuId === list.id}
+                    onRename={() => onRenameList(list.id)}
+                    onDelete={() => onDeleteList(list.id)}
+                    ui={ui}
+                  />
+                ))}
+              </SortableContext>
+            </DndContext>
             {sortedGroups.map((group) => renderGroupItem(group))}
           </div>
         )}

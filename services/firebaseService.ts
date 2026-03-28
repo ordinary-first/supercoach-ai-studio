@@ -22,7 +22,7 @@ import {
   query,
   setDoc,
 } from 'firebase/firestore';
-import type { ChatMessage, FeedbackCard, GoalLink, GoalNode, NotificationSettings, ToDoItem, TodoList, TodoGroup, UserPrinciple, UserProfile } from '../types';
+import type { ChatMessage, FeedbackCard, GoalLink, GoalNode, NoteItem, NotificationSettings, ToDoItem, TodoList, TodoGroup, UserPrinciple, UserProfile } from '../types';
 
 const isDev = typeof process !== 'undefined' && process.env.NODE_ENV === 'development';
 const log = isDev ? console.log : () => {};
@@ -259,6 +259,28 @@ export const loadTodos = async (userId: string): Promise<ToDoItem[] | null> => {
     return Array.isArray(data.items) ? data.items : null;
   } catch (error: any) {
     console.error('[Load:Todos] Firestore read failed:', error?.code || error?.message);
+    return null;
+  }
+};
+
+export const saveNotes = async (userId: string, notes: NoteItem[]): Promise<void> => {
+  if (!userId) return;
+  const cleanItems = JSON.parse(JSON.stringify(notes));
+  const payload = { items: cleanItems, updatedAt: Date.now() };
+  const docRef = doc(db, 'users', userId, 'data', 'notes');
+  await setDoc(docRef, payload);
+};
+
+export const loadNotes = async (userId: string): Promise<NoteItem[] | null> => {
+  if (!userId) return null;
+  try {
+    const docRef = doc(db, 'users', userId, 'data', 'notes');
+    const snap = await getDoc(docRef);
+    if (!snap.exists()) return null;
+    const data = snap.data() as any;
+    return Array.isArray(data.items) ? data.items : null;
+  } catch (error: any) {
+    console.error('[Load:Notes] Firestore read failed:', error?.code || error?.message);
     return null;
   }
 };
