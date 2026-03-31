@@ -635,7 +635,10 @@ If no todo change intent exists, return an empty list [].`;
   );
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-end md:items-center justify-center md:justify-end pointer-events-none">
+    <div
+      className="fixed inset-x-0 top-0 z-[60] flex items-end md:items-center justify-center md:justify-end pointer-events-none"
+      style={{ bottom: effectiveKeyboardHeight > 0 ? `${effectiveKeyboardHeight}px` : '0' }}
+    >
       {/* 배경 오버레이 */}
       <div
         className="absolute inset-0 bg-black/40 backdrop-blur-[2px] pointer-events-auto animate-[fadeIn_0.2s_ease-out]"
@@ -646,17 +649,12 @@ If no todo change intent exists, return an empty list [].`;
       <div
         ref={focusTrapRef}
         className="relative pointer-events-auto flex flex-col overflow-hidden text-th-text font-body
-          w-full h-[85vh] md:w-[420px] md:h-[70vh] md:max-h-[680px]
+          w-full h-[85%] max-h-[85dvh] md:w-[420px] md:h-[70vh] md:max-h-[680px]
           md:mr-6 md:mb-0
           bg-th-elevated rounded-t-3xl md:rounded-3xl
           border border-th-border/20
           shadow-[0_-8px_40px_rgba(0,0,0,0.3)] md:shadow-[0_16px_60px_rgba(0,0,0,0.4)]
           animate-[slideUp_0.3s_ease-out] md:animate-[scaleIn_0.25s_ease-out]"
-        style={
-          effectiveKeyboardHeight > 0
-            ? { height: `calc(85vh - ${effectiveKeyboardHeight}px)` }
-            : undefined
-        }
       >
       <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-th-accent-muted rounded-full blur-[120px] pointer-events-none" />
       <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-th-accent-muted rounded-full blur-[120px] pointer-events-none opacity-60" />
