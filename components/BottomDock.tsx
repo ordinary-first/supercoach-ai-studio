@@ -215,7 +215,7 @@ const BottomDock: React.FC<BottomDockProps> = ({
               {showLayoutPopup && isGoals && (
                 <div
                   ref={layoutPopupRef}
-                  className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 apple-glass-panel
+                  className="absolute bottom-full mb-2 left-0 apple-glass-panel
                     rounded-xl shadow-2xl overflow-hidden min-w-[160px] z-[60]"
                 >
                   {/* 마인드맵 + 하위 레이아웃 */}
