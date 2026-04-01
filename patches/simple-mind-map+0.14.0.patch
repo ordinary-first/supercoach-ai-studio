@@ -1,5 +1,25 @@
+diff --git a/node_modules/simple-mind-map/src/core/render/node/MindMapNode.js b/node_modules/simple-mind-map/src/core/render/node/MindMapNode.js
+index a23be05..99cc949 100644
+--- a/node_modules/simple-mind-map/src/core/render/node/MindMapNode.js
++++ b/node_modules/simple-mind-map/src/core/render/node/MindMapNode.js
+@@ -1137,8 +1137,14 @@ class MindMapNode {
+   }
+ 
+   // 获取子节点的数量
++  // PATCH: When collapsed (expand=false), the library empties nodeData.children.
++  // But expand=false itself proves children existed. Return 1 so expand btn renders.
+   getChildrenLength() {
+-    return this.nodeData.children ? this.nodeData.children.length : 0
++    const len = this.nodeData.children ? this.nodeData.children.length : 0
++    if (len === 0 && this.nodeData?.data?.expand === false) {
++      return 1
++    }
++    return len
+   }
+ }
+ 
 diff --git a/node_modules/simple-mind-map/src/plugins/Drag.js b/node_modules/simple-mind-map/src/plugins/Drag.js
-index 643ca1e..802c4e3 100644
+index 643ca1e..4dff8ac 100644
 --- a/node_modules/simple-mind-map/src/plugins/Drag.js
 +++ b/node_modules/simple-mind-map/src/plugins/Drag.js
 @@ -57,8 +57,8 @@ class Drag extends Base {
@@ -22,11 +42,18 @@ index 643ca1e..802c4e3 100644
  
      this.mindMap.on('node_mousedown', this.onNodeMousedown)
      this.mindMap.on('mousemove', this.onMousemove)
-@@ -420,6 +420,57 @@ class Drag extends Base {
+@@ -420,6 +420,68 @@ class Drag extends Base {
      this.placeholder.size(0, 0)
      this.placeHolderLine.hide()
      this.removeExtraLines()
 +    // --- PATCH: find nearest node, weighted by tree growth direction ---
++    // Determine root X position for left/right growth direction detection
++    let rootCenterX = 0
++    const rootNode = this.mindMap.renderer?.root
++    if (rootNode) {
++      const rootRect = this.getNodeRect(rootNode)
++      if (rootRect) rootCenterX = (rootRect.left + rootRect.right) / 2
++    }
 +    let nearestNode = null
 +    let nearestScore = Infinity
 +    const mx = this.mouseMoveX
@@ -38,10 +65,13 @@ index 643ca1e..802c4e3 100644
 +      const closestX = Math.max(rect.left, Math.min(rect.right, mx))
 +      const closestY = Math.max(rect.top, Math.min(rect.bottom, my))
 +      let dist = Math.sqrt((mx - closestX) ** 2 + (my - closestY) ** 2)
-+      // If mouse is to the RIGHT of (or at) this node's right edge,
-+      // it's in the child-growth direction — give it priority (lower score)
-+      if (mx >= rect.right) {
-+        dist *= 0.4
++      // Bias toward child-growth direction (radial: left side grows left, right grows right)
++      const nodeCenterX = (rect.left + rect.right) / 2
++      const isLeftSide = nodeCenterX < rootCenterX
++      if (isLeftSide && mx <= rect.left) {
++        dist *= 0.4  // mouse is past left edge of a left-side node
++      } else if (!isLeftSide && mx >= rect.right) {
++        dist *= 0.4  // mouse is past right edge of a right-side node
 +      }
 +      if (dist < nearestScore) {
 +        nearestScore = dist
@@ -49,15 +79,16 @@ index 643ca1e..802c4e3 100644
 +      }
 +    })
 +    // --- PATCH: if nearest node is close enough, set it as overlap directly ---
-+    if (nearestNode && !this.checkIsInBeingDragNodeList(nearestNode) && !nearestNode.isRoot) {
++    // Root is a valid drop target (reparent to root's children)
++    if (nearestNode && !this.checkIsInBeingDragNodeList(nearestNode)) {
 +      const nRect = this.getNodeRect(nearestNode)
 +      if (nRect) {
-+        const cx = (nRect.left + nRect.right) / 2
-+        const cy = (nRect.top + nRect.bottom) / 2
-+        const distToCenter = Math.sqrt((mx - cx) ** 2 + (my - cy) ** 2)
-+        const nodeRadius = Math.max(nRect.originWidth, nRect.originHeight)
-+        // If within 1.5x the node's size, treat as overlap (become child)
-+        if (distToCenter < nodeRadius * 1.5) {
++        // Use edge distance + generous padding instead of center distance
++        const edgeX = Math.max(nRect.left, Math.min(nRect.right, mx))
++        const edgeY = Math.max(nRect.top, Math.min(nRect.bottom, my))
++        const distToEdge = Math.sqrt((mx - edgeX) ** 2 + (my - edgeY) ** 2)
++        const padding = 50  // 50px proximity zone around any node
++        if (distToEdge < padding) {
 +          this.overlapNode = nearestNode
 +          this.prevNode = null
 +          this.nextNode = null
@@ -80,7 +111,7 @@ index 643ca1e..802c4e3 100644
      this.nodeList.forEach(node => {
        if (node.getData('isActive')) {
          this.mindMap.execCommand('SET_NODE_ACTIVE', node, false)
-@@ -781,7 +832,8 @@ class Drag extends Base {
+@@ -781,7 +843,8 @@ class Drag extends Base {
      let oneFourthHeight = nodeRect.originHeight / 4
      let { prevBrotherOffset, nextBrotherOffset } =
        this.getNodeDistanceToSiblingNode(checkList, node, nodeRect, 'v')
@@ -90,7 +121,7 @@ index 643ca1e..802c4e3 100644
        // 检测兄弟节点位置
        if (
          !this.overlapNode &&
-@@ -892,13 +944,13 @@ class Drag extends Base {
+@@ -892,13 +955,13 @@ class Drag extends Base {
            })
          }
        }
@@ -106,7 +137,7 @@ index 643ca1e..802c4e3 100644
          pos: mouseMoveY,
          nodeRect
        })
-@@ -923,7 +975,8 @@ class Drag extends Base {
+@@ -923,7 +986,8 @@ class Drag extends Base {
      let oneFourthWidth = nodeRect.originWidth / 4
      let { prevBrotherOffset, nextBrotherOffset } =
        this.getNodeDistanceToSiblingNode(checkList, node, nodeRect, 'h')
@@ -116,7 +147,7 @@ index 643ca1e..802c4e3 100644
        // 检测兄弟节点位置
        if (
          !this.overlapNode &&
-@@ -1002,13 +1055,13 @@ class Drag extends Base {
+@@ -1002,13 +1066,13 @@ class Drag extends Base {
            })
          }
        }
@@ -132,7 +163,7 @@ index 643ca1e..802c4e3 100644
          pos: mouseMoveX,
          nodeRect
        })
-@@ -1118,7 +1171,7 @@ class Drag extends Base {
+@@ -1118,7 +1182,7 @@ class Drag extends Base {
      })
    }
  
@@ -141,7 +172,7 @@ index 643ca1e..802c4e3 100644
    checkIsOverlap({
      node,
      dir,
-@@ -1131,13 +1184,17 @@ class Drag extends Base {
+@@ -1131,13 +1195,17 @@ class Drag extends Base {
      const { TOP, LEFT, BOTTOM, RIGHT } = CONSTANTS.LAYOUT_GROW_DIR
      let dir1 = dir === 'v' ? TOP : LEFT
      let dir2 = dir === 'v' ? BOTTOM : RIGHT

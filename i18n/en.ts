@@ -288,6 +288,7 @@ const en: TranslationStrings = {
       organizationStructure: 'Org Chart',
     },
     defaultRootText: 'My Life Vision',
+    defaultNodeText: 'My Life Vision',
     ghostTemplates: [
       'I earn an extra $1,000 in passive income every month',
       'I have a slim and toned body',

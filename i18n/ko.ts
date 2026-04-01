@@ -290,6 +290,7 @@ const ko: TranslationStrings = {
       organizationStructure: '조직도',
     },
     defaultRootText: '나의 인생 비전',
+    defaultNodeText: '나의 인생 비전',
     ghostTemplates: [
       '나는 매달 100만원의 부수입을 만든다',
       '나는 건강하고 균형 잡힌 몸을 가진다',
