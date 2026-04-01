@@ -1,0 +1,199 @@
+diff --git a/node_modules/simple-mind-map/src/core/render/node/MindMapNode.js b/node_modules/simple-mind-map/src/core/render/node/MindMapNode.js
+index a23be05..99cc949 100644
+--- a/node_modules/simple-mind-map/src/core/render/node/MindMapNode.js
++++ b/node_modules/simple-mind-map/src/core/render/node/MindMapNode.js
+@@ -1137,8 +1137,14 @@ class MindMapNode {
+   }
+ 
+   // 获取子节点的数量
++  // PATCH: When collapsed (expand=false), the library empties nodeData.children.
++  // But expand=false itself proves children existed. Return 1 so expand btn renders.
+   getChildrenLength() {
+-    return this.nodeData.children ? this.nodeData.children.length : 0
++    const len = this.nodeData.children ? this.nodeData.children.length : 0
++    if (len === 0 && this.nodeData?.data?.expand === false) {
++      return 1
++    }
++    return len
+   }
+ }
+ 
+diff --git a/node_modules/simple-mind-map/src/plugins/Drag.js b/node_modules/simple-mind-map/src/plugins/Drag.js
+index 643ca1e..4dff8ac 100644
+--- a/node_modules/simple-mind-map/src/plugins/Drag.js
++++ b/node_modules/simple-mind-map/src/plugins/Drag.js
+@@ -57,8 +57,8 @@ class Drag extends Base {
+     this.mouseMoveX = 0
+     this.mouseMoveY = 0
+     // 鼠标移动的距离距鼠标按下的位置距离多少以上才认为是拖动事件
+-    this.checkDragOffset = 10
+-    this.minOffset = 10
++    this.checkDragOffset = 5
++    this.minOffset = 5
+   }
+ 
+   //  绑定事件
+@@ -66,7 +66,7 @@ class Drag extends Base {
+     this.onNodeMousedown = this.onNodeMousedown.bind(this)
+     this.onMousemove = this.onMousemove.bind(this)
+     this.onMouseup = this.onMouseup.bind(this)
+-    this.checkOverlapNode = throttle(this.checkOverlapNode, 300, this)
++    this.checkOverlapNode = throttle(this.checkOverlapNode, 80, this)
+ 
+     this.mindMap.on('node_mousedown', this.onNodeMousedown)
+     this.mindMap.on('mousemove', this.onMousemove)
+@@ -420,6 +420,68 @@ class Drag extends Base {
+     this.placeholder.size(0, 0)
+     this.placeHolderLine.hide()
+     this.removeExtraLines()
++    // --- PATCH: find nearest node, weighted by tree growth direction ---
++    // Determine root X position for left/right growth direction detection
++    let rootCenterX = 0
++    const rootNode = this.mindMap.renderer?.root
++    if (rootNode) {
++      const rootRect = this.getNodeRect(rootNode)
++      if (rootRect) rootCenterX = (rootRect.left + rootRect.right) / 2
++    }
++    let nearestNode = null
++    let nearestScore = Infinity
++    const mx = this.mouseMoveX
++    const my = this.mouseMoveY
++    this.nodeList.forEach(node => {
++      const rect = this.getNodeRect(node)
++      if (!rect) return
++      // Use the edge of the node closest to the mouse, not center
++      const closestX = Math.max(rect.left, Math.min(rect.right, mx))
++      const closestY = Math.max(rect.top, Math.min(rect.bottom, my))
++      let dist = Math.sqrt((mx - closestX) ** 2 + (my - closestY) ** 2)
++      // Bias toward child-growth direction (radial: left side grows left, right grows right)
++      const nodeCenterX = (rect.left + rect.right) / 2
++      const isLeftSide = nodeCenterX < rootCenterX
++      if (isLeftSide && mx <= rect.left) {
++        dist *= 0.4  // mouse is past left edge of a left-side node
++      } else if (!isLeftSide && mx >= rect.right) {
++        dist *= 0.4  // mouse is past right edge of a right-side node
++      }
++      if (dist < nearestScore) {
++        nearestScore = dist
++        nearestNode = node
++      }
++    })
++    // --- PATCH: if nearest node is close enough, set it as overlap directly ---
++    // Root is a valid drop target (reparent to root's children)
++    if (nearestNode && !this.checkIsInBeingDragNodeList(nearestNode)) {
++      const nRect = this.getNodeRect(nearestNode)
++      if (nRect) {
++        // Use edge distance + generous padding instead of center distance
++        const edgeX = Math.max(nRect.left, Math.min(nRect.right, mx))
++        const edgeY = Math.max(nRect.top, Math.min(nRect.bottom, my))
++        const distToEdge = Math.sqrt((mx - edgeX) ** 2 + (my - edgeY) ** 2)
++        const padding = 50  // 50px proximity zone around any node
++        if (distToEdge < padding) {
++          this.overlapNode = nearestNode
++          this.prevNode = null
++          this.nextNode = null
++          // Show visual feedback
++          if (nearestNode.getData && !nearestNode.getData('isActive')) {
++            this.mindMap.execCommand('SET_NODE_ACTIVE', nearestNode, true)
++          }
++          this.handleOverlapNode()
++          // Still need to clear active states on other nodes
++          this.nodeList.forEach(n => {
++            if (n !== nearestNode && n.getData('isActive')) {
++              this.mindMap.execCommand('SET_NODE_ACTIVE', n, false)
++            }
++          })
++          return
++        }
++      }
++    }
++    // --- END PATCH: fallback to original logic ---
+     this.nodeList.forEach(node => {
+       if (node.getData('isActive')) {
+         this.mindMap.execCommand('SET_NODE_ACTIVE', node, false)
+@@ -781,7 +843,8 @@ class Drag extends Base {
+     let oneFourthHeight = nodeRect.originHeight / 4
+     let { prevBrotherOffset, nextBrotherOffset } =
+       this.getNodeDistanceToSiblingNode(checkList, node, nodeRect, 'v')
+-    if (nodeRect.left <= mouseMoveX && nodeRect.right >= mouseMoveX) {
++    let _hitMarginH = 200
++    if (nodeRect.left - _hitMarginH <= mouseMoveX && nodeRect.right + _hitMarginH >= mouseMoveX) {
+       // 检测兄弟节点位置
+       if (
+         !this.overlapNode &&
+@@ -892,13 +955,13 @@ class Drag extends Base {
+           })
+         }
+       }
+-      // 检测是否重叠
++      // 检测是否重叠 — overlap zone enlarged (size reduced to 1/6)
+       this.checkIsOverlap({
+         node,
+         dir: 'v',
+         prevBrotherOffset,
+         nextBrotherOffset,
+-        size: oneFourthHeight,
++        size: nodeRect.originHeight / 8,
+         pos: mouseMoveY,
+         nodeRect
+       })
+@@ -923,7 +986,8 @@ class Drag extends Base {
+     let oneFourthWidth = nodeRect.originWidth / 4
+     let { prevBrotherOffset, nextBrotherOffset } =
+       this.getNodeDistanceToSiblingNode(checkList, node, nodeRect, 'h')
+-    if (nodeRect.top <= mouseMoveY && nodeRect.bottom >= mouseMoveY) {
++    let _hitMarginV = 200
++    if (nodeRect.top - _hitMarginV <= mouseMoveY && nodeRect.bottom + _hitMarginV >= mouseMoveY) {
+       // 检测兄弟节点位置
+       if (
+         !this.overlapNode &&
+@@ -1002,13 +1066,13 @@ class Drag extends Base {
+           })
+         }
+       }
+-      // 检测是否重叠
++      // 检测是否重叠 — overlap zone enlarged (size reduced to 1/6)
+       this.checkIsOverlap({
+         node,
+         dir: 'h',
+         prevBrotherOffset,
+         nextBrotherOffset,
+-        size: oneFourthWidth,
++        size: nodeRect.originWidth / 8,
+         pos: mouseMoveX,
+         nodeRect
+       })
+@@ -1118,7 +1182,7 @@ class Drag extends Base {
+     })
+   }
+ 
+-  // 检测是否重叠
++  // 检测是否重叠 — patched: overlap wins over sibling when mouse is on the node
+   checkIsOverlap({
+     node,
+     dir,
+@@ -1131,13 +1195,17 @@ class Drag extends Base {
+     const { TOP, LEFT, BOTTOM, RIGHT } = CONSTANTS.LAYOUT_GROW_DIR
+     let dir1 = dir === 'v' ? TOP : LEFT
+     let dir2 = dir === 'v' ? BOTTOM : RIGHT
+-    if (!this.overlapNode && !this.prevNode && !this.nextNode) {
+-      if (
+-        nodeRect[dir1] + (prevBrotherOffset > 0 ? 0 : size) <= pos &&
+-        nodeRect[dir2] - (nextBrotherOffset > 0 ? 0 : size) >= pos
+-      ) {
+-        this.overlapNode = node
+-      }
++    if (this.overlapNode) return
++    // If mouse is within the node bounds (center zone), this is an overlap = become child
++    // This takes priority over sibling detection
++    if (
++      nodeRect[dir1] + size <= pos &&
++      nodeRect[dir2] - size >= pos
++    ) {
++      this.overlapNode = node
++      // Clear sibling detection — overlap (become child) wins
++      this.prevNode = null
++      this.nextNode = null
+     }
+   }
+ 
