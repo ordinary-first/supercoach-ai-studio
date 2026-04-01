@@ -246,6 +246,7 @@ export interface TranslationStrings {
     noSubGoals: string;
     layoutModes: Record<string, string>;
     defaultRootText: string;
+    defaultNodeText: string;
     ghostTemplates: string[];
     onboarding: {
       addChildTitle: string;

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { GoalNode, GoalLink, NodeType } from '../types';
-import { Plus, Compass, Sparkles } from 'lucide-react';
-// useTranslation: t is an object (TranslationStrings), not a function
+import { Plus, Sparkles } from 'lucide-react';
+import { useThemeStore } from '../stores/useThemeStore';
 
 interface VisionBoardProps {
   nodes: GoalNode[];
@@ -11,14 +11,15 @@ interface VisionBoardProps {
 }
 
 /*
- * Instagram Explore–style Bento Vision Board
- * - 풀스크린, 화면 전체를 채우는 몰입형 레이아웃
- * - 4:5 비율 카드 (인스타 2025+ 기준)
- * - 중앙 Identity 카드는 2×2 히어로
- * - 글래스모피즘 + 시네마틱 비네트
+ * Bento Vision Board — dual-personality design
+ *
+ * DARK:  Cinematic immersion — deep blacks, vignettes, glass overlays
+ * LIGHT: Soft Mica — frosted depth, warm neutrals, tactile card shadows
+ *        Inspired by Apple Vision Pro spatial UI + physical card metaphor
  */
 
-const CELL_PALETTES = [
+// --- Dark mode: cinematic deep gradients ---
+const PALETTES_DARK = [
   { from: '#0c1220', via: '#1a3a5f', to: '#2563eb', accent: '56,189,248' },
   { from: '#1a0525', via: '#4c1d95', to: '#8b5cf6', accent: '139,92,246' },
   { from: '#1c0f07', via: '#78350f', to: '#f59e0b', accent: '251,146,60' },
@@ -29,33 +30,23 @@ const CELL_PALETTES = [
   { from: '#0f1a0a', via: '#365314', to: '#84cc16', accent: '132,204,22' },
 ];
 
-/*
- * Bento grid-template-areas:
- *   Desktop (4 cols):  "a  a  b  c"
- *                      "a  a  d  e"
- *                      "f  g  h  h"
- *
- *   Mobile (3 cols):   "a  a  b"
- *                      "a  a  c"
- *                      "d  e  f"
- *                      "g  h  h"
- */
-const GRID_AREAS_DESKTOP = `
-  "a a b c"
-  "a a d e"
-  "f g h h"
-`;
-const GRID_AREAS_MOBILE = `
-  "a a b"
-  "a a c"
-  "d e f"
-  "g h h"
-`;
+// --- Light mode: soft watercolor washes, muted & warm ---
+const PALETTES_LIGHT = [
+  { from: '#dbeafe', via: '#93c5fd', to: '#3b82f6', accent: '59,130,246' },
+  { from: '#ede9fe', via: '#c4b5fd', to: '#8b5cf6', accent: '139,92,246' },
+  { from: '#fef3c7', via: '#fcd34d', to: '#f59e0b', accent: '245,158,11' },
+  { from: '#ccfbf1', via: '#5eead4', to: '#14b8a6', accent: '20,184,166' },
+  { from: '#fce7f3', via: '#f9a8d4', to: '#ec4899', accent: '236,72,153' },
+  { from: '#dbeafe', via: '#93c5fd', to: '#2563eb', accent: '37,99,235' },
+  { from: '#fee2e2', via: '#fca5a5', to: '#ef4444', accent: '239,68,68' },
+  { from: '#ecfccb', via: '#bef264', to: '#84cc16', accent: '132,204,22' },
+];
 
 const AREA_NAMES = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
 
 const VisionBoard: React.FC<VisionBoardProps> = ({ nodes, links, onNodeClick, onAddSubNode }) => {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const isLight = useThemeStore((s) => s.resolved === 'light');
   const rootNode = nodes.find(n => n.type === NodeType.ROOT);
   if (!rootNode) return null;
 
@@ -63,33 +54,47 @@ const VisionBoard: React.FC<VisionBoardProps> = ({ nodes, links, onNodeClick, on
     n.parentId === rootNode.id && n.type === NodeType.SUB
   );
 
-  // 슬롯 배열: index 0 = ROOT(2×2 히어로), 나머지 = sub goals
   const slots: (GoalNode | null)[] = Array(8).fill(null);
   slots[0] = rootNode;
   firstLevelNodes.forEach((node, i) => {
     if (i + 1 < slots.length) slots[i + 1] = node;
   });
 
+  const palettes = isLight ? PALETTES_LIGHT : PALETTES_DARK;
+
   return (
-    <div className="absolute inset-0 z-10 overflow-hidden bg-[#08090b]">
-      {/* Ambient glow layers */}
+    <div className={`absolute inset-0 z-10 overflow-hidden ${isLight ? 'bg-[#f5f5f0]' : 'bg-[#08090b]'}`}>
+      {/* Ambient atmosphere */}
       <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] rounded-full opacity-30"
-          style={{ background: 'radial-gradient(circle, rgba(139,92,246,0.15) 0%, transparent 70%)' }} />
-        <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] rounded-full opacity-25"
-          style={{ background: 'radial-gradient(circle, rgba(56,189,248,0.12) 0%, transparent 70%)' }} />
+        {isLight ? (
+          <>
+            {/* Warm cream wash — top-left */}
+            <div className="absolute top-[-15%] left-[-10%] w-[55%] h-[55%] rounded-full"
+              style={{ background: 'radial-gradient(circle, rgba(251,191,36,0.06) 0%, transparent 65%)' }} />
+            {/* Cool blue wash — bottom-right */}
+            <div className="absolute bottom-[-15%] right-[-10%] w-[50%] h-[50%] rounded-full"
+              style={{ background: 'radial-gradient(circle, rgba(96,165,250,0.05) 0%, transparent 65%)' }} />
+          </>
+        ) : (
+          <>
+            <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] rounded-full opacity-30"
+              style={{ background: 'radial-gradient(circle, rgba(139,92,246,0.15) 0%, transparent 70%)' }} />
+            <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] rounded-full opacity-25"
+              style={{ background: 'radial-gradient(circle, rgba(56,189,248,0.12) 0%, transparent 70%)' }} />
+          </>
+        )}
       </div>
 
-      {/* Noise texture overlay */}
-      <div className="absolute inset-0 opacity-[0.03] pointer-events-none"
+      {/* Subtle noise texture */}
+      <div className={`absolute inset-0 pointer-events-none ${isLight ? 'opacity-[0.02]' : 'opacity-[0.03]'}`}
         style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E")` }} />
 
-      {/* Bento Grid — responsive via CSS */}
-      <div className="vb-grid relative w-full h-full p-2 md:p-3">
+      {/* Bento Grid */}
+      <div className={`vb-grid relative w-full h-full ${isLight ? 'p-2.5 md:p-4' : 'p-2 md:p-3'}`}>
         {slots.map((node, index) => {
           const isHero = index === 0;
           const isEmpty = !node;
-          const palette = CELL_PALETTES[index % CELL_PALETTES.length];
+          const palette = palettes[index % palettes.length];
           const area = AREA_NAMES[index];
           const isHovered = node ? hoveredId === node.id : false;
 
@@ -98,22 +103,30 @@ const VisionBoard: React.FC<VisionBoardProps> = ({ nodes, links, onNodeClick, on
               <button
                 key={`empty-${index}`}
                 onClick={() => onAddSubNode(rootNode.id)}
-                className="relative overflow-hidden rounded-2xl md:rounded-3xl
-                  border border-dashed border-white/[0.06]
-                  flex items-center justify-center
-                  hover:border-white/15 hover:bg-white/[0.02]
-                  transition-all duration-500 group"
+                className={`relative overflow-hidden rounded-2xl md:rounded-3xl
+                  border border-dashed flex items-center justify-center
+                  transition-all duration-500 group
+                  ${isLight
+                    ? 'border-stone-300/60 hover:border-stone-400 hover:bg-stone-100/50 hover:shadow-sm'
+                    : 'border-white/[0.06] hover:border-white/15 hover:bg-white/[0.02]'
+                  }`}
                 style={{
                   gridArea: area,
                   animation: `cellFadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) ${index * 80}ms both`,
                 }}
               >
                 <div className="flex flex-col items-center gap-2">
-                  <div className="w-10 h-10 rounded-full border border-white/[0.08] flex items-center justify-center
-                    group-hover:border-white/20 group-hover:bg-white/[0.04] transition-all duration-500">
-                    <Plus className="w-5 h-5 text-white/20 group-hover:text-white/50 transition-colors duration-500" strokeWidth={1.5} />
+                  <div className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all duration-500
+                    ${isLight
+                      ? 'border-stone-300/50 group-hover:border-stone-400 group-hover:bg-stone-200/40'
+                      : 'border-white/[0.08] group-hover:border-white/20 group-hover:bg-white/[0.04]'
+                    }`}>
+                    <Plus className={`w-5 h-5 transition-colors duration-500
+                      ${isLight ? 'text-stone-400 group-hover:text-stone-600' : 'text-white/20 group-hover:text-white/50'}`}
+                      strokeWidth={1.5} />
                   </div>
-                  <span className="text-[11px] text-white/20 group-hover:text-white/40 transition-colors duration-500 tracking-wide">
+                  <span className={`text-[11px] transition-colors duration-500 tracking-wide
+                    ${isLight ? 'text-stone-400 group-hover:text-stone-500' : 'text-white/20 group-hover:text-white/40'}`}>
                     Add Goal
                   </span>
                 </div>
@@ -127,16 +140,17 @@ const VisionBoard: React.FC<VisionBoardProps> = ({ nodes, links, onNodeClick, on
               onClick={() => onNodeClick(node)}
               onMouseEnter={() => setHoveredId(node.id)}
               onMouseLeave={() => setHoveredId(null)}
-              className={`relative overflow-hidden rounded-2xl md:rounded-3xl
-                group transition-all duration-700 ease-out
-                ${isHovered ? 'z-20 scale-[1.015]' : 'z-10 scale-100'}
-                active:scale-[0.98]`}
+              className={`relative overflow-hidden group transition-all duration-700 ease-out active:scale-[0.98]
+                ${isLight
+                  ? `rounded-[20px] md:rounded-[24px] ${isHovered ? 'z-20 scale-[1.02] shadow-xl shadow-black/10' : 'z-10 scale-100 shadow-md shadow-black/[0.06]'}`
+                  : `rounded-2xl md:rounded-3xl ${isHovered ? 'z-20 scale-[1.015]' : 'z-10 scale-100'}`
+                }`}
               style={{
                 gridArea: area,
                 animation: `cellFadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) ${index * 80}ms both`,
               }}
             >
-              {/* Background: image or cinematic gradient */}
+              {/* Background: image or gradient */}
               {node.imageUrl ? (
                 <img
                   src={node.imageUrl}
@@ -147,49 +161,74 @@ const VisionBoard: React.FC<VisionBoardProps> = ({ nodes, links, onNodeClick, on
                 />
               ) : (
                 <div className="absolute inset-0" style={{
-                  background: `linear-gradient(145deg, ${palette.from} 0%, ${palette.via} 50%, ${palette.to} 100%)`,
+                  background: isLight
+                    ? `linear-gradient(155deg, ${palette.from} 0%, ${palette.via} 55%, ${palette.to} 100%)`
+                    : `linear-gradient(145deg, ${palette.from} 0%, ${palette.via} 50%, ${palette.to} 100%)`,
                 }}>
-                  {/* Subtle inner glow for gradient cards */}
+                  {/* Glow on hover */}
                   <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700"
-                    style={{ background: `radial-gradient(circle at 30% 30%, rgba(${palette.accent},0.2) 0%, transparent 60%)` }} />
+                    style={{ background: isLight
+                      ? `radial-gradient(circle at 40% 35%, rgba(255,255,255,0.35) 0%, transparent 55%)`
+                      : `radial-gradient(circle at 30% 30%, rgba(${palette.accent},0.2) 0%, transparent 60%)`
+                    }} />
                 </div>
               )}
 
-              {/* Cinematic vignette — heavier on edges */}
-              <div className="absolute inset-0"
-                style={{ background: 'radial-gradient(ellipse at 50% 40%, transparent 20%, rgba(0,0,0,0.55) 100%)' }} />
-
-              {/* Bottom gradient for text readability */}
-              <div className={`absolute inset-0 transition-opacity duration-700
-                ${isHero
-                  ? 'bg-gradient-to-t from-black/70 via-black/20 to-transparent'
-                  : 'bg-gradient-to-t from-black/65 via-transparent to-black/5'
-                }`} />
-
-              {/* Glass border on hover */}
-              <div className="absolute inset-0 rounded-2xl md:rounded-3xl
-                border border-white/[0.04] group-hover:border-white/[0.12]
-                transition-all duration-700" />
+              {/* Overlays — completely different per theme */}
+              {isLight ? (
+                <>
+                  {/* Light: soft white veil on top for depth, dark scrim at bottom for text */}
+                  <div className="absolute inset-0"
+                    style={{ background: 'linear-gradient(to bottom, rgba(255,255,255,0.1) 0%, transparent 40%, rgba(0,0,0,0.25) 100%)' }} />
+                  {isHero && (
+                    <div className="absolute inset-0"
+                      style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.08) 40%, transparent 70%)' }} />
+                  )}
+                  {/* Frosted border */}
+                  <div className="absolute inset-0 rounded-[20px] md:rounded-[24px]
+                    border border-white/30 group-hover:border-white/50
+                    transition-all duration-500" />
+                </>
+              ) : (
+                <>
+                  {/* Dark: cinematic vignette */}
+                  <div className="absolute inset-0"
+                    style={{ background: 'radial-gradient(ellipse at 50% 40%, transparent 20%, rgba(0,0,0,0.55) 100%)' }} />
+                  <div className={`absolute inset-0 transition-opacity duration-700
+                    ${isHero
+                      ? 'bg-gradient-to-t from-black/70 via-black/20 to-transparent'
+                      : 'bg-gradient-to-t from-black/65 via-transparent to-black/5'
+                    }`} />
+                  <div className="absolute inset-0 rounded-2xl md:rounded-3xl
+                    border border-white/[0.04] group-hover:border-white/[0.12]
+                    transition-all duration-700" />
+                </>
+              )}
 
               {/* Shimmer effect on hover */}
               <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"
                 style={{
-                  background: 'linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.03) 45%, rgba(255,255,255,0.06) 50%, rgba(255,255,255,0.03) 55%, transparent 60%)',
+                  background: isLight
+                    ? 'linear-gradient(105deg, transparent 38%, rgba(255,255,255,0.15) 44%, rgba(255,255,255,0.25) 50%, rgba(255,255,255,0.15) 56%, transparent 62%)'
+                    : 'linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.03) 45%, rgba(255,255,255,0.06) 50%, rgba(255,255,255,0.03) 55%, transparent 60%)',
                 }} />
 
               {/* Content */}
               <div className={`absolute inset-0 flex flex-col justify-end
                 ${isHero ? 'p-5 md:p-8' : 'p-3 md:p-4'}`}>
 
-                {/* Hero badge */}
+                {/* Hero badge — CORE IDENTITY */}
                 {isHero && (
-                  <div className="mb-auto mt-1 self-start">
-                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full
-                      bg-white/[0.08] backdrop-blur-md border border-white/[0.08]
-                      group-hover:bg-white/[0.12] group-hover:border-white/[0.15]
-                      transition-all duration-500">
-                      <Sparkles size={11} className="text-purple-300/80" />
-                      <span className="text-[10px] font-medium text-purple-200/80 uppercase tracking-[0.18em]">
+                  <div className="mb-auto mt-1 self-start relative z-10">
+                    <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full
+                      backdrop-blur-md transition-all duration-500 shadow-lg
+                      ${isLight
+                        ? 'bg-white/60 border border-white/70 group-hover:bg-white/75'
+                        : 'bg-black/40 border border-white/[0.15] group-hover:bg-black/50 group-hover:border-white/[0.25]'
+                      }`}>
+                      <Sparkles size={11} className={isLight ? 'text-violet-600' : 'text-purple-300'} />
+                      <span className={`text-[10px] font-semibold uppercase tracking-[0.18em]
+                        ${isLight ? 'text-violet-700' : 'text-purple-100'}`}>
                         Core Identity
                       </span>
                     </div>
@@ -197,20 +236,24 @@ const VisionBoard: React.FC<VisionBoardProps> = ({ nodes, links, onNodeClick, on
                 )}
 
                 {/* Title */}
-                <h3 className={`text-white font-semibold leading-tight
-                  drop-shadow-[0_2px_12px_rgba(0,0,0,0.9)]
+                <h3 className={`font-semibold leading-tight
                   transition-transform duration-500 group-hover:translate-y-[-2px]
                   ${isHero
                     ? 'text-[20px] md:text-[28px] tracking-tight'
                     : 'text-[13px] md:text-[15px]'
+                  }
+                  ${isLight
+                    ? 'text-white drop-shadow-[0_1px_8px_rgba(0,0,0,0.5)]'
+                    : 'text-white drop-shadow-[0_2px_12px_rgba(0,0,0,0.9)]'
                   }`}
                 >
                   {node.text}
                 </h3>
 
-                {/* Sub-count indicator for hero */}
+                {/* Sub-count indicator */}
                 {isHero && firstLevelNodes.length > 0 && (
-                  <p className="mt-2 text-[11px] md:text-[12px] text-white/40 tracking-wide">
+                  <p className={`mt-2 text-[11px] md:text-[12px] tracking-wide
+                    ${isLight ? 'text-white/70' : 'text-white/50'}`}>
                     {firstLevelNodes.length} goals connected
                   </p>
                 )}
@@ -230,7 +273,7 @@ const VisionBoard: React.FC<VisionBoardProps> = ({ nodes, links, onNodeClick, on
             "a a c"
             "d e f"
             "g h h";
-          gap: 4px;
+          gap: ${isLight ? '6px' : '4px'};
         }
         @media (min-width: 768px) {
           .vb-grid {
@@ -240,7 +283,7 @@ const VisionBoard: React.FC<VisionBoardProps> = ({ nodes, links, onNodeClick, on
               "a a b c"
               "a a d e"
               "f g h h";
-            gap: 6px;
+            gap: ${isLight ? '8px' : '6px'};
           }
         }
         @keyframes cellFadeIn {

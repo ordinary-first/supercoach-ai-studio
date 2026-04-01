@@ -150,7 +150,17 @@ const GOALS_LOCKED_VIEWPORT_CONTENT =
   'width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no, '
   + 'maximum-scale=1, minimum-scale=1';
 
-const createInitialGoalNodes = (): GoalNode[] => [
+const _isDevTest = import.meta.env.DEV && new URLSearchParams(window.location.search).has('dev');
+
+const createInitialGoalNodes = (): GoalNode[] => _isDevTest ? [
+  { id: 'root', text: '나의 인생 비전', type: NodeType.ROOT, status: NodeStatus.PENDING, progress: 0, collapsed: false, parentId: undefined },
+  { id: 'g1', text: '건강한 몸 만들기', type: NodeType.SUB, status: NodeStatus.PENDING, progress: 0, collapsed: false, parentId: 'root' },
+  { id: 'g1a', text: '매일 운동', type: NodeType.SUB, status: NodeStatus.PENDING, progress: 0, collapsed: false, parentId: 'g1' },
+  { id: 'g1b', text: '식단 관리', type: NodeType.SUB, status: NodeStatus.PENDING, progress: 0, collapsed: false, parentId: 'g1' },
+  { id: 'g2', text: '사업 성공', type: NodeType.SUB, status: NodeStatus.PENDING, progress: 0, collapsed: false, parentId: 'root' },
+  { id: 'g2a', text: '제품 출시', type: NodeType.SUB, status: NodeStatus.PENDING, progress: 0, collapsed: false, parentId: 'g2' },
+  { id: 'g3', text: '자기 성장', type: NodeType.SUB, status: NodeStatus.PENDING, progress: 0, collapsed: false, parentId: 'root' },
+] as GoalNode[] : [
   {
     id: 'root',
     text: '',
@@ -161,6 +171,15 @@ const createInitialGoalNodes = (): GoalNode[] => [
     collapsed: false,
   },
 ];
+
+const createInitialDevLinks = (): GoalLink[] => _isDevTest ? [
+  { source: 'root', target: 'g1' },
+  { source: 'g1', target: 'g1a' },
+  { source: 'g1', target: 'g1b' },
+  { source: 'root', target: 'g2' },
+  { source: 'g2', target: 'g2a' },
+  { source: 'root', target: 'g3' },
+] : [];
 
 const getInitialLanguage = (): AppLanguage => {
   const cached = localStorage.getItem('app_language');
@@ -177,7 +196,7 @@ const App: React.FC = () => {
   const [isSettingsPageOpen, setIsSettingsPageOpen] = useState(false);
 
   const [nodes, setNodes] = useState<GoalNode[]>(createInitialGoalNodes);
-  const [links, setLinks] = useState<GoalLink[]>([]);
+  const [links, setLinks] = useState<GoalLink[]>(createInitialDevLinks);
   const [todos, setTodos] = useState<ToDoItem[]>([]);
   const [todoLists, setTodoLists] = useState<TodoList[]>([]);
   const [todoGroups, setTodoGroups] = useState<TodoGroup[]>([]);
@@ -186,7 +205,7 @@ const App: React.FC = () => {
   const [selectedNode, setSelectedNode] = useState<GoalNode | null>(null);
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
   const [mindmapLayout, setMindmapLayout] = useState<LayoutMode>('mindMap');
-  const [goalsViewMode, setGoalsViewMode] = useState<'visionboard' | 'mindmap' | 'outline'>('visionboard');
+  const [goalsViewMode, setGoalsViewMode] = useState<'visionboard' | 'mindmap' | 'outline'>(_isDevTest ? 'mindmap' : 'visionboard');
   const [goalDetailNodeId, setGoalDetailNodeId] = useState<string | null>(null);
   const [trialDismissed, setTrialDismissed] = useState(false);
   const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
