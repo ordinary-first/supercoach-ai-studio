@@ -446,8 +446,18 @@ const App: React.FC = () => {
     };
 
     window.addEventListener(ALARM_CLICK_EVENT, handleAlarmClick as EventListener);
+
+    // Listen for SW postMessage (notification click while app is open)
+    const handleSwMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'ALARM_CLICK' && event.data?.slot) {
+        openAlarmConversation(event.data.slot);
+      }
+    };
+    navigator.serviceWorker?.addEventListener('message', handleSwMessage);
+
     return () => {
       window.removeEventListener(ALARM_CLICK_EVENT, handleAlarmClick as EventListener);
+      navigator.serviceWorker?.removeEventListener('message', handleSwMessage);
     };
   }, [openAlarmConversation]);
 
