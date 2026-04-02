@@ -306,10 +306,10 @@ function goalNodesToTree(
       } else {
         // 미확정 — 어두운 회색 얇은 border
         Object.assign(nodeStyle, {
-          borderColor: '#444444',
+          borderColor: isLight ? '#cccccc' : '#444444',
           borderWidth: 1,
           fillColor: isLight ? 'rgba(255,255,255,0.72)' : 'rgba(18, 24, 34, 0.72)',
-          color: 'rgba(255, 255, 255, 0.4)',
+          color: isLight ? 'rgba(0, 0, 0, 0.4)' : 'rgba(255, 255, 255, 0.4)',
         });
       }
     }
@@ -527,6 +527,7 @@ const MindMap: React.FC<MindMapProps> = ({
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const mindMapRef = useRef<any>(null);
+  const mobileFocusRef = useRef<HTMLInputElement>(null);
   const [actionBar, setActionBar] = useState<ActionBarState | null>(null);
   const [viewScale, setViewScale] = useState(1);
   const [identitySkipped, setIdentitySkipped] = useState(false);
@@ -1245,11 +1246,17 @@ const MindMap: React.FC<MindMapProps> = ({
           newPreviews.forEach((id, i) => {
             const nodeIns = getRenderedNodeByGoalId(id);
             if (nodeIns?.group?.node) {
-              const el = nodeIns.group.node as HTMLElement;
+              const el = nodeIns.group.node as SVGGElement;
               el.style.opacity = '0';
-              el.style.transform = 'scale(0.3)';
-              el.style.transformOrigin = 'center center';
-              el.style.animation = `decomposeAppear 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) ${i * 80}ms forwards`;
+              el.style.transition = 'none';
+              el.setAttribute('transform', `${el.getAttribute('transform') || ''} scale(0.3)`);
+              setTimeout(() => {
+                el.style.transition = 'opacity 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)';
+                el.style.opacity = '1';
+                // SVG transform: just remove the appended scale
+                const curTransform = el.getAttribute('transform') || '';
+                el.setAttribute('transform', curTransform.replace(/ ?scale\(0\.3\)/, ''));
+              }, i * 80);
             }
           });
         }, 300);
@@ -1369,6 +1376,15 @@ const MindMap: React.FC<MindMapProps> = ({
         }
       `}</style>
 
+      {/* Hidden input for mobile keyboard activation */}
+      <input
+        ref={mobileFocusRef}
+        className="absolute opacity-0 pointer-events-none"
+        style={{ position: 'absolute', top: -9999, left: -9999, width: 1, height: 1 }}
+        aria-hidden="true"
+        tabIndex={-1}
+      />
+
       {/* Mind Map Container */}
       <div
         ref={containerRef}
@@ -1392,6 +1408,7 @@ const MindMap: React.FC<MindMapProps> = ({
           <div className="flex items-center gap-1 rounded-full border border-th-border/40 bg-th-elevated/98 p-1 shadow-[0_12px_40px_-12px_rgba(0,0,0,0.25)] backdrop-blur-xl">
             <button
               onClick={() => {
+                mobileFocusRef.current?.focus();
                 onAddSubNode(actionBar.nodeId);
                 setActionBar(null);
               }}
@@ -1406,6 +1423,7 @@ const MindMap: React.FC<MindMapProps> = ({
               <>
                 <button
                   onClick={() => {
+                    mobileFocusRef.current?.focus();
                     const parentId = actionNode.parentId;
                     if (parentId) {
                       onAddSubNode(parentId);
@@ -1446,7 +1464,7 @@ const MindMap: React.FC<MindMapProps> = ({
             {!isRootActionNode && (
               <button
                 onClick={() => { onDecomposeGoal?.(actionBar.nodeId); setActionBar(null); }}
-                className="rounded-full p-2.5 text-th-accent bg-th-accent-muted hover:brightness-110 transition-all active:scale-90"
+                className="rounded-full p-2.5 text-th-text-secondary hover:text-th-accent hover:bg-th-accent-muted transition-all active:scale-90"
                 title={labels.decompose}
                 aria-label={labels.decompose}
               >
@@ -1456,7 +1474,7 @@ const MindMap: React.FC<MindMapProps> = ({
 
             <button
               onClick={() => { onExploreWithAI?.(actionBar.nodeId); setActionBar(null); }}
-              className="rounded-full p-2.5 text-th-accent bg-th-accent-muted hover:brightness-110 transition-all active:scale-90"
+              className="rounded-full p-2.5 text-th-text-secondary hover:text-th-accent hover:bg-th-accent-muted transition-all active:scale-90"
               title={labels.exploreWithAI}
               aria-label={labels.exploreWithAI}
             >

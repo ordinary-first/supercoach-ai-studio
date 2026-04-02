@@ -573,14 +573,18 @@ const App: React.FC = () => {
   const handleConvertNodeToTodo = useCallback((nodeId: string) => {
     const node = nodes.find(n => n.id === nodeId);
     if (!node || !node.text) return;
-    setTodos(prev => [{
-      id: Date.now().toString(),
-      text: node.text,
-      completed: false,
-      createdAt: Date.now(),
-      linkedNodeId: nodeId,
-      linkedNodeText: node.text,
-    }, ...prev]);
+    setTodos(prev => {
+      const minSort = prev.reduce((min, t) => t.sortOrder != null && t.sortOrder < min ? t.sortOrder : min, 0);
+      return [{
+        id: Date.now().toString(),
+        text: node.text,
+        completed: false,
+        createdAt: Date.now(),
+        sortOrder: minSort - 1,
+        linkedNodeId: nodeId,
+        linkedNodeText: node.text,
+      }, ...prev];
+    });
     addToast(t.app.toasts.todoAdded, 'success');
     appendAction(getUserId(), 'ADD_TODO', `"${node.text}" 할일 변환`, { nodeId, todoId: Date.now().toString() });
   }, [nodes, addToast]);

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { GoalNode, GoalLink, NodeType } from '../types';
-import { Plus, Sparkles } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { useThemeStore } from '../stores/useThemeStore';
 
 interface VisionBoardProps {
@@ -216,24 +216,6 @@ const VisionBoard: React.FC<VisionBoardProps> = ({ nodes, links, onNodeClick, on
               {/* Content */}
               <div className={`absolute inset-0 flex flex-col justify-end
                 ${isHero ? 'p-5 md:p-8' : 'p-3 md:p-4'}`}>
-
-                {/* Hero badge — CORE IDENTITY */}
-                {isHero && (
-                  <div className="mb-auto mt-1 self-start relative z-10">
-                    <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full
-                      backdrop-blur-md transition-all duration-500 shadow-lg
-                      ${isLight
-                        ? 'bg-white/60 border border-white/70 group-hover:bg-white/75'
-                        : 'bg-black/40 border border-white/[0.15] group-hover:bg-black/50 group-hover:border-white/[0.25]'
-                      }`}>
-                      <Sparkles size={11} className={isLight ? 'text-violet-600' : 'text-purple-300'} />
-                      <span className={`text-[10px] font-semibold uppercase tracking-[0.18em]
-                        ${isLight ? 'text-violet-700' : 'text-purple-100'}`}>
-                        Core Identity
-                      </span>
-                    </div>
-                  </div>
-                )}
 
                 {/* Title */}
                 <h3 className={`font-semibold leading-tight
