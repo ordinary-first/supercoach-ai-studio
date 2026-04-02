@@ -158,16 +158,22 @@ export const FeedbackSettingsSheet: React.FC<FeedbackSettingsSheetProps> = ({
   useEffect(() => {
     if (typeof Notification === 'undefined') return;
 
-    const browserPermission = Notification.permission as 'granted' | 'denied' | 'default';
-    setSettings((prev) => {
-      if (prev.notificationPermission === browserPermission) return prev;
-      return {
-        ...prev,
-        notificationPermission: browserPermission,
-        timezone: prev.timezone || getClientTimezone(),
-        updatedAt: Date.now(),
-      };
-    });
+    const syncPermission = () => {
+      const browserPermission = Notification.permission as 'granted' | 'denied' | 'default';
+      setSettings((prev) => {
+        if (prev.notificationPermission === browserPermission) return prev;
+        return {
+          ...prev,
+          notificationPermission: browserPermission,
+          timezone: prev.timezone || getClientTimezone(),
+          updatedAt: Date.now(),
+        };
+      });
+    };
+
+    syncPermission();
+    document.addEventListener('visibilitychange', syncPermission);
+    return () => document.removeEventListener('visibilitychange', syncPermission);
   }, []);
 
   useEffect(() => {
