@@ -166,16 +166,16 @@ export default async function handler(
   try {
     const db = getAdminDb();
     const now = new Date();
-    const usersSnap = await db.collection('users').get();
+    const userRefs = await db.collection('users').listDocuments();
 
     let processedUsers = 0;
     let dueUsers = 0;
     let sentCount = 0;
     let invalidTokenCount = 0;
 
-    for (const userDoc of usersSnap.docs) {
+    for (const userRef of userRefs) {
       processedUsers += 1;
-      const uid = userDoc.id;
+      const uid = userRef.id;
       const notifRef = db.doc(`users/${uid}/settings/notifications`);
       const notifSnap = await notifRef.get();
       if (!notifSnap.exists) continue;
