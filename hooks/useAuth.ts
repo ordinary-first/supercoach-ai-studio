@@ -1,11 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { GoalLink, GoalNode, ToDoItem, TodoGroup, TodoList, UserProfile } from '../types';
+import { GoalLink, GoalNode, NoteItem, ToDoItem, TodoGroup, TodoList, UserProfile } from '../types';
 import {
   ensureCreatedAt,
   fetchDevAuthToken,
   getSyncStatus,
   getUserId,
   loadGoalData,
+  loadNotes,
   loadProfile,
   loadTodoLists,
   loadTodos,
@@ -33,6 +34,7 @@ export function useAuth(
   onGoalDataLoaded: (nodes: GoalNode[], links: GoalLink[]) => void,
   onTodosLoaded: (todos: ToDoItem[]) => void,
   onTodoListsLoaded: (lists: TodoList[], groups: TodoGroup[]) => void,
+  onNotesLoaded: (notes: NoteItem[]) => void,
 ): AuthState {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
@@ -194,10 +196,11 @@ export function useAuth(
       await ensureCreatedAt(userId);
 
       try {
-        const [goalData, todoData, todoListsData, savedProfile] = await Promise.all([
+        const [goalData, todoData, todoListsData, notesData, savedProfile] = await Promise.all([
           loadGoalData(userId),
           loadTodos(userId),
           loadTodoLists(userId),
+          loadNotes(userId),
           loadProfile(userId),
         ]);
 
@@ -213,6 +216,10 @@ export function useAuth(
 
         if (todoListsData) {
           onTodoListsLoaded(todoListsData.lists, todoListsData.groups);
+        }
+
+        if (notesData && notesData.length > 0) {
+          onNotesLoaded(notesData);
         }
 
         if (savedProfile) {

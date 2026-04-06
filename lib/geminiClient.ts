@@ -5,9 +5,9 @@ let cachedClient: GoogleGenAI | null = null;
 export const GEMINI_MODEL = 'gemini-3.1-flash-lite-preview';
 
 export function getGeminiClient(): GoogleGenAI {
-  const apiKey = process.env.GOOGLE_API_KEY?.trim();
+  const apiKey = (process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY)?.trim();
   if (!apiKey) {
-    throw new Error('GOOGLE_API_KEY not configured');
+    throw new Error('GOOGLE_API_KEY (or GEMINI_API_KEY) not configured');
   }
   if (!cachedClient) {
     cachedClient = new GoogleGenAI({ apiKey });

@@ -39,15 +39,13 @@ self.addEventListener('notificationclick', (event) => {
   event.notification.close();
 
   const link = event.notification?.data?.link || '/';
+  const slot = event.notification?.data?.slot || '';
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
       for (const client of clientList) {
         if (client.url.includes(self.location.origin) && 'focus' in client) {
           return client.focus().then(() => {
-            if ('navigate' in client) {
-              return client.navigate(link);
-            }
-            return undefined;
+            client.postMessage({ type: 'ALARM_CLICK', slot, link });
           });
         }
       }

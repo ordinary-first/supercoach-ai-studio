@@ -61,6 +61,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!imageDataUrl) {
       return res.status(400).json({ error: 'imageDataUrl is required' });
     }
+    if (String(imageDataUrl).length > 5 * 1024 * 1024) {
+      return res.status(413).json({ error: 'Image too large (max 5MB)' });
+    }
     if (!R2_PUBLIC_URL) {
       return res.status(500).json({ error: 'R2 public url is not configured' });
     }

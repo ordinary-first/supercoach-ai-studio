@@ -86,6 +86,16 @@ const en: TranslationStrings = {
       monthly: 'Every month',
     },
   },
+  notes: {
+    title: 'Notes',
+    newNote: 'New Note',
+    untitled: 'Untitled',
+    placeholder: 'Start writing...',
+    empty: 'No notes yet',
+    emptyHint: 'Create your first note',
+    pinned: 'Pinned',
+    deleteConfirm: 'Delete this note?',
+  },
   calendar: {
     title: 'Mission Calendar',
     dayNames: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
@@ -266,6 +276,11 @@ const en: TranslationStrings = {
     insertImage: 'Insert image',
     delete: 'Delete',
     decompose: 'Decompose',
+    exploreWithAI: 'Explore with AI',
+    visionBoard: 'Vision Board',
+    mindMapLabel: 'Mind Map',
+    outlineLabel: 'Outline',
+    noSubGoals: 'No sub-goals yet',
     layoutModes: {
       mindMap: 'Mind Map',
       logicalStructure: 'Logic',
@@ -273,6 +288,7 @@ const en: TranslationStrings = {
       organizationStructure: 'Org Chart',
     },
     defaultRootText: 'My Life Vision',
+    defaultNodeText: 'My Life Vision',
     ghostTemplates: [
       'I earn an extra $1,000 in passive income every month',
       'I have a slim and toned body',

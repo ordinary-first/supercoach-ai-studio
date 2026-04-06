@@ -39,8 +39,18 @@ yarn-debug.log*
 Thumbs.db
 Desktop.ini
 
-# Claude/OMC
+# Claude — 공유 지식은 커밋, 개인 설정은 무시
 .omc
-.claude
+.claude/*
+!.claude/knowledge/
+!.claude/rules/
+!.claude/skills/
+!.claude/agents/
+!.claude/rubrics/
+!.claude/launch.json
+.claude/settings.local.json
+.claude/metrics/
+.claude/commands/
+.claude/worktrees/
 
 .vercel

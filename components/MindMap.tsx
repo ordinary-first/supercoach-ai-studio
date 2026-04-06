@@ -103,6 +103,15 @@ const DeleteActionIcon = () => (
   </svg>
 );
 
+const CompassIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5">
+    <circle cx="9" cy="9" r="7" />
+    <polygon points="7,11 5,13 9,9" fill="currentColor" stroke="none" opacity="0.6" />
+    <polygon points="11,7 13,5 9,9" fill="currentColor" stroke="none" />
+    <circle cx="9" cy="9" r="1" fill="currentColor" stroke="none" />
+  </svg>
+);
+
 
 // --- Types ---
 export type LayoutMode = 'mindMap' | 'logicalStructure' | 'logicalStructureLeft' | 'organizationStructure';
@@ -123,6 +132,7 @@ interface MindMapProps {
   onAddSubNode: (parentId: string, text?: string) => void;
   onAddParentNode?: (nodeId: string) => void;
   onDecomposeGoal?: (nodeId: string) => void;
+  onExploreWithAI?: (nodeId: string) => void;
   previewNodeIds?: string[];
   confirmedPreviewIds?: string[];
   onTogglePreviewConfirm?: (nodeId: string) => void;
@@ -241,6 +251,7 @@ function goalNodesToTree(
   selectedNodeId?: string,
   confirmedPreviewIds?: string[],
   defaultRootText?: string,
+  defaultNodeText?: string,
   isLight = false,
 ): SMMNode | null {
   const root = nodes.find(n => n.type === NodeType.ROOT);
@@ -295,10 +306,10 @@ function goalNodesToTree(
       } else {
         // 미확정 — 어두운 회색 얇은 border
         Object.assign(nodeStyle, {
-          borderColor: '#444444',
+          borderColor: isLight ? '#cccccc' : '#444444',
           borderWidth: 1,
           fillColor: isLight ? 'rgba(255,255,255,0.72)' : 'rgba(18, 24, 34, 0.72)',
-          color: 'rgba(255, 255, 255, 0.4)',
+          color: isLight ? 'rgba(0, 0, 0, 0.4)' : 'rgba(255, 255, 255, 0.4)',
         });
       }
     }
@@ -310,7 +321,7 @@ function goalNodesToTree(
     }
 
     const data: SMMNodeData = {
-      text: goalNode.text || defaultRootText || 'My Life Vision',
+      text: isRoot ? (goalNode.text || defaultRootText || 'My Life Vision') : (goalNode.text || defaultNodeText || 'My Life Vision'),
       uid: goalNode.id,
       expand: !goalNode.collapsed,
       goalId: goalNode.id,
@@ -510,12 +521,13 @@ const LAYOUT_MODES: LayoutMode[] = [
 const MindMap: React.FC<MindMapProps> = ({
   nodes, links, language, selectedNodeId, onNodeClick, onEditNode, onUpdateNode, onDeleteNode,
   onReparentNode, onConvertNodeToTask, onGenerateImage, onInsertImage, onAddSubNode, onAddParentNode,
-  onDecomposeGoal, previewNodeIds, confirmedPreviewIds, onTogglePreviewConfirm, onFinalizePreview,
+  onDecomposeGoal, onExploreWithAI, previewNodeIds, confirmedPreviewIds, onTogglePreviewConfirm, onFinalizePreview,
   width, height, editingNodeId, onEditEnd, imageLoadingNodes,
   layout: layoutProp = 'mindMap', onLayoutChange,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const mindMapRef = useRef<any>(null);
+  const mobileFocusRef = useRef<HTMLInputElement>(null);
   const [actionBar, setActionBar] = useState<ActionBarState | null>(null);
   const [viewScale, setViewScale] = useState(1);
   const [identitySkipped, setIdentitySkipped] = useState(false);
@@ -634,6 +646,7 @@ const MindMap: React.FC<MindMapProps> = ({
   const onNodeClickRef = useRef(onNodeClick);
   const onEditNodeRef = useRef(onEditNode);
   const onUpdateNodeRef = useRef(onUpdateNode);
+  const onReparentNodeRef = useRef(onReparentNode);
   const onAddSubNodeRef = useRef(onAddSubNode);
   const onTogglePreviewConfirmRef = useRef(onTogglePreviewConfirm);
   const onFinalizePreviewRef = useRef(onFinalizePreview);
@@ -649,6 +662,9 @@ const MindMap: React.FC<MindMapProps> = ({
   onNodeClickRef.current = onNodeClick;
   onEditNodeRef.current = onEditNode;
   onUpdateNodeRef.current = onUpdateNode;
+  onReparentNodeRef.current = onReparentNode;
+  const onEditEndRef = useRef(onEditEnd);
+  onEditEndRef.current = onEditEnd;
   onAddSubNodeRef.current = onAddSubNode;
   onTogglePreviewConfirmRef.current = onTogglePreviewConfirm;
   onFinalizePreviewRef.current = onFinalizePreview;
@@ -802,6 +818,7 @@ const MindMap: React.FC<MindMapProps> = ({
       selectedNodeId,
       confirmedPreviewIds,
       t.mindmap.defaultRootText,
+      t.mindmap.defaultNodeText,
       isLight,
     );
     if (!treeData) return;
@@ -846,6 +863,8 @@ const MindMap: React.FC<MindMapProps> = ({
         fontSize: 12,
         strokeColor: isLight ? LIGHT_ACCENT : DARK_ACCENT,
       },
+      isShowExpandNum: true,
+      alwaysShowExpandBtn: false,
       fit: false,
       // Library-level node transition can throw rbox errors during rapid tab unmount/remount.
       enableNodeTransitionMove: false,
@@ -998,17 +1017,30 @@ const MindMap: React.FC<MindMapProps> = ({
         if (goalId?.startsWith('ghost-')) return;
         if (goalId) {
           const current = nodesRef.current.find(n => n.id === goalId);
-          if (current && smmNode.data.text !== current.text) {
-            onUpdateNodeRef.current(goalId, { text: smmNode.data.text });
+          if (current) {
+            const updates: Record<string, any> = {};
+            if (smmNode.data.text !== current.text) updates.text = smmNode.data.text;
+            // Sync collapse/expand state from library to React
+            const smmCollapsed = smmNode.data.expand === false;
+            if (current.collapsed !== smmCollapsed) updates.collapsed = smmCollapsed;
+            if (Object.keys(updates).length > 0) {
+              onUpdateNodeRef.current(goalId, updates);
+            }
           }
         }
-        // Sync children sortOrder from tree position
+        // Sync children sortOrder and parentId from tree position
         const children = smmNode.children || [];
         children.forEach((child, idx) => {
           const childId = child.data?.goalId || child.data?.uid;
           if (!childId || childId.startsWith('ghost-')) return;
           const existing = nodesRef.current.find(n => n.id === childId);
-          if (existing && (existing.sortOrder ?? 0) !== idx) {
+          if (!existing) return;
+          // Sync parentId when node is dragged to a different parent — use onReparentNode to also update links
+          if (goalId && existing.parentId !== goalId) {
+            onReparentNodeRef.current(childId, goalId);
+          }
+          // Sync sortOrder separately
+          if ((existing.sortOrder ?? 0) !== idx) {
             onUpdateNodeRef.current(childId, { sortOrder: idx });
           }
         });
@@ -1018,6 +1050,78 @@ const MindMap: React.FC<MindMapProps> = ({
       };
       syncChanges(data);
     });
+
+    // --- Cache descendant counts before collapse (nodes may vanish from state after collapse) ---
+    const descendantCountCache = new Map<string, number>();
+    const computeDescendantsFromNodes = (id: string, allNodes: GoalNode[]): number => {
+      const children = allNodes.filter(n => n.parentId === id);
+      return children.reduce((sum, child) => sum + 1 + computeDescendantsFromNodes(child.id, allNodes), 0);
+    };
+
+    // --- Event: expand_btn_click — sync collapse state to React ---
+    mindMap.on('expand_btn_click', (node: any) => {
+      if (isDestroyedRef.current) return;
+      const goalId = node?.nodeData?.data?.goalId || node?.nodeData?.data?.uid;
+      if (!goalId || goalId.startsWith('ghost-')) return;
+      const current = nodesRef.current.find(n => n.id === goalId);
+      if (!current) return;
+      const isExpanded = node.nodeData?.data?.expand !== false;
+      const newCollapsed = !isExpanded;
+      // Cache descendant count BEFORE state changes (nodes may vanish after collapse)
+      if (newCollapsed) {
+        descendantCountCache.set(goalId, computeDescendantsFromNodes(goalId, nodesRef.current));
+      }
+      if (current.collapsed !== newCollapsed) {
+        onUpdateNodeRef.current(goalId, { collapsed: newCollapsed });
+      }
+    });
+
+    // --- Post-render: force-show expand btn with descendant count on collapsed nodes ---
+    const patchExpandBtns = () => {
+      if (isDestroyedRef.current) return;
+      const root = mindMap.renderer?.root;
+      if (!root) return;
+      const getDescCount = (id: string): number => {
+        // Use cache first (set before collapse when all nodes were still present)
+        if (descendantCountCache.has(id)) return descendantCountCache.get(id)!;
+        // Fallback: compute from current React state
+        const curNodes = nodesRef.current;
+        const children = curNodes.filter(n => n.parentId === id);
+        return children.reduce((sum, child) => sum + 1 + getDescCount(child.id), 0);
+      };
+      const walk = (node: any) => {
+        if (!node || node.isRoot) { /* root: skip */ }
+        else {
+          const expand = node.getData?.('expand');
+          if (expand === false) {
+            // Collapsed → force render expand btn, then update count after library finishes
+            if (!node._expandBtn) {
+              node.renderExpandBtn?.();
+            }
+            const btn = node._expandBtn;
+            if (btn) {
+              btn.show();
+              const goalId = node.nodeData?.data?.goalId || node.nodeData?.data?.uid;
+              if (goalId) {
+                const count = getDescCount(goalId);
+                // Delay text update to after library's own text setting
+                requestAnimationFrame(() => {
+                  const domNode = btn.node || btn.el;
+                  if (domNode) {
+                    const tspan = domNode.querySelector('text tspan') || domNode.querySelector('text');
+                    if (tspan) tspan.textContent = String(count);
+                  }
+                });
+              }
+            }
+          }
+          // Expanded nodes: leave to library default (hover to show/hide)
+        }
+        for (const child of node.children || []) walk(child);
+      };
+      walk(root);
+    };
+    mindMap.on('node_tree_render_end', patchExpandBtns);
 
     // Close context menu on background click
     mindMap.on('draw_click', () => {
@@ -1048,6 +1152,8 @@ const MindMap: React.FC<MindMapProps> = ({
       }, 60);
     });
     mindMap.on('hide_text_edit', (_el: any, _list: any, editedNode: any) => {
+      // Clear editingNodeId so the next add triggers editing again
+      onEditEndRef.current?.();
       const goalId = editedNode?.nodeData?.data?.goalId || editedNode?.nodeData?.data?.uid;
       const root = nodesRef.current.find(n => n.type === NodeType.ROOT);
       if (!root || goalId !== root.id) return;
@@ -1076,6 +1182,7 @@ const MindMap: React.FC<MindMapProps> = ({
       mindMap.off?.('scale', handleScale);
       mindMap.off?.('translate', handleTranslate);
       mindMap.off?.('view_data_change', handleViewDataChange);
+      mindMap.off?.('node_tree_render_end', patchExpandBtns);
       try {
         mindMap.destroy?.();
       } catch {
@@ -1105,6 +1212,7 @@ const MindMap: React.FC<MindMapProps> = ({
       selectedNodeId,
       confirmedPreviewIds,
       t.mindmap.defaultRootText,
+      t.mindmap.defaultNodeText,
       isLight,
     );
     if (!treeData) return;
@@ -1165,11 +1273,17 @@ const MindMap: React.FC<MindMapProps> = ({
           newPreviews.forEach((id, i) => {
             const nodeIns = getRenderedNodeByGoalId(id);
             if (nodeIns?.group?.node) {
-              const el = nodeIns.group.node as HTMLElement;
+              const el = nodeIns.group.node as SVGGElement;
               el.style.opacity = '0';
-              el.style.transform = 'scale(0.3)';
-              el.style.transformOrigin = 'center center';
-              el.style.animation = `decomposeAppear 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) ${i * 80}ms forwards`;
+              el.style.transition = 'none';
+              el.setAttribute('transform', `${el.getAttribute('transform') || ''} scale(0.3)`);
+              setTimeout(() => {
+                el.style.transition = 'opacity 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)';
+                el.style.opacity = '1';
+                // SVG transform: just remove the appended scale
+                const curTransform = el.getAttribute('transform') || '';
+                el.setAttribute('transform', curTransform.replace(/ ?scale\(0\.3\)/, ''));
+              }, i * 80);
             }
           });
         }, 300);
@@ -1233,6 +1347,24 @@ const MindMap: React.FC<MindMapProps> = ({
               node: target,
               isInserting: true,
             });
+            // Explicitly focus + select all text so typing replaces it
+            const selectAll = () => {
+              if (cancelled) return;
+              const editEl = document.querySelector('.smm-node-edit-wrap') as HTMLElement;
+              if (editEl) {
+                editEl.focus();
+                const selection = window.getSelection();
+                if (selection) {
+                  const range = document.createRange();
+                  range.selectNodeContents(editEl);
+                  selection.removeAllRanges();
+                  selection.addRange(range);
+                }
+              }
+            };
+            // Run twice: once after library shows edit, once after it may reposition cursor
+            setTimeout(selectAll, 80);
+            setTimeout(selectAll, 200);
           }
         }, 50);
       } else if (attempts < maxAttempts) {
@@ -1271,6 +1403,15 @@ const MindMap: React.FC<MindMapProps> = ({
         }
       `}</style>
 
+      {/* Hidden input for mobile keyboard activation */}
+      <input
+        ref={mobileFocusRef}
+        className="absolute opacity-0 pointer-events-none"
+        style={{ position: 'absolute', top: -9999, left: -9999, width: 1, height: 1 }}
+        aria-hidden="true"
+        tabIndex={-1}
+      />
+
       {/* Mind Map Container */}
       <div
         ref={containerRef}
@@ -1294,6 +1435,7 @@ const MindMap: React.FC<MindMapProps> = ({
           <div className="flex items-center gap-1 rounded-full border border-th-border/40 bg-th-elevated/98 p-1 shadow-[0_12px_40px_-12px_rgba(0,0,0,0.25)] backdrop-blur-xl">
             <button
               onClick={() => {
+                mobileFocusRef.current?.focus();
                 onAddSubNode(actionBar.nodeId);
                 setActionBar(null);
               }}
@@ -1308,6 +1450,7 @@ const MindMap: React.FC<MindMapProps> = ({
               <>
                 <button
                   onClick={() => {
+                    mobileFocusRef.current?.focus();
                     const parentId = actionNode.parentId;
                     if (parentId) {
                       onAddSubNode(parentId);
@@ -1348,13 +1491,22 @@ const MindMap: React.FC<MindMapProps> = ({
             {!isRootActionNode && (
               <button
                 onClick={() => { onDecomposeGoal?.(actionBar.nodeId); setActionBar(null); }}
-                className="rounded-full p-2.5 text-th-accent bg-th-accent-muted hover:brightness-110 transition-all active:scale-90"
+                className="rounded-full p-2.5 text-th-text-secondary hover:text-th-accent hover:bg-th-accent-muted transition-all active:scale-90"
                 title={labels.decompose}
                 aria-label={labels.decompose}
               >
                 <DecomposeActionIcon />
               </button>
             )}
+
+            <button
+              onClick={() => { onExploreWithAI?.(actionBar.nodeId); setActionBar(null); }}
+              className="rounded-full p-2.5 text-th-text-secondary hover:text-th-accent hover:bg-th-accent-muted transition-all active:scale-90"
+              title={labels.exploreWithAI}
+              aria-label={labels.exploreWithAI}
+            >
+              <CompassIcon />
+            </button>
 
             <button
               onClick={() => {

@@ -63,6 +63,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: 'imageDataUrl is required' });
     }
 
+    // SEC-003: 5MB base64 크기 제한 (~3.75MB 디코딩)
+    if (String(imageDataUrl).length > 5 * 1024 * 1024) {
+      return res.status(413).json({ error: 'Image too large (max 5MB)' });
+    }
+
     const parsed = parseDataUrl(String(imageDataUrl));
     if (!parsed) {
       return res.status(400).json({ error: 'Invalid image data URL' });

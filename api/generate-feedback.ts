@@ -50,7 +50,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (authError) return res.status(authError.status).json(authError.body);
   const uid = user!.uid;
 
-  if (!process.env.GOOGLE_API_KEY?.trim()) {
+  if (!(process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY)?.trim()) {
     return res.status(500).json({ error: 'Google API key not configured' });
   }
 

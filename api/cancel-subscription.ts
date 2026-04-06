@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { authenticateRequest } from '../lib/authMiddleware.js';
 import { setCorsHeaders } from '../lib/corsHeaders.js';
 import { verifySubscriptionOwnership } from '../lib/verifySubscriptionOwnership.js';
+import { getAdminDb } from '../lib/firebaseAdmin.js';
 
 const trim = (v: string | undefined): string => (v ?? '').trim();
 
@@ -78,6 +79,19 @@ export default async function handler(
             : 'Failed to cancel subscription';
       return res.status(polarRes.status).json({ error: detail });
     }
+
+    // Firestore에 취소 상태 반영
+    const db = getAdminDb();
+    await Promise.all([
+      db.doc(`users/${uid}/profile/main`).set(
+        { billingCancelAtPeriodEnd: true, billingUpdatedAt: Date.now() },
+        { merge: true },
+      ),
+      db.doc(`users/${uid}/billing/polar`).set(
+        { cancelAtPeriodEnd: true, syncedAt: new Date().toISOString() },
+        { merge: true },
+      ),
+    ]);
 
     return res.status(200).json({
       success: true,

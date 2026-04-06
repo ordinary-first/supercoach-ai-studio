@@ -88,6 +88,16 @@ const ko: TranslationStrings = {
       monthly: '매월',
     },
   },
+  notes: {
+    title: '메모',
+    newNote: '새 메모',
+    untitled: '제목 없음',
+    placeholder: '여기에 작성하세요...',
+    empty: '메모가 없습니다',
+    emptyHint: '새 메모를 만들어보세요',
+    pinned: '고정됨',
+    deleteConfirm: '이 메모를 삭제할까요?',
+  },
   calendar: {
     title: '미션 달력',
     dayNames: ['일', '월', '화', '수', '목', '금', '토'],
@@ -268,6 +278,11 @@ const ko: TranslationStrings = {
     insertImage: '이미지 삽입',
     delete: '삭제',
     decompose: '분해',
+    exploreWithAI: 'AI와 탐색',
+    visionBoard: '비전보드',
+    mindMapLabel: '마인드맵',
+    outlineLabel: '개요',
+    noSubGoals: '하위 목표가 없습니다',
     layoutModes: {
       mindMap: '마인드맵',
       logicalStructure: '논리',
@@ -275,6 +290,7 @@ const ko: TranslationStrings = {
       organizationStructure: '조직도',
     },
     defaultRootText: '나의 인생 비전',
+    defaultNodeText: '나의 인생 비전',
     ghostTemplates: [
       '나는 매달 100만원의 부수입을 만든다',
       '나는 건강하고 균형 잡힌 몸을 가진다',

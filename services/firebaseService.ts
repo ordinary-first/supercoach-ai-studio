@@ -22,7 +22,7 @@ import {
   query,
   setDoc,
 } from 'firebase/firestore';
-import type { ChatMessage, FeedbackCard, GoalLink, GoalNode, NotificationSettings, ToDoItem, TodoList, TodoGroup, UserPrinciple, UserProfile } from '../types';
+import type { ChatMessage, FeedbackCard, GoalLink, GoalNode, NoteItem, NotificationSettings, ToDoItem, TodoList, TodoGroup, UserPrinciple, UserProfile } from '../types';
 
 const isDev = typeof process !== 'undefined' && process.env.NODE_ENV === 'development';
 const log = isDev ? console.log : () => {};
@@ -263,6 +263,28 @@ export const loadTodos = async (userId: string): Promise<ToDoItem[] | null> => {
   }
 };
 
+export const saveNotes = async (userId: string, notes: NoteItem[]): Promise<void> => {
+  if (!userId) return;
+  const cleanItems = JSON.parse(JSON.stringify(notes));
+  const payload = { items: cleanItems, updatedAt: Date.now() };
+  const docRef = doc(db, 'users', userId, 'data', 'notes');
+  await setDoc(docRef, payload);
+};
+
+export const loadNotes = async (userId: string): Promise<NoteItem[] | null> => {
+  if (!userId) return null;
+  try {
+    const docRef = doc(db, 'users', userId, 'data', 'notes');
+    const snap = await getDoc(docRef);
+    if (!snap.exists()) return null;
+    const data = snap.data() as any;
+    return Array.isArray(data.items) ? data.items : null;
+  } catch (error: any) {
+    console.error('[Load:Notes] Firestore read failed:', error?.code || error?.message);
+    return null;
+  }
+};
+
 export const saveTodoLists = async (
   userId: string,
   lists: TodoList[],
@@ -329,16 +351,19 @@ export const saveProfile = async (userId: string, profile: UserProfile): Promise
   if (!userId) return;
   const docRef = doc(db, 'users', userId, 'profile', 'main');
   const existing = await getDoc(docRef);
+  // SEC-006: 입력 길이 제한 + sanitization
+  const trim = (s: unknown, max: number) =>
+    typeof s === 'string' ? s.slice(0, max) : '';
   const profileData: Record<string, unknown> = {
-    name: profile.name,
+    name: trim(profile.name, 50),
     email: profile.email || null,
     googleId: profile.googleId,
     avatarUrl: profile.avatarUrl || null,
     gender: profile.gender || 'Other',
-    age: profile.age || '',
-    location: profile.location || '',
-    bio: profile.bio || '',
-    gallery: Array.isArray(profile.gallery) ? profile.gallery : [],
+    age: trim(profile.age, 3),
+    location: trim(profile.location, 100),
+    bio: trim(profile.bio, 500),
+    gallery: Array.isArray(profile.gallery) ? profile.gallery.slice(0, 6) : [],
     onboardingCompleted: profile.onboardingCompleted ?? true,
     updatedAt: Date.now(),
     createdAt: existing.data()?.createdAt || profile.createdAt || Date.now(),

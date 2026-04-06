@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { geminiChat } from '../lib/geminiClient.js';
 import { authenticateRequest } from '../lib/authMiddleware.js';
 import { setCorsHeaders } from '../lib/corsHeaders.js';
+import { checkAndIncrement } from '../lib/usageGuard.js';
 
 const SYSTEM_PROMPT = `당신은 시각화 장면 구체화 가이드입니다.
 사용자가 추상적인 장면이나 목표를 말하면:
@@ -27,6 +28,12 @@ export default async function handler(
 
   const { user, error } = await authenticateRequest(req);
   if (error) return res.status(error.status).json(error.body);
+
+  const uid = user!.uid;
+  const usage = await checkAndIncrement(uid, 'chatMessages');
+  if (usage.error) {
+    return res.status(429).json({ error: usage.error, message: usage.message });
+  }
 
   const { history, message, goals } = req.body as {
     history?: { role: string; content: string }[];

@@ -64,6 +64,16 @@ export interface TranslationStrings {
     repeat: Record<string, string>;
     repeatOptions: Record<string, string>;
   };
+  notes: {
+    title: string;
+    newNote: string;
+    untitled: string;
+    placeholder: string;
+    empty: string;
+    emptyHint: string;
+    pinned: string;
+    deleteConfirm: string;
+  };
   calendar: {
     title: string;
     dayNames: string[];
@@ -229,8 +239,14 @@ export interface TranslationStrings {
     insertImage: string;
     delete: string;
     decompose: string;
+    exploreWithAI: string;
+    visionBoard: string;
+    mindMapLabel: string;
+    outlineLabel: string;
+    noSubGoals: string;
     layoutModes: Record<string, string>;
     defaultRootText: string;
+    defaultNodeText: string;
     ghostTemplates: string[];
     onboarding: {
       addChildTitle: string;

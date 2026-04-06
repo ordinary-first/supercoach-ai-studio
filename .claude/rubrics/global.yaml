@@ -1,0 +1,120 @@
+# Layer 1: Global Criteria
+# 모든 빌드에 항상 적용되는 불변 규칙 (AGENTS.md 기반)
+# 각 항목은 Pass/Fail로만 판정. 주관적 해석 없음.
+# severity: block = Fail 시 무조건 수정 루프, warn = 경고만
+
+code_style:
+  - id: no-any-type
+    description: "TypeScript `any` 타입 사용 금지"
+    check: "grep -rn ': any' {files} | grep -v node_modules | grep -v '.d.ts'"
+    expect: "0 matches"
+    severity: block
+
+  - id: no-console-log
+    description: "console.log 사용 금지 (proper logger 사용)"
+    check: "grep -rn 'console\\.log' {files} | grep -v node_modules"
+    expect: "0 matches"
+    severity: block
+
+  - id: named-exports
+    description: "named export 사용 (default export 최소화)"
+    check: "grep -c 'export default' {files}"
+    expect: "0 or justified"
+    severity: warn
+
+  - id: early-return
+    description: "early return 패턴 사용 (deep nesting 방지)"
+    check: "manual review - nested if/else 3단계 이상 금지"
+    severity: warn
+
+  - id: max-line-length
+    description: "한 줄 최대 100자"
+    check: "awk 'length > 100' {files} | wc -l"
+    expect: "0 lines"
+    severity: block
+
+  - id: max-function-length
+    description: "함수 최대 50줄"
+    check: "manual review - 함수 시작~끝 줄 수 카운트"
+    expect: "all functions <= 50 lines"
+    severity: block
+
+  - id: max-file-length
+    description: "파일 최대 300줄"
+    check: "wc -l {files}"
+    expect: "all files <= 300 lines"
+    severity: block
+
+  - id: functional-components
+    description: "class 컴포넌트 금지, functional 컴포넌트만"
+    check: "grep -rn 'class .* extends.*Component' {files}"
+    expect: "0 matches"
+    severity: block
+
+  - id: zustand-only
+    description: "상태관리는 Zustand만 (Redux/MobX 금지)"
+    check: "grep -rn 'import.*redux\\|import.*mobx' {files}"
+    expect: "0 matches"
+    severity: block
+
+security:
+  - id: api-auth-middleware
+    description: "모든 API 엔드포인트에 authMiddleware 적용"
+    check: "api/*.ts 파일에서 authMiddleware import 및 호출 확인"
+    expect: "all api files use authMiddleware"
+    severity: block
+    applies_to: "api/*.ts"
+
+  - id: no-hardcoded-secrets
+    description: "소스코드에 시크릿/API키 하드코딩 금지"
+    check: "grep -rn 'sk-\\|AIza\\|AKIA' {files} | grep -v '.env'"
+    expect: "0 matches"
+    severity: block
+
+  - id: env-vars-only
+    description: "환경변수는 process.env에서만 접근"
+    check: "시크릿 값이 직접 문자열로 포함되지 않았는지 확인"
+    severity: block
+
+  - id: cors-headers
+    description: "API 엔드포인트에서 corsHeaders.ts 사용"
+    check: "api/*.ts에서 corsHeaders import 확인"
+    expect: "all api files import corsHeaders"
+    severity: block
+    applies_to: "api/*.ts"
+
+  - id: usage-guard
+    description: "과금 엔드포인트에 usageGuard 적용"
+    check: "generate-*, chat 등 리소스 소모 API에 usageGuard 확인"
+    severity: block
+    applies_to: "api/generate-*.ts, api/chat.ts"
+
+naming:
+  - id: component-pascal-case
+    description: "컴포넌트 파일명: PascalCase"
+    check: "components/ 하위 .tsx 파일명이 PascalCase인지"
+    severity: block
+    applies_to: "components/**/*.tsx"
+
+  - id: hook-camel-case-use
+    description: "훅 파일명: camelCase + use 접두사"
+    check: "hooks/ 하위 .ts 파일명이 use로 시작하는지"
+    severity: block
+    applies_to: "hooks/*.ts"
+
+  - id: constant-upper-snake
+    description: "상수: UPPER_SNAKE_CASE"
+    check: "export const로 선언된 상수가 UPPER_SNAKE인지"
+    severity: warn
+
+  - id: folder-kebab-case
+    description: "폴더명: kebab-case"
+    check: "새로 생성된 폴더가 kebab-case인지"
+    severity: block
+
+version:
+  - id: display-version-bump
+    description: "displayVersion 범프 (V{MM}.{DD}r{revision})"
+    check: "package.json의 displayVersion이 오늘 날짜로 업데이트되었는지"
+    expect: "displayVersion matches today's date"
+    severity: block

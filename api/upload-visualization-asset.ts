@@ -93,6 +93,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!assetType) {
       return res.status(400).json({ error: 'assetType is required' });
     }
+    const payload = String(dataUrl || audioData || '');
+    if (payload.length > 10 * 1024 * 1024) {
+      return res.status(413).json({ error: 'Asset too large (max 10MB)' });
+    }
     if (!R2_PUBLIC_URL) {
       return res.status(500).json({ error: 'R2 public url is not configured' });
     }
