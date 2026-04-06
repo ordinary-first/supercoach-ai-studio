@@ -1,4 +1,4 @@
-﻿import React, { useState, useMemo, useCallback, useEffect } from 'react';
+﻿import React, { useState, useRef, useMemo, useCallback, useEffect } from 'react';
 import { Check, Trash2, Plus, ListTodo, Circle, CheckCircle2, Target, Bell, Repeat, Sun, ArrowLeft, ArrowUp, ChevronRight, ChevronDown, Layout, X, Calendar, Star, CalendarDays, Home, Menu, GripVertical } from 'lucide-react';
 import { ToDoItem, TodoList, TodoGroup, TodoStep, SmartListId, RepeatFrequency, UserPrinciple } from '../types';
 import { useFocusTrap } from '../hooks/useFocusTrap';
@@ -50,12 +50,17 @@ const StepsSection: React.FC<{
   language: string;
 }> = ({ steps, onUpdate, language }) => {
   const [newStepText, setNewStepText] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const addStep = () => {
     const text = newStepText.trim();
-    if (!text) return;
+    if (!text) {
+      inputRef.current?.focus();
+      return;
+    }
     onUpdate([...steps, { id: crypto.randomUUID(), text, completed: false }]);
     setNewStepText('');
+    requestAnimationFrame(() => inputRef.current?.focus());
   };
 
   const toggleStep = (stepId: string) => {
@@ -103,14 +108,18 @@ const StepsSection: React.FC<{
       ))}
 
       <div className="flex items-center gap-2 px-1">
-        <Plus size={16} className="text-th-text-tertiary flex-shrink-0" />
+        <button onClick={addStep} className="flex-shrink-0 text-th-text-tertiary hover:text-th-accent transition-colors">
+          <Plus size={16} />
+        </button>
         <input
+          ref={inputRef}
           type="text"
           value={newStepText}
           onChange={(e) => setNewStepText(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') addStep(); }}
+          onFocus={(e) => e.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'nearest' })}
           placeholder={label}
-          className="flex-1 bg-transparent text-sm text-th-text placeholder:text-th-text-tertiary focus:outline-none py-1"
+          className="flex-1 bg-transparent text-sm text-th-text placeholder:text-th-text-tertiary focus:outline-none py-2"
         />
       </div>
     </div>
@@ -739,6 +748,7 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
                 <textarea
                   value={selectedToDo.text}
                   onChange={(e) => onUpdateToDo(selectedToDo.id, { text: e.target.value })}
+                  onFocus={(e) => e.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'nearest' })}
                   className="bg-transparent text-base font-semibold text-th-text w-full focus:outline-none resize-none h-auto min-h-[2rem]"
                   rows={2}
                 />
@@ -835,6 +845,7 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
                   placeholder={t.todo.notePlaceholder}
                   value={selectedToDo.note || ''}
                   onChange={(e) => onUpdateToDo(selectedToDo.id, { note: e.target.value })}
+                  onFocus={(e) => e.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'center' })}
                   className="w-full h-full bg-transparent text-sm text-th-text-secondary resize-none focus:outline-none placeholder:text-th-text-tertiary font-medium"
                 />
               </div>

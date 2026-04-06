@@ -539,10 +539,16 @@ const App: React.FC = () => {
     }
   }, [nodes, handleUpdateNode, userProfile, addToast]);
 
-  // 노드를 할일로 변환 (액션 메뉴에서 호출)
+  // 노드를 할일로 변환 (액션 메뉴에서 호출) — 하위 노드를 서브스텝으로 포함
   const handleConvertNodeToTodo = useCallback((nodeId: string) => {
     const node = nodes.find(n => n.id === nodeId);
     if (!node || !node.text) return;
+    const childNodes = nodes.filter(n => n.parentId === nodeId && n.text);
+    const steps = childNodes.map(child => ({
+      id: crypto.randomUUID(),
+      text: child.text,
+      completed: false,
+    }));
     setTodos(prev => [{
       id: Date.now().toString(),
       text: node.text,
@@ -550,9 +556,10 @@ const App: React.FC = () => {
       createdAt: Date.now(),
       linkedNodeId: nodeId,
       linkedNodeText: node.text,
+      ...(steps.length > 0 && { steps }),
     }, ...prev]);
     addToast(t.app.toasts.todoAdded, 'success');
-    appendAction(getUserId(), 'ADD_TODO', `"${node.text}" 할일 변환`, { nodeId, todoId: Date.now().toString() });
+    appendAction(getUserId(), 'ADD_TODO', `"${node.text}" 할일 변환 (하위 ${steps.length}개 스텝 포함)`, { nodeId, todoId: Date.now().toString() });
   }, [nodes, addToast]);
 
   const handleInsertNodeImage = useCallback((nodeId: string) => {
@@ -900,7 +907,7 @@ const App: React.FC = () => {
         />
       </div>
  
-       <div className="absolute top-3 right-3 md:top-6 md:right-6 z-[60]">
+       <div className="absolute top-[2px] right-2 md:top-[8px] md:right-6 z-[60]">
          <button
            onClick={() => setIsSettingsPageOpen(true)}
            className="apple-chip w-10 h-10 rounded-full text-th-text-secondary hover:bg-th-surface-hover transition-all flex items-center justify-center"

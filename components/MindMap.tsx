@@ -891,6 +891,33 @@ const MindMap: React.FC<MindMapProps> = ({
       }
     });
 
+    // --- Long-press gate for node drag ---
+    // The Drag plugin sets isMousedown=true on node_mousedown, enabling drag on mousemove.
+    // We intercept: immediately reset isMousedown after the plugin sets it, then re-enable
+    // after 500ms long-press. This prevents accidental node moves from quick taps/swipes.
+    const dragPlugin = (mindMap as any).drag;
+    if (dragPlugin) {
+      let longPressTimer: ReturnType<typeof setTimeout> | null = null;
+      const cancelLongPress = () => {
+        if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+      };
+
+      mindMap.on('node_mousedown', () => {
+        // The Drag plugin's handler already fired (same event), setting isMousedown=true.
+        // Immediately suppress it; re-enable after long-press threshold.
+        dragPlugin.isMousedown = false;
+        cancelLongPress();
+        longPressTimer = setTimeout(() => {
+          // Re-enable drag — mousedownNode and coordinates are already recorded by the plugin.
+          dragPlugin.isMousedown = true;
+          longPressTimer = null;
+        }, 500);
+      });
+
+      mindMap.on('mouseup', cancelLongPress);
+      mindMap.on('node_mouseup', cancelLongPress);
+    }
+
     // Disable built-in keyboard shortcuts that conflict with our app
     // (We handle add/delete through App.tsx UI buttons)
     mindMap.keyCommand.removeShortcut('Tab');
