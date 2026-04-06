@@ -844,8 +844,10 @@ const App: React.FC = () => {
   );
 
   // --- Visible Nodes/Links ---
-  // Include all descendants of collapsed nodes so simple-mind-map can show
-  // the correct child count badge on the expand button.
+  // Pass ALL nodes to MindMap (including children of collapsed nodes).
+  // simple-mind-map handles collapse/expand via `expand: false` in tree data.
+  // Previously we filtered out collapsed children here, which caused the expand
+  // badge to show 0 because the library had no children data to count.
   const { visibleNodes, visibleLinks } = useMemo(() => {
       const visibleNodeSet = new Set<string>();
       const stack = ['root'];

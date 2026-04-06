@@ -1019,6 +1019,18 @@ const MindMap: React.FC<MindMapProps> = ({
       syncChanges(data);
     });
 
+    // --- Sync expand/collapse to React state so it persists across refresh ---
+    mindMap.on('expand_btn_click', (node: any) => {
+      const goalId = node?.nodeData?.data?.goalId || node?.nodeData?.data?.uid;
+      if (!goalId || goalId.startsWith('ghost-')) return;
+      const expand = node.getData('expand');
+      const collapsed = expand === false;
+      const current = nodesRef.current.find(n => n.id === goalId);
+      if (current && current.collapsed !== collapsed) {
+        onUpdateNodeRef.current(goalId, { collapsed });
+      }
+    });
+
     // Close context menu on background click
     mindMap.on('draw_click', () => {
       if (previewNodeIdsRef.current && previewNodeIdsRef.current.length > 0) {
