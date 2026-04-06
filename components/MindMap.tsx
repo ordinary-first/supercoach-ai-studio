@@ -1051,77 +1051,17 @@ const MindMap: React.FC<MindMapProps> = ({
       syncChanges(data);
     });
 
-    // --- Cache descendant counts before collapse (nodes may vanish from state after collapse) ---
-    const descendantCountCache = new Map<string, number>();
-    const computeDescendantsFromNodes = (id: string, allNodes: GoalNode[]): number => {
-      const children = allNodes.filter(n => n.parentId === id);
-      return children.reduce((sum, child) => sum + 1 + computeDescendantsFromNodes(child.id, allNodes), 0);
-    };
-
-    // --- Event: expand_btn_click — sync collapse state to React ---
+    // --- Sync expand/collapse to React state so it persists across refresh ---
     mindMap.on('expand_btn_click', (node: any) => {
-      if (isDestroyedRef.current) return;
       const goalId = node?.nodeData?.data?.goalId || node?.nodeData?.data?.uid;
       if (!goalId || goalId.startsWith('ghost-')) return;
+      const expand = node.getData('expand');
+      const collapsed = expand === false;
       const current = nodesRef.current.find(n => n.id === goalId);
-      if (!current) return;
-      const isExpanded = node.nodeData?.data?.expand !== false;
-      const newCollapsed = !isExpanded;
-      // Cache descendant count BEFORE state changes (nodes may vanish after collapse)
-      if (newCollapsed) {
-        descendantCountCache.set(goalId, computeDescendantsFromNodes(goalId, nodesRef.current));
-      }
-      if (current.collapsed !== newCollapsed) {
-        onUpdateNodeRef.current(goalId, { collapsed: newCollapsed });
+      if (current && current.collapsed !== collapsed) {
+        onUpdateNodeRef.current(goalId, { collapsed });
       }
     });
-
-    // --- Post-render: force-show expand btn with descendant count on collapsed nodes ---
-    const patchExpandBtns = () => {
-      if (isDestroyedRef.current) return;
-      const root = mindMap.renderer?.root;
-      if (!root) return;
-      const getDescCount = (id: string): number => {
-        // Use cache first (set before collapse when all nodes were still present)
-        if (descendantCountCache.has(id)) return descendantCountCache.get(id)!;
-        // Fallback: compute from current React state
-        const curNodes = nodesRef.current;
-        const children = curNodes.filter(n => n.parentId === id);
-        return children.reduce((sum, child) => sum + 1 + getDescCount(child.id), 0);
-      };
-      const walk = (node: any) => {
-        if (!node || node.isRoot) { /* root: skip */ }
-        else {
-          const expand = node.getData?.('expand');
-          if (expand === false) {
-            // Collapsed → force render expand btn, then update count after library finishes
-            if (!node._expandBtn) {
-              node.renderExpandBtn?.();
-            }
-            const btn = node._expandBtn;
-            if (btn) {
-              btn.show();
-              const goalId = node.nodeData?.data?.goalId || node.nodeData?.data?.uid;
-              if (goalId) {
-                const count = getDescCount(goalId);
-                // Delay text update to after library's own text setting
-                requestAnimationFrame(() => {
-                  const domNode = btn.node || btn.el;
-                  if (domNode) {
-                    const tspan = domNode.querySelector('text tspan') || domNode.querySelector('text');
-                    if (tspan) tspan.textContent = String(count);
-                  }
-                });
-              }
-            }
-          }
-          // Expanded nodes: leave to library default (hover to show/hide)
-        }
-        for (const child of node.children || []) walk(child);
-      };
-      walk(root);
-    };
-    mindMap.on('node_tree_render_end', patchExpandBtns);
 
     // Close context menu on background click
     mindMap.on('draw_click', () => {
