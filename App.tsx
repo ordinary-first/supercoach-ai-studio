@@ -844,14 +844,15 @@ const App: React.FC = () => {
   );
 
   // --- Visible Nodes/Links ---
+  // Include all descendants of collapsed nodes so simple-mind-map can show
+  // the correct child count badge on the expand button.
   const { visibleNodes, visibleLinks } = useMemo(() => {
       const visibleNodeSet = new Set<string>();
       const stack = ['root'];
       while(stack.length > 0) {
           const currentId = stack.pop()!;
           visibleNodeSet.add(currentId);
-          const node = nodes.find(n => n.id === currentId);
-          if (node && !node.collapsed) nodes.filter(n => n.parentId === currentId).forEach(c => stack.push(c.id));
+          nodes.filter(n => n.parentId === currentId).forEach(c => stack.push(c.id));
       }
       return { visibleNodes: nodes.filter(n => visibleNodeSet.has(n.id)), visibleLinks: links.filter(l => visibleNodeSet.has(getLinkId(l.source)) && visibleNodeSet.has(getLinkId(l.target))) };
   }, [nodes, links]);
