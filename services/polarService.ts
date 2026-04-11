@@ -1,6 +1,6 @@
 import { getAuthHeaders } from './authFetch';
 
-export type PlanTier = 'explorer' | 'essential' | 'visionary' | 'master';
+export type PlanTier = 'explorer' | 'pro';
 
 interface CreateCheckoutRequest {
   plan: PlanTier;

@@ -11,9 +11,7 @@ type CheckoutBody = {
 
 const PLAN_TO_ENV_KEY: Record<PlanTier, string> = {
   explorer: 'POLAR_PRODUCT_ID_EXPLORER',
-  essential: 'POLAR_PRODUCT_ID_ESSENTIAL',
-  visionary: 'POLAR_PRODUCT_ID_VISIONARY',
-  master: 'POLAR_PRODUCT_ID_MASTER',
+  pro: 'POLAR_PRODUCT_ID_PRO',
 };
 
 const POLAR_API_BASE = {
@@ -24,12 +22,7 @@ const POLAR_API_BASE = {
 const trim = (value: string | undefined): string => (value ?? '').trim();
 
 const normalizePlan = (plan: unknown): PlanTier | null => {
-  if (
-    plan === 'explorer' ||
-    plan === 'essential' ||
-    plan === 'visionary' ||
-    plan === 'master'
-  ) {
+  if (plan === 'explorer' || plan === 'pro') {
     return plan;
   }
   return null;

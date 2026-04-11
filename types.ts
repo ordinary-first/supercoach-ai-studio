@@ -52,7 +52,7 @@ export interface UserProfile {
   googleId?: string;
   bio?: string;
   gallery?: string[];
-  billingPlan?: 'explorer' | 'essential' | 'visionary' | 'master' | null;
+  billingPlan?: 'explorer' | 'pro' | null;
   billingIsActive?: boolean;
   billingSubscriptionId?: string | null;
   billingCancelAtPeriodEnd?: boolean;

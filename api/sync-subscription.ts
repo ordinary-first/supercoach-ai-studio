@@ -22,9 +22,7 @@ const planByProductId = (productId: string | null): string | null => {
   if (!productId) return null;
   const map: Record<string, string> = {
     [trim(process.env.POLAR_PRODUCT_ID_EXPLORER)]: 'explorer',
-    [trim(process.env.POLAR_PRODUCT_ID_ESSENTIAL)]: 'essential',
-    [trim(process.env.POLAR_PRODUCT_ID_VISIONARY)]: 'visionary',
-    [trim(process.env.POLAR_PRODUCT_ID_MASTER)]: 'master',
+    [trim(process.env.POLAR_PRODUCT_ID_PRO)]: 'pro',
   };
   return map[productId] ?? null;
 };
