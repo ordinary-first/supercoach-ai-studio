@@ -13,10 +13,13 @@ const SUPPORTED_EVENTS = new Set([
   'subscription.updated',
   'subscription.active',
   'subscription.canceled',
+  'subscription.uncanceled',
   'subscription.revoked',
   'subscription.past_due',
   'customer.state_changed',
   'order.paid',
+  'order.refunded',
+  'refund.created',
 ]);
 
 type GenericData = Record<string, unknown>;
@@ -124,14 +127,10 @@ const readRawBody = async (req: VercelRequest): Promise<Buffer> => {
 const planByProductId = (productId: string | null): string | null => {
   if (!productId) return null;
   const explorer = trim(process.env.POLAR_PRODUCT_ID_EXPLORER);
-  const essential = trim(process.env.POLAR_PRODUCT_ID_ESSENTIAL);
-  const visionary = trim(process.env.POLAR_PRODUCT_ID_VISIONARY);
-  const master = trim(process.env.POLAR_PRODUCT_ID_MASTER);
+  const pro = trim(process.env.POLAR_PRODUCT_ID_PRO);
 
   if (productId === explorer) return 'explorer';
-  if (productId === essential) return 'essential';
-  if (productId === visionary) return 'visionary';
-  if (productId === master) return 'master';
+  if (productId === pro) return 'pro';
   return null;
 };
 
@@ -189,6 +188,8 @@ const extractSubscriptionStatus = (eventType: string, data: GenericData): string
   }
 
   if (eventType === 'order.paid') return 'paid';
+  // Refund events → treat as revoked (deactivate access)
+  if (eventType === 'order.refunded' || eventType === 'refund.created') return 'refunded';
   return null;
 };
 
@@ -247,16 +248,29 @@ const syncBillingState = async (
     { merge: true }
   );
 
-  await profileRef.set(
-    {
-      billingProvider: 'polar',
-      billingPlan: plan,
-      billingStatus: subscriptionStatus,
-      billingIsActive: isActive,
-      billingUpdatedAt: Date.now(),
-    },
-    { merge: true }
-  );
+  const profileUpdate: Record<string, unknown> = {
+    billingProvider: 'polar',
+    billingPlan: plan,
+    billingStatus: subscriptionStatus,
+    billingIsActive: isActive,
+    billingUpdatedAt: Date.now(),
+  };
+
+  // Handle cancel/uncancel at period end
+  if (eventType === 'subscription.canceled') {
+    profileUpdate.billingCancelAtPeriodEnd = true;
+  } else if (eventType === 'subscription.uncanceled') {
+    profileUpdate.billingCancelAtPeriodEnd = false;
+    profileUpdate.billingIsActive = true;
+  }
+
+  // Handle refund — deactivate and reset plan
+  if (eventType === 'order.refunded' || eventType === 'refund.created') {
+    profileUpdate.billingIsActive = false;
+    profileUpdate.billingPlan = 'explorer';
+  }
+
+  await profileRef.set(profileUpdate, { merge: true });
 
   return { synced: true };
 };

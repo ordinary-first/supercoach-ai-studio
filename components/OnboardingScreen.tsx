@@ -31,7 +31,7 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
   }[] = [
     {
       plan: 'explorer',
-      label: 'Explorer',
+      label: language === 'ko' ? '무료 체험' : 'Free Trial',
       price: t.onboarding.free,
       badge: t.onboarding.trialBadge,
       features: t.onboarding.planFeatures.explorer,
@@ -39,26 +39,10 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
       highlight: true,
     },
     {
-      plan: 'essential',
-      label: 'Essential',
-      price: language === 'ko' ? '$9.99/월' : '$9.99/mo',
-      features: t.onboarding.planFeatures.essential,
-      cta: t.onboarding.startNow,
-      highlight: false,
-    },
-    {
-      plan: 'visionary',
-      label: 'Visionary',
-      price: language === 'ko' ? '$19.99/월' : '$19.99/mo',
-      features: t.onboarding.planFeatures.visionary,
-      cta: t.onboarding.startNow,
-      highlight: false,
-    },
-    {
-      plan: 'master',
-      label: 'Master',
+      plan: 'pro',
+      label: 'Pro',
       price: language === 'ko' ? '$49.99/월' : '$49.99/mo',
-      features: t.onboarding.planFeatures.master,
+      features: t.onboarding.planFeatures.pro,
       cta: t.onboarding.startNow,
       highlight: false,
     },

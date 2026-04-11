@@ -12,7 +12,7 @@ type PolarCheckout = {
   product_id?: string | null;
 };
 
-type PlanTier = 'explorer' | 'essential' | 'visionary' | 'master' | null;
+type PlanTier = 'explorer' | 'pro' | null;
 
 const POLAR_API_BASE = {
   production: 'https://api.polar.sh/v1',
@@ -25,14 +25,10 @@ const parsePlanFromProductId = (productId: string | null): PlanTier => {
   if (!productId) return null;
 
   const explorer = trim(process.env.POLAR_PRODUCT_ID_EXPLORER);
-  const essential = trim(process.env.POLAR_PRODUCT_ID_ESSENTIAL);
-  const visionary = trim(process.env.POLAR_PRODUCT_ID_VISIONARY);
-  const master = trim(process.env.POLAR_PRODUCT_ID_MASTER);
+  const pro = trim(process.env.POLAR_PRODUCT_ID_PRO);
 
   if (productId === explorer) return 'explorer';
-  if (productId === essential) return 'essential';
-  if (productId === visionary) return 'visionary';
-  if (productId === master) return 'master';
+  if (productId === pro) return 'pro';
   return null;
 };
 

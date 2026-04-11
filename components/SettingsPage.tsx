@@ -78,28 +78,18 @@ interface SettingsPageProps {
 // Labels are now in t.settings.* via useTranslation
 
 const PLANS: { plan: PlanTier; title: string; price: string }[] = [
-  { plan: 'explorer', title: 'Explorer', price: 'Free' },
-  { plan: 'essential', title: 'Essential', price: '$9.99/mo' },
-  { plan: 'visionary', title: 'Visionary', price: '$19.99/mo' },
-  { plan: 'master', title: 'Master', price: '$49.99/mo' },
+  { plan: 'explorer', title: 'Free Trial', price: 'Free (3 days)' },
+  { plan: 'pro', title: 'Pro', price: '$49.99/mo' },
 ];
 
 const PLAN_LIMITS: Record<string, Record<string, number>> = {
   explorer: {
-    chatMessages: 300, narrativeCalls: 5, imageCredits: 8,
+    chatMessages: 50, narrativeCalls: 3, imageCredits: 5,
     audioMinutes: 0, videoGenerations: 0,
   },
-  essential: {
-    chatMessages: 2500, narrativeCalls: 20, imageCredits: 80,
-    audioMinutes: 30, videoGenerations: 0,
-  },
-  visionary: {
-    chatMessages: 6000, narrativeCalls: 40, imageCredits: 180,
-    audioMinutes: 90, videoGenerations: 4,
-  },
-  master: {
-    chatMessages: 15000, narrativeCalls: 80, imageCredits: 450,
-    audioMinutes: 240, videoGenerations: 12,
+  pro: {
+    chatMessages: 5000, narrativeCalls: 80, imageCredits: 100,
+    audioMinutes: 60, videoGenerations: 10,
   },
 };
 
@@ -221,7 +211,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
   );
 
   const PLAN_ORDER: Record<string, number> = {
-    explorer: 0, essential: 1, visionary: 2, master: 3,
+    explorer: 0, pro: 1,
   };
 
   const handleCheckout = async (plan: PlanTier) => {

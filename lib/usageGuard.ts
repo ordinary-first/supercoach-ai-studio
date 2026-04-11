@@ -8,36 +8,22 @@ type Resource =
   | 'audioMinutes'
   | 'videoGenerations';
 
-type PlanTier = 'explorer' | 'essential' | 'visionary' | 'master';
+type PlanTier = 'explorer' | 'pro';
 
 const PLAN_LIMITS: Record<PlanTier, Record<Resource, number>> = {
   explorer: {
-    chatMessages: 300,
-    narrativeCalls: 5,
-    imageCredits: 8,
+    chatMessages: 50,
+    narrativeCalls: 3,
+    imageCredits: 5,
     audioMinutes: 0,
     videoGenerations: 0,
   },
-  essential: {
-    chatMessages: 2500,
-    narrativeCalls: 20,
-    imageCredits: 80,
-    audioMinutes: 30,
-    videoGenerations: 0,
-  },
-  visionary: {
-    chatMessages: 6000,
-    narrativeCalls: 40,
-    imageCredits: 180,
-    audioMinutes: 90,
-    videoGenerations: 4,
-  },
-  master: {
-    chatMessages: 15000,
+  pro: {
+    chatMessages: 5000,
     narrativeCalls: 80,
-    imageCredits: 450,
-    audioMinutes: 240,
-    videoGenerations: 12,
+    imageCredits: 100,
+    audioMinutes: 60,
+    videoGenerations: 10,
   },
 };
 
@@ -69,9 +55,10 @@ export async function checkAndIncrement(
     .doc(`users/${userId}/profile/main`)
     .get();
   const rawPlan = profileSnap.data()?.billingPlan;
+  // Legacy plans (essential/visionary/master) are treated as 'pro'
   const plan: PlanTier =
-    rawPlan === 'essential' || rawPlan === 'visionary' || rawPlan === 'master'
-      ? rawPlan
+    rawPlan === 'pro' || rawPlan === 'essential' || rawPlan === 'visionary' || rawPlan === 'master'
+      ? 'pro'
       : 'explorer';
 
   // 트라이얼 만료 체크 (무료 플랜만)
@@ -118,7 +105,7 @@ export function limitExceededResponse(
     return {
       error: 'TRIAL_EXPIRED',
       resource,
-      message: '무료 체험 기간이 종료되었습니다. 플랜을 업그레이드해 주세요.',
+      message: '무료 체험 기간이 종료되었습니다. Pro 플랜으로 업그레이드해 주세요.',
     };
   }
   return {

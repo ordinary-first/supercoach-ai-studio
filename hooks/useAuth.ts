@@ -283,7 +283,8 @@ export function useAuth(
     if (isDevMode) return false;
     if (!userProfile) return false;
     const plan = userProfile.billingPlan;
-    if (plan === 'essential' || plan === 'visionary' || plan === 'master') return false;
+    // Pro or any legacy paid plan
+    if (plan === 'pro' || plan === 'essential' || plan === 'visionary' || plan === 'master') return false;
     if (userProfile.billingIsActive) return false;
     const created = userProfile.createdAt;
     if (!created) return false;

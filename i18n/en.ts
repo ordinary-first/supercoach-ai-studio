@@ -224,10 +224,8 @@ const en: TranslationStrings = {
       videoGenerations: 'Video',
     },
     planFeatures: {
-      explorer: ['300 coaching chats/mo', '5 narratives/mo', '8 images/mo'],
-      essential: ['2,500 coaching chats/mo', '20 narratives/mo', '80 images/mo', '30 min TTS audio/mo'],
-      visionary: ['6,000 coaching chats/mo', '40 narratives/mo', '180 images (HQ)/mo', '90 min audio/mo', '4 videos/mo'],
-      master: ['15,000 coaching chats/mo', '80 narratives/mo', '450 images (HQ)/mo', '240 min audio/mo', '12 videos/mo'],
+      explorer: ['50 coaching chats', '5 images', '3-day trial'],
+      pro: ['5,000 coaching chats/mo', '80 narratives/mo', '100 images/mo', '60 min audio/mo', '10 videos/mo'],
     },
     genderOptions: {
       Male: 'Male',
@@ -409,10 +407,8 @@ const en: TranslationStrings = {
     error: 'An error occurred.',
     footer: 'You can change your plan anytime in Settings.',
     planFeatures: {
-      explorer: ['300 coaching chats/mo', '5 narratives/mo', '8 images/mo'],
-      essential: ['2,500 coaching chats/mo', '20 narratives/mo', '80 images/mo', '30 min TTS audio/mo'],
-      visionary: ['6,000 coaching chats/mo', '40 narratives/mo', '180 images/mo', '90 min audio/mo', '4 videos/mo'],
-      master: ['15,000 coaching chats/mo', '80 narratives/mo', '450 images/mo', '240 min audio/mo', '12 videos/mo'],
+      explorer: ['50 coaching chats', '5 images', '3-day trial'],
+      pro: ['5,000 coaching chats/mo', '80 narratives/mo', '100 images/mo', '60 min audio/mo', '10 videos/mo'],
     },
   },
 };

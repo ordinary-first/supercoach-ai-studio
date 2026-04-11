@@ -1,8 +1,8 @@
 {
   "meta": {
-    "updatedAt": "2026-02-14",
+    "updatedAt": "2026-04-11",
     "currency": "USD",
-    "notes": "Update this file first when limits/models/prices change."
+    "notes": "2-tier pricing: Explorer (free 3-day trial) + Pro ($49.99/mo). Fair use limits enforced but not prominently displayed in UI."
   },
   "fees": {
     "polarSubscriptionPercent": 0.045,
@@ -20,16 +20,6 @@
         "low1024Usd": 0.009,
         "medium1024Usd": 0.034,
         "high1024Usd": 0.133
-      },
-      "gpt-image-1": {
-        "low1024Usd": 0.011,
-        "medium1024Usd": 0.042,
-        "high1024Usd": 0.167
-      },
-      "gpt-image-1-mini": {
-        "low1024Usd": 0.005,
-        "medium1024Usd": 0.011,
-        "high1024Usd": 0.036
       }
     },
     "audioModels": {
@@ -59,53 +49,27 @@
     {
       "name": "Explorer",
       "priceUsd": 0,
+      "trialDays": 3,
       "limits": {
-        "chatMessages": 300,
-        "narrativeCalls": 5,
-        "imageCredits": 8,
-        "highImageCreditRatioExpected": 0,
-        "highImageCreditRatioWorst": 0,
+        "chatMessages": 50,
+        "narrativeCalls": 3,
+        "imageCredits": 5,
         "audioMinutes": 0,
         "videoGenerations": 0
       }
     },
     {
-      "name": "Essential",
-      "priceUsd": 9.99,
+      "name": "Pro",
+      "priceUsd": 49.99,
+      "originalPriceUsd": 99.99,
       "limits": {
-        "chatMessages": 2500,
-        "narrativeCalls": 20,
-        "imageCredits": 80,
-        "highImageCreditRatioExpected": 0,
-        "highImageCreditRatioWorst": 0,
-        "audioMinutes": 30,
-        "videoGenerations": 0
-      }
-    },
-    {
-      "name": "Visionary",
-      "priceUsd": 19.99,
-      "limits": {
-        "chatMessages": 6000,
-        "narrativeCalls": 40,
-        "imageCredits": 180,
+        "chatMessages": 5000,
+        "narrativeCalls": 80,
+        "imageCredits": 100,
         "highImageCreditRatioExpected": 0.7,
         "highImageCreditRatioWorst": 1,
-        "audioMinutes": 90,
-        "videoGenerations": 4
-      }
-    },
-    {
-      "name": "Master",
-      "priceUsd": 49.99,
-      "limits": {
-        "chatMessages": 15000,
-        "narrativeCalls": 80,
-        "imageCredits": 450,
-        "highImageCreditRatioExpected": 0.8,
-        "highImageCreditRatioWorst": 1,
-        "audioMinutes": 240,
-        "videoGenerations": 12
+        "audioMinutes": 60,
+        "videoGenerations": 10
       }
     }
   ]
