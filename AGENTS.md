@@ -123,6 +123,17 @@ _Last updated: 2026-06-08_
     - `npm audit` 기준 취약점 35개(critical 1, high 15 등) 존재.
     - 현재 메인 작업공간 `C:\002. 코딩\supercoach-ai-studio`는 dirty 상태이고 `origin/master`보다 19커밋 뒤라, 이 브랜치 변경을 적용하려면 먼저 작업공간 정리가 필요.
 
+- Non-breaking dependency audit fixes applied:
+  - 브랜치 `codex/typecheck-origin-master`에 추가 커밋 `0debea1 chore: apply non-breaking audit fixes`.
+  - `npm audit fix`를 `--force` 없이 실행해 semver 범위 내 lockfile 업데이트만 적용.
+  - `displayVersion`를 `V06.08r2`로 갱신.
+  - audit 결과:
+    - 35개 취약점(critical 1, high 15 포함)에서 19개 취약점(critical 0, high 6)으로 감소.
+    - 남은 항목은 주로 `@vercel/node@4`, `firebase-admin`, `simple-mind-map/quill` 계열 major 또는 민감 업그레이드가 필요.
+  - 검증:
+    - `npx tsc --noEmit` 통과.
+    - `npm run build` 통과.
+
 - Sacred lime reward accents restored in limited spots:
   - `displayVersion`를 `V03.11r4`로 갱신.
   - `theme.css`, `index.html`
