@@ -2,7 +2,7 @@
   "name": "secret-coach",
   "private": true,
   "version": "1.1.0",
-  "displayVersion": "V06.08r2",
+  "displayVersion": "V06.08r3",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -46,6 +46,11 @@
     "simple-mind-map": "0.14.0",
     "swiper": "^12.1.2",
     "zustand": "^5.0.10"
+  },
+  "overrides": {
+    "path-to-regexp": "6.3.0",
+    "smol-toml": "1.6.1",
+    "undici": "6.24.0"
   },
   "devDependencies": {
     "@capacitor/cli": "^8.1.0",
