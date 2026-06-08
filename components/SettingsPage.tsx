@@ -517,7 +517,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                     {labels.monthlyUsage}
                   </p>
                   {resources.map(([key, lim]) => {
-                    const cur = (usage as Record<string, number>)[key] ?? 0;
+                    const cur = (usage as unknown as Record<string, number>)[key] ?? 0;
                     const pct = Math.min((cur / lim) * 100, 100);
                     const color =
                       pct >= 100

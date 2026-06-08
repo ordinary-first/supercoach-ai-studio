@@ -1,5 +1,5 @@
 ﻿import React, { useState, useRef, useMemo, useCallback, useEffect } from 'react';
-import { Check, Trash2, Plus, ListTodo, Circle, CheckCircle2, Target, Bell, Repeat, Sun, ArrowLeft, ArrowUp, ChevronRight, ChevronDown, Layout, X, Calendar, Star, CalendarDays, Home, Menu, GripVertical, FolderOutput } from 'lucide-react';
+import { Check, Trash2, Plus, ListTodo, Circle, CheckCircle2, Target, Bell, Repeat, Sun, ArrowLeft, ArrowUp, ChevronRight, ChevronDown, Layout, X, Calendar, Star, CalendarDays, Home, Menu, GripVertical, FolderOutput, FileText } from 'lucide-react';
 import { ToDoItem, NoteItem, TodoList, TodoGroup, TodoStep, SmartListId, RepeatFrequency, UserPrinciple } from '../types';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { useTranslation } from '../i18n/useTranslation';
@@ -201,6 +201,7 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
     important: { name: uiText.smartImportant, icon: <Star size={20} />, color: 'text-red-400' },
     planned: { name: uiText.smartPlanned, icon: <CalendarDays size={20} />, color: 'text-blue-400' },
     tasks: { name: uiText.smartTasks, icon: <Home size={20} />, color: 'text-neon-lime' },
+    notes: { name: t.notes.title, icon: <FileText size={20} />, color: 'text-purple-400' },
   };
 
   // Filter todos based on active list or search

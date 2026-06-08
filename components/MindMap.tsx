@@ -1122,7 +1122,6 @@ const MindMap: React.FC<MindMapProps> = ({
       mindMap.off?.('scale', handleScale);
       mindMap.off?.('translate', handleTranslate);
       mindMap.off?.('view_data_change', handleViewDataChange);
-      mindMap.off?.('node_tree_render_end', patchExpandBtns);
       try {
         mindMap.destroy?.();
       } catch {

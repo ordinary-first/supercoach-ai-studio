@@ -225,9 +225,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
     if (mode === 'day') return;
     setViewMode(mode);
     setSelectedDate(null);
-    if (mode !== 'day') {
-      onViewModeChange?.(mode as 'month' | 'week' | 'list');
-    }
+    onViewModeChange?.(mode);
   };
 
   // Day name helpers

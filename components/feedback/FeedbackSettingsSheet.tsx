@@ -112,8 +112,8 @@ export const FeedbackSettingsSheet: React.FC<FeedbackSettingsSheetProps> = ({
   const [loaded, setLoaded] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveResult, setSaveResult] = useState<{ ok: boolean; msg: string } | null>(null);
-  const saveTimer = useRef<ReturnType<typeof setTimeout>>();
-  const confirmTimer = useRef<ReturnType<typeof setTimeout>>();
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const confirmTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const scheduleSave = useCallback((next: NotificationSettings) => {
     onSettingsChange?.(next);

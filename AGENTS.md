@@ -101,7 +101,27 @@ cd web-legacy-mindmap2 && npx vite --port 3016 --host
 
 ## Current Status
 
-_Last updated: 2026-03-11_
+_Last updated: 2026-06-08_
+
+- Latest master typecheck cleanup prepared in isolated worktree:
+  - 브랜치 `codex/typecheck-origin-master`를 `origin/master@2861e1f`에서 생성.
+  - `displayVersion`를 `V06.08r1`로 갱신.
+  - `tsconfig.json`
+    - 루트 웹앱 타입체크에서 별도 Expo/RN 프로젝트인 `supercoach-ai-native`를 제외.
+  - 타입 오류 정리:
+    - `api/dream-chat.ts` 사용량 제한 응답을 `limitExceededResponse`로 통일.
+    - React 19 타입 기준 `useRef` 초기값 누락을 `null` 초기화로 보정.
+    - `components/ToDoList.tsx`의 `notes` 스마트 리스트 메타 누락 추가.
+    - `components/MindMap.tsx` cleanup에서 존재하지 않는 `patchExpandBtns` 참조 제거.
+    - `hooks/useAuth.ts`는 Firestore legacy billing plan 문자열을 계속 허용하도록 타입 보정.
+    - `components/SettingsPage.tsx`, `components/CalendarView.tsx`의 좁혀진 타입 경고 정리.
+    - `api/generate-image.ts`의 현재 fal 타입에 없는 `safety_tolerance` 입력 제거.
+  - 검증:
+    - `npx tsc --noEmit` 통과.
+    - `npm run build` 통과.
+  - 남은 리스크:
+    - `npm audit` 기준 취약점 35개(critical 1, high 15 등) 존재.
+    - 현재 메인 작업공간 `C:\002. 코딩\supercoach-ai-studio`는 dirty 상태이고 `origin/master`보다 19커밋 뒤라, 이 브랜치 변경을 적용하려면 먼저 작업공간 정리가 필요.
 
 - Sacred lime reward accents restored in limited spots:
   - `displayVersion`를 `V03.11r4`로 갱신.

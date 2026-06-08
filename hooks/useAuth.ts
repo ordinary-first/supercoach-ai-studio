@@ -282,7 +282,7 @@ export function useAuth(
   const isTrialExpired = (() => {
     if (isDevMode) return false;
     if (!userProfile) return false;
-    const plan = userProfile.billingPlan;
+    const plan = userProfile.billingPlan as string | null | undefined;
     // Pro or any legacy paid plan
     if (plan === 'pro' || plan === 'essential' || plan === 'visionary' || plan === 'master') return false;
     if (userProfile.billingIsActive) return false;
