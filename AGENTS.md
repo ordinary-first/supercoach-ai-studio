@@ -174,6 +174,18 @@ _Last updated: 2026-06-08_
     - `npm run build` 통과.
     - `http://127.0.0.1:4173?dev=1&qa=minimatch-override` preview에서 root mount, 랜딩 렌더, console errors 0 확인.
 
+- AJV transitive dependency override verified:
+  - 추가 커밋 `f0cbd29 chore: override vulnerable ajv transitive dep`.
+  - `@vercel/static-config` 하위 `ajv`를 `8.20.0`으로 고정.
+  - audit 결과:
+    - 5개 취약점에서 2개 low 취약점만 남음.
+    - critical 0, high 0, moderate 0.
+    - 남은 항목은 `simple-mind-map -> quill` low 2개.
+  - 검증:
+    - `npx tsc --noEmit` 통과.
+    - `npm run build` 통과.
+    - `http://127.0.0.1:4173?dev=1&qa=ajv-override` preview에서 root mount, 랜딩 렌더, console errors 0 확인.
+
 - Sacred lime reward accents restored in limited spots:
   - `displayVersion`를 `V03.11r4`로 갱신.
   - `theme.css`, `index.html`
