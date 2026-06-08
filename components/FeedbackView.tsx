@@ -165,7 +165,7 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
     todoUpdates: { id: string; oldText: string }[];
   } | null>(null);
 
-  const timerRef = useRef<ReturnType<typeof setInterval>>();
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const collapseStartYRef = useRef(0);
 
   const currentMonday = useMemo(() => getMonday(new Date()), []);

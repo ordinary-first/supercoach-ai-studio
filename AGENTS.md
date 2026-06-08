@@ -101,7 +101,90 @@ cd web-legacy-mindmap2 && npx vite --port 3016 --host
 
 ## Current Status
 
-_Last updated: 2026-03-11_
+_Last updated: 2026-06-08_
+
+- Latest master typecheck cleanup prepared in isolated worktree:
+  - 브랜치 `codex/typecheck-origin-master`를 `origin/master@2861e1f`에서 생성.
+  - `displayVersion`를 `V06.08r1`로 갱신.
+  - `tsconfig.json`
+    - 루트 웹앱 타입체크에서 별도 Expo/RN 프로젝트인 `supercoach-ai-native`를 제외.
+  - 타입 오류 정리:
+    - `api/dream-chat.ts` 사용량 제한 응답을 `limitExceededResponse`로 통일.
+    - React 19 타입 기준 `useRef` 초기값 누락을 `null` 초기화로 보정.
+    - `components/ToDoList.tsx`의 `notes` 스마트 리스트 메타 누락 추가.
+    - `components/MindMap.tsx` cleanup에서 존재하지 않는 `patchExpandBtns` 참조 제거.
+    - `hooks/useAuth.ts`는 Firestore legacy billing plan 문자열을 계속 허용하도록 타입 보정.
+    - `components/SettingsPage.tsx`, `components/CalendarView.tsx`의 좁혀진 타입 경고 정리.
+    - `api/generate-image.ts`의 현재 fal 타입에 없는 `safety_tolerance` 입력 제거.
+  - 검증:
+    - `npx tsc --noEmit` 통과.
+    - `npm run build` 통과.
+  - 남은 리스크:
+    - `npm audit` 기준 취약점 35개(critical 1, high 15 등) 존재.
+    - 현재 메인 작업공간 `C:\002. 코딩\supercoach-ai-studio`는 dirty 상태이고 `origin/master`보다 19커밋 뒤라, 이 브랜치 변경을 적용하려면 먼저 작업공간 정리가 필요.
+
+- Non-breaking dependency audit fixes applied:
+  - 브랜치 `codex/typecheck-origin-master`에 추가 커밋 `0debea1 chore: apply non-breaking audit fixes`.
+  - `npm audit fix`를 `--force` 없이 실행해 semver 범위 내 lockfile 업데이트만 적용.
+  - `displayVersion`를 `V06.08r2`로 갱신.
+  - audit 결과:
+    - 35개 취약점(critical 1, high 15 포함)에서 19개 취약점(critical 0, high 6)으로 감소.
+    - 남은 항목은 주로 `@vercel/node@4`, `firebase-admin`, `simple-mind-map/quill` 계열 major 또는 민감 업그레이드가 필요.
+  - 검증:
+    - `npx tsc --noEmit` 통과.
+    - `npm run build` 통과.
+
+- Vercel transitive dependency overrides verified:
+  - 추가 커밋 `7efc470 chore: override vulnerable vercel transitive deps`.
+  - `path-to-regexp@6.3.0`, `smol-toml@1.6.1`, `undici@6.24.0` overrides를 추가.
+  - audit 결과:
+    - 19개 취약점에서 16개 취약점으로 감소.
+    - high 6개에서 4개로 감소, critical은 0 유지.
+  - 검증:
+    - `npx tsc --noEmit` 통과.
+    - `.env.local`을 임시 worktree에 복사한 뒤 `npm run build` 통과.
+    - `http://127.0.0.1:4173?dev=1&qa=autopilot-env` preview에서 root mount, 랜딩 렌더, console errors 0 확인.
+  - 주의:
+    - `.env.local`은 QA용으로 임시 worktree에만 복사했으며 커밋하지 않음.
+    - `simple-mind-map`은 patch-package 수정이 크므로 별도 마인드맵 QA 슬라이스 전에는 업데이트하지 않음.
+
+- UUID transitive dependency override verified:
+  - 추가 커밋 `54167cc chore: override vulnerable uuid transitive deps`.
+  - `uuid@11.1.1` override를 추가해 Firebase/Google/simple-mind-map 하위의 vulnerable uuid 버전을 정리.
+  - audit 결과:
+    - 16개 취약점에서 8개 취약점으로 감소.
+    - high 4개 유지, moderate 11개에서 2개로 감소.
+    - 남은 high는 `@vercel/node` 하위 `@vercel/build-utils/@vercel/python-analysis/minimatch` 계열.
+    - 남은 low는 `simple-mind-map -> quill` 계열.
+  - 검증:
+    - `npx tsc --noEmit` 통과.
+    - `npm run build` 통과.
+    - `http://127.0.0.1:4173?dev=1&qa=uuid-override` preview에서 root mount, 랜딩 렌더, console errors 0 확인.
+
+- Minimatch transitive dependency override verified:
+  - 추가 커밋 `ff45b00 chore: override vulnerable minimatch transitive deps`.
+  - `@vercel/python-analysis`, `@ts-morph/common`, `glob@7.2.3`, `tern` 하위의 vulnerable minimatch를 패치 버전으로 고정.
+  - audit 결과:
+    - 8개 취약점에서 5개 취약점으로 감소.
+    - high 4개에서 0개로 감소.
+    - critical 0, high 0.
+    - 남은 항목은 `@vercel/node/static-config/ajv` moderate 3개와 `simple-mind-map/quill` low 2개.
+  - 검증:
+    - `npx tsc --noEmit` 통과.
+    - `npm run build` 통과.
+    - `http://127.0.0.1:4173?dev=1&qa=minimatch-override` preview에서 root mount, 랜딩 렌더, console errors 0 확인.
+
+- AJV transitive dependency override verified:
+  - 추가 커밋 `f0cbd29 chore: override vulnerable ajv transitive dep`.
+  - `@vercel/static-config` 하위 `ajv`를 `8.20.0`으로 고정.
+  - audit 결과:
+    - 5개 취약점에서 2개 low 취약점만 남음.
+    - critical 0, high 0, moderate 0.
+    - 남은 항목은 `simple-mind-map -> quill` low 2개.
+  - 검증:
+    - `npx tsc --noEmit` 통과.
+    - `npm run build` 통과.
+    - `http://127.0.0.1:4173?dev=1&qa=ajv-override` preview에서 root mount, 랜딩 렌더, console errors 0 확인.
 
 - Sacred lime reward accents restored in limited spots:
   - `displayVersion`를 `V03.11r4`로 갱신.

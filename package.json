@@ -2,7 +2,7 @@
   "name": "secret-coach",
   "private": true,
   "version": "1.1.0",
-  "displayVersion": "V03.16r1",
+  "displayVersion": "V06.08r7",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -46,6 +46,27 @@
     "simple-mind-map": "0.14.0",
     "swiper": "^12.1.2",
     "zustand": "^5.0.10"
+  },
+  "overrides": {
+    "path-to-regexp": "6.3.0",
+    "smol-toml": "1.6.1",
+    "undici": "6.24.0",
+    "uuid": "11.1.1",
+    "@vercel/python-analysis": {
+      "minimatch": "10.2.5"
+    },
+    "@ts-morph/common": {
+      "minimatch": "3.1.4"
+    },
+    "glob@7.2.3": {
+      "minimatch": "3.1.4"
+    },
+    "@vercel/static-config": {
+      "ajv": "8.20.0"
+    },
+    "tern": {
+      "minimatch": "3.1.4"
+    }
   },
   "devDependencies": {
     "@capacitor/cli": "^8.1.0",

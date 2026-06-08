@@ -163,7 +163,7 @@ export function useGenerationPipeline({ userProfile, nodes, isOpen }: Generation
   }, []);
 
   // Ref for auto-save from handleGenerate (avoids circular dep)
-  const saveRef = useRef<(r: VisualizationResult) => Promise<void>>();
+  const saveRef = useRef<((r: VisualizationResult) => Promise<void>) | null>(null);
 
   // Load saved items on open
   useEffect(() => {
