@@ -16,13 +16,23 @@ AI 코칭 플랫폼. 목표 관리(MindMap), AI 코치 채팅, 투두, 캘린더
 
 ## Commands
 ```bash
-npm run dev          # Vite dev server (port 3000)
+dev                  # 브랜치별 자동 포트/도메인 dev 서버 (~/scripts/dev.sh)
 npm run build        # Production build
 npm run lint         # Biome lint
 npm run format       # Biome format
 npm run typecheck    # TypeScript type check
 npm run build:cap    # Build + Capacitor sync
 ```
+
+## Local Dev Domains (브랜치별 로컬 도메인)
+dev 서버 실행 시 브랜치에 따라 자동 매핑됨. `npm run dev` 대신 `dev` 사용.
+| 브랜치 | 포트 | 접속 URL |
+|--------|------|----------|
+| master | 3000 | http://app.test:3000 |
+| landing-page | 3001 | http://landing.test:3001 |
+| *payment*/*billing* | 3002 | http://payment.test:3002 |
+| web/03.23-features | 3003 | http://features.test:3003 |
+hosts 파일과 `~/scripts/dev.sh`에서 관리.
 
 ## Architecture
 ```
