@@ -134,6 +134,20 @@ _Last updated: 2026-06-08_
     - `npx tsc --noEmit` 통과.
     - `npm run build` 통과.
 
+- Vercel transitive dependency overrides verified:
+  - 추가 커밋 `7efc470 chore: override vulnerable vercel transitive deps`.
+  - `path-to-regexp@6.3.0`, `smol-toml@1.6.1`, `undici@6.24.0` overrides를 추가.
+  - audit 결과:
+    - 19개 취약점에서 16개 취약점으로 감소.
+    - high 6개에서 4개로 감소, critical은 0 유지.
+  - 검증:
+    - `npx tsc --noEmit` 통과.
+    - `.env.local`을 임시 worktree에 복사한 뒤 `npm run build` 통과.
+    - `http://127.0.0.1:4173?dev=1&qa=autopilot-env` preview에서 root mount, 랜딩 렌더, console errors 0 확인.
+  - 주의:
+    - `.env.local`은 QA용으로 임시 worktree에만 복사했으며 커밋하지 않음.
+    - `simple-mind-map`은 patch-package 수정이 크므로 별도 마인드맵 QA 슬라이스 전에는 업데이트하지 않음.
+
 - Sacred lime reward accents restored in limited spots:
   - `displayVersion`를 `V03.11r4`로 갱신.
   - `theme.css`, `index.html`
