@@ -148,6 +148,19 @@ _Last updated: 2026-06-08_
     - `.env.local`은 QA용으로 임시 worktree에만 복사했으며 커밋하지 않음.
     - `simple-mind-map`은 patch-package 수정이 크므로 별도 마인드맵 QA 슬라이스 전에는 업데이트하지 않음.
 
+- UUID transitive dependency override verified:
+  - 추가 커밋 `54167cc chore: override vulnerable uuid transitive deps`.
+  - `uuid@11.1.1` override를 추가해 Firebase/Google/simple-mind-map 하위의 vulnerable uuid 버전을 정리.
+  - audit 결과:
+    - 16개 취약점에서 8개 취약점으로 감소.
+    - high 4개 유지, moderate 11개에서 2개로 감소.
+    - 남은 high는 `@vercel/node` 하위 `@vercel/build-utils/@vercel/python-analysis/minimatch` 계열.
+    - 남은 low는 `simple-mind-map -> quill` 계열.
+  - 검증:
+    - `npx tsc --noEmit` 통과.
+    - `npm run build` 통과.
+    - `http://127.0.0.1:4173?dev=1&qa=uuid-override` preview에서 root mount, 랜딩 렌더, console errors 0 확인.
+
 - Sacred lime reward accents restored in limited spots:
   - `displayVersion`를 `V03.11r4`로 갱신.
   - `theme.css`, `index.html`
