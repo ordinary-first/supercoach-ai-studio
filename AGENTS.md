@@ -161,6 +161,19 @@ _Last updated: 2026-06-08_
     - `npm run build` 통과.
     - `http://127.0.0.1:4173?dev=1&qa=uuid-override` preview에서 root mount, 랜딩 렌더, console errors 0 확인.
 
+- Minimatch transitive dependency override verified:
+  - 추가 커밋 `ff45b00 chore: override vulnerable minimatch transitive deps`.
+  - `@vercel/python-analysis`, `@ts-morph/common`, `glob@7.2.3`, `tern` 하위의 vulnerable minimatch를 패치 버전으로 고정.
+  - audit 결과:
+    - 8개 취약점에서 5개 취약점으로 감소.
+    - high 4개에서 0개로 감소.
+    - critical 0, high 0.
+    - 남은 항목은 `@vercel/node/static-config/ajv` moderate 3개와 `simple-mind-map/quill` low 2개.
+  - 검증:
+    - `npx tsc --noEmit` 통과.
+    - `npm run build` 통과.
+    - `http://127.0.0.1:4173?dev=1&qa=minimatch-override` preview에서 root mount, 랜딩 렌더, console errors 0 확인.
+
 - Sacred lime reward accents restored in limited spots:
   - `displayVersion`를 `V03.11r4`로 갱신.
   - `theme.css`, `index.html`
