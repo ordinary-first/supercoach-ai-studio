@@ -2,7 +2,7 @@
   "name": "secret-coach",
   "private": true,
   "version": "1.1.0",
-  "displayVersion": "V06.08r7",
+  "displayVersion": "V06.09r1",
   "type": "module",
   "scripts": {
     "dev": "vite",
