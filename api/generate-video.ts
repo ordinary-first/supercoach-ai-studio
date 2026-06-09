@@ -20,6 +20,8 @@ const r2 = new S3Client({
     secretAccessKey: R2_SECRET_KEY,
   },
 });
+type S3Sender = { send(command: PutObjectCommand): Promise<unknown> };
+const r2Client = r2 as unknown as S3Sender;
 
 // Kling v3 Pro — text-to-video는 elements 미지원, image-to-video만 지원
 const MODEL_TXT2VID = 'fal-ai/kling-video/v3/pro/text-to-video';
@@ -81,7 +83,7 @@ function parseVideoId(videoId: string): { model: string; requestId: string } {
 }
 
 async function uploadVideoToR2(key: string, buffer: Buffer): Promise<string> {
-  await r2.send(
+  await r2Client.send(
     new PutObjectCommand({
       Bucket: R2_BUCKET,
       Key: key,

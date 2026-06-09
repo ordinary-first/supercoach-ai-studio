@@ -22,6 +22,8 @@ const r2 = new S3Client({
     secretAccessKey: R2_SECRET_KEY,
   },
 });
+type S3Sender = { send(command: PutObjectCommand): Promise<unknown> };
+const r2Client = r2 as unknown as S3Sender;
 
 const createRequestId = (): string => {
   return `image_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -59,7 +61,7 @@ const complete = (
 };
 
 async function uploadToR2(key: string, buffer: Buffer): Promise<string> {
-  await r2.send(new PutObjectCommand({
+    await r2Client.send(new PutObjectCommand({
     Bucket: R2_BUCKET,
     Key: key,
     Body: buffer,

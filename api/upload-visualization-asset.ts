@@ -19,6 +19,8 @@ const r2 = new S3Client({
     secretAccessKey: R2_SECRET_KEY,
   },
 });
+type S3Sender = { send(command: PutObjectCommand): Promise<unknown> };
+const r2Client = r2 as unknown as S3Sender;
 
 function parseDataUrl(dataUrl: string): { mimeType: string; base64: string } | null {
   const match = String(dataUrl).match(/^data:([^;]+);base64,(.+)$/);
@@ -61,7 +63,7 @@ function pcm16ToWavBuffer(pcmBase64: string, sampleRate: number = 24000): Buffer
 }
 
 async function uploadToR2(key: string, body: Buffer, contentType: string): Promise<string> {
-  await r2.send(new PutObjectCommand({
+  await r2Client.send(new PutObjectCommand({
     Bucket: R2_BUCKET,
     Key: key,
     Body: body,
