@@ -1,4 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import 'firebase-admin/app';
+import 'firebase-admin/firestore';
+import 'firebase-admin/messaging';
 
 import cancelSubscription from '../server/api/cancel-subscription.js';
 import changePlan from '../server/api/change-plan.js';
