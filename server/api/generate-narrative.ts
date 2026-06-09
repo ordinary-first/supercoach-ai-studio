@@ -1,8 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { geminiGenerate } from '../lib/geminiClient.js';
-import { checkAndIncrement, limitExceededResponse } from '../lib/usageGuard.js';
-import { authenticateRequest } from '../lib/authMiddleware.js';
-import { setCorsHeaders } from '../lib/corsHeaders.js';
+import { geminiGenerate } from '../../lib/geminiClient.js';
+import { checkAndIncrement, limitExceededResponse } from '../../lib/usageGuard.js';
+import { authenticateRequest } from '../../lib/authMiddleware.js';
+import { setCorsHeaders } from '../../lib/corsHeaders.js';
 
 const NARRATIVE_SYSTEM_PROMPT = `[역할: 잠재의식 해커 & 현실 창조자]
 당신은 사용자의 뇌가 '상상'과 '현실'을 구분하지 못하게 만드는 최면 전문가이자 미래 설계자입니다.

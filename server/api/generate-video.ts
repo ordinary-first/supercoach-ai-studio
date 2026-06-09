@@ -1,10 +1,10 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
-import { getFalClient } from '../lib/falClient.js';
-import { checkAndIncrement, limitExceededResponse } from '../lib/usageGuard.js';
-import { authenticateRequest } from '../lib/authMiddleware.js';
-import { setCorsHeaders } from '../lib/corsHeaders.js';
-import { safePathSegment } from '../lib/safePathSegment.js';
+import { getFalClient } from '../../lib/falClient.js';
+import { checkAndIncrement, limitExceededResponse } from '../../lib/usageGuard.js';
+import { authenticateRequest } from '../../lib/authMiddleware.js';
+import { setCorsHeaders } from '../../lib/corsHeaders.js';
+import { safePathSegment } from '../../lib/safePathSegment.js';
 
 const R2_ACCOUNT_ID = (process.env.R2_ACCOUNT_ID || '').trim();
 const R2_ACCESS_KEY = (process.env.R2_ACCESS_KEY_ID || '').trim();

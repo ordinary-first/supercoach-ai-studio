@@ -1,8 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import type { PlanTier } from '../services/polarService';
-import { authenticateRequest } from '../lib/authMiddleware.js';
-import { setCorsHeaders } from '../lib/corsHeaders.js';
-import { verifySubscriptionOwnership } from '../lib/verifySubscriptionOwnership.js';
+import type { PlanTier } from '../../services/polarService';
+import { authenticateRequest } from '../../lib/authMiddleware.js';
+import { setCorsHeaders } from '../../lib/corsHeaders.js';
+import { verifySubscriptionOwnership } from '../../lib/verifySubscriptionOwnership.js';
 
 const trim = (v: string | undefined): string => (v ?? '').trim();
 

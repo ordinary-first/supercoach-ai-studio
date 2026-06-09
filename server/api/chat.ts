@@ -1,9 +1,9 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { geminiGenerate, geminiChat } from '../lib/geminiClient.js';
-import { getAdminDb } from '../lib/firebaseAdmin.js';
-import { checkAndIncrement, limitExceededResponse } from '../lib/usageGuard.js';
-import { authenticateRequest } from '../lib/authMiddleware.js';
-import { setCorsHeaders } from '../lib/corsHeaders.js';
+import { geminiGenerate, geminiChat } from '../../lib/geminiClient.js';
+import { getAdminDb } from '../../lib/firebaseAdmin.js';
+import { checkAndIncrement, limitExceededResponse } from '../../lib/usageGuard.js';
+import { authenticateRequest } from '../../lib/authMiddleware.js';
+import { setCorsHeaders } from '../../lib/corsHeaders.js';
 
 /* ── 메모리 요약 프롬프트 ── */
 

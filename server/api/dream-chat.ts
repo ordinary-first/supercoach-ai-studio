@@ -1,8 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { geminiChat } from '../lib/geminiClient.js';
-import { authenticateRequest } from '../lib/authMiddleware.js';
-import { setCorsHeaders } from '../lib/corsHeaders.js';
-import { checkAndIncrement, limitExceededResponse } from '../lib/usageGuard.js';
+import { geminiChat } from '../../lib/geminiClient.js';
+import { authenticateRequest } from '../../lib/authMiddleware.js';
+import { setCorsHeaders } from '../../lib/corsHeaders.js';
+import { checkAndIncrement, limitExceededResponse } from '../../lib/usageGuard.js';
 
 const SYSTEM_PROMPT = `당신은 시각화 장면 구체화 가이드입니다.
 사용자가 추상적인 장면이나 목표를 말하면:

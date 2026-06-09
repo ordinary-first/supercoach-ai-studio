@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getAdminDb } from '../lib/firebaseAdmin.js';
-import { authenticateRequest } from '../lib/authMiddleware.js';
-import { setCorsHeaders } from '../lib/corsHeaders.js';
+import { getAdminDb } from '../../lib/firebaseAdmin.js';
+import { authenticateRequest } from '../../lib/authMiddleware.js';
+import { setCorsHeaders } from '../../lib/corsHeaders.js';
 
 type GenericData = Record<string, unknown>;
 

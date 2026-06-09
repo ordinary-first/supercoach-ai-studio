@@ -1,8 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { geminiGenerate } from '../lib/geminiClient.js';
-import { checkAndIncrement, limitExceededResponse } from '../lib/usageGuard.js';
-import { authenticateRequest } from '../lib/authMiddleware.js';
-import { setCorsHeaders } from '../lib/corsHeaders.js';
+import { geminiGenerate } from '../../lib/geminiClient.js';
+import { checkAndIncrement, limitExceededResponse } from '../../lib/usageGuard.js';
+import { authenticateRequest } from '../../lib/authMiddleware.js';
+import { setCorsHeaders } from '../../lib/corsHeaders.js';
 
 const DECOMPOSE_SYSTEM_PROMPT = `당신은 목표 분해 전문가입니다.
 주어진 목표를 SMART 원칙에 따라 3~5개의 하위 목표로 분해하세요.

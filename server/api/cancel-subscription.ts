@@ -1,8 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { authenticateRequest } from '../lib/authMiddleware.js';
-import { setCorsHeaders } from '../lib/corsHeaders.js';
-import { verifySubscriptionOwnership } from '../lib/verifySubscriptionOwnership.js';
-import { getAdminDb } from '../lib/firebaseAdmin.js';
+import { authenticateRequest } from '../../lib/authMiddleware.js';
+import { setCorsHeaders } from '../../lib/corsHeaders.js';
+import { verifySubscriptionOwnership } from '../../lib/verifySubscriptionOwnership.js';
+import { getAdminDb } from '../../lib/firebaseAdmin.js';
 
 const trim = (v: string | undefined): string => (v ?? '').trim();
 

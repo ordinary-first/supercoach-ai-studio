@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getAdminDb, getAdminMessaging } from '../lib/firebaseAdmin.js';
-import { setCorsHeaders } from '../lib/corsHeaders.js';
+import { getAdminDb, getAdminMessaging } from '../../lib/firebaseAdmin.js';
+import { setCorsHeaders } from '../../lib/corsHeaders.js';
 
 type AlarmSlot = 'morning' | 'evening';
 

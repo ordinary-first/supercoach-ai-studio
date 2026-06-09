@@ -5,8 +5,8 @@ import {
   Webhook as StandardWebhook,
   WebhookVerificationError as StandardWebhookVerificationError,
 } from 'standardwebhooks';
-import { getAdminDb } from '../lib/firebaseAdmin.js';
-import { setCorsHeaders } from '../lib/corsHeaders.js';
+import { getAdminDb } from '../../lib/firebaseAdmin.js';
+import { setCorsHeaders } from '../../lib/corsHeaders.js';
 
 const SUPPORTED_EVENTS = new Set([
   'subscription.created',

@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getAdminDb } from '../lib/firebaseAdmin.js';
+import { getAdminDb } from '../../lib/firebaseAdmin.js';
 
 const PRODUCT_TO_PLAN: Record<string, string> = {
   [process.env.RC_PRODUCT_ID_ESSENTIAL ?? '']: 'essential',
