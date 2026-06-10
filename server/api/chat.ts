@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { geminiGenerate, geminiChat } from '../../lib/geminiClient.js';
+import { geminiGenerate, geminiChat, hasGenerativeApiKey } from '../../lib/geminiClient.js';
 import { getAdminDb } from '../../lib/firebaseAdmin.js';
 import { checkAndIncrement, limitExceededResponse } from '../../lib/usageGuard.js';
 import { authenticateRequest } from '../../lib/authMiddleware.js';
@@ -278,8 +278,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (authError) return res.status(authError.status).json(authError.body);
   const uid = user!.uid;
 
-  if (!(process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY)?.trim()) {
-    return res.status(500).json({ error: 'Google API key not configured' });
+  if (!hasGenerativeApiKey()) {
+    return res.status(500).json({ error: 'AI API key not configured' });
   }
 
   try {

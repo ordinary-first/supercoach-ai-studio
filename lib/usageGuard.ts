@@ -54,7 +54,13 @@ export async function checkAndIncrement(
   const profileSnap = await db
     .doc(`users/${userId}/profile/main`)
     .get();
-  const rawPlan = profileSnap.data()?.billingPlan;
+  const profile = profileSnap.data();
+  if (profile?.developerAccess === true || profile?.billingProvider === 'developer') {
+    const limit = PLAN_LIMITS.pro[resource];
+    return { allowed: true, current: 0, limit };
+  }
+
+  const rawPlan = profile?.billingPlan;
   // Legacy plans (essential/visionary/master) are treated as 'pro'
   const plan: PlanTier =
     rawPlan === 'pro' || rawPlan === 'essential' || rawPlan === 'visionary' || rawPlan === 'master'
@@ -64,7 +70,7 @@ export async function checkAndIncrement(
   // 트라이얼 만료 체크 (무료 플랜만)
   const TRIAL_MS = 3 * 24 * 60 * 60 * 1000;
   if (plan === 'explorer') {
-    const createdAt = profileSnap.data()?.createdAt;
+    const createdAt = profile?.createdAt;
     if (createdAt && Date.now() > createdAt + TRIAL_MS) {
       return { allowed: false, current: 0, limit: 0, trialExpired: true };
     }

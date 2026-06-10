@@ -60,6 +60,12 @@ function MarketingLandingPage({ onLoginSuccess: _onLoginSuccess }: MarketingLand
   // onLoginSuccess prop은 App.tsx 인터페이스 호환성을 위해 유지.
   const handleLogin = async () => {
     if (isLoggingIn) return;
+
+    if (import.meta.env.DEV) {
+      window.location.href = `${window.location.origin}${window.location.pathname}?dev=1`;
+      return;
+    }
+
     setIsLoggingIn(true);
     try {
       await loginWithGoogle();

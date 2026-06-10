@@ -259,6 +259,7 @@ export function useAuth(
               billingIsActive,
               billingSubscriptionId,
               billingCancelAtPeriodEnd,
+              developerAccess: savedProfile.developerAccess,
               createdAt: savedProfile.createdAt,
               onboardingCompleted: savedProfile.onboardingCompleted,
             };

@@ -42,6 +42,34 @@ export default async function handler(
   if (authError) return res.status(authError.status).json(authError.body);
   const uid = user!.uid;
 
+  const db = getAdminDb();
+  const profileRef = db.doc(`users/${uid}/profile/main`);
+  const profileSnap = await profileRef.get();
+  const profile = profileSnap.data();
+  if (profile?.developerAccess === true || profile?.billingProvider === 'developer') {
+    await profileRef.set(
+      {
+        billingProvider: 'developer',
+        billingPlan: 'pro',
+        billingStatus: 'active',
+        billingIsActive: true,
+        billingSubscriptionId: 'developer-100-discount',
+        billingCancelAtPeriodEnd: false,
+        billingUpdatedAt: Date.now(),
+        developerAccess: true,
+      },
+      { merge: true },
+    );
+
+    return res.status(200).json({
+      synced: true,
+      plan: 'pro',
+      isActive: true,
+      subscriptionId: 'developer-100-discount',
+      cancelAtPeriodEnd: false,
+    });
+  }
+
   const accessToken = trim(process.env.POLAR_ACCESS_TOKEN);
   if (!accessToken) {
     return res.status(500).json({ error: 'POLAR_ACCESS_TOKEN is missing' });
@@ -126,8 +154,6 @@ export default async function handler(
     const cancelAtPeriodEnd = activeSub.cancel_at_period_end === true;
 
     // Firestore 동기화
-    const db = getAdminDb();
-    const profileRef = db.doc(`users/${uid}/profile/main`);
     const billingRef = db.doc(`users/${uid}/billing/polar`);
 
     await Promise.all([

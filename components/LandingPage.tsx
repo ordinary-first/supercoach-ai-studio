@@ -15,6 +15,11 @@ const LandingPage: React.FC<LandingPageProps> = () => {
   const [showSetupGuide, setShowSetupGuide] = useState(false);
 
   const handleGoogleLogin = async () => {
+    if (import.meta.env.DEV) {
+      window.location.href = `${window.location.origin}${window.location.pathname}?dev=1`;
+      return;
+    }
+
     setErrorMessage(null);
     setIsLoggingIn(true);
     try {

@@ -56,6 +56,7 @@ export interface UserProfile {
   billingIsActive?: boolean;
   billingSubscriptionId?: string | null;
   billingCancelAtPeriodEnd?: boolean;
+  developerAccess?: boolean;
   createdAt?: number;
   onboardingCompleted?: boolean;
 }

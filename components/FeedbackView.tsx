@@ -1,5 +1,5 @@
 ﻿import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Bell, Menu, Settings } from 'lucide-react';
+import { Bell, ChevronDown, Settings } from 'lucide-react';
 import type {
   FeedbackCard,
   GoalAdjustment,
@@ -85,7 +85,7 @@ const getMonthWeekNumber = (date: Date): number => {
   return diff + (daysUntilMonday === 0 ? 1 : 2);
 };
 
-const MAX_PAST_WEEKS = 52;
+const YEAR_LOOKBACK = 4;
 const TIMER_INTERVAL = 60000;
 const COLLAPSE_THRESHOLD = 72;
 const COLLAPSE_MAX_DRAG = 120;
@@ -96,6 +96,29 @@ const getDayStart = (d: Date): number =>
   new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
 
 const getDayEnd = (d: Date): number => getDayStart(d) + 86400000 - 1;
+
+const getYearStart = (year: number): Date => new Date(year, 0, 1);
+
+const getYearEnd = (year: number): Date => new Date(year, 11, 31);
+
+const getWeeksForYear = (year: number, today: Date): Date[] => {
+  const yearStart = getYearStart(year);
+  const yearEnd = getYearEnd(year);
+  const cappedEnd = year === today.getFullYear() && today < yearEnd ? today : yearEnd;
+  const lastWeek = getMonday(cappedEnd);
+  const weeks: Date[] = [];
+  let current = lastWeek;
+
+  while (current <= cappedEnd) {
+    const weekEnd = new Date(current);
+    weekEnd.setDate(weekEnd.getDate() + 6);
+    if (weekEnd < yearStart) break;
+    weeks.push(current);
+    current = addWeeks(current, -1);
+  }
+
+  return weeks;
+};
 
 const deriveFeedbackCardFromTodos = (
   todos: ToDoItem[],
@@ -134,6 +157,8 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
   const { t } = useTranslation();
 
   const [activeWeekIndex, setActiveWeekIndex] = useState(0);
+  const [selectedYear, setSelectedYear] = useState(() => new Date().getFullYear());
+  const [showYearMenu, setShowYearMenu] = useState(false);
   const [firestoreCards, setFirestoreCards] = useState<Map<string, FeedbackCard>>(new Map());
 
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
@@ -168,7 +193,12 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const collapseStartYRef = useRef(0);
 
-  const currentMonday = useMemo(() => getMonday(new Date()), []);
+  const today = useMemo(() => new Date(), []);
+  const currentMonday = useMemo(() => getMonday(today), [today]);
+  const yearOptions = useMemo(
+    () => Array.from({ length: YEAR_LOOKBACK + 1 }, (_, i) => today.getFullYear() - i),
+    [today],
+  );
 
   useEffect(() => {
     const cores = typeof navigator !== 'undefined' ? navigator.hardwareConcurrency ?? 8 : 8;
@@ -189,10 +219,7 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
     setIsCollapsingDrag(false);
   }, [isOpen]);
 
-  const weeks = useMemo(
-    () => Array.from({ length: MAX_PAST_WEEKS + 1 }, (_, i) => addWeeks(currentMonday, -i)),
-    [currentMonday],
-  );
+  const weeks = useMemo(() => getWeeksForYear(selectedYear, today), [selectedYear, today]);
 
   const activeWeekStart = useMemo(
     () => weeks[activeWeekIndex] ?? currentMonday,
@@ -200,18 +227,30 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
   );
 
   useEffect(() => {
+    setActiveWeekIndex(0);
+    setSelectedDay(null);
+    setShowYearMenu(false);
+  }, [selectedYear]);
+
+  useEffect(() => {
     if (!isOpen || !userId) return;
 
-    const oldest = addWeeks(currentMonday, -MAX_PAST_WEEKS);
-    const startKey = toDateKey(oldest);
-    const endKey = toDateKey(addWeeks(currentMonday, 1));
+    let cancelled = false;
+    const startKey = toDateKey(getYearStart(selectedYear));
+    const endKey = toDateKey(addWeeks(getYearEnd(selectedYear), 1));
 
+    setFirestoreCards(new Map());
     loadFeedbackCards(userId, startKey, endKey).then((cards) => {
+      if (cancelled) return;
       const map = new Map<string, FeedbackCard>();
       cards.forEach((card) => map.set(card.date, card));
       setFirestoreCards(map);
     });
-  }, [isOpen, userId, currentMonday]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, userId, selectedYear]);
 
   useEffect(() => {
     if (!userId) {
@@ -230,11 +269,12 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
 
   const mergedCards = useMemo(() => {
     const map = new Map<string, FeedbackCard>(firestoreCards);
-    const oldest = addWeeks(currentMonday, -MAX_PAST_WEEKS);
-    const today = new Date();
-    const current = new Date(oldest);
+    const yearStart = getYearStart(selectedYear);
+    const yearEnd = getYearEnd(selectedYear);
+    const cappedEnd = selectedYear === today.getFullYear() && today < yearEnd ? today : yearEnd;
+    const current = new Date(yearStart);
 
-    while (current <= today) {
+    while (current <= cappedEnd) {
       const key = toDateKey(current);
       if (!map.has(key)) {
         const derived = deriveFeedbackCardFromTodos(todos, new Date(current));
@@ -244,7 +284,7 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
     }
 
     return map;
-  }, [firestoreCards, todos, currentMonday]);
+  }, [firestoreCards, todos, selectedYear, today]);
 
   const getWeekCards = useCallback(
     (weekStart: Date): FeedbackCard[] => {
@@ -570,6 +610,60 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
         </h1>
 
         <div className="w-10 h-10" /> {/* Spacer to maintain centering since global menu icon covers this spot */}
+      </div>
+
+      <div className="shrink-0 px-4 pt-3 pb-1 flex justify-center">
+        <div className="relative inline-flex items-center">
+          <button
+            type="button"
+            onClick={() => setShowYearMenu((prev) => !prev)}
+            className="h-8 min-w-[96px] rounded-full border border-th-border bg-th-surface/90 px-4 pr-9 text-center text-[13px] font-semibold text-th-text shadow-sm outline-none transition-colors hover:bg-th-surface-hover focus:border-th-accent"
+            style={{
+              background: 'var(--bg-surface)',
+              borderColor: 'var(--border)',
+              color: 'var(--text-primary)',
+            }}
+            aria-haspopup="listbox"
+            aria-expanded={showYearMenu}
+            aria-label={t.common.today === '오늘' ? '피드백 연도 선택' : 'Select feedback year'}
+          >
+            {t.common.today === '오늘' ? `${selectedYear}년` : String(selectedYear)}
+          </button>
+          <ChevronDown
+            size={14}
+            className="pointer-events-none absolute right-3 text-th-text-tertiary"
+          />
+          {showYearMenu && (
+            <div
+              role="listbox"
+              className="absolute left-1/2 top-10 z-[70] w-28 -translate-x-1/2 overflow-hidden rounded-2xl border border-th-border bg-th-elevated/95 shadow-2xl backdrop-blur-xl"
+              style={{
+                background: 'var(--bg-elevated)',
+                borderColor: 'var(--border)',
+              }}
+            >
+              {yearOptions.map((year) => {
+                const isSelected = year === selectedYear;
+                return (
+                  <button
+                    key={year}
+                    type="button"
+                    role="option"
+                    aria-selected={isSelected}
+                    onClick={() => setSelectedYear(year)}
+                    className={`block w-full px-4 py-2.5 text-center text-[13px] font-semibold transition-colors ${
+                      isSelected
+                        ? 'bg-th-accent/15 text-th-accent'
+                        : 'text-th-text-secondary hover:bg-th-surface-hover hover:text-th-text'
+                    }`}
+                  >
+                    {t.common.today === '오늘' ? `${year}년` : String(year)}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
 
       {showNotifBanner && (

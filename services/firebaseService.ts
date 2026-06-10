@@ -403,6 +403,7 @@ export const loadProfile = async (userId: string): Promise<UserProfile | null> =
       billingIsActive: data.billingIsActive ?? false,
       billingSubscriptionId: data.billingSubscriptionId || null,
       billingCancelAtPeriodEnd: data.billingCancelAtPeriodEnd ?? false,
+      developerAccess: data.developerAccess === true,
       createdAt: data.createdAt || undefined,
       onboardingCompleted: data.onboardingCompleted ?? true,
     };
