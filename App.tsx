@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom';
 import MindMap, { type LayoutMode } from './components/MindMap';
 import VisionBoard from './components/VisionBoard';
 import OutlineView from './components/OutlineView';
+import GoalViewSwitcher from './components/GoalViewSwitcher';
 import GoalDetailModal from './components/GoalDetailModal';
 import CoachChat from './components/CoachChat';
 import CoachBubble from './components/CoachBubble';
@@ -950,7 +951,13 @@ const App: React.FC = () => {
             : 'absolute inset-0 z-0 opacity-0 pointer-events-none'
         }
       >
-        {/* View mode is now controlled via long-press on Goals tab in BottomDock */}
+        {/* 뷰 전환 — 항상 보이는 상단 스위처 */}
+        <GoalViewSwitcher
+          viewMode={goalsViewMode}
+          onViewModeChange={setGoalsViewMode}
+          mindmapLayout={mindmapLayout}
+          onMindmapLayoutChange={setMindmapLayout}
+        />
 
         {/* 비전보드 뷰 */}
         {goalsViewMode === 'visionboard' && (
@@ -1005,7 +1012,7 @@ const App: React.FC = () => {
         />
       )}
  
-       <div className="absolute top-[2px] right-2 md:top-[8px] md:right-6 z-[60]">
+       <div className="absolute top-[2px] right-2 md:top-[8px] md:right-6 z-[60]" style={{ marginTop: 'env(safe-area-inset-top)' }}>
          <button
            onClick={() => setIsSettingsPageOpen(true)}
            className="apple-chip w-10 h-10 rounded-full text-th-text-secondary hover:bg-th-surface-hover transition-all flex items-center justify-center"
@@ -1073,7 +1080,7 @@ const App: React.FC = () => {
       />
       <VisualizationTab isOpen={activeTab === 'VISUALIZE'} onClose={() => setActiveTab('GOALS')} userProfile={userProfile} nodes={nodes} />
       <ShortcutsPanel isOpen={isShortcutsOpen} onClose={() => setIsShortcutsOpen(false)} />
-      <BottomDock activeTab={activeTab} onTabChange={handleTabChange} calendarViewMode={calendarViewMode} onCalendarViewModeChange={setCalendarViewMode} goalsViewMode={goalsViewMode} onGoalsViewModeChange={setGoalsViewMode} mindmapLayout={mindmapLayout} onMindmapLayoutChange={setMindmapLayout} />
+      <BottomDock activeTab={activeTab} onTabChange={handleTabChange} calendarViewMode={calendarViewMode} onCalendarViewModeChange={setCalendarViewMode} />
       <CoachBubble
         isOpen={isChatOpen}
         onToggle={() => {

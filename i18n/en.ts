@@ -278,6 +278,7 @@ const en: TranslationStrings = {
     visionBoard: 'Vision Board',
     mindMapLabel: 'Mind Map',
     outlineLabel: 'Outline',
+    changeLayout: 'Change layout',
     noSubGoals: 'No sub-goals yet',
     layoutModes: {
       mindMap: 'Mind Map',

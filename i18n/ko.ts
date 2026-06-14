@@ -280,6 +280,7 @@ const ko: TranslationStrings = {
     visionBoard: '비전보드',
     mindMapLabel: '마인드맵',
     outlineLabel: '개요',
+    changeLayout: '레이아웃 변경',
     noSubGoals: '하위 목표가 없습니다',
     layoutModes: {
       mindMap: '마인드맵',

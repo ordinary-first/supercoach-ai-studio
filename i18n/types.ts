@@ -243,6 +243,7 @@ export interface TranslationStrings {
     visionBoard: string;
     mindMapLabel: string;
     outlineLabel: string;
+    changeLayout: string;
     noSubGoals: string;
     layoutModes: Record<string, string>;
     defaultRootText: string;

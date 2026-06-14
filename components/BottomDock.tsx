@@ -1,7 +1,6 @@
 ﻿import React, { useState, useRef, useEffect } from 'react';
-import { Target, ListTodo, Eye, Calendar, BarChart3, ChevronRight } from 'lucide-react';
+import { Target, ListTodo, Eye, Calendar, BarChart3 } from 'lucide-react';
 import { useTranslation } from '../i18n/useTranslation';
-import type { LayoutMode } from './MindMap';
 
 export type TabType = 'GOALS' | 'TODO' | 'VISUALIZE' | 'CALENDAR' | 'FEEDBACK';
 export type CalendarViewMode = 'month' | 'week' | 'list';
@@ -12,10 +11,6 @@ interface BottomDockProps {
   onTabChange: (tab: TabType) => void;
   calendarViewMode?: CalendarViewMode;
   onCalendarViewModeChange?: (mode: CalendarViewMode) => void;
-  goalsViewMode?: GoalsViewMode;
-  onGoalsViewModeChange?: (mode: GoalsViewMode) => void;
-  mindmapLayout?: LayoutMode;
-  onMindmapLayoutChange?: (layout: LayoutMode) => void;
 }
 
 const BottomDock: React.FC<BottomDockProps> = ({
@@ -23,20 +18,12 @@ const BottomDock: React.FC<BottomDockProps> = ({
   onTabChange,
   calendarViewMode,
   onCalendarViewModeChange,
-  goalsViewMode,
-  onGoalsViewModeChange,
-  mindmapLayout,
-  onMindmapLayoutChange,
 }) => {
   const { t, language } = useTranslation();
   const [showCalendarPopup, setShowCalendarPopup] = useState(false);
-  const [showLayoutPopup, setShowLayoutPopup] = useState(false);
   const calendarTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const goalsTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const calendarLongPress = useRef(false);
-  const goalsLongPress = useRef(false);
   const calendarPopupRef = useRef<HTMLDivElement>(null);
-  const layoutPopupRef = useRef<HTMLDivElement>(null);
 
   const tabs: { id: TabType; label: string; icon: React.ReactNode }[] = [
     { id: 'GOALS', label: t.nav.goals, icon: <Target size={20} /> },
@@ -61,31 +48,12 @@ const BottomDock: React.FC<BottomDockProps> = ({
     }
   };
 
-  const startGoalsPress = () => {
-    cancelGoalsPress();
-    goalsLongPress.current = false;
-    goalsTimer.current = setTimeout(() => {
-      goalsLongPress.current = true;
-      setShowLayoutPopup(true);
-    }, 500);
-  };
-  const cancelGoalsPress = () => {
-    if (goalsTimer.current) {
-      clearTimeout(goalsTimer.current);
-      goalsTimer.current = null;
-    }
-  };
-
   useEffect(() => {
-    if (!showCalendarPopup && !showLayoutPopup) return;
+    if (!showCalendarPopup) return;
     const handleClickOutside = (event: MouseEvent) => {
-      if (showCalendarPopup && calendarPopupRef.current &&
+      if (calendarPopupRef.current &&
         !calendarPopupRef.current.contains(event.target as Node)) {
         setShowCalendarPopup(false);
-      }
-      if (showLayoutPopup && layoutPopupRef.current &&
-        !layoutPopupRef.current.contains(event.target as Node)) {
-        setShowLayoutPopup(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -94,7 +62,7 @@ const BottomDock: React.FC<BottomDockProps> = ({
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('touchstart', handleClickOutside as EventListener);
     };
-  }, [showCalendarPopup, showLayoutPopup]);
+  }, [showCalendarPopup]);
 
   const calendarModes = [
     { mode: 'month' as const, label: t.calendar.monthView },
@@ -113,13 +81,6 @@ const BottomDock: React.FC<BottomDockProps> = ({
     setShowCalendarPopup(false);
   };
 
-  const layoutModes: { mode: LayoutMode; label: string }[] = [
-    { mode: 'mindMap', label: t.mindmap.layoutModes.mindMap },
-    { mode: 'logicalStructure', label: t.mindmap.layoutModes.logicalStructure },
-    { mode: 'logicalStructureLeft', label: t.mindmap.layoutModes.logicalStructureLeft },
-    { mode: 'organizationStructure', label: t.mindmap.layoutModes.organizationStructure },
-  ];
-
   return (
     <div className="fixed bottom-0 left-1/2 transform -translate-x-1/2 z-[55] w-full">
       <div
@@ -131,8 +92,6 @@ const BottomDock: React.FC<BottomDockProps> = ({
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id;
           const isCalendar = tab.id === 'CALENDAR';
-          const isGoals = tab.id === 'GOALS';
-          const hasLongPress = isCalendar || isGoals;
 
           const longPressHandlers = isCalendar ? {
             onTouchStart: startCalendarPress,
@@ -141,26 +100,15 @@ const BottomDock: React.FC<BottomDockProps> = ({
             onMouseUp: cancelCalendarPress,
             onTouchMove: cancelCalendarPress,
             onContextMenu: (e: React.MouseEvent) => e.preventDefault(),
-          } : isGoals ? {
-            onTouchStart: startGoalsPress,
-            onMouseDown: startGoalsPress,
-            onTouchEnd: cancelGoalsPress,
-            onMouseUp: cancelGoalsPress,
-            onTouchMove: cancelGoalsPress,
-            onContextMenu: (e: React.MouseEvent) => e.preventDefault(),
           } : {};
 
           return (
             <div key={tab.id} className="relative">
               <button
                 onClick={() => {
-                  if (hasLongPress) {
-                    const triggered = isCalendar
-                      ? calendarLongPress : goalsLongPress;
-                    if (triggered.current) {
-                      triggered.current = false;
-                      return;
-                    }
+                  if (isCalendar && calendarLongPress.current) {
+                    calendarLongPress.current = false;
+                    return;
                   }
                   onTabChange(tab.id);
                 }}
@@ -212,91 +160,6 @@ const BottomDock: React.FC<BottomDockProps> = ({
                 </div>
               )}
 
-              {showLayoutPopup && isGoals && (
-                <div
-                  ref={layoutPopupRef}
-                  className="absolute bottom-full mb-2 left-0 apple-glass-panel
-                    rounded-xl shadow-2xl overflow-hidden min-w-[160px] z-[60]"
-                >
-                  {/* 마인드맵 + 하위 레이아웃 */}
-                  <div
-                    role="button"
-                    onPointerUp={() => {
-                      onGoalsViewModeChange?.('mindmap');
-                      onTabChange('GOALS');
-                      setShowLayoutPopup(false);
-                    }}
-                    className={`w-full px-4 py-2.5 text-sm text-left transition-colors cursor-pointer select-none ${goalsViewMode === 'mindmap'
-                      ? 'text-th-accent font-bold bg-th-surface'
-                      : 'text-th-text-secondary hover:text-th-text hover:bg-th-surface'
-                    }`}
-                  >
-                    {t.mindmap.mindMapLabel}
-                    {goalsViewMode === 'mindmap' && ' ✓'}
-                  </div>
-                  {goalsViewMode === 'mindmap' && (
-                    <div className="border-t border-th-border/20">
-                      {layoutModes.map((item) => (
-                        <div
-                          key={item.mode}
-                          role="button"
-                          onPointerUp={(e) => {
-                            e.stopPropagation();
-                            onMindmapLayoutChange?.(item.mode);
-                            onTabChange('GOALS');
-                            setShowLayoutPopup(false);
-                          }}
-                          className={`w-full pl-8 pr-4 py-2 text-xs text-left transition-colors cursor-pointer select-none ${mindmapLayout === item.mode
-                            ? 'text-th-accent font-semibold bg-th-surface/60'
-                            : 'text-th-text-tertiary hover:text-th-text hover:bg-th-surface/40'
-                          }`}
-                        >
-                          {item.label}
-                          {mindmapLayout === item.mode && ' ✓'}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* 개요 */}
-                  <div className="border-t border-th-border/20">
-                    <div
-                      role="button"
-                      onPointerUp={() => {
-                        onGoalsViewModeChange?.('outline');
-                        onTabChange('GOALS');
-                        setShowLayoutPopup(false);
-                      }}
-                      className={`w-full px-4 py-2.5 text-sm text-left transition-colors cursor-pointer select-none ${goalsViewMode === 'outline'
-                        ? 'text-th-accent font-bold bg-th-surface'
-                        : 'text-th-text-secondary hover:text-th-text hover:bg-th-surface'
-                      }`}
-                    >
-                      {t.mindmap.outlineLabel}
-                      {goalsViewMode === 'outline' && ' ✓'}
-                    </div>
-                  </div>
-
-                  {/* 비전보드 */}
-                  <div className="border-t border-th-border/20">
-                    <div
-                      role="button"
-                      onPointerUp={() => {
-                        onGoalsViewModeChange?.('visionboard');
-                        onTabChange('GOALS');
-                        setShowLayoutPopup(false);
-                      }}
-                      className={`w-full px-4 py-2.5 text-sm text-left transition-colors cursor-pointer select-none ${goalsViewMode === 'visionboard'
-                        ? 'text-th-accent font-bold bg-th-surface'
-                        : 'text-th-text-secondary hover:text-th-text hover:bg-th-surface'
-                      }`}
-                    >
-                      {t.mindmap.visionBoard}
-                      {goalsViewMode === 'visionboard' && ' ✓'}
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
           );
         })}
