@@ -142,6 +142,7 @@ const ChatInput: FC<ChatInputProps> = ({
 
   return (
     <div
+      data-coach-anchor
       className="apple-glass-header flex flex-col gap-2 px-3 pb-3 pt-2"
       style={keyboardHeight > 0
         ? {

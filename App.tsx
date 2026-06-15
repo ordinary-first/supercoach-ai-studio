@@ -1091,7 +1091,7 @@ const App: React.FC = () => {
         }}
         selectedNode={selectedNode}
         nodes={nodes}
-        bottomPx={activeTab === 'VISUALIZE' || activeTab === 'TODO' ? 184 : 100}
+        activeTab={activeTab}
       />
       <input
         ref={insertImageInputRef}
