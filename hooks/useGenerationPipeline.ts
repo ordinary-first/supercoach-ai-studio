@@ -19,6 +19,7 @@ import {
   updateVisualization,
 } from '../services/firebaseService';
 import { useTranslation } from '../i18n/useTranslation';
+import { FEATURES } from '../features';
 
 // ---------- Types ----------
 
@@ -284,7 +285,7 @@ export function useGenerationPipeline({ userProfile, nodes, isOpen }: Generation
         if (mountedRef.current) setCurrentResult({ ...result });
       }
 
-      if (settings.video) {
+      if (settings.video && FEATURES.videoGeneration) {
         setGeneratingStep(t.visualization.stepVideo);
         const videoResult = await generateVideo(fullPrompt, userProfile, VIDEO_DURATION_SEC);
         result.videoId = videoResult.videoId;
