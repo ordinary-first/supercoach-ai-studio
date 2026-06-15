@@ -55,7 +55,7 @@ export function useDreamChat(language: AppLanguage = 'ko') {
   const usedAnchorsRef = useRef<string[]>([]);
   const userPicksRef = useRef<string[]>([]);
   const branchRef = useRef<SceneBranch | null>(null);
-  const pendingRef = useRef<{ anchor: string; label: string } | null>(null);
+  const busyRef = useRef(false); // 동기 재진입 가드 (더블탭/연속전송 방지)
 
   const addMessage = useCallback(
     (role: ChatMessage['role'], content: string, type: ChatMessage['type']) => {
@@ -79,7 +79,8 @@ export function useDreamChat(language: AppLanguage = 'ko') {
   const sendMessage = useCallback(
     async (text: string, goals: string[] = []) => {
       const trimmed = text.trim();
-      if (!trimmed) return;
+      if (!trimmed || busyRef.current) return;
+      busyRef.current = true;
       const isFirst = !sceneRef.current;
 
       addMessage('user', trimmed, 'user-input');
@@ -108,6 +109,7 @@ export function useDreamChat(language: AppLanguage = 'ko') {
         addMessage('ai', getErrorMessage(language), 'scene');
       } finally {
         setIsAiTyping(false);
+        busyRef.current = false;
       }
     },
     [addMessage, language, loadRefine],
@@ -116,9 +118,9 @@ export function useDreamChat(language: AppLanguage = 'ko') {
   // 수정 버튼 탭 → 변형 장면 생성 → 갈림길(원본 vs 변형) 띄움
   const tapRefine = useCallback(async (button: RefineButton) => {
     const base = sceneRef.current;
-    if (!base) return;
+    if (!base || busyRef.current) return;
+    busyRef.current = true;
     setIsRefining(true);
-    pendingRef.current = { anchor: button.anchor || button.label, label: button.label };
     try {
       const variant = await fetchSceneVariant(base, button.transform);
       const next: SceneBranch = {
@@ -131,6 +133,7 @@ export function useDreamChat(language: AppLanguage = 'ko') {
       setBranch(next);
     } finally {
       setIsRefining(false);
+      busyRef.current = false;
     }
   }, []);
 
@@ -138,7 +141,8 @@ export function useDreamChat(language: AppLanguage = 'ko') {
   const pickBranch = useCallback(
     async (which: 'original' | 'variant') => {
       const b = branchRef.current;
-      if (!b) return;
+      if (!b || busyRef.current) return;
+      busyRef.current = true;
       const chosen = which === 'variant' ? b.variant : b.original;
 
       sceneRef.current = chosen;
@@ -151,13 +155,13 @@ export function useDreamChat(language: AppLanguage = 'ko') {
       roundRef.current += 1;
       setBranch(null);
       branchRef.current = null;
-      pendingRef.current = null;
 
       setIsAiTyping(true);
       try {
         await loadRefine(chosen, roundRef.current);
       } finally {
         setIsAiTyping(false);
+        busyRef.current = false;
       }
     },
     [addMessage, loadRefine],
@@ -166,7 +170,6 @@ export function useDreamChat(language: AppLanguage = 'ko') {
   const dismissBranch = useCallback(() => {
     setBranch(null);
     branchRef.current = null;
-    pendingRef.current = null;
   }, []);
 
   const clearMessages = useCallback(() => {
@@ -180,7 +183,7 @@ export function useDreamChat(language: AppLanguage = 'ko') {
     usedAnchorsRef.current = [];
     userPicksRef.current = [];
     branchRef.current = null;
-    pendingRef.current = null;
+    busyRef.current = false;
   }, [welcomeMessage]);
 
   const getCurrentScene = useCallback((): string => sceneRef.current, []);

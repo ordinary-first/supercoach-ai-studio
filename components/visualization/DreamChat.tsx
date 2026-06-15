@@ -21,6 +21,7 @@ interface DreamChatProps {
   onSendMessage: (text: string, goals: string[]) => void;
   onTapRefine: (button: RefineButton) => void;
   onPickBranch: (which: 'original' | 'variant') => void;
+  onDismissBranch: () => void;
   onGenerate: () => void;
   isGenerating: boolean;
   settings: { text: boolean; image: boolean; video: boolean; audio: boolean };
@@ -47,6 +48,7 @@ const DreamChat: FC<DreamChatProps> = ({
   onSendMessage,
   onTapRefine,
   onPickBranch,
+  onDismissBranch,
   onGenerate,
   isGenerating,
   settings,
@@ -155,6 +157,13 @@ const DreamChat: FC<DreamChatProps> = ({
                   </span>
                 </button>
               ))}
+              <button
+                type="button"
+                onClick={onDismissBranch}
+                className="self-center text-[12px] text-th-text-tertiary hover:text-th-text py-1"
+              >
+                {t.visualization.cancel}
+              </button>
             </div>
           )}
 
@@ -207,6 +216,7 @@ const DreamChat: FC<DreamChatProps> = ({
         referenceImages={referenceImages}
         onRemoveImage={onRemoveImage}
         focusSignal={focusSignal}
+        busy={isAiTyping || isRefining}
       />
     </div>
   );

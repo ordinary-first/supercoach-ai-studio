@@ -375,6 +375,7 @@ const en: TranslationStrings = {
     keepThisScene: 'Looks good',
     writeOwnDream: '✍️ Write my own',
     refining: 'Refining...',
+    cancel: 'Cancel',
   },
   app: {
     initializing: 'Initializing...',

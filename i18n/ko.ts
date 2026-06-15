@@ -376,6 +376,7 @@ const ko: TranslationStrings = {
     keepThisScene: '이대로 좋아',
     writeOwnDream: '✍️ 내 꿈을 직접 적어볼래요',
     refining: '다듬는 중...',
+    cancel: '취소',
   },
   app: {
     initializing: '초기화 중...',

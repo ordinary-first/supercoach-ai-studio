@@ -32,6 +32,7 @@ interface ChatInputProps {
   referenceImages: string[];
   onRemoveImage: (index: number) => void;
   focusSignal?: number;
+  busy?: boolean;
 }
 
 const TOGGLE_ITEMS = [
@@ -53,6 +54,7 @@ const ChatInput: FC<ChatInputProps> = ({
   referenceImages,
   onRemoveImage,
   focusSignal = 0,
+  busy = false,
 }) => {
   const { language, t } = useTranslation();
   const [text, setText] = useState('');
@@ -98,11 +100,11 @@ const ChatInput: FC<ChatInputProps> = ({
 
   const handleSend = useCallback(() => {
     const trimmed = text.trim();
-    if (!trimmed) return;
+    if (!trimmed || busy) return;
     onSend(trimmed);
     setText('');
     if (textareaRef.current) textareaRef.current.style.height = 'auto';
-  }, [onSend, text]);
+  }, [onSend, text, busy]);
 
   const handleKeyDown = useCallback(
     (event: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -255,7 +257,8 @@ const ChatInput: FC<ChatInputProps> = ({
         <button
           type="button"
           onClick={handleSend}
-          className={`w-7 h-7 rounded-full mb-0.5 flex items-center justify-center transition-colors ${hasText ? 'bg-th-accent text-white shadow-sm' : 'bg-th-surface border border-th-border text-th-text-tertiary'
+          disabled={busy}
+          className={`w-7 h-7 rounded-full mb-0.5 flex items-center justify-center transition-colors disabled:opacity-50 ${hasText ? 'bg-th-accent text-white shadow-sm' : 'bg-th-surface border border-th-border text-th-text-tertiary'
             }`}
           style={hasText ? { textShadow: '0 1px 2px rgba(4, 18, 38, 0.32)' } : undefined}
         >

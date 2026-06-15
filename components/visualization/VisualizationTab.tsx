@@ -183,6 +183,7 @@ export default function VisualizationTab({
             onSendMessage={chat.sendMessage}
             onTapRefine={chat.tapRefine}
             onPickBranch={chat.pickBranch}
+            onDismissBranch={chat.dismissBranch}
             onGenerate={handleGenerate}
             isGenerating={pipeline.isGenerating}
             settings={settings}

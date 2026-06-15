@@ -332,6 +332,7 @@ export interface TranslationStrings {
     keepThisScene: string;
     writeOwnDream: string;
     refining: string;
+    cancel: string;
   };
   app: {
     initializing: string;
