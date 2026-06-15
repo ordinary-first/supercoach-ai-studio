@@ -1091,6 +1091,7 @@ const App: React.FC = () => {
         }}
         selectedNode={selectedNode}
         nodes={nodes}
+        bottomPx={activeTab === 'VISUALIZE' ? 184 : 100}
       />
       <input
         ref={insertImageInputRef}

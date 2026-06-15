@@ -10,9 +10,11 @@ interface CoachBubbleProps {
   hasUnread?: boolean;
   selectedNode: GoalNode | null;
   nodes: GoalNode[];
+  // 시각화 탭처럼 하단에 입력 바가 있는 화면에선 생성 버튼을 가리지 않도록 위로 비켜선다.
+  bottomPx?: number;
 }
 
-const CoachBubble: React.FC<CoachBubbleProps> = ({ isOpen, onToggle, hasUnread, selectedNode, nodes }) => {
+const CoachBubble: React.FC<CoachBubbleProps> = ({ isOpen, onToggle, hasUnread, selectedNode, nodes, bottomPx = 100 }) => {
   const { t } = useTranslation();
   const [shouldPulse, setShouldPulse] = useState(false);
   const hasInitialPulsed = useRef(false);
@@ -46,7 +48,10 @@ const CoachBubble: React.FC<CoachBubbleProps> = ({ isOpen, onToggle, hasUnread, 
   if (isOpen) return null;
 
   return (
-    <div className="fixed bottom-[100px] right-6 z-[58]">
+    <div
+      className="fixed right-6 z-[58] transition-[bottom] duration-300"
+      style={{ bottom: `${bottomPx}px` }}
+    >
       <button
         onClick={onToggle}
         className={[

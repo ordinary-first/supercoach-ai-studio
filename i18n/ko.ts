@@ -370,6 +370,12 @@ const ko: TranslationStrings = {
     shareButton: '공유',
     savedLabel: '저장됨',
     aiSceneResponse: '좋은 선택이에요. 이 장면을 기반으로 시각화를 만들어드릴게요. 아래에서 출력을 선택한 뒤 생성하기를 눌러주세요.',
+    twoDirections: '두 가지 방향',
+    pickThis: '이걸로 이어가기',
+    generateThisScene: '이 장면으로 생성하기',
+    keepThisScene: '이대로 좋아',
+    writeOwnDream: '✍️ 내 꿈을 직접 적어볼래요',
+    refining: '다듬는 중...',
   },
   app: {
     initializing: '초기화 중...',

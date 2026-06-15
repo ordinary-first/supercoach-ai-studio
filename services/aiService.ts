@@ -621,28 +621,160 @@ export const uploadVisualizationAsset = async (
   }
 };
 
-/* ── 드림챗 (시각화 장면 구체화) ── */
+/* ── 시각화: 장면 / 추천 칩 / 수정 버튼 / 분기 / 매체 변환 ── */
 
-export interface DreamChatResponse {
-  reply: string;
-  prompt: string | null;
+export interface DreamChip {
+  label: string;
+  seed: string;
+  quotedToken: string | null;
+  kind: 'scene' | 'door' | 'write';
+  lever?: string;
 }
 
-export const sendDreamChatMessage = async (
-  history: { role: string; content: string }[],
+export interface RefineButton {
+  label: string;
+  anchor?: string;
+  kind?: string;
+  transform: string;
+}
+
+export interface RefineResult {
+  mode: 'refine' | 'explore' | 'reframe';
+  isFinalReady: boolean;
+  buttons: RefineButton[];
+}
+
+export interface ScenePrompts {
+  imagePrompt: string;
+  videoPrompt: string;
+  audioText: string;
+}
+
+// write 칩의 seed 센티넬 — 전송 대신 입력창에 포커스만 준다.
+export const USER_INPUT_SENTINEL = '__USER_INPUT__';
+
+// 겉모습(시각 스타일) 누출 차단용 금지어 — 칩 라벨/씨앗에서 걸러낸다.
+const VISUAL_STYLE_WORDS =
+  /(노을|햇살|햇빛|일출|일몰|새벽빛|황금빛|조명|색감|색조|채도|구도|앵글|화각|클로즈업|카메라|필터|화풍|🌅|🌊|🌙|🌄|🌇)/;
+
+/** 1차 장면 생성 (또는 현재 장면을 사용자 요청대로 수정). */
+export const fetchDreamScene = async (
   message: string,
   goals: string[] = [],
-): Promise<DreamChatResponse> => {
+  currentScene?: string,
+): Promise<string> => {
   const response = await fetch('/api/dream-chat', {
     method: 'POST',
     headers: await authHeaders(),
-    body: JSON.stringify({ history, message, goals }),
+    body: JSON.stringify({ message, goals, currentScene }),
   });
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(text || 'Dream chat request failed');
+  if (response.status === 429) {
+    const data = await parseJsonSafe<{ message?: string }>(response);
+    throw new Error(data.message || 'Monthly usage limit exceeded');
   }
-  return response.json();
+  if (!response.ok) throw new Error('Scene generation failed');
+  const data = await parseJsonSafe<{ scene?: string }>(response);
+  return (data.scene || '').trim();
+};
+
+/** 추천 칩. quotedToken substring·길이·시각스타일을 클라이언트에서 기계 검증한다. */
+export const fetchDreamChips = async (payload: {
+  language: string;
+  rotationSeed: number;
+  goals: string[];
+  savedTitles: string[];
+  userName: string | null;
+}): Promise<DreamChip[]> => {
+  try {
+    const response = await fetch('/api/dream-chips', {
+      method: 'POST',
+      headers: await authHeaders(),
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) return [];
+    const data = await parseJsonSafe<{ chips?: DreamChip[] }>(response);
+    const chips = Array.isArray(data.chips) ? data.chips : [];
+    const haystack = [...payload.goals, ...payload.savedTitles].join('  ');
+    return chips.filter((chip) => {
+      if (!chip.label || !chip.seed) return false;
+      if (chip.label.length > 22) return false;
+      if (VISUAL_STYLE_WORDS.test(chip.label) || VISUAL_STYLE_WORDS.test(chip.seed)) return false;
+      if (chip.kind === 'write' || chip.kind === 'door') return true;
+      // scene 칩은 quotedToken이 실제 입력에 존재해야 한다 (환각·제너릭 차단).
+      return !!chip.quotedToken && haystack.includes(chip.quotedToken);
+    });
+  } catch {
+    return [];
+  }
+};
+
+/** 장면 아래 수정 버튼. */
+export const fetchRefineButtons = async (payload: {
+  scene: string;
+  rawInput: string;
+  round: number;
+  usedAnchors: string[];
+  userPicks: string[];
+}): Promise<RefineResult> => {
+  const empty: RefineResult = { mode: 'refine', isFinalReady: false, buttons: [] };
+  try {
+    const response = await fetch('/api/refine-buttons', {
+      method: 'POST',
+      headers: await authHeaders(),
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) return empty;
+    const data = await parseJsonSafe<RefineResult>(response);
+    return {
+      mode: data.mode === 'explore' || data.mode === 'reframe' ? data.mode : 'refine',
+      isFinalReady: data.isFinalReady === true,
+      buttons: Array.isArray(data.buttons)
+        ? data.buttons.filter((b) => b && b.label && b.transform)
+        : [],
+    };
+  } catch {
+    return empty;
+  }
+};
+
+/** 수정 버튼 탭 → 변형 장면 생성 (갈림길의 한쪽). */
+export const fetchSceneVariant = async (scene: string, transform: string): Promise<string> => {
+  try {
+    const response = await fetch('/api/scene-variant', {
+      method: 'POST',
+      headers: await authHeaders(),
+      body: JSON.stringify({ scene, transform }),
+    });
+    if (!response.ok) return scene;
+    const data = await parseJsonSafe<{ scene?: string }>(response);
+    return (data.scene || scene).trim();
+  } catch {
+    return scene;
+  }
+};
+
+/** 확정 장면 → 매체별(이미지/영상/음성) 프롬프트 변환. */
+export const fetchScenePrompts = async (
+  scene: string,
+  settings: { image: boolean; audio: boolean; video: boolean },
+): Promise<ScenePrompts> => {
+  const empty: ScenePrompts = { imagePrompt: '', videoPrompt: '', audioText: '' };
+  try {
+    const response = await fetch('/api/scene-to-prompts', {
+      method: 'POST',
+      headers: await authHeaders(),
+      body: JSON.stringify({ scene, settings }),
+    });
+    if (!response.ok) return empty;
+    const data = await parseJsonSafe<ScenePrompts>(response);
+    return {
+      imagePrompt: String(data.imagePrompt || ''),
+      videoPrompt: String(data.videoPrompt || ''),
+      audioText: String(data.audioText || ''),
+    };
+  } catch {
+    return empty;
+  }
 };
 
 /* ── 목표 분해 ── */

@@ -369,6 +369,12 @@ const en: TranslationStrings = {
     shareButton: 'Share',
     savedLabel: 'Saved',
     aiSceneResponse: 'Great choice! I\'ll create a visualization based on this scene. Select your desired outputs below and tap Generate.',
+    twoDirections: 'Two directions',
+    pickThis: 'Continue with this',
+    generateThisScene: 'Generate this scene',
+    keepThisScene: 'Looks good',
+    writeOwnDream: '✍️ Write my own',
+    refining: 'Refining...',
   },
   app: {
     initializing: 'Initializing...',

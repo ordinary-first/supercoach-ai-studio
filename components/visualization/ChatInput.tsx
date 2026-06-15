@@ -31,6 +31,7 @@ interface ChatInputProps {
   isGenerating: boolean;
   referenceImages: string[];
   onRemoveImage: (index: number) => void;
+  focusSignal?: number;
 }
 
 const TOGGLE_ITEMS = [
@@ -51,12 +52,18 @@ const ChatInput: FC<ChatInputProps> = ({
   isGenerating,
   referenceImages,
   onRemoveImage,
+  focusSignal = 0,
 }) => {
   const { language, t } = useTranslation();
   const [text, setText] = useState('');
   const [showQualityPopup, setShowQualityPopup] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // write 칩 등에서 입력창 포커스 요청 (focusSignal 증가 시)
+  useEffect(() => {
+    if (focusSignal > 0) textareaRef.current?.focus();
+  }, [focusSignal]);
 
   const [keyboardHeight, setKeyboardHeight] = useState(0);
 
