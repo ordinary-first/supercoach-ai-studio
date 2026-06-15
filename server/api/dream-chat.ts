@@ -48,12 +48,17 @@ export default async function handler(
     ? `\n\n현재 장면(이걸 사용자 요청대로 다시 써라):\n${currentScene.trim()}`
     : '';
 
-  const scene = await geminiChat(
-    SYSTEM_PROMPT + goalCtx + sceneCtx,
-    [],
-    String(message || '').trim() || (goals?.join(', ') ?? ''),
-  );
-
-  // reply는 하위 호환용 별칭
-  return res.status(200).json({ scene, reply: scene });
+  try {
+    const scene = await geminiChat(
+      SYSTEM_PROMPT + goalCtx + sceneCtx,
+      [],
+      String(message || '').trim() || (goals?.join(', ') ?? ''),
+    );
+    // reply는 하위 호환용 별칭
+    return res.status(200).json({ scene, reply: scene });
+  } catch (error) {
+    // AI 프로바이더 실패(키 고갈/만료 등) 시 500 대신 빈 장면 — 클라이언트가 안내 메시지 처리
+    console.error('[dream-chat]', error);
+    return res.status(200).json({ scene: '', reply: '' });
+  }
 }
