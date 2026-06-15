@@ -27,6 +27,10 @@ messaging.onBackgroundMessage((payload) => {
     icon: '/icon-192.png',
     badge: '/icon-192.png',
     tag: payload.data?.tag || 'default',
+    vibrate: [300, 150, 300, 150, 300],
+    requireInteraction: true,
+    renotify: true,
+    silent: false,
     data: {
       link,
       slot,

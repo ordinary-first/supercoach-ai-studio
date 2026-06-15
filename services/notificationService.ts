@@ -8,6 +8,17 @@ const TRIGGER_WINDOW_MS = 5 * 60 * 1000;
 export const ALARM_CLICK_EVENT = 'supercoach-alarm-click';
 export type AlarmSlot = 'morning' | 'evening';
 
+// Insistent buzz so reminders are felt, not just shown. (Android Chrome honors
+// `vibrate`; desktop ignores it. Sound follows the OS notification settings.)
+const REMINDER_VIBRATE = [300, 150, 300, 150, 300];
+
+// `vibrate`/`renotify` are valid showNotification options but missing from the
+// TS DOM lib's NotificationOptions, so widen the type locally.
+type RichNotificationOptions = NotificationOptions & {
+  vibrate?: number[];
+  renotify?: boolean;
+};
+
 const dispatchAlarmClick = (slot: AlarmSlot | null, tag?: string): void => {
   if (typeof window === 'undefined') return;
   window.dispatchEvent(
@@ -84,12 +95,18 @@ export const showBrowserNotification = async (
   try {
     const reg = await navigator.serviceWorker?.getRegistration();
     if (reg) {
-      await reg.showNotification(title, {
+      const options: RichNotificationOptions = {
         body,
         tag,
         icon: '/icon-192.png',
+        badge: '/icon-192.png',
+        vibrate: REMINDER_VIBRATE,
+        requireInteraction: true,
+        renotify: true,
+        silent: false,
         data: { slot, tag, link: slot ? `/?alarm=${slot}` : '/' },
-      });
+      };
+      await reg.showNotification(title, options);
       return;
     }
   } catch {
@@ -102,6 +119,8 @@ export const showBrowserNotification = async (
       body,
       tag,
       icon: '/icon-192.png',
+      requireInteraction: true,
+      silent: false,
       data: { slot, tag },
     });
     notification.onclick = () => {

@@ -32,6 +32,24 @@ export const registerNativePush = async (userId: string): Promise<string | null>
     }
     if (perm.receive !== 'granted') return null;
 
+    // High-importance channel → heads-up + sound + vibration (Android O+).
+    // Must match the channelId the server sends in the FCM android payload.
+    if (Capacitor.getPlatform() === 'android') {
+      try {
+        await PushNotifications.createChannel({
+          id: 'reminders',
+          name: 'Reminders',
+          description: 'Daily check-in reminders',
+          importance: 5,
+          visibility: 1,
+          vibration: true,
+          lights: true,
+        });
+      } catch {
+        // best-effort
+      }
+    }
+
     await PushNotifications.removeAllListeners();
 
     let resolveToken!: (value: string | null) => void;

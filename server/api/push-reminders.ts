@@ -133,7 +133,17 @@ const sendAlarmPush = async (
       title: message.title,
       body: message.body,
     },
+    android: {
+      priority: 'high',
+      notification: {
+        sound: 'default',
+        channelId: 'reminders',
+        defaultSound: true,
+        defaultVibrateTimings: true,
+      },
+    },
     webpush: {
+      headers: { Urgency: 'high' },
       fcmOptions: { link },
       notification: {
         title: message.title,
@@ -141,6 +151,10 @@ const sendAlarmPush = async (
         icon: '/icon-192.png',
         badge: '/icon-192.png',
         tag: `alarm-${slot}`,
+        requireInteraction: true,
+        renotify: true,
+        silent: false,
+        vibrate: [300, 150, 300, 150, 300],
         data: { slot, link },
       },
     },
