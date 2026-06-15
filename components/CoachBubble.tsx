@@ -49,7 +49,7 @@ const CoachBubble: React.FC<CoachBubbleProps> = ({ isOpen, onToggle, hasUnread, 
 
   return (
     <div
-      className="fixed right-6 z-[58] transition-[bottom] duration-300"
+      className="fixed right-6 z-[58]"
       style={{ bottom: `${bottomPx}px` }}
     >
       <button
