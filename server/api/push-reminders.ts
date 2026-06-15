@@ -67,6 +67,11 @@ const getLocalClock = (date: Date, timeZone: string): LocalClock | null => {
   }
 };
 
+// Window must tolerate external-cron jitter (GitHub Actions schedules can run
+// several minutes late). The per-day dedupe (alreadySentDate) guarantees at
+// most one push per slot, so a wider window only affects max lateness, not count.
+const DUE_WINDOW_MINUTES = 15;
+
 const isDue = (
   nowMinute: number,
   targetMinute: number,
@@ -75,7 +80,7 @@ const isDue = (
 ): boolean => {
   if (alreadySentDate === dateKey) return false;
   const diff = nowMinute - targetMinute;
-  return diff >= 0 && diff < 7;
+  return diff >= 0 && diff < DUE_WINDOW_MINUTES;
 };
 
 const getAlarmMessage = (slot: AlarmSlot): { title: string; body: string } => {
