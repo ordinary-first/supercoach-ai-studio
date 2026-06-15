@@ -11,6 +11,7 @@ import {
   type User,
 } from 'firebase/auth';
 import {
+  arrayUnion,
   collection,
   deleteDoc,
   doc,
@@ -778,7 +779,8 @@ export const saveNotificationSettings = async (
   if (!db || !userId) return;
   const clean = JSON.parse(JSON.stringify(settings));
   const docRef = doc(db, 'users', userId, 'settings', 'notifications');
-  await setDoc(docRef, { ...clean, updatedAt: Date.now() });
+  // merge so we never clobber fcmToken / fcmTokens written by token registration.
+  await setDoc(docRef, { ...clean, updatedAt: Date.now() }, { merge: true });
 };
 
 export const saveFcmToken = async (
@@ -788,7 +790,13 @@ export const saveFcmToken = async (
   if (!db || !userId || !token) return;
   try {
     const docRef = doc(db, 'users', userId, 'settings', 'notifications');
-    await setDoc(docRef, { fcmToken: token, updatedAt: Date.now() }, { merge: true });
+    // fcmTokens accumulates every device (web + native app) so both receive
+    // pushes; fcmToken is kept for backward-compatible single-token reads.
+    await setDoc(
+      docRef,
+      { fcmToken: token, fcmTokens: arrayUnion(token), updatedAt: Date.now() },
+      { merge: true },
+    );
   } catch (error: unknown) {
     const e = error as { code?: string; message?: string };
     log('[Save:FcmToken] failed:', e?.code || e?.message);

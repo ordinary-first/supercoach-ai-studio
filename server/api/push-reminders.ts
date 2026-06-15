@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { FieldValue } from 'firebase-admin/firestore';
 import { getAdminDb, getAdminMessaging } from '../../lib/firebaseAdmin.js';
 import { setCorsHeaders } from '../../lib/corsHeaders.js';
 
@@ -22,6 +23,21 @@ const asString = (value: unknown): string | null => {
   if (typeof value !== 'string') return null;
   const cleaned = value.trim();
   return cleaned.length > 0 ? cleaned : null;
+};
+
+// Every device the user registered: the fcmTokens array (web + native app)
+// plus the legacy single fcmToken, de-duplicated.
+const collectTokens = (raw: Record<string, unknown>): string[] => {
+  const set = new Set<string>();
+  if (Array.isArray(raw.fcmTokens)) {
+    for (const t of raw.fcmTokens) {
+      const s = asString(t);
+      if (s) set.add(s);
+    }
+  }
+  const single = asString(raw.fcmToken);
+  if (single) set.add(single);
+  return [...set];
 };
 
 const parseTimeToMinutes = (value: string | null, fallback: string): number => {
@@ -187,8 +203,8 @@ export default async function handler(
 
       const raw = notifSnap.data() as Record<string, unknown>;
       const permission = asString(raw.notificationPermission);
-      const token = asString(raw.fcmToken);
-      if (!token || permission === 'denied') continue;
+      const tokens = collectTokens(raw);
+      if (tokens.length === 0 || permission === 'denied') continue;
 
       const timeZone = asString(raw.timezone) || 'Asia/Seoul';
       const localClock = getLocalClock(now, timeZone);
@@ -202,56 +218,47 @@ export default async function handler(
       const lastEveningSentDate = asString(raw.lastEveningSentDate);
 
       const shouldSendMorning = morningEnabled
-        && isDue(
-          localClock.minuteOfDay,
-          morningMinute,
-          lastMorningSentDate,
-          localClock.dateKey,
-        );
+        && isDue(localClock.minuteOfDay, morningMinute, lastMorningSentDate, localClock.dateKey);
       const shouldSendEvening = eveningEnabled
-        && isDue(
-          localClock.minuteOfDay,
-          eveningMinute,
-          lastEveningSentDate,
-          localClock.dateKey,
-        );
+        && isDue(localClock.minuteOfDay, eveningMinute, lastEveningSentDate, localClock.dateKey);
 
       if (!shouldSendMorning && !shouldSendEvening) continue;
       dueUsers += 1;
 
-      const updates: Record<string, unknown> = {
-        updatedAt: Date.now(),
-      };
-      let tokenUsable = true;
+      const updates: Record<string, unknown> = { updatedAt: Date.now() };
+      const invalidTokens = new Set<string>();
 
-      if (shouldSendMorning) {
-        try {
-          await sendAlarmPush(token, 'morning');
-          sentCount += 1;
-          updates.lastMorningSentDate = localClock.dateKey;
-          updates.lastMorningSentAt = Date.now();
-        } catch (error) {
-          if (isInvalidTokenError(error)) {
-            invalidTokenCount += 1;
-            updates.fcmToken = '';
-            tokenUsable = false;
+      // Deliver each due slot to every registered device (web + native app).
+      // The per-day dedupe marks the slot once, so each device gets one push.
+      const sendSlotToAll = async (slot: AlarmSlot): Promise<boolean> => {
+        let anySent = false;
+        for (const tk of tokens) {
+          if (invalidTokens.has(tk)) continue;
+          try {
+            await sendAlarmPush(tk, slot);
+            sentCount += 1;
+            anySent = true;
+          } catch (error) {
+            if (isInvalidTokenError(error)) invalidTokens.add(tk);
           }
         }
+        return anySent;
+      };
+
+      if (shouldSendMorning && (await sendSlotToAll('morning'))) {
+        updates.lastMorningSentDate = localClock.dateKey;
+        updates.lastMorningSentAt = Date.now();
+      }
+      if (shouldSendEvening && (await sendSlotToAll('evening'))) {
+        updates.lastEveningSentDate = localClock.dateKey;
+        updates.lastEveningSentAt = Date.now();
       }
 
-      if (shouldSendEvening && tokenUsable) {
-        try {
-          await sendAlarmPush(token, 'evening');
-          sentCount += 1;
-          updates.lastEveningSentDate = localClock.dateKey;
-          updates.lastEveningSentAt = Date.now();
-        } catch (error) {
-          if (isInvalidTokenError(error)) {
-            invalidTokenCount += 1;
-            updates.fcmToken = '';
-            tokenUsable = false;
-          }
-        }
+      if (invalidTokens.size > 0) {
+        invalidTokenCount += invalidTokens.size;
+        updates.fcmTokens = FieldValue.arrayRemove(...invalidTokens);
+        const single = asString(raw.fcmToken);
+        if (single && invalidTokens.has(single)) updates.fcmToken = '';
       }
 
       await notifRef.set(updates, { merge: true });

@@ -24,6 +24,7 @@ import {
   showBrowserNotification,
   wasVictoryGenerated,
 } from '../services/notificationService';
+import { isNativeApp, registerNativePush } from '../services/nativePush';
 import { analyzeGoalCompletionRates } from '../services/goalAdjustmentService';
 import { useTranslation } from '../i18n/useTranslation';
 import { DayDetailSheet } from './feedback/DayDetailSheet';
@@ -578,6 +579,11 @@ const FeedbackView: React.FC<FeedbackViewProps> = ({
   );
 
   const handleRequestNotifPermission = useCallback(async () => {
+    if (isNativeApp()) {
+      const token = await registerNativePush(userId);
+      setNotifPermission(token ? 'granted' : 'denied');
+      return;
+    }
     if (typeof Notification === 'undefined') return;
     const result = await Notification.requestPermission();
     setNotifPermission(result);

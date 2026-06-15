@@ -7,6 +7,7 @@ import {
   saveNotificationSettings,
 } from '../../services/firebaseService';
 import { registerFcmToken } from '../../services/notificationService';
+import { isNativeApp, registerNativePush, registerNativePushIfGranted } from '../../services/nativePush';
 
 interface FeedbackSettingsSheetProps {
   t: TranslationStrings;
@@ -178,6 +179,11 @@ export const FeedbackSettingsSheet: React.FC<FeedbackSettingsSheetProps> = ({
 
   useEffect(() => {
     if (!userId) return;
+    if (isNativeApp()) {
+      // native app: refresh the device token if OS permission already granted
+      void registerNativePushIfGranted(userId);
+      return;
+    }
     if (settings.notificationPermission !== 'granted') return;
     registerFcmToken(userId);
   }, [settings.notificationPermission, userId]);
@@ -224,28 +230,44 @@ export const FeedbackSettingsSheet: React.FC<FeedbackSettingsSheetProps> = ({
       return;
     }
 
-    // 알림 권한 확인 — 없으면 자동으로 요청
-    if (typeof Notification !== 'undefined' && Notification.permission !== 'granted') {
-      const result = await Notification.requestPermission();
-      updateField('notificationPermission', result as 'granted' | 'denied' | 'default');
-      if (result !== 'granted') {
-        setSaveResult({ ok: false, msg: lang === 'ko' ? '⚠ 알림 권한이 허용되지 않았습니다. 브라우저 설정에서 알림을 허용해주세요.' : '⚠ Notification permission not granted. Please allow in browser settings.' });
+    if (isNativeApp()) {
+      // 네이티브 앱: OS 알림 권한 + FCM 디바이스 토큰 등록
+      const nativeToken = await registerNativePush(userId);
+      if (!nativeToken) {
+        setSaveResult({ ok: false, msg: lang === 'ko' ? '⚠ 앱 알림 권한이 허용되지 않았습니다. 휴대폰 설정 > 알림에서 허용해주세요.' : '⚠ App notifications not allowed. Enable them in your phone Settings > Notifications.' });
         setIsSaving(false);
         return;
       }
-    }
-    if (typeof Notification === 'undefined') {
-      setSaveResult({ ok: false, msg: lang === 'ko' ? '⚠ 이 브라우저에서는 알림이 지원되지 않습니다.' : '⚠ Notifications not supported in this browser.' });
-      setIsSaving(false);
-      return;
-    }
+      // persist 'granted' deterministically (not via the debounced save, which
+      // can be dropped if the sheet unmounts within the debounce window)
+      const grantedSettings = { ...next, notificationPermission: 'granted' as const, updatedAt: Date.now() };
+      setSettings(grantedSettings);
+      onSettingsChange?.(grantedSettings);
+      await saveNotificationSettings(userId, grantedSettings);
+    } else {
+      // 알림 권한 확인 — 없으면 자동으로 요청
+      if (typeof Notification !== 'undefined' && Notification.permission !== 'granted') {
+        const result = await Notification.requestPermission();
+        updateField('notificationPermission', result as 'granted' | 'denied' | 'default');
+        if (result !== 'granted') {
+          setSaveResult({ ok: false, msg: lang === 'ko' ? '⚠ 알림 권한이 허용되지 않았습니다. 브라우저 설정에서 알림을 허용해주세요.' : '⚠ Notification permission not granted. Please allow in browser settings.' });
+          setIsSaving(false);
+          return;
+        }
+      }
+      if (typeof Notification === 'undefined') {
+        setSaveResult({ ok: false, msg: lang === 'ko' ? '⚠ 이 브라우저에서는 알림이 지원되지 않습니다.' : '⚠ Notifications not supported in this browser.' });
+        setIsSaving(false);
+        return;
+      }
 
-    // FCM 토큰 등록 시도
-    const token = await registerFcmToken(userId);
-    if (!token) {
-      setSaveResult({ ok: false, msg: lang === 'ko' ? '⚠ 푸시 알림 등록에 실패했습니다. 페이지를 새로고침 후 다시 시도해주세요.' : '⚠ Push registration failed. Please reload and retry.' });
-      setIsSaving(false);
-      return;
+      // FCM 토큰 등록 시도
+      const token = await registerFcmToken(userId);
+      if (!token) {
+        setSaveResult({ ok: false, msg: lang === 'ko' ? '⚠ 푸시 알림 등록에 실패했습니다. 페이지를 새로고침 후 다시 시도해주세요.' : '⚠ Push registration failed. Please reload and retry.' });
+        setIsSaving(false);
+        return;
+      }
     }
 
     // 성공 — 실제 알림 시간 표시
