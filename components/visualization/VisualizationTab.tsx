@@ -59,14 +59,29 @@ export default function VisualizationTab({
   // 모바일 소프트 키보드가 열리면 하단 도크 예약 공간(pb-16)을 키보드 높이만큼으로
   // 바꿔, 입력창이 키보드 바로 위에 붙도록 한다. 입력창을 position:fixed 로 띄우면
   // 상위 backdrop-filter 글래스 패널이 컨테이닝 블록이 되어 도크 높이(64px)만큼
-  // 어긋나므로, 대신 셸의 하단 패딩만 조절해 입력창을 일반 흐름에 둔다.
-  //   · 터치 기기에서 텍스트 필드가 포커스됨 == 키보드 열림 (모드 무관 신뢰 신호)
-  //   · resizes-visual(iOS/크롬): visualViewport 인셋 = 키보드 높이 → 그만큼 패딩
-  //   · resizes-content(삼성/구안드로이드): 레이아웃이 이미 줄어 인셋≈0 → 패딩 0
+  // 어긋나므로(기존 버그), 대신 셸의 하단 패딩만 조절해 입력창을 일반 흐름에 둔다.
+  //
+  // 키보드 높이는 두 신호의 MAX 로 측정해 브라우저/모드 무관하게 동작시킨다:
+  //   · VirtualKeyboard API: overlaysContent=true 면 키보드가 뷰포트를 줄이지 않고
+  //     콘텐츠 위에 덮이므로 visualViewport 는 줄지 않는다(=인셋 0). 이때는
+  //     boundingRect.height 가 유일한 키보드 높이 신호다. (할일 탭이 이 방식으로 동작)
+  //   · visualViewport(resizes-visual, iOS/구형): innerHeight-vv.height = 키보드 높이.
+  //   · resizes-content(일부 안드로이드): 레이아웃이 이미 줄어 둘 다 ≈0 → 패딩 0
+  //     이면 셸이 이미 줄어든 만큼 입력창이 키보드 위에 붙는다.
+  // overlaysContent 는 앱 전역 플래그(할일 탭도 true 로 설정)라 값에 의존하지 않도록
+  // 두 신호를 모두 보고 큰 값을 쓴다.
   const [keyboardPad, setKeyboardPad] = useState<number | null>(null);
   useEffect(() => {
-    const nav = navigator as unknown as { virtualKeyboard?: { overlaysContent: boolean } };
-    if (nav.virtualKeyboard) nav.virtualKeyboard.overlaysContent = true;
+    const nav = navigator as unknown as {
+      virtualKeyboard?: {
+        overlaysContent: boolean;
+        boundingRect: DOMRect;
+        addEventListener: (e: string, fn: () => void) => void;
+        removeEventListener: (e: string, fn: () => void) => void;
+      };
+    };
+    const vk = nav.virtualKeyboard;
+    if (vk) vk.overlaysContent = true;
 
     const coarse = window.matchMedia?.('(pointer: coarse)').matches ?? false;
     const vv = window.visualViewport;
@@ -76,12 +91,30 @@ export default function VisualizationTab({
       el instanceof HTMLElement && (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT');
 
     const compute = () => {
-      if (!focused || !coarse) {
+      const vvH = vv ? Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop)) : 0;
+      if (vk) {
+        // VirtualKeyboard 지원 기기(크롬/대부분의 안드로이드): boundingRect.height 가
+        // 정확하고 키보드가 닫히면 0 (셀프 게이팅). overlaysContent=true 면 visualViewport
+        // 가 줄지 않아 boundingRect 가 유일한 신호, false 여도 vvH 가 받쳐준다.
+        // 포커스 게이트를 쓰지 않으므로, 포커스~키보드 등장 사이에 입력창이 잠깐
+        // 바닥으로 떨어지는 깜빡임이 없다.
+        const h = Math.max(Math.round(vk.boundingRect?.height ?? 0), vvH);
+        setKeyboardPad(h > 0 ? h : null);
+        return;
+      }
+      // VirtualKeyboard 미지원 폴백(iOS Safari·일부 구형): 터치 기기에서 입력 필드 포커스 시.
+      if (!(focused && coarse)) {
         setKeyboardPad(null);
         return;
       }
-      const inset = vv ? Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop)) : 0;
-      setKeyboardPad(inset);
+      // vvH>0(resizes-visual, iOS 포함): 키보드 높이만큼 패딩 → flush.
+      // vvH===0: 아직 키보드 높이를 알 수 없는 상태다. 세 경우가 섞인다 —
+      //   ① iOS 포커스 직후~visualViewport resize 도착 전(애니메이션 중),
+      //   ② 하드웨어 키보드(소프트 키보드 없음), ③ resizes-content(레이아웃이 이미 줄어듦).
+      // ①②에서 패딩 0(도크 제거)을 주면 입력창이 도크/올라오는 키보드에 가려진다.
+      // 그래서 null(pb-16 유지)로 둔다 — ③에선 64px 빈틈이 남지만 가려지는 것보다 안전하고,
+      // ①은 resize 가 도착하면 vvH=키보드높이로 보정돼 flush 로 정착한다.
+      setKeyboardPad(vvH > 0 ? vvH : null);
     };
 
     const onFocusIn = (e: FocusEvent) => {
@@ -101,11 +134,13 @@ export default function VisualizationTab({
     document.addEventListener('focusout', onFocusOut);
     vv?.addEventListener('resize', compute);
     vv?.addEventListener('scroll', compute);
+    vk?.addEventListener('geometrychange', compute);
     return () => {
       document.removeEventListener('focusin', onFocusIn);
       document.removeEventListener('focusout', onFocusOut);
       vv?.removeEventListener('resize', compute);
       vv?.removeEventListener('scroll', compute);
+      vk?.removeEventListener('geometrychange', compute);
     };
   }, []);
 
