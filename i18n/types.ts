@@ -34,6 +34,7 @@ export interface TranslationStrings {
     sendLabel: string;
     sendMessage: string;
     selectQuestion: string;
+    coldStartGreeting: string;
     emptyTitle: string;
     emptyDesc: string;
     errorStart: string;

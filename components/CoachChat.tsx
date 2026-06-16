@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { ChatMessage, GoalNode, UserProfile, ToDoItem } from '../types';
+import { ChatMessage, GoalNode, UserProfile, ToDoItem, CoachSignals } from '../types';
 import { sendChatMessage } from '../services/aiService';
 import { saveFeedbackCard } from '../services/firebaseService';
 import { Send, MessageCircle, Sparkles, Plus, X } from 'lucide-react';
@@ -46,6 +46,29 @@ interface CoachChatProps {
 
 const QUESTIONS_PER_PAGE = 3;
 
+const STALE_TODO_MS = 3 * 24 * 60 * 60 * 1000;
+
+// 회피·복귀·시간대 런타임 신호 계산 (게이트된 코치 행동 트리거)
+const buildCoachSignals = (
+  todos: ToDoItem[],
+  daysSinceLastVisit: number,
+): CoachSignals => {
+  const now = Date.now();
+  const stale = todos.filter(
+    (todo) => !todo.completed && now - todo.createdAt > STALE_TODO_MS,
+  );
+  const oldest = stale.reduce<ToDoItem | null>(
+    (acc, todo) => (acc && acc.createdAt <= todo.createdAt ? acc : todo),
+    null,
+  );
+  return {
+    localHour: new Date().getHours(),
+    staleTodoCount: stale.length,
+    oldestStaleTodo: oldest?.text,
+    daysSinceLastVisit,
+  };
+};
+
 const CoachChat: React.FC<CoachChatProps> = ({
   isOpen,
   onClose,
@@ -79,6 +102,7 @@ const CoachChat: React.FC<CoachChatProps> = ({
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const feedbackInFlightRef = useRef(false);
   const focusTrapRef = useFocusTrap(isOpen);
+  const daysSinceVisitRef = useRef(0);
 
   const memory = useCoachMemory(userId, isOpen, nodes || [], todos, language);
   const { pendingDirective, feedbackSlot, markFeedbackDone } =
@@ -371,6 +395,20 @@ If no todo change intent exists, return an empty list [].`;
     requestAnimationFrame(() => scrollToBottom());
   }, [isOpen]);
 
+  // 코치를 열 때 마지막 방문 후 경과일 계산 → 복귀 신호 (send 이펙트보다 먼저 실행됨)
+  useEffect(() => {
+    if (!isOpen) return;
+    try {
+      const KEY = 'secretcoach-coach-last-visit';
+      const prev = Number(localStorage.getItem(KEY) || 0);
+      const now = Date.now();
+      daysSinceVisitRef.current = prev > 0 ? Math.floor((now - prev) / 86400000) : 0;
+      localStorage.setItem(KEY, String(now));
+    } catch {
+      daysSinceVisitRef.current = 0;
+    }
+  }, [isOpen]);
+
   useEffect(() => {
     if (!isOpen || !pendingDirective || feedbackInFlightRef.current || selectedTopic) return;
 
@@ -386,6 +424,7 @@ If no todo change intent exists, return an empty list [].`;
         const subGoalCount = (nodes || []).filter((n) => n.type !== 'ROOT').length;
 
         const directive = `${pendingDirective}\n\n${getTodoActionDirective()}`;
+        const signals = buildCoachSignals(todos, daysSinceVisitRef.current);
         const response = await sendChatMessage(
           [],
           '',
@@ -397,6 +436,7 @@ If no todo change intent exists, return an empty list [].`;
           userId || undefined,
           subGoalCount,
           directive,
+          signals,
         );
 
         if (cancelled) return;
@@ -477,6 +517,7 @@ If no todo change intent exists, return an empty list [].`;
         const todoCtx = buildTodoContext(todos, language);
         const subGoalCount = (nodes || []).filter((n) => n.type !== 'ROOT').length;
 
+        const signals = buildCoachSignals(todos, daysSinceVisitRef.current);
         const response = await sendChatMessage(
           [],
           '',
@@ -488,6 +529,7 @@ If no todo change intent exists, return an empty list [].`;
           userId || undefined,
           subGoalCount,
           selectedTopic.topicDirective,
+          signals,
         );
 
         if (cancelled) return;
@@ -581,6 +623,7 @@ If no todo change intent exists, return an empty list [].`;
       const todoCtx = buildTodoContext(todos, language);
       const subGoalCount = (nodes || []).filter((n) => n.type !== 'ROOT').length;
 
+      const signals = buildCoachSignals(todos, daysSinceVisitRef.current);
       const response = await sendChatMessage(
         history,
         userMsg.text,
@@ -592,6 +635,7 @@ If no todo change intent exists, return an empty list [].`;
         userId || undefined,
         subGoalCount,
         getTodoActionDirective(),
+        signals,
         imageToSend || undefined,
       );
 
@@ -801,10 +845,9 @@ If no todo change intent exists, return an empty list [].`;
               <div className="w-16 h-16 rounded-full bg-th-surface flex items-center justify-center mb-4">
                 <Sparkles size={28} className="text-th-accent animate-pulse" />
               </div>
-              <p className="text-sm font-display uppercase tracking-widest mb-1 text-th-text-tertiary">
-                {t.coach.emptyTitle}
+              <p className="text-[15px] text-th-text leading-relaxed max-w-xs">
+                {t.coach.coldStartGreeting}
               </p>
-              <p className="text-xs text-th-text-muted max-w-xs">{t.coach.emptyDesc}</p>
             </div>
           )}
         </div>

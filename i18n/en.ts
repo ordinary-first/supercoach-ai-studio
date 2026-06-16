@@ -34,6 +34,7 @@ const en: TranslationStrings = {
     sendLabel: 'Send',
     sendMessage: 'Send message to coach',
     selectQuestion: 'Pick a question you\'re curious about.',
+    coldStartGreeting: 'Good to see you. Anything goes — what\'s weighing on you most these days?',
     emptyTitle: 'Waiting for input',
     emptyDesc: 'Ask for advice on your goals and vision.',
     errorStart: 'An error occurred while starting coaching.',

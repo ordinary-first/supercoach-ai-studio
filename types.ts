@@ -176,6 +176,14 @@ export interface CoachMemoryContext {
   longTerm: string | null;
 }
 
+// 코치 대화에 전달하는 런타임 상태 신호 (직면·복귀·시간대 게이트 트리거)
+export interface CoachSignals {
+  localHour: number; // 사용자 로컬 시각 0-23 (밤늦은 시간 판별)
+  staleTodoCount: number; // 며칠째 미완료인 할일 수 (회피 신호)
+  oldestStaleTodo?: string; // 가장 오래 미뤄진 할일 텍스트 (구체성)
+  daysSinceLastVisit: number; // 마지막 코치 방문 후 경과일 (복귀 신호)
+}
+
 export interface FeedbackCard {
   date: string; // "YYYY-MM-DD"
   completedTodos: string[];

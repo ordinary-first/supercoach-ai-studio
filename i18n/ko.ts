@@ -36,6 +36,7 @@ const ko: TranslationStrings = {
     sendLabel: '전송',
     sendMessage: '코치에게 메시지 보내기',
     selectQuestion: '궁금한 질문을 선택해보세요',
+    coldStartGreeting: '반가워요. 무엇이든 좋아요 — 요즘 마음에 가장 크게 걸리는 게 뭐예요?',
     emptyTitle: '입력 대기 중',
     emptyDesc: '목표와 비전에 대한 조언을 요청해보세요.',
     errorStart: '코칭 시작 중 오류가 발생했습니다.',

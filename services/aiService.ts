@@ -1,4 +1,4 @@
-﻿import { UserProfile, CoachMemoryContext } from '../types';
+﻿import { UserProfile, CoachMemoryContext, CoachSignals } from '../types';
 import { recoverGenerationResult } from './firebaseService';
 import { getAuthHeaders } from './authFetch';
 
@@ -103,6 +103,7 @@ export const sendChatMessage = async (
   userId?: string,
   goalCount?: number,
   topicDirective?: string,
+  signals?: CoachSignals,
   imageDataUrl?: string,
 ): Promise<ChatApiResponse> => {
   try {
@@ -120,6 +121,7 @@ export const sendChatMessage = async (
         userId,
         goalCount,
         topicDirective,
+        ...(signals && { signals }),
         ...(imageDataUrl && { imageDataUrl }),
       }),
     });
