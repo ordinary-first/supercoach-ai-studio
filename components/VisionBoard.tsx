@@ -89,8 +89,12 @@ const VisionBoard: React.FC<VisionBoardProps> = ({ nodes, links, onNodeClick, on
       <div className={`absolute inset-0 pointer-events-none ${isLight ? 'opacity-[0.02]' : 'opacity-[0.03]'}`}
         style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E")` }} />
 
-      {/* Bento Grid */}
-      <div className={`vb-grid relative w-full h-full ${isLight ? 'p-2.5 md:p-4' : 'p-2 md:p-3'}`}>
+      {/* Bento Grid — extra top padding so the floating GoalViewSwitcher pill
+          (top-2 + safe-area, ~44px tall) never covers the hero card image */}
+      <div
+        className={`vb-grid relative w-full h-full ${isLight ? 'p-2.5 md:p-4' : 'p-2 md:p-3'}`}
+        style={{ paddingTop: 'calc(env(safe-area-inset-top) + 60px)' }}
+      >
         {slots.map((node, index) => {
           const isHero = index === 0;
           const isEmpty = !node;
