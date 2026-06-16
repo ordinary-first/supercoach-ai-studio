@@ -491,7 +491,10 @@ export const generateVideo = async (
     }
 
     const startedAt = Date.now();
-    const TIMEOUT_MS = 45 * 1000;
+    // Kling v3 Pro 생성은 보통 ~50초~3분. 45초는 거의 항상 타임아웃→pending이라
+    // 인세션에서 영상이 안 보였다. 90초로 늘려 흔한 케이스를 잡고, 더 긴 건
+    // 저장 후 refreshPendingVideo가 마저 가져온다.
+    const TIMEOUT_MS = 90 * 1000;
     let lastResult: VideoGenerationResult = created;
 
     while (Date.now() - startedAt < TIMEOUT_MS) {

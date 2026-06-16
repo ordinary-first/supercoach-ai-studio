@@ -1,6 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
-import { getGeminiClient } from '../../lib/geminiClient.js';
 import { getAdminDb } from '../../lib/firebaseAdmin.js';
 import { checkAndIncrement, limitExceededResponse } from '../../lib/usageGuard.js';
 import { authenticateRequest } from '../../lib/authMiddleware.js';
@@ -12,6 +11,19 @@ const R2_ACCESS_KEY = (process.env.R2_ACCESS_KEY_ID || '').trim();
 const R2_SECRET_KEY = (process.env.R2_SECRET_ACCESS_KEY || '').trim();
 const R2_BUCKET = (process.env.R2_BUCKET_NAME || 'secretcoach-images').trim();
 const R2_PUBLIC_URL = (process.env.R2_PUBLIC_URL || '').trim();
+
+// Cloud TTS는 별도 (TTS 전용) 키를 우선 사용. 메인 GOOGLE_API_KEY는 Generative
+// Language API로 제한돼 있어 Cloud TTS 호출이 차단되므로 GOOGLE_TTS_API_KEY가 필요.
+const TTS_API_KEY = (
+  process.env.GOOGLE_TTS_API_KEY ||
+  process.env.GOOGLE_API_KEY ||
+  process.env.GEMINI_API_KEY ||
+  ''
+).trim();
+
+const SAMPLE_RATE = 24000;
+// Cloud TTS text 입력 한도(5000 bytes) 이내로 안전하게 자른다.
+const MAX_TTS_BYTES = 4800;
 
 const r2 = new S3Client({
   region: 'auto',
@@ -28,23 +40,7 @@ const createRequestId = (): string => {
   return `speech_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 };
 
-const resolveErrorCode = (error: unknown): string => {
-  if (!error || typeof error !== 'object') return 'UNKNOWN_ERROR';
-  const maybeCode = (error as Record<string, unknown>).code;
-  if (typeof maybeCode === 'string' && maybeCode.trim()) return maybeCode;
-  const maybeStatus = (error as Record<string, unknown>).status;
-  if (typeof maybeStatus === 'number') return `HTTP_${maybeStatus}`;
-  return 'UNKNOWN_ERROR';
-};
-
-const resolveErrorMessage = (error: unknown): string => {
-  if (!error || typeof error !== 'object') return 'Speech generation failed';
-  const maybeMessage = (error as Record<string, unknown>).message;
-  if (typeof maybeMessage === 'string' && maybeMessage.trim()) return maybeMessage;
-  return 'Speech generation failed';
-};
-
-const pcm16ToWavBuffer = (pcmBuffer: Buffer, sampleRate: number = 24000): Buffer => {
+const pcm16ToWavBuffer = (pcmBuffer: Buffer, sampleRate: number = SAMPLE_RATE): Buffer => {
   const channels = 1;
   const bitsPerSample = 16;
   const byteRate = sampleRate * channels * (bitsPerSample / 8);
@@ -67,6 +63,79 @@ const pcm16ToWavBuffer = (pcmBuffer: Buffer, sampleRate: number = 24000): Buffer
   header.writeUInt32LE(dataSize, 40);
 
   return Buffer.concat([header, pcmBuffer]);
+};
+
+// Cloud TTS LINEAR16은 RIFF/WAVE 헤더 포함 WAV를 반환한다. 헤더를 벗겨 raw PCM16을
+// 돌려주면 기존 Gemini TTS와 바이트 호환 (클라이언트 prepareFromPcm / 저장 경로 무변경).
+const stripWavHeader = (wav: Buffer): Buffer => {
+  if (
+    wav.length >= 12 &&
+    wav.toString('ascii', 0, 4) === 'RIFF' &&
+    wav.toString('ascii', 8, 12) === 'WAVE'
+  ) {
+    let offset = 12;
+    while (offset + 8 <= wav.length) {
+      const chunkId = wav.toString('ascii', offset, offset + 4);
+      const chunkSize = wav.readUInt32LE(offset + 4);
+      if (chunkId === 'data') {
+        return wav.subarray(offset + 8, offset + 8 + chunkSize);
+      }
+      offset += 8 + chunkSize + (chunkSize % 2);
+    }
+  }
+  return wav; // WAV가 아니면 raw PCM으로 간주
+};
+
+const truncateToByteLimit = (text: string, maxBytes: number): string => {
+  if (Buffer.byteLength(text, 'utf8') <= maxBytes) return text;
+  let lo = 0;
+  let hi = text.length;
+  while (lo < hi) {
+    const mid = Math.ceil((lo + hi) / 2);
+    if (Buffer.byteLength(text.slice(0, mid), 'utf8') <= maxBytes) lo = mid;
+    else hi = mid - 1;
+  }
+  return text.slice(0, lo);
+};
+
+// 한글(Hangul) 포함 여부로 보이스 선택. Gemini TTS가 한국어 합성을 거부(finishReason
+// OTHER / PROHIBITED_CONTENT)하던 문제를 Google Cloud Text-to-Speech로 대체해 해결.
+const pickVoice = (text: string): { languageCode: string; name: string } => {
+  const hasHangul = /[가-힣ᄀ-ᇿ㄰-㆏ꥠ-꥿ힰ-퟿]/.test(text);
+  return hasHangul
+    ? { languageCode: 'ko-KR', name: 'ko-KR-Neural2-A' }
+    : { languageCode: 'en-US', name: 'en-US-Neural2-C' };
+};
+
+const synthesizeSpeech = async (text: string): Promise<Buffer> => {
+  const voice = pickVoice(text);
+  const response = await fetch(
+    `https://texttospeech.googleapis.com/v1/text:synthesize?key=${TTS_API_KEY}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        input: { text: truncateToByteLimit(text, MAX_TTS_BYTES) },
+        voice,
+        audioConfig: {
+          audioEncoding: 'LINEAR16',
+          sampleRateHertz: SAMPLE_RATE,
+          speakingRate: 0.95,
+        },
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    const detail = await response.text().catch(() => '');
+    throw new Error(`Cloud TTS ${response.status}: ${detail.slice(0, 200)}`);
+  }
+
+  const json = (await response.json()) as { audioContent?: string };
+  if (!json.audioContent) {
+    throw new Error('No audioContent in Cloud TTS response');
+  }
+  return stripWavHeader(Buffer.from(json.audioContent, 'base64'));
 };
 
 const uploadToR2 = async (key: string, body: Buffer): Promise<string> => {
@@ -115,11 +184,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (authError) return res.status(authError.status).json(authError.body);
   const uid = user!.uid;
 
-  if (!(process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY)?.trim()) {
+  if (!TTS_API_KEY) {
     return res.status(500).json({
       status: 'failed',
       errorCode: 'API_KEY_NOT_CONFIGURED',
-      errorMessage: 'Google API key not configured',
+      errorMessage: 'Text-to-Speech API key not configured',
       requestId,
     });
   }
@@ -134,8 +203,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    const ai = getGeminiClient();
-
     const cleanText = String(text || '').replace(/\*\*/g, '').trim();
     if (!cleanText) {
       return res.status(400).json({
@@ -146,24 +213,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    const ttsResponse = await ai.models.generateContent({
-      model: 'gemini-2.5-flash-preview-tts',
-      contents: [{ parts: [{ text: `Speak slowly in a calm and steady voice. ${cleanText}` }] }],
-      config: {
-        responseModalities: ['AUDIO'],
-        speechConfig: {
-          voiceConfig: {
-            prebuiltVoiceConfig: { voiceName: 'Kore' },
-          },
-        },
-      },
-    });
-
-    const audioData = (ttsResponse as any).candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-    if (!audioData) {
-      throw new Error('No audio data in TTS response');
+    const audioBuffer = await synthesizeSpeech(cleanText);
+    if (!audioBuffer.length) {
+      throw new Error('Empty audio from TTS');
     }
-    const audioBuffer = Buffer.from(audioData, 'base64');
 
     const cleanVisualizationId = typeof visualizationId === 'string' ? visualizationId.trim() : '';
 

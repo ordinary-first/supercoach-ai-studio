@@ -19,6 +19,7 @@ import {
   X,
 } from 'lucide-react';
 import { useTranslation } from '../../i18n/useTranslation';
+import { FEATURES } from '../../features';
 
 interface ChatInputProps {
   settings: { text: boolean; image: boolean; video: boolean; audio: boolean };
@@ -35,12 +36,16 @@ interface ChatInputProps {
   busy?: boolean;
 }
 
-const TOGGLE_ITEMS = [
+const ALL_TOGGLE_ITEMS = [
   { key: 'text' as const, Icon: FileText },
   { key: 'image' as const, Icon: ImageIcon },
   { key: 'audio' as const, Icon: Headphones },
   { key: 'video' as const, Icon: Film },
-] as const;
+];
+// 영상 생성 비활성화 시 토글 목록에서 숨김 (FEATURES.videoGeneration → true 시 부활)
+const TOGGLE_ITEMS = ALL_TOGGLE_ITEMS.filter(
+  (item) => item.key !== 'video' || FEATURES.videoGeneration,
+);
 
 const ChatInput: FC<ChatInputProps> = ({
   settings,

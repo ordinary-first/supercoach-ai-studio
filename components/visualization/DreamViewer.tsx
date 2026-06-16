@@ -2,6 +2,7 @@
 import { X, Download, Share2, Loader2, Check } from 'lucide-react';
 import { VisualizationResult } from '../../hooks/useGenerationPipeline';
 import { useTranslation } from '../../i18n/useTranslation';
+import { FEATURES } from '../../features';
 import VideoSection from './VideoSection';
 import ImageSection from './ImageSection';
 import AudioSection from './AudioSection';
@@ -74,10 +75,11 @@ function DreamViewer({
   if (!isVisible) return null;
 
   const showVideo =
-    result.videoUrl ||
-    result.videoStatus === 'pending' ||
-    result.videoStatus === 'ready' ||
-    (isGenerating && generatingStep.includes('video'));
+    FEATURES.videoGeneration &&
+    (result.videoUrl ||
+      result.videoStatus === 'pending' ||
+      result.videoStatus === 'ready' ||
+      (isGenerating && generatingStep.includes('video')));
 
   const showImage =
     result.imageUrl ||
