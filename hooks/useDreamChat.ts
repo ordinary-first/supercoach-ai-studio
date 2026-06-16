@@ -1,12 +1,26 @@
 import { useState, useCallback, useRef } from 'react';
-import { sendDreamChatMessage } from '../services/aiService';
+import {
+  fetchDreamScene,
+  fetchRefineButtons,
+  fetchSceneVariant,
+  type RefineButton,
+  type RefineResult,
+} from '../services/aiService';
 import type { AppLanguage } from '../i18n/types';
 
 export interface ChatMessage {
   id: string;
   role: 'ai' | 'user';
   content: string;
-  type: 'suggestion' | 'scene' | 'user-input';
+  type: 'scene' | 'user-input' | 'welcome';
+}
+
+// 갈림길: 현재 장면(원본) vs 수정 버튼으로 만든 변형. 사용자가 한쪽을 고른다.
+export interface SceneBranch {
+  original: string;
+  variant: string;
+  anchor: string;
+  label: string;
 }
 
 const getWelcomeMessage = (lang: AppLanguage) =>
@@ -19,87 +33,173 @@ const getErrorMessage = (lang: AppLanguage) =>
     ? '죄송해요, 잠시 오류가 발생했어요. 다시 시도해 주세요.'
     : 'Sorry, an error occurred. Please try again.';
 
-const makeId = () =>
-  `${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+const makeId = () => `${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+
+const EMPTY_REFINE: RefineResult = { mode: 'refine', isFinalReady: false, buttons: [] };
 
 export function useDreamChat(language: AppLanguage = 'ko') {
   const welcomeMessage = getWelcomeMessage(language);
   const [messages, setMessages] = useState<ChatMessage[]>([
-    { id: makeId(), role: 'ai', content: welcomeMessage, type: 'scene' },
+    { id: makeId(), role: 'ai', content: welcomeMessage, type: 'welcome' },
   ]);
   const [isAiTyping, setIsAiTyping] = useState(false);
-  const [finalPrompt, setFinalPrompt] = useState<string | null>(null);
-  const abortRef = useRef<AbortController | null>(null);
+  const [isRefining, setIsRefining] = useState(false);
+  const [currentScene, setCurrentScene] = useState('');
+  const [refine, setRefine] = useState<RefineResult>(EMPTY_REFINE);
+  const [branch, setBranch] = useState<SceneBranch | null>(null);
+
+  // async 콜백에서 최신값을 읽기 위한 refs (state 비동기 문제 회피)
+  const sceneRef = useRef('');
+  const rawInputRef = useRef('');
+  const roundRef = useRef(1);
+  const usedAnchorsRef = useRef<string[]>([]);
+  const userPicksRef = useRef<string[]>([]);
+  const branchRef = useRef<SceneBranch | null>(null);
+  const busyRef = useRef(false); // 동기 재진입 가드 (더블탭/연속전송 방지)
 
   const addMessage = useCallback(
     (role: ChatMessage['role'], content: string, type: ChatMessage['type']) => {
-      const msg: ChatMessage = { id: makeId(), role, content, type };
-      setMessages((prev) => [...prev, msg]);
-      return msg;
+      setMessages((prev) => [...prev, { id: makeId(), role, content, type }]);
     },
     [],
   );
 
+  const loadRefine = useCallback(async (scene: string, round: number) => {
+    const res = await fetchRefineButtons({
+      scene,
+      rawInput: rawInputRef.current,
+      round,
+      usedAnchors: usedAnchorsRef.current,
+      userPicks: userPicksRef.current,
+    });
+    setRefine(res);
+  }, []);
+
+  // 사용자가 직접 입력하거나 칩을 탭(seed) → 1차 장면 생성, 또는 현재 장면 수정
   const sendMessage = useCallback(
     async (text: string, goals: string[] = []) => {
-      // 유저 메시지 추가
-      addMessage('user', text, 'user-input');
+      const trimmed = text.trim();
+      if (!trimmed || busyRef.current) return;
+      busyRef.current = true;
+      const isFirst = !sceneRef.current;
 
-      // 대화 히스토리 구성 (현재 messages + 방금 추가한 유저 메시지 제외 — API에 별도 전달)
+      addMessage('user', trimmed, 'user-input');
       setIsAiTyping(true);
-      setFinalPrompt(null);
+      setBranch(null);
+      branchRef.current = null;
 
       try {
-        // 현재 메시지로 히스토리 구성
-        const history = [...messages, { id: '', role: 'user' as const, content: text, type: 'user-input' as const }]
-          .filter((m) => m.content !== welcomeMessage)
-          .map((m) => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.content }));
+        const scene = await fetchDreamScene(trimmed, goals, isFirst ? undefined : sceneRef.current);
+        if (!scene) {
+          addMessage('ai', getErrorMessage(language), 'scene');
+          return;
+        }
+        sceneRef.current = scene;
+        setCurrentScene(scene);
+        addMessage('ai', scene, 'scene');
 
-        const { reply, prompt } = await sendDreamChatMessage(
-          history.slice(0, -1), // history (이전 메시지들)
-          text, // 새 메시지
-          goals,
-        );
-
-        addMessage('ai', reply, 'scene');
-        if (prompt) setFinalPrompt(prompt);
+        if (isFirst) {
+          rawInputRef.current = trimmed;
+          roundRef.current = 1;
+          usedAnchorsRef.current = [];
+          userPicksRef.current = [];
+        }
+        await loadRefine(scene, roundRef.current);
       } catch {
         addMessage('ai', getErrorMessage(language), 'scene');
       } finally {
         setIsAiTyping(false);
+        busyRef.current = false;
       }
     },
-    [addMessage, messages],
+    [addMessage, language, loadRefine],
   );
 
-  const clearMessages = useCallback(() => {
-    setMessages([
-      { id: makeId(), role: 'ai', content: welcomeMessage, type: 'scene' },
-    ]);
-    setFinalPrompt(null);
+  // 수정 버튼 탭 → 변형 장면 생성 → 갈림길(원본 vs 변형) 띄움
+  const tapRefine = useCallback(async (button: RefineButton) => {
+    const base = sceneRef.current;
+    if (!base || busyRef.current) return;
+    busyRef.current = true;
+    setIsRefining(true);
+    try {
+      const variant = await fetchSceneVariant(base, button.transform);
+      const next: SceneBranch = {
+        original: base,
+        variant,
+        anchor: button.anchor || button.label,
+        label: button.label,
+      };
+      branchRef.current = next;
+      setBranch(next);
+    } finally {
+      setIsRefining(false);
+      busyRef.current = false;
+    }
   }, []);
 
-  /** 최종 프롬프트 또는 마지막 AI scene */
-  const getLastScene = useCallback((): string => {
-    if (finalPrompt) return finalPrompt;
-    for (let i = messages.length - 1; i >= 0; i -= 1) {
-      if (messages[i].role === 'ai' && messages[i].type === 'scene') {
-        return messages[i].content;
+  // 갈림길에서 한쪽 선택 → 현재 장면 확정 → 새 수정 버튼 로드
+  const pickBranch = useCallback(
+    async (which: 'original' | 'variant') => {
+      const b = branchRef.current;
+      if (!b || busyRef.current) return;
+      busyRef.current = true;
+      const chosen = which === 'variant' ? b.variant : b.original;
+
+      sceneRef.current = chosen;
+      setCurrentScene(chosen);
+      if (which === 'variant') addMessage('ai', chosen, 'scene');
+
+      usedAnchorsRef.current = [...usedAnchorsRef.current, b.anchor];
+      if (which === 'variant') userPicksRef.current = [...userPicksRef.current, b.anchor];
+
+      roundRef.current += 1;
+      setBranch(null);
+      branchRef.current = null;
+
+      setIsAiTyping(true);
+      try {
+        await loadRefine(chosen, roundRef.current);
+      } finally {
+        setIsAiTyping(false);
+        busyRef.current = false;
       }
-    }
-    for (let i = messages.length - 1; i >= 0; i -= 1) {
-      if (messages[i].role === 'user') return messages[i].content;
-    }
-    return '';
-  }, [messages, finalPrompt]);
+    },
+    [addMessage, loadRefine],
+  );
+
+  const dismissBranch = useCallback(() => {
+    setBranch(null);
+    branchRef.current = null;
+  }, []);
+
+  const clearMessages = useCallback(() => {
+    setMessages([{ id: makeId(), role: 'ai', content: welcomeMessage, type: 'welcome' }]);
+    setCurrentScene('');
+    setRefine(EMPTY_REFINE);
+    setBranch(null);
+    sceneRef.current = '';
+    rawInputRef.current = '';
+    roundRef.current = 1;
+    usedAnchorsRef.current = [];
+    userPicksRef.current = [];
+    branchRef.current = null;
+    busyRef.current = false;
+  }, [welcomeMessage]);
+
+  const getCurrentScene = useCallback((): string => sceneRef.current, []);
 
   return {
     messages,
-    addMessage,
-    sendMessage,
-    clearMessages,
-    getLastScene,
+    currentScene,
     isAiTyping,
-    finalPrompt,
+    isRefining,
+    refine,
+    branch,
+    sendMessage,
+    tapRefine,
+    pickBranch,
+    dismissBranch,
+    clearMessages,
+    getCurrentScene,
   };
 }

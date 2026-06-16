@@ -189,3 +189,61 @@ export async function geminiChat(
     return openAiChat(systemPrompt, history, userContent);
   }
 }
+
+/**
+ * Strip markdown code fences and extract the first JSON value from loose model text.
+ * flash-lite occasionally leaks ```json fences or a leading sentence despite JSON mode.
+ */
+function stripFences(text: string): string {
+  const trimmed = text.trim();
+  const fenced = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+  return fenced ? fenced[1].trim() : trimmed;
+}
+
+export function parseJsonLoose<T = unknown>(text: string): T | null {
+  if (!text) return null;
+  const stripped = stripFences(text);
+  try {
+    return JSON.parse(stripped) as T;
+  } catch { /* fall through to extraction */ }
+  const extracted = stripped.match(/[[{][\s\S]*[\]}]/);
+  if (extracted) {
+    try {
+      return JSON.parse(extracted[0]) as T;
+    } catch { /* give up */ }
+  }
+  return null;
+}
+
+/**
+ * JSON-mode generation. Wires responseMimeType:'application/json' into the
+ * Gemini config (the key lever that stops flash-lite from emitting prose/fences)
+ * and returns the robustly-parsed object, or null on failure.
+ */
+export async function geminiGenerateJson<T = unknown>(
+  systemPrompt: string,
+  userContent: string,
+): Promise<T | null> {
+  if (!canUseGemini()) {
+    if (!canUseOpenAI()) return null;
+    return parseJsonLoose<T>(await openAiGenerate(systemPrompt, userContent));
+  }
+
+  try {
+    const ai = getGeminiClient();
+    const response = await ai.models.generateContent({
+      model: GEMINI_MODEL,
+      config: { systemInstruction: systemPrompt, responseMimeType: 'application/json' },
+      contents: userContent,
+    });
+    return parseJsonLoose<T>(response.text?.trim() || '');
+  } catch (error) {
+    console.error('[ai] geminiGenerateJson failed:', error);
+    if (!canUseOpenAI()) return null;
+    try {
+      return parseJsonLoose<T>(await openAiGenerate(systemPrompt, userContent));
+    } catch {
+      return null;
+    }
+  }
+}

@@ -775,6 +775,7 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
 
         {/* Add task input + quick actions */}
         <div
+          data-coach-anchor
           className="apple-glass-header flex flex-col border-t border-th-border flex-shrink-0"
           style={keyboardHeight > 0 ? { position: 'fixed', bottom: `${keyboardHeight}px`, left: 0, right: 0, zIndex: 60 } : undefined}
         >

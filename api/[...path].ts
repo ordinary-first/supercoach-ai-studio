@@ -9,6 +9,10 @@ import chat from '../server/api/chat.js';
 import createCheckout from '../server/api/create-checkout.js';
 import decomposeGoal from '../server/api/decompose-goal.js';
 import dreamChat from '../server/api/dream-chat.js';
+import dreamChips from '../server/api/dream-chips.js';
+import refineButtons from '../server/api/refine-buttons.js';
+import sceneVariant from '../server/api/scene-variant.js';
+import sceneToPrompts from '../server/api/scene-to-prompts.js';
 import generateFeedback from '../server/api/generate-feedback.js';
 import generateImage from '../server/api/generate-image.js';
 import generateNarrative from '../server/api/generate-narrative.js';
@@ -33,6 +37,10 @@ const handlers: Record<string, ApiHandler> = {
   'create-checkout': createCheckout,
   'decompose-goal': decomposeGoal,
   'dream-chat': dreamChat,
+  'dream-chips': dreamChips,
+  'refine-buttons': refineButtons,
+  'scene-variant': sceneVariant,
+  'scene-to-prompts': sceneToPrompts,
   'generate-feedback': generateFeedback,
   'generate-image': generateImage,
   'generate-narrative': generateNarrative,

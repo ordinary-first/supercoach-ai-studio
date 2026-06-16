@@ -10,12 +10,54 @@ interface CoachBubbleProps {
   hasUnread?: boolean;
   selectedNode: GoalNode | null;
   nodes: GoalNode[];
+  // 하단 입력 바([data-coach-anchor])가 있는 탭에선 그 바로 위에 붙고, 바가 움직이면(키보드 등) 따라간다.
+  activeTab: string;
 }
 
-const CoachBubble: React.FC<CoachBubbleProps> = ({ isOpen, onToggle, hasUnread, selectedNode, nodes }) => {
+const COACH_DEFAULT_BOTTOM = 100; // 하단 독 위 기본 위치
+const COACH_GAP = 8;              // 입력 바 위 간격
+
+const CoachBubble: React.FC<CoachBubbleProps> = ({ isOpen, onToggle, hasUnread, selectedNode, nodes, activeTab }) => {
   const { t } = useTranslation();
   const [shouldPulse, setShouldPulse] = useState(false);
   const hasInitialPulsed = useRef(false);
+  const [bottomPx, setBottomPx] = useState(COACH_DEFAULT_BOTTOM);
+
+  // 하단 입력 바 위로 비켜서기 — 실제 바 위치를 측정해 그 위 8px에 붙고, 바가 움직이면 따라간다.
+  useEffect(() => {
+    let raf = 0;
+    const measure = () => {
+      const bar = document.querySelector('[data-coach-anchor]') as HTMLElement | null;
+      const next = bar
+        ? Math.max(
+            Math.round(window.innerHeight - bar.getBoundingClientRect().top + COACH_GAP),
+            COACH_DEFAULT_BOTTOM,
+          )
+        : COACH_DEFAULT_BOTTOM;
+      setBottomPx((prev) => (prev !== next ? next : prev));
+    };
+    const schedule = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(measure); };
+
+    measure();
+    const settle = window.setTimeout(measure, 250); // 탭 전환 직후 바가 늦게 마운트되는 경우 대비
+    const poll = window.setInterval(measure, 400);   // 키보드 등 이벤트 없는 위치 변화 대비
+    const bar = document.querySelector('[data-coach-anchor]');
+    const ro = bar ? new ResizeObserver(schedule) : null;
+    if (bar && ro) ro.observe(bar);
+    window.addEventListener('resize', schedule);
+    window.visualViewport?.addEventListener('resize', schedule);
+    window.visualViewport?.addEventListener('scroll', schedule);
+
+    return () => {
+      cancelAnimationFrame(raf);
+      clearTimeout(settle);
+      clearInterval(poll);
+      ro?.disconnect();
+      window.removeEventListener('resize', schedule);
+      window.visualViewport?.removeEventListener('resize', schedule);
+      window.visualViewport?.removeEventListener('scroll', schedule);
+    };
+  }, [activeTab, isOpen]);
 
   // 처음 진입 시 1회 pulse
   useEffect(() => {
@@ -46,7 +88,10 @@ const CoachBubble: React.FC<CoachBubbleProps> = ({ isOpen, onToggle, hasUnread, 
   if (isOpen) return null;
 
   return (
-    <div className="fixed bottom-[100px] right-6 z-[58]">
+    <div
+      className="fixed right-6 z-[58]"
+      style={{ bottom: `${bottomPx}px` }}
+    >
       <button
         onClick={onToggle}
         className={[

@@ -325,6 +325,14 @@ export interface TranslationStrings {
     shareButton: string;
     savedLabel: string;
     aiSceneResponse: string;
+    // Refine / branch flow
+    twoDirections: string;
+    pickThis: string;
+    generateThisScene: string;
+    keepThisScene: string;
+    writeOwnDream: string;
+    refining: string;
+    cancel: string;
   };
   app: {
     initializing: string;

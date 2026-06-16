@@ -4,17 +4,19 @@ import { authenticateRequest } from '../../lib/authMiddleware.js';
 import { setCorsHeaders } from '../../lib/corsHeaders.js';
 import { checkAndIncrement, limitExceededResponse } from '../../lib/usageGuard.js';
 
-const SYSTEM_PROMPT = `당신은 시각화 장면 구체화 가이드입니다.
-사용자가 추상적인 장면이나 목표를 말하면:
-1. 구체적이고 생생한 하위 장면 3-4개를 번호 매겨 제시하세요
-2. 사용자가 하나를 고르면 → 이미지/비디오 생성용 상세 프롬프트를 작성하세요
-3. 최종 프롬프트는 반드시 [PROMPT]...[/PROMPT]로 감싸서 반환하세요
+// 1차 "장면" 생성기. 사용자의 한 줄 욕망(또는 수정 요청) + 목표 맥락 + 현재 장면(있으면)을
+// 받아, 사용자가 소유할 수 있는 '이미 이룬 미래의 나' 장면 하나를 1인칭·현재형으로 쓴다.
+const SYSTEM_PROMPT = `너는 '이미 이룬 미래의 나'를 눈앞에 펼쳐주는 코치다.
+사용자의 한 줄 욕망(또는 현재 장면에 대한 수정 요청)과 목표 맥락, 그리고 현재 장면(있으면)을 받아,
+장면 하나를 써라.
 
 규칙:
-- 2-3턴 이내로 완료
-- 한국어로 대화
-- 따뜻하고 격려하는 톤
-- 장면 묘사는 시각적이고 감각적으로`;
+- "나는 ~한 상태다"처럼 1인칭·현재형. '이미 이룬' 확정 프레임("이미 ~이다"). 미래형·조건부 금지.
+- 감각 2개 이상(보이는 것 + 느껴지는 것/들리는 것)과 그 순간의 핵심 감정의 디테일을 담는다.
+- 사용자가 직접 말한 요소는 반드시 살린다. 말하지 않은 고유명사·금액·인물은 발명하지 마라.
+- 현재 장면이 주어지고 사용자가 수정을 요청하면, 그 요청만 반영해 같은 장면을 다시 써라.
+- 결핍·좌절·부정 감정을 소환하지 마라. 항상 '이미 이룬' 긍정 프레임.
+- 3~5문장. 출력은 장면 본문 텍스트만. 번호·머리말·따옴표·설명 금지.`;
 
 export default async function handler(
   req: VercelRequest,
@@ -35,29 +37,28 @@ export default async function handler(
     return res.status(429).json(limitExceededResponse('chatMessages', usage));
   }
 
-  const { history, message, goals } = req.body as {
-    history?: { role: string; content: string }[];
-    message: string;
+  const { message, goals, currentScene } = req.body as {
+    message?: string;
     goals?: string[];
+    currentScene?: string;
   };
 
-  const goalCtx = goals?.length
-    ? `\n\n사용자의 목표: ${goals.join(', ')}`
+  const goalCtx = goals?.length ? `\n\n사용자의 목표: ${goals.join(', ')}` : '';
+  const sceneCtx = currentScene?.trim()
+    ? `\n\n현재 장면(이걸 사용자 요청대로 다시 써라):\n${currentScene.trim()}`
     : '';
 
-  // Convert history to Gemini format
-  const geminiHistory = (history || []).map((m) => ({
-    role: (m.role === 'user' ? 'user' : 'model') as 'user' | 'model',
-    parts: [{ text: m.content }],
-  }));
-
-  const reply = await geminiChat(
-    SYSTEM_PROMPT + goalCtx,
-    geminiHistory,
-    message,
-  );
-  const promptMatch = reply.match(/\[PROMPT\]([\s\S]*?)\[\/PROMPT\]/);
-  const prompt = promptMatch ? promptMatch[1].trim() : null;
-
-  return res.status(200).json({ reply, prompt });
+  try {
+    const scene = await geminiChat(
+      SYSTEM_PROMPT + goalCtx + sceneCtx,
+      [],
+      String(message || '').trim() || (goals?.join(', ') ?? ''),
+    );
+    // reply는 하위 호환용 별칭
+    return res.status(200).json({ scene, reply: scene });
+  } catch (error) {
+    // AI 프로바이더 실패(키 고갈/만료 등) 시 500 대신 빈 장면 — 클라이언트가 안내 메시지 처리
+    console.error('[dream-chat]', error);
+    return res.status(200).json({ scene: '', reply: '' });
+  }
 }

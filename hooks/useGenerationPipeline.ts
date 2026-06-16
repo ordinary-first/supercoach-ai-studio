@@ -7,6 +7,7 @@ import {
   pollVideoStatus,
   generateVisualizationImage,
   uploadVisualizationAsset,
+  fetchScenePrompts,
 } from '../services/aiService';
 import {
   deleteVisualization,
@@ -250,6 +251,16 @@ export function useGenerationPipeline({ userProfile, nodes, isOpen }: Generation
       const fullPrompt = inputText || goalContext;
       const generationId = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
+      // 확정 장면 → 매체별 프롬프트로 내부 변환 (이미지/영상/음성. 텍스트는 narrative가 처리)
+      const needsConversion = settings.image || settings.audio || settings.video;
+      const scenePrompts = needsConversion
+        ? await fetchScenePrompts(fullPrompt, {
+            image: settings.image,
+            audio: settings.audio,
+            video: settings.video,
+          })
+        : { imagePrompt: '', videoPrompt: '', audioText: '' };
+
       if (settings.text) {
         setGeneratingStep(t.visualization.stepText);
         result.text = await generateSuccessNarrative(fullPrompt, userProfile, activeUserId);
@@ -259,7 +270,7 @@ export function useGenerationPipeline({ userProfile, nodes, isOpen }: Generation
 
       if (settings.image) {
         setGeneratingStep(t.visualization.stepImage);
-        const imageResult = await generateVisualizationImage(fullPrompt, referenceImages, userProfile, imageQuality, activeUserId, generationId);
+        const imageResult = await generateVisualizationImage(scenePrompts.imagePrompt || fullPrompt, referenceImages, userProfile, imageQuality, activeUserId, generationId);
         if (imageResult.status === 'completed' && imageResult.imageUrl) {
           result.imageUrl = imageResult.imageUrl;
           result.imageDataUrl = imageResult.imageDataUrl;
@@ -273,7 +284,7 @@ export function useGenerationPipeline({ userProfile, nodes, isOpen }: Generation
 
       if (settings.audio) {
         setGeneratingStep(t.visualization.stepAudio);
-        const speechResult = await generateSpeech(result.text || fullPrompt, activeUserId, generationId);
+        const speechResult = await generateSpeech(scenePrompts.audioText || result.text || fullPrompt, activeUserId, generationId);
         if (speechResult.status === 'completed' && (speechResult.audioUrl || speechResult.audioData)) {
           result.audioUrl = speechResult.audioUrl;
           result.audioData = speechResult.audioData;
@@ -287,7 +298,7 @@ export function useGenerationPipeline({ userProfile, nodes, isOpen }: Generation
 
       if (settings.video && FEATURES.videoGeneration) {
         setGeneratingStep(t.visualization.stepVideo);
-        const videoResult = await generateVideo(fullPrompt, userProfile, VIDEO_DURATION_SEC);
+        const videoResult = await generateVideo(scenePrompts.videoPrompt || fullPrompt, userProfile, VIDEO_DURATION_SEC);
         result.videoId = videoResult.videoId;
         result.videoUrl = videoResult.videoUrl;
         result.videoError = { code: videoResult.errorCode, message: videoResult.errorMessage, requestId: videoResult.requestId };

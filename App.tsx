@@ -1091,6 +1091,7 @@ const App: React.FC = () => {
         }}
         selectedNode={selectedNode}
         nodes={nodes}
+        activeTab={activeTab}
       />
       <input
         ref={insertImageInputRef}

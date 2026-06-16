@@ -80,7 +80,7 @@ export default function VisualizationTab({
   );
 
   const handleGenerate = useCallback(async () => {
-    const prompt = chat.getLastScene() || nodes.map((node) => `- ${node.text}`).join('\n');
+    const prompt = chat.getCurrentScene() || nodes.map((node) => `- ${node.text}`).join('\n');
     if (!prompt) return;
 
     setBackgroundComplete(false);
@@ -170,9 +170,20 @@ export default function VisualizationTab({
         {viewState === 'tabs' && pillTab === 'create' && (
           <DreamChat
             nodes={nodes}
+            userProfile={userProfile}
+            savedTitles={pipeline.savedItems
+              .map((item) => item.inputText || item.text || '')
+              .filter(Boolean)}
             messages={chat.messages}
-            onSendMessage={chat.sendMessage}
             isAiTyping={chat.isAiTyping}
+            isRefining={chat.isRefining}
+            currentScene={chat.currentScene}
+            refine={chat.refine}
+            branch={chat.branch}
+            onSendMessage={chat.sendMessage}
+            onTapRefine={chat.tapRefine}
+            onPickBranch={chat.pickBranch}
+            onDismissBranch={chat.dismissBranch}
             onGenerate={handleGenerate}
             isGenerating={pipeline.isGenerating}
             settings={settings}
