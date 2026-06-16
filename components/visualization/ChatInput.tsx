@@ -72,29 +72,6 @@ const ChatInput: FC<ChatInputProps> = ({
     if (focusSignal > 0) textareaRef.current?.focus();
   }, [focusSignal]);
 
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
-
-  useEffect(() => {
-    const nav = navigator as unknown as {
-      virtualKeyboard?: {
-        overlaysContent: boolean;
-        boundingRect: DOMRect;
-        addEventListener: (event: string, fn: () => void) => void;
-        removeEventListener: (event: string, fn: () => void) => void;
-      };
-    };
-
-    if (!nav.virtualKeyboard) return;
-
-    nav.virtualKeyboard.overlaysContent = true;
-    const onChange = () => {
-      setKeyboardHeight(Math.round(nav.virtualKeyboard!.boundingRect.height));
-    };
-
-    nav.virtualKeyboard.addEventListener('geometrychange', onChange);
-    return () => nav.virtualKeyboard!.removeEventListener('geometrychange', onChange);
-  }, []);
-
   const handleToggle = useCallback(
     (key: keyof ChatInputProps['settings']) => {
       onSettingsChange({ ...settings, [key]: !settings[key] });
@@ -149,16 +126,6 @@ const ChatInput: FC<ChatInputProps> = ({
     <div
       data-coach-anchor
       className="apple-glass-header flex flex-col gap-2 px-3 pb-3 pt-2"
-      style={keyboardHeight > 0
-        ? {
-          position: 'fixed',
-          bottom: `${keyboardHeight}px`,
-          left: 0,
-          right: 0,
-          zIndex: 60,
-          paddingBottom: 12,
-        }
-        : undefined}
     >
       {referenceImages.length > 0 && (
         <div className="flex gap-2 px-1">

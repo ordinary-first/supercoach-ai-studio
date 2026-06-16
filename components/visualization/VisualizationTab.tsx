@@ -56,6 +56,59 @@ export default function VisualizationTab({
   const chat = useDreamChat(language);
   const focusTrapRef = useFocusTrap(isOpen);
 
+  // 모바일 소프트 키보드가 열리면 하단 도크 예약 공간(pb-16)을 키보드 높이만큼으로
+  // 바꿔, 입력창이 키보드 바로 위에 붙도록 한다. 입력창을 position:fixed 로 띄우면
+  // 상위 backdrop-filter 글래스 패널이 컨테이닝 블록이 되어 도크 높이(64px)만큼
+  // 어긋나므로, 대신 셸의 하단 패딩만 조절해 입력창을 일반 흐름에 둔다.
+  //   · 터치 기기에서 텍스트 필드가 포커스됨 == 키보드 열림 (모드 무관 신뢰 신호)
+  //   · resizes-visual(iOS/크롬): visualViewport 인셋 = 키보드 높이 → 그만큼 패딩
+  //   · resizes-content(삼성/구안드로이드): 레이아웃이 이미 줄어 인셋≈0 → 패딩 0
+  const [keyboardPad, setKeyboardPad] = useState<number | null>(null);
+  useEffect(() => {
+    const nav = navigator as unknown as { virtualKeyboard?: { overlaysContent: boolean } };
+    if (nav.virtualKeyboard) nav.virtualKeyboard.overlaysContent = true;
+
+    const coarse = window.matchMedia?.('(pointer: coarse)').matches ?? false;
+    const vv = window.visualViewport;
+    let focused = false;
+
+    const isField = (el: EventTarget | null) =>
+      el instanceof HTMLElement && (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT');
+
+    const compute = () => {
+      if (!focused || !coarse) {
+        setKeyboardPad(null);
+        return;
+      }
+      const inset = vv ? Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop)) : 0;
+      setKeyboardPad(inset);
+    };
+
+    const onFocusIn = (e: FocusEvent) => {
+      if (isField(e.target)) {
+        focused = true;
+        compute();
+      }
+    };
+    const onFocusOut = () => {
+      window.setTimeout(() => {
+        focused = isField(document.activeElement);
+        compute();
+      }, 50);
+    };
+
+    document.addEventListener('focusin', onFocusIn);
+    document.addEventListener('focusout', onFocusOut);
+    vv?.addEventListener('resize', compute);
+    vv?.addEventListener('scroll', compute);
+    return () => {
+      document.removeEventListener('focusin', onFocusIn);
+      document.removeEventListener('focusout', onFocusOut);
+      vv?.removeEventListener('resize', compute);
+      vv?.removeEventListener('scroll', compute);
+    };
+  }, []);
+
   useEffect(() => {
     if (!isOpen) {
       setView('tabs');
@@ -143,7 +196,11 @@ export default function VisualizationTab({
     : '✨ Dream is ready — View result';
 
   return (
-    <div ref={focusTrapRef} className="apple-tab-shell fixed inset-0 z-50 flex flex-col pb-16 font-body">
+    <div
+      ref={focusTrapRef}
+      className="apple-tab-shell fixed inset-0 z-50 flex flex-col pb-16 font-body"
+      style={keyboardPad !== null ? { paddingBottom: keyboardPad } : undefined}
+    >
       <div className="apple-glass-header flex justify-center pt-3 pb-3">
         <DreamPillSwitcher activeTab={pillTab} onTabChange={setPillTab} />
       </div>
