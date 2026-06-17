@@ -122,12 +122,12 @@ const CoachChat: React.FC<CoachChatProps> = ({
     if (language === 'ko') {
       return `사용자의 마지막 입력에 할일 변경 의도가 있으면 응답 끝에 반드시 아래 주석을 붙이세요.
 <!-- TODO_ACTIONS: [{"type":"add|remove|postpone|complete|update","text":"대상 할일","newText":"수정 텍스트(선택)","days":1,"dueDate":"today|tomorrow|YYYY-MM-DD(선택)"}] -->
-의도가 없으면 빈 배열 []을 넣으세요.`;
+할일 변경 의도가 없으면 이 주석을 아예 붙이지 마세요. (빈 배열 []이나 다른 텍스트도 출력하지 마세요.)`;
     }
 
     return `If the user's last input implies todo changes, append this at the end:
 <!-- TODO_ACTIONS: [{"type":"add|remove|postpone|complete|update","text":"target todo","newText":"optional new text","days":1,"dueDate":"today|tomorrow|YYYY-MM-DD"}] -->
-If no todo change intent exists, return an empty list [].`;
+If there is no todo change intent, do not append this comment at all (do not output an empty array or any extra text).`;
   }, [language]);
 
   const extractResponseMeta = useCallback((text: string) => {
@@ -172,6 +172,9 @@ If no todo change intent exists, return an empty list [].`;
     const clean = text
       .replace(/\s*<!-- COMMENT:[\s\S]*?-->/g, '')
       .replace(/\s*<!-- TODO_ACTIONS:[\s\S]*?-->/g, '')
+      // 안전망: 닫히지 않은 마커나 AI가 흘린 맨 빈 배열([])이 본문에 새는 것 방지
+      .replace(/\s*<!--\s*TODO_ACTIONS:[\s\S]*$/g, '')
+      .replace(/\s*\[\s*\]\s*$/g, '')
       .trim();
 
     return {
