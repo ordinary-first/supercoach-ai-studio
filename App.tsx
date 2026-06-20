@@ -964,13 +964,7 @@ const App: React.FC = () => {
           <VisionBoard
             nodes={nodes}
             links={links}
-            onNodeClick={(node) => {
-              if (node.type === NodeType.ROOT) {
-                setSelectedNode(node);
-              } else {
-                setGoalDetailNodeId(node.id);
-              }
-            }}
+            onNodeClick={(node) => setGoalDetailNodeId(node.id)}
             onAddSubNode={(parentId) => {
               const name = window.prompt('새 목표 이름을 입력하세요');
               if (name?.trim()) handleAddSubNode(parentId, name.trim());
@@ -1009,6 +1003,15 @@ const App: React.FC = () => {
           onUpdateNode={handleUpdateNode}
           onAddSubNode={handleAddSubNode}
           onDeleteNode={handleDeleteNode}
+          onGenerateImage={handleGenerateNodeImage}
+          onInsertImage={handleInsertNodeImage}
+          onConvertNodeToTask={handleConvertNodeToTodo}
+          onExploreWithAI={(id) => {
+            setSelectedNode(nodes.find(n => n.id === id) || null);
+            setGoalDetailNodeId(null);
+            setIsChatOpen(true);
+          }}
+          imageLoadingNodes={imageLoadingNodes}
         />
       )}
  

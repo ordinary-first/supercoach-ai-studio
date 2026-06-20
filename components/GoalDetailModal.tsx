@@ -1,6 +1,9 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { GoalNode, NodeType, NodeStatus } from '../types';
-import { ChevronDown, ChevronRight, X, Check, Circle, Plus, Pencil, Trash2 } from 'lucide-react';
+import {
+  ChevronDown, ChevronRight, X, Check, Circle, Plus, Pencil, Trash2,
+  Sparkles, ImagePlus, MessageCircle, ListTodo, Loader2,
+} from 'lucide-react';
 import { useTranslation } from '../i18n/useTranslation';
 
 interface GoalDetailModalProps {
@@ -10,6 +13,11 @@ interface GoalDetailModalProps {
   onUpdateNode: (nodeId: string, updates: Partial<GoalNode>) => void;
   onAddSubNode: (parentId: string, text: string) => void;
   onDeleteNode?: (nodeId: string) => void;
+  onGenerateImage?: (nodeId: string) => void;
+  onInsertImage?: (nodeId: string) => void;
+  onConvertNodeToTask?: (nodeId: string) => void;
+  onExploreWithAI?: (nodeId: string) => void;
+  imageLoadingNodes?: Set<string>;
 }
 
 interface TreeNode {
@@ -25,6 +33,11 @@ const GoalDetailModal: React.FC<GoalDetailModalProps> = ({
   onUpdateNode,
   onAddSubNode,
   onDeleteNode,
+  onGenerateImage,
+  onInsertImage,
+  onConvertNodeToTask,
+  onExploreWithAI,
+  imageLoadingNodes,
 }) => {
   const { t } = useTranslation();
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
@@ -327,6 +340,37 @@ const GoalDetailModal: React.FC<GoalDetailModalProps> = ({
             <X size={14} strokeWidth={2.5} />
           </button>
 
+          {/* 이미지 액션 (히어로 좌상단) */}
+          {(onGenerateImage || onInsertImage) && (
+            <div className="absolute top-4 left-4 flex items-center gap-2">
+              {onGenerateImage && (
+                <button
+                  onClick={() => onGenerateImage(nodeId)}
+                  disabled={imageLoadingNodes?.has(nodeId)}
+                  className="flex items-center gap-1.5 h-8 px-3 rounded-full text-[12px] font-semibold
+                    bg-th-accent/85 text-white backdrop-blur-md border border-white/15
+                    hover:bg-th-accent disabled:opacity-60 transition-all duration-200"
+                >
+                  {imageLoadingNodes?.has(nodeId)
+                    ? <Loader2 size={13} className="animate-spin" />
+                    : <Sparkles size={13} />}
+                  {t.mindmap.generate}
+                </button>
+              )}
+              {onInsertImage && (
+                <button
+                  onClick={() => onInsertImage(nodeId)}
+                  className="flex items-center gap-1.5 h-8 px-3 rounded-full text-[12px] font-semibold
+                    bg-black/35 text-white/80 backdrop-blur-md border border-white/15
+                    hover:text-white hover:bg-black/55 transition-all duration-200"
+                >
+                  <ImagePlus size={13} />
+                  {t.mindmap.insertImage}
+                </button>
+              )}
+            </div>
+          )}
+
           {/* 제목 영역 */}
           <div className="absolute bottom-0 left-0 right-0 px-6 pb-5">
             <h2 className="text-[22px] font-bold text-white tracking-tight
@@ -348,6 +392,44 @@ const GoalDetailModal: React.FC<GoalDetailModalProps> = ({
             )}
           </div>
         </div>
+
+        {/* 액션 툴바 — 어느 뷰에서든 동일한 노드 컨트롤 */}
+        {(onExploreWithAI || onConvertNodeToTask
+          || (onDeleteNode && targetNode.type !== NodeType.ROOT)) && (
+          <div className="shrink-0 flex items-center gap-2 px-4 py-2.5
+            border-b border-white/[0.06] overflow-x-auto scrollbar-hide">
+            {onExploreWithAI && (
+              <button
+                onClick={() => onExploreWithAI(nodeId)}
+                className="flex items-center gap-1.5 shrink-0 h-9 px-3.5 rounded-xl text-[13px]
+                  bg-white/[0.04] border border-white/[0.08] text-white/75
+                  hover:text-white hover:bg-white/[0.08] transition-all duration-200"
+              >
+                <MessageCircle size={15} /> {t.mindmap.exploreWithAI}
+              </button>
+            )}
+            {onConvertNodeToTask && (
+              <button
+                onClick={() => onConvertNodeToTask(nodeId)}
+                className="flex items-center gap-1.5 shrink-0 h-9 px-3.5 rounded-xl text-[13px]
+                  bg-white/[0.04] border border-white/[0.08] text-white/75
+                  hover:text-white hover:bg-white/[0.08] transition-all duration-200"
+              >
+                <ListTodo size={15} /> {t.mindmap.todo}
+              </button>
+            )}
+            {onDeleteNode && targetNode.type !== NodeType.ROOT && (
+              <button
+                onClick={() => { onDeleteNode(nodeId); onClose(); }}
+                className="flex items-center gap-1.5 shrink-0 h-9 px-3.5 rounded-xl text-[13px]
+                  bg-red-500/[0.08] border border-red-400/20 text-red-300/90
+                  hover:text-red-200 hover:bg-red-500/[0.14] transition-all duration-200"
+              >
+                <Trash2 size={15} /> {t.mindmap.delete}
+              </button>
+            )}
+          </div>
+        )}
 
         {/* 트리 리스트 */}
         <div className="flex-1 overflow-y-auto py-3 px-2
