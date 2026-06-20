@@ -41,6 +41,7 @@ const viewerStyles = `
 @keyframes dvRise { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes dvWave { 0%,100% { height: 5px; } 50% { height: var(--max-h); } }
 @keyframes dvDrift { 0% { transform: scale(1.04) translate(0,0); } 100% { transform: scale(1.1) translate(-1.5%,-2%); } }
+@keyframes dvZoomIn { from { opacity: 0; transform: scale(0.94); } to { opacity: 1; transform: scale(1); } }
 `;
 
 const WAVE_BARS = [
@@ -199,7 +200,7 @@ function DreamViewer({
   if (mode === 'image' && hasImage && imgSrc) {
     return sheet(
       <div className="absolute inset-0 bg-black flex items-center justify-center" style={{ animation: 'dvFade 260ms ease forwards' }} onClick={() => setMode('default')}>
-        <img src={imgSrc} alt="Dream" className="w-full h-full object-contain" onError={handleImgError} />
+        <img src={imgSrc} alt="Dream" className="w-full h-full object-contain" onError={handleImgError} style={{ animation: `dvZoomIn 360ms ${EASE} both` }} />
         <button onClick={(e) => { e.stopPropagation(); setMode('default'); }} className={`absolute top-4 left-4 w-10 h-10 ${frostBtn}`} style={frostStyle} aria-label="Back">
           <ChevronDown size={20} />
         </button>
@@ -313,11 +314,11 @@ function DreamViewer({
       {isRead && (
         <>
           <div className="absolute inset-0 z-10 overflow-y-auto px-7 pt-20 scrollbar-hide"
-            style={{ WebkitOverflowScrolling: 'touch', paddingBottom: 'calc(env(safe-area-inset-bottom,0px) + 104px)', animation: `dvRise 480ms ${EASE} both` }}>
-            <div className="text-[12px] font-semibold tracking-wide mb-5" style={{ color: '#a9cdff', textShadow: '0 1px 10px rgba(0,0,0,0.5)' }}>
+            style={{ WebkitOverflowScrolling: 'touch', paddingBottom: 'calc(env(safe-area-inset-bottom,0px) + 104px)' }}>
+            <div className="text-[12px] font-semibold tracking-wide mb-5" style={{ color: '#a9cdff', textShadow: '0 1px 10px rgba(0,0,0,0.5)', animation: `dvRise 420ms ${EASE} both` }}>
               {t.visualization.sceneLabel}
             </div>
-            <p className="text-[18px] leading-[1.92] whitespace-pre-wrap font-body" style={{ color: '#f1f3f7', textShadow: '0 1px 16px rgba(0,0,0,0.6)' }}>
+            <p className="text-[18px] leading-[1.92] whitespace-pre-wrap font-body" style={{ color: '#f1f3f7', textShadow: '0 1px 16px rgba(0,0,0,0.6)', animation: `dvRise 520ms ${EASE} 90ms both` }}>
               {result.text}
             </p>
           </div>
