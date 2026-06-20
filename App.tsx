@@ -1051,7 +1051,11 @@ const App: React.FC = () => {
             setIsChatOpen(true);
           }}
           onDecomposeGoal={handleDecomposeGoalDirect}
-          onReparentNode={handleReparentNode}
+          onReparentNode={(childId, newParentId) => {
+            handleReparentNode(childId, newParentId);
+            const target = nodes.find(n => n.id === newParentId);
+            addToast(t.app.toasts.moved.replace('{target}', target?.text || ''), 'success');
+          }}
           decomposingNodeId={decomposingNodeId}
           imageLoadingNodes={imageLoadingNodes}
         />

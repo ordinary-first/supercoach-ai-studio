@@ -405,6 +405,7 @@ const ko: TranslationStrings = {
       imageInserted: '노드에 이미지를 삽입했습니다.',
       imageInsertFailed: '이미지 삽입에 실패했습니다.',
       subgoalsAdded: '{count}개의 하위 목표가 추가되었습니다',
+      moved: "'{target}' 아래로 옮겼어요",
     },
   },
   onboarding: {

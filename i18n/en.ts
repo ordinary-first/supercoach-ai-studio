@@ -404,6 +404,7 @@ const en: TranslationStrings = {
       imageInserted: 'Image inserted to node.',
       imageInsertFailed: 'Failed to insert image.',
       subgoalsAdded: '{count} sub-goals added',
+      moved: "Moved under '{target}'",
     },
   },
   onboarding: {

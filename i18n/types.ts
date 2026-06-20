@@ -361,6 +361,7 @@ export interface TranslationStrings {
       imageInserted: string;
       imageInsertFailed: string;
       subgoalsAdded: string;
+      moved: string;
     };
   };
   onboarding: {
