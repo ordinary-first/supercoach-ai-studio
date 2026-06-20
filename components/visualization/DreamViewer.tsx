@@ -306,8 +306,15 @@ function DreamViewer({
           {/* chrome */}
           <button onClick={handleClose} className={`absolute top-4 left-4 z-30 w-10 h-10 ${frostBtn}`} style={frostStyle} aria-label="Close"><X size={20} /></button>
           <div className="absolute top-4 right-4 z-30 flex items-center gap-2">
-            <button onClick={onSave} disabled={isSaving || isSaved} className={`w-10 h-10 ${frostBtn} disabled:opacity-70`} style={frostStyle} aria-label={t.visualization.saveButton}>
-              {isSaving ? <Loader2 size={18} className="animate-spin" /> : isSaved ? <Check size={18} className="text-green-400" /> : <Download size={18} />}
+            <button onClick={onSave} disabled={isSaving || isSaved}
+              className={`h-10 flex items-center justify-center rounded-full text-white/90 hover:text-white transition-all disabled:opacity-90 ${isSaving || isSaved ? 'px-3.5 gap-1.5' : 'w-10'}`}
+              style={frostStyle} aria-label={t.visualization.saveButton}>
+              {isSaving ? <Loader2 size={16} className="animate-spin" /> : isSaved ? <Check size={16} className="text-green-400" /> : <Download size={18} />}
+              {(isSaving || isSaved) && (
+                <span className="text-[13px] font-semibold whitespace-nowrap">
+                  {isSaving ? t.visualization.saving : t.visualization.savedLabel}
+                </span>
+              )}
             </button>
             <button className={`w-10 h-10 ${frostBtn}`} style={frostStyle} aria-label={t.visualization.shareButton}><Share2 size={18} /></button>
           </div>
