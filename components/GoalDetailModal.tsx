@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { GoalNode, NodeType, NodeStatus } from '../types';
 import {
-  ChevronDown, ChevronRight, X, Check, Circle, Plus, Pencil, Trash2,
+  ChevronDown, ChevronRight, X, Check, Circle, Plus, Trash2,
   Sparkles, ImagePlus, MessageCircle, ListTodo, Loader2, GitBranch, Move,
 } from 'lucide-react';
 import { useTranslation } from '../i18n/useTranslation';
@@ -301,15 +301,17 @@ const GoalDetailModal: React.FC<GoalDetailModalProps> = ({
               >
                 <Plus size={12} strokeWidth={2} />
               </button>
-              <button
-                onClick={() => startEditing(node)}
-                className="w-6 h-6 rounded-md flex items-center justify-center
-                  text-white/20 hover:text-white/60 hover:bg-white/[0.06]
-                  transition-all duration-200"
-                title="편집"
-              >
-                <Pencil size={11} strokeWidth={2} />
-              </button>
+              {onConvertNodeToTask && (
+                <button
+                  onClick={() => onConvertNodeToTask(node.id)}
+                  className="w-6 h-6 rounded-md flex items-center justify-center
+                    text-white/20 hover:text-th-accent hover:bg-th-accent/10
+                    transition-all duration-200"
+                  title={t.mindmap.todo}
+                >
+                  <ListTodo size={12} strokeWidth={2} />
+                </button>
+              )}
               {onDeleteNode && (
                 <button
                   onClick={() => onDeleteNode(node.id)}
