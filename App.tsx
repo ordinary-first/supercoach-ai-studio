@@ -6,6 +6,7 @@ import VisionBoard from './components/VisionBoard';
 import OutlineView from './components/OutlineView';
 import GoalViewSwitcher from './components/GoalViewSwitcher';
 import GoalDetailModal from './components/GoalDetailModal';
+import GoalInputModal from './components/GoalInputModal';
 import CoachChat from './components/CoachChat';
 import CoachBubble from './components/CoachBubble';
 import ShortcutsPanel from './components/ShortcutsPanel';
@@ -208,6 +209,7 @@ const App: React.FC = () => {
   const [mindmapLayout, setMindmapLayout] = useState<LayoutMode>('mindMap');
   const [goalsViewMode, setGoalsViewMode] = useState<'visionboard' | 'mindmap' | 'outline'>(_isDevTest ? 'mindmap' : 'visionboard');
   const [goalDetailNodeId, setGoalDetailNodeId] = useState<string | null>(null);
+  const [goalInputParentId, setGoalInputParentId] = useState<string | null>(null);
   const [trialDismissed, setTrialDismissed] = useState(false);
   const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
   const [deleteConfirmNodeId, setDeleteConfirmNodeId] = useState<string | null>(null);
@@ -1004,12 +1006,16 @@ const App: React.FC = () => {
             nodes={nodes}
             links={links}
             onNodeClick={(node) => setGoalDetailNodeId(node.id)}
-            onAddSubNode={(parentId) => {
-              const name = window.prompt('새 목표 이름을 입력하세요');
-              if (name?.trim()) handleAddSubNode(parentId, name.trim());
-            }}
+            onAddSubNode={(parentId) => setGoalInputParentId(parentId)}
           />
         )}
+
+        <GoalInputModal
+          isOpen={!!goalInputParentId}
+          onClose={() => setGoalInputParentId(null)}
+          onSubmit={(text) => { if (goalInputParentId) handleAddSubNode(goalInputParentId, text); }}
+          parentName={nodes.find(n => n.id === goalInputParentId)?.text || t.mindmap.defaultRootText}
+        />
 
         {/* 마인드맵 뷰 */}
         {goalsViewMode === 'mindmap' && (
