@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { GoalNode, GoalLink, NodeType } from '../types';
-import { Plus, Layers } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { useThemeStore } from '../stores/useThemeStore';
 
 interface VisionBoardProps {
@@ -101,7 +101,6 @@ const VisionBoard: React.FC<VisionBoardProps> = ({ nodes, links, onNodeClick, on
           const palette = palettes[index % palettes.length];
           const area = AREA_NAMES[index];
           const isHovered = node ? hoveredId === node.id : false;
-          const childCount = node ? nodes.filter(n => n.parentId === node.id).length : 0;
 
           if (isEmpty) {
             return (
@@ -242,12 +241,6 @@ const VisionBoard: React.FC<VisionBoardProps> = ({ nodes, links, onNodeClick, on
                   <p className={`mt-2 text-[11px] md:text-[12px] tracking-wide
                     ${isLight ? 'text-white/70' : 'text-white/50'}`}>
                     {firstLevelNodes.length} goals connected
-                  </p>
-                )}
-                {!isHero && childCount > 0 && (
-                  <p className={`mt-1.5 flex items-center gap-1 text-[10px] md:text-[11px] tracking-wide
-                    ${isLight ? 'text-white/65' : 'text-white/45'}`}>
-                    <Layers size={11} strokeWidth={1.8} />{childCount}
                   </p>
                 )}
               </div>
