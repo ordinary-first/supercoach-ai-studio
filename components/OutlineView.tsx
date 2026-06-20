@@ -2,7 +2,7 @@ import React, { useState, useCallback, useMemo, useRef, useEffect, KeyboardEvent
 import { GoalNode, GoalLink, NodeType, NodeStatus } from '../types';
 import {
   ChevronRight, ChevronDown, Plus, Trash2, Pencil,
-  GitBranchPlus, GripVertical, Sparkles,
+  GitBranchPlus, GripVertical, MessageCircle, ListTodo, GitBranch, Loader2,
 } from 'lucide-react';
 import {
   DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors,
@@ -17,12 +17,15 @@ import { useTranslation } from '../i18n/useTranslation';
 interface OutlineViewProps {
   nodes: GoalNode[];
   links: GoalLink[];
-  onNodeClick: (node: GoalNode) => void;
   onUpdateNode: (nodeId: string, updates: Partial<GoalNode>) => void;
   onDeleteNode: (nodeId: string) => void;
   onAddSubNode: (parentId: string, text?: string) => void;
   onReparentNode?: (childId: string, newParentId: string) => void;
   onAddParentNode?: (nodeId: string) => void;
+  onExploreWithAI?: (nodeId: string) => void;
+  onConvertNodeToTask?: (nodeId: string) => void;
+  onDecomposeGoal?: (nodeId: string) => void;
+  decomposingNodeId?: string | null;
 }
 
 /** A node flattened into the visible, ordered list (root excluded) */
@@ -188,7 +191,10 @@ interface RowHandlers {
   onMoveDown: (nodeId: string) => void;
   onIndent: (nodeId: string) => void;
   onOutdent: (nodeId: string) => void;
-  onOpenHub?: (node: GoalNode) => void;
+  onExploreWithAI?: (nodeId: string) => void;
+  onConvertNodeToTask?: (nodeId: string) => void;
+  onDecomposeGoal?: (nodeId: string) => void;
+  decomposingId?: string | null;
 }
 
 function OutlineRow({
@@ -202,7 +208,8 @@ function OutlineRow({
   const { node, hasChildren, childCount } = item;
   const {
     focusedId, onFocus, onUpdateNode, onDeleteNode, onAddSubNode,
-    onAddParentNode, onToggleCollapse, onMoveUp, onMoveDown, onIndent, onOutdent, onOpenHub,
+    onAddParentNode, onToggleCollapse, onMoveUp, onMoveDown, onIndent, onOutdent,
+    onExploreWithAI, onConvertNodeToTask, onDecomposeGoal, decomposingId,
   } = handlers;
   const { t } = useTranslation();
 
@@ -370,10 +377,25 @@ function OutlineRow({
           <button onClick={(e) => { e.stopPropagation(); onAddSubNode(node.id); }}
             className="p-0.5 rounded text-th-text-muted hover:text-th-accent hover:bg-th-accent/10 transition-colors"
             title={t.mindmap.addChild}><Plus size={11} /></button>
-          {onOpenHub && (
-            <button onClick={(e) => { e.stopPropagation(); onOpenHub(node); }}
+          {onExploreWithAI && (
+            <button onClick={(e) => { e.stopPropagation(); onExploreWithAI(node.id); }}
               className="p-0.5 rounded text-th-text-muted hover:text-th-accent hover:bg-th-accent/10 transition-colors"
-              title={t.mindmap.more}><Sparkles size={11} /></button>
+              title={t.mindmap.exploreWithAI}><MessageCircle size={11} /></button>
+          )}
+          {onConvertNodeToTask && (
+            <button onClick={(e) => { e.stopPropagation(); onConvertNodeToTask(node.id); }}
+              className="p-0.5 rounded text-th-text-muted hover:text-th-accent hover:bg-th-accent/10 transition-colors"
+              title={t.mindmap.todo}><ListTodo size={11} /></button>
+          )}
+          {onDecomposeGoal && (
+            <button onClick={(e) => { e.stopPropagation(); onDecomposeGoal(node.id); }}
+              disabled={decomposingId === node.id}
+              className="p-0.5 rounded text-th-text-muted hover:text-th-accent hover:bg-th-accent/10 disabled:opacity-50 transition-colors"
+              title={t.mindmap.decompose}>
+              {decomposingId === node.id
+                ? <Loader2 size={11} className="animate-spin" />
+                : <GitBranch size={11} />}
+            </button>
           )}
           <button onClick={(e) => { e.stopPropagation(); onDeleteNode(node.id); }}
             className="p-0.5 rounded text-th-text-muted hover:text-red-400 hover:bg-red-400/10 transition-colors"
@@ -387,8 +409,9 @@ function OutlineRow({
 /* ──────────────────── Main Component ───────────────────── */
 
 const OutlineView: React.FC<OutlineViewProps> = ({
-  nodes, onNodeClick, onUpdateNode, onDeleteNode, onAddSubNode,
+  nodes, onUpdateNode, onDeleteNode, onAddSubNode,
   onReparentNode, onAddParentNode,
+  onExploreWithAI, onConvertNodeToTask, onDecomposeGoal, decomposingNodeId,
 }) => {
   const { t } = useTranslation();
   const [focusedId, setFocusedId] = useState<string | null>(null);
@@ -562,7 +585,7 @@ const OutlineView: React.FC<OutlineViewProps> = ({
     onToggleCollapse: handleToggleCollapse,
     onMoveUp: handleMoveUp, onMoveDown: handleMoveDown,
     onIndent: handleIndent, onOutdent: handleOutdent,
-    onOpenHub: onNodeClick,
+    onExploreWithAI, onConvertNodeToTask, onDecomposeGoal, decomposingId: decomposingNodeId,
   };
 
   if (!root) {

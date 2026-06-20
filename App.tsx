@@ -1029,12 +1029,18 @@ const App: React.FC = () => {
           <OutlineView
             nodes={nodes}
             links={links}
-            onNodeClick={(node) => setGoalDetailNodeId(node.id)}
             onUpdateNode={handleUpdateNode}
             onDeleteNode={handleDeleteNode}
             onAddSubNode={handleAddSubNode}
             onReparentNode={handleReparentNode}
             onAddParentNode={handleAddParentNode}
+            onExploreWithAI={(id) => {
+              setSelectedNode(nodes.find(n => n.id === id) || null);
+              setIsChatOpen(true);
+            }}
+            onConvertNodeToTask={handleConvertNodeToTodo}
+            onDecomposeGoal={handleDecomposeGoalDirect}
+            decomposingNodeId={decomposingNodeId}
           />
         )}
       </div>
