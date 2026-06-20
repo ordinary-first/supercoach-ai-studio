@@ -372,6 +372,8 @@ const en: TranslationStrings = {
     saveButton: 'Save',
     shareButton: 'Share',
     savedLabel: 'Saved',
+    sceneLabel: "Today's scene",
+    readFull: 'Read full',
     aiSceneResponse: 'Great choice! I\'ll create a visualization based on this scene. Select your desired outputs below and tap Generate.',
     twoDirections: 'Two directions',
     pickThis: 'Continue with this',

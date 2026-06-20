@@ -373,6 +373,8 @@ const ko: TranslationStrings = {
     saveButton: '저장',
     shareButton: '공유',
     savedLabel: '저장됨',
+    sceneLabel: '오늘의 장면',
+    readFull: '전체 읽기',
     aiSceneResponse: '좋은 선택이에요. 이 장면을 기반으로 시각화를 만들어드릴게요. 아래에서 출력을 선택한 뒤 생성하기를 눌러주세요.',
     twoDirections: '두 가지 방향',
     pickThis: '이걸로 이어가기',

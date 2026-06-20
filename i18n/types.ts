@@ -328,6 +328,8 @@ export interface TranslationStrings {
     saveButton: string;
     shareButton: string;
     savedLabel: string;
+    sceneLabel: string;
+    readFull: string;
     aiSceneResponse: string;
     // Refine / branch flow
     twoDirections: string;
