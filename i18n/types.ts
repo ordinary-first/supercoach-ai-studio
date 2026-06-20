@@ -242,6 +242,8 @@ export interface TranslationStrings {
     decompose: string;
     exploreWithAI: string;
     move: string;
+    addChild: string;
+    addParent: string;
     visionBoard: string;
     mindMapLabel: string;
     outlineLabel: string;

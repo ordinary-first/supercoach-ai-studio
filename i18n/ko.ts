@@ -279,6 +279,8 @@ const ko: TranslationStrings = {
     decompose: '분해',
     exploreWithAI: 'AI와 탐색',
     move: '이동',
+    addChild: '하위 추가',
+    addParent: '상위 추가',
     visionBoard: '비전보드',
     mindMapLabel: '마인드맵',
     outlineLabel: '개요',

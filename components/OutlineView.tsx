@@ -2,7 +2,7 @@ import React, { useState, useCallback, useMemo, useRef, useEffect, KeyboardEvent
 import { GoalNode, GoalLink, NodeType, NodeStatus } from '../types';
 import {
   ChevronRight, ChevronDown, Plus, Trash2, Pencil,
-  MoveUp, MoveDown, CornerDownRight, CornerUpLeft, GitBranchPlus, GripVertical, Sparkles,
+  GitBranchPlus, GripVertical, Sparkles,
 } from 'lucide-react';
 import {
   DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors,
@@ -204,6 +204,7 @@ function OutlineRow({
     focusedId, onFocus, onUpdateNode, onDeleteNode, onAddSubNode,
     onAddParentNode, onToggleCollapse, onMoveUp, onMoveDown, onIndent, onOutdent, onOpenHub,
   } = handlers;
+  const { t } = useTranslation();
 
   const [editing, setEditing] = useState(false);
   const isFocused = focusedId === node.id;
@@ -361,34 +362,22 @@ function OutlineRow({
         {/* Hover/focus actions */}
         <div className={`flex items-center gap-px flex-shrink-0 transition-opacity
           ${isFocused ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
-          <button onClick={(e) => { e.stopPropagation(); onMoveUp(node.id); }}
-            className="p-0.5 rounded text-th-text-muted hover:text-th-text hover:bg-white/[0.06] transition-colors"
-            title="Move up (Alt+↑)"><MoveUp size={11} /></button>
-          <button onClick={(e) => { e.stopPropagation(); onMoveDown(node.id); }}
-            className="p-0.5 rounded text-th-text-muted hover:text-th-text hover:bg-white/[0.06] transition-colors"
-            title="Move down (Alt+↓)"><MoveDown size={11} /></button>
-          <button onClick={(e) => { e.stopPropagation(); onIndent(node.id); }}
-            className="p-0.5 rounded text-th-text-muted hover:text-th-text hover:bg-white/[0.06] transition-colors"
-            title="Indent (Tab)"><CornerDownRight size={11} /></button>
-          <button onClick={(e) => { e.stopPropagation(); onOutdent(node.id); }}
-            className="p-0.5 rounded text-th-text-muted hover:text-th-text hover:bg-white/[0.06] transition-colors"
-            title="Outdent (Shift+Tab)"><CornerUpLeft size={11} /></button>
           {onAddParentNode && (
             <button onClick={(e) => { e.stopPropagation(); onAddParentNode(node.id); }}
               className="p-0.5 rounded text-th-text-muted hover:text-purple-400 hover:bg-purple-400/10 transition-colors"
-              title="Insert parent"><GitBranchPlus size={11} /></button>
+              title={t.mindmap.addParent}><GitBranchPlus size={11} /></button>
           )}
           <button onClick={(e) => { e.stopPropagation(); onAddSubNode(node.id); }}
             className="p-0.5 rounded text-th-text-muted hover:text-th-accent hover:bg-th-accent/10 transition-colors"
-            title="Add child"><Plus size={11} /></button>
+            title={t.mindmap.addChild}><Plus size={11} /></button>
           {onOpenHub && (
             <button onClick={(e) => { e.stopPropagation(); onOpenHub(node); }}
               className="p-0.5 rounded text-th-text-muted hover:text-th-accent hover:bg-th-accent/10 transition-colors"
-              title="More actions"><Sparkles size={11} /></button>
+              title={t.mindmap.more}><Sparkles size={11} /></button>
           )}
           <button onClick={(e) => { e.stopPropagation(); onDeleteNode(node.id); }}
             className="p-0.5 rounded text-th-text-muted hover:text-red-400 hover:bg-red-400/10 transition-colors"
-            title="Delete"><Trash2 size={11} /></button>
+            title={t.mindmap.delete}><Trash2 size={11} /></button>
         </div>
       </div>
     </div>
