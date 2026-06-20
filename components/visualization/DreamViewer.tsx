@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import {
   X, Download, Share2, Loader2, Check, Play, Pause, ChevronDown, Maximize2,
 } from 'lucide-react';
@@ -155,7 +156,9 @@ function DreamViewer({
     </div>
   );
 
-  const sheet = (children: React.ReactNode) => (
+  // Portal to <body> so the fullscreen viewer escapes VisualizationTab's
+  // stacking context (z-50) and truly covers the dock (z-55) and coach bubble (z-58).
+  const sheet = (children: React.ReactNode) => createPortal(
     <div
       className="fixed inset-0 flex flex-col apple-tab-shell"
       style={{
@@ -167,7 +170,8 @@ function DreamViewer({
     >
       <style>{viewerStyles}</style>
       {children}
-    </div>
+    </div>,
+    document.body,
   );
 
   /* ── Legacy stacked layout (video enabled) ── */
