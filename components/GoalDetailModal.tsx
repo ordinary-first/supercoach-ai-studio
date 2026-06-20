@@ -1,10 +1,122 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useCallback } from 'react';
 import { GoalNode, NodeType, NodeStatus } from '../types';
 import {
   ChevronDown, ChevronRight, X, Check, Circle, Plus, Trash2,
   Sparkles, ImagePlus, MessageCircle, ListTodo, Loader2, GitBranch, Move,
+  GripVertical,
 } from 'lucide-react';
+import {
+  DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors,
+  DragStartEvent, DragMoveEvent, DragEndEvent, MeasuringStrategy,
+} from '@dnd-kit/core';
+import {
+  SortableContext, useSortable, verticalListSortingStrategy, arrayMove,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { useTranslation } from '../i18n/useTranslation';
+
+/* ── DnD: flatten / projection helpers (mirrors OutlineView) ── */
+
+/** A node flattened into the visible, ordered list (subtree root excluded). */
+interface FlatItem {
+  id: string;
+  node: GoalNode;
+  depth: number;        // subtree root's direct children = 1
+  parentId: string;     // always set (subtree root id at minimum)
+  hasChildren: boolean;
+  childCount: number;
+  doneChildCount: number;
+}
+
+const INDENT = 24;
+const BASE = 16;
+
+function buildChildrenMap(nodes: GoalNode[]): Map<string, GoalNode[]> {
+  const map = new Map<string, GoalNode[]>();
+  for (const n of nodes) {
+    if (n.parentId) {
+      const arr = map.get(n.parentId) || [];
+      arr.push(n);
+      map.set(n.parentId, arr);
+    }
+  }
+  for (const arr of map.values()) {
+    arr.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+  }
+  return map;
+}
+
+/** Flatten visible descendants of root depth-first. Uses collapsedIds (modal
+ *  tracks collapse in local state, not on node.collapsed). */
+function flattenVisible(
+  rootId: string, childrenMap: Map<string, GoalNode[]>, collapsedIds: Set<string>,
+): FlatItem[] {
+  const out: FlatItem[] = [];
+  const walk = (parentId: string, depth: number) => {
+    for (const node of childrenMap.get(parentId) || []) {
+      const kids = childrenMap.get(node.id) || [];
+      const done = kids.filter(k => k.status === NodeStatus.COMPLETED).length;
+      out.push({
+        id: node.id, node, depth, parentId,
+        hasChildren: kids.length > 0, childCount: kids.length, doneChildCount: done,
+      });
+      if (kids.length > 0 && !collapsedIds.has(node.id)) walk(node.id, depth + 1);
+    }
+  };
+  walk(rootId, 1);
+  return out;
+}
+
+function collectDescendants(rootId: string, childrenMap: Map<string, GoalNode[]>): Set<string> {
+  const set = new Set<string>();
+  const walk = (id: string) => {
+    for (const child of childrenMap.get(id) || []) {
+      set.add(child.id);
+      walk(child.id);
+    }
+  };
+  walk(rootId);
+  return set;
+}
+
+interface Projection { depth: number; parentId: string; }
+
+/** dnd-kit "sortable tree" projection: single forced root, min depth 1. */
+function getProjection(
+  items: FlatItem[], activeId: string, overId: string,
+  dragOffsetX: number, rootId: string,
+): Projection | null {
+  const overIndex = items.findIndex(i => i.id === overId);
+  const activeIndex = items.findIndex(i => i.id === activeId);
+  if (overIndex < 0 || activeIndex < 0) return null;
+  const activeItem = items[activeIndex];
+  const newItems = arrayMove(items, activeIndex, overIndex);
+  const previousItem = newItems[overIndex - 1];
+  const nextItem = newItems[overIndex + 1];
+
+  const dragDepth = Math.round(dragOffsetX / INDENT);
+  const projectedDepth = activeItem.depth + dragDepth;
+  const maxDepth = previousItem ? previousItem.depth + 1 : 1;
+  const minDepth = nextItem ? nextItem.depth : 1;
+
+  let depth = projectedDepth;
+  if (depth > maxDepth) depth = maxDepth;
+  else if (depth < minDepth) depth = minDepth;
+  if (depth < 1) depth = 1;
+
+  const parentId = (() => {
+    if (depth <= 1 || !previousItem) return rootId;
+    if (depth === previousItem.depth) return previousItem.parentId;
+    if (depth > previousItem.depth) return previousItem.id;
+    const ancestor = newItems
+      .slice(0, overIndex)
+      .reverse()
+      .find(i => i.depth === depth);
+    return ancestor?.parentId ?? rootId;
+  })();
+
+  return { depth, parentId };
+}
 
 interface GoalDetailModalProps {
   nodeId: string;
@@ -27,6 +139,195 @@ interface TreeNode {
   node: GoalNode;
   children: TreeNode[];
   depth: number;
+}
+
+/* ── Sortable tree row (modal styling) ── */
+
+interface RowHandlers {
+  collapsedIds: Set<string>;
+  editingId: string | null;
+  addingToId: string | null;
+  editText: string;
+  editInputRef: React.RefObject<HTMLInputElement>;
+  todoTitle: string;
+  onToggleCollapse: (id: string) => void;
+  onToggleComplete: (id: string) => void;
+  onStartEditing: (node: GoalNode) => void;
+  onCommitEdit: () => void;
+  onCancelEdit: () => void;
+  onChangeEditText: (v: string) => void;
+  onStartAddingChild: (parentId: string) => void;
+  onConvertNodeToTask?: (nodeId: string) => void;
+  onDeleteNode?: (nodeId: string) => void;
+  renderInlineAddInput: (depth: number) => React.ReactNode;
+}
+
+function SortableTreeRow({
+  item, renderDepth, isActiveDrag, handlers,
+}: {
+  item: FlatItem;
+  renderDepth: number;
+  isActiveDrag: boolean;
+  handlers: RowHandlers;
+}) {
+  const { node, hasChildren, childCount, doneChildCount } = item;
+  const {
+    collapsedIds, editingId, addingToId, editText, editInputRef, todoTitle,
+    onToggleCollapse, onToggleComplete, onStartEditing, onCommitEdit, onCancelEdit,
+    onChangeEditText, onStartAddingChild, onConvertNodeToTask, onDeleteNode,
+    renderInlineAddInput,
+  } = handlers;
+
+  const {
+    attributes, listeners, setNodeRef, transform, transition, isDragging,
+  } = useSortable({ id: node.id });
+
+  const isCompleted = node.status === NodeStatus.COMPLETED;
+  const isCollapsed = collapsedIds.has(node.id);
+  const isEditing = editingId === node.id;
+  const isAddingHere = addingToId === node.id;
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} className={isDragging ? 'opacity-50' : ''}>
+      <div
+        className={`flex items-center gap-2.5 py-2 px-3 rounded-xl
+          transition-colors duration-200 group cursor-default
+          ${isActiveDrag
+            ? 'bg-white/[0.06] shadow-lg ring-1 ring-th-accent/40'
+            : 'hover:bg-white/[0.04]'}`}
+        style={{ paddingLeft: `${renderDepth * INDENT + BASE}px` }}
+      >
+        {/* 드래그 그립 — 호버 시 노출 */}
+        <button
+          {...attributes}
+          {...listeners}
+          aria-label="Drag to reorder"
+          title="Drag to reorder"
+          onClick={(e) => e.stopPropagation()}
+          className="w-4 h-5 -ml-1 flex items-center justify-center shrink-0
+            cursor-grab active:cursor-grabbing touch-none
+            text-white/20 hover:text-th-accent transition-opacity duration-200
+            opacity-0 group-hover:opacity-100"
+        >
+          <GripVertical size={13} />
+        </button>
+
+        {/* 접기/펼치기 */}
+        {hasChildren ? (
+          <button
+            onClick={() => onToggleCollapse(node.id)}
+            className="w-5 h-5 flex items-center justify-center rounded-md
+              text-white/25 hover:text-white/60 hover:bg-white/[0.06]
+              transition-all duration-200 shrink-0"
+          >
+            {isCollapsed
+              ? <ChevronRight size={13} strokeWidth={2.5} />
+              : <ChevronDown size={13} strokeWidth={2.5} />
+            }
+          </button>
+        ) : (
+          <div className="w-5 shrink-0" />
+        )}
+
+        {/* 체크 */}
+        <button
+          onClick={() => onToggleComplete(node.id)}
+          className={`w-[18px] h-[18px] rounded-full flex items-center justify-center shrink-0
+            transition-all duration-300 ${
+            isCompleted
+              ? 'bg-emerald-500/90 shadow-[0_0_12px_rgba(52,211,153,0.3)]'
+              : 'border-[1.5px] border-white/20 hover:border-white/40 hover:shadow-[0_0_8px_rgba(255,255,255,0.05)]'
+          }`}
+        >
+          {isCompleted && <Check size={10} className="text-white" strokeWidth={3} />}
+        </button>
+
+        {/* 텍스트 또는 편집 입력 */}
+        {isEditing ? (
+          <form
+            className="flex-1"
+            onSubmit={(e) => { e.preventDefault(); onCommitEdit(); }}
+          >
+            <input
+              ref={editInputRef}
+              type="text"
+              value={editText}
+              onChange={(e) => onChangeEditText(e.target.value)}
+              onBlur={onCommitEdit}
+              onKeyDown={(e) => { if (e.key === 'Escape') onCancelEdit(); }}
+              className="w-full bg-white/[0.06] border border-th-accent/40 rounded-lg px-2 py-1
+                text-[13px] text-white/90
+                focus:outline-none focus:border-th-accent/60
+                transition-all duration-200"
+            />
+          </form>
+        ) : (
+          <span
+            onDoubleClick={() => onStartEditing(node)}
+            className={`text-[13px] flex-1 leading-relaxed transition-all duration-300 ${
+              isCompleted
+                ? 'text-white/25 line-through decoration-white/15'
+                : 'text-white/80 group-hover:text-white/95'
+            }`}
+          >
+            {node.text}
+          </span>
+        )}
+
+        {/* 자식 카운트 배지 */}
+        {hasChildren && !isEditing && (
+          <span className="text-[10px] text-white/20 font-mono tabular-nums">
+            {doneChildCount}/{childCount}
+          </span>
+        )}
+
+        {/* 호버 액션 버튼 */}
+        {!isEditing && (
+          <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+            <button
+              onClick={() => onStartAddingChild(node.id)}
+              className="w-6 h-6 rounded-md flex items-center justify-center
+                text-white/20 hover:text-white/60 hover:bg-white/[0.06]
+                transition-all duration-200"
+              title="하위 추가"
+            >
+              <Plus size={12} strokeWidth={2} />
+            </button>
+            {onConvertNodeToTask && (
+              <button
+                onClick={() => onConvertNodeToTask(node.id)}
+                className="w-6 h-6 rounded-md flex items-center justify-center
+                  text-white/20 hover:text-th-accent hover:bg-th-accent/10
+                  transition-all duration-200"
+                title={todoTitle}
+              >
+                <ListTodo size={12} strokeWidth={2} />
+              </button>
+            )}
+            {onDeleteNode && (
+              <button
+                onClick={() => onDeleteNode(node.id)}
+                className="w-6 h-6 rounded-md flex items-center justify-center
+                  text-white/20 hover:text-red-400/80 hover:bg-red-400/[0.06]
+                  transition-all duration-200"
+                title="삭제"
+              >
+                <Trash2 size={11} strokeWidth={2} />
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* 인라인 하위 추가 입력 (이 노드 아래) */}
+      {isAddingHere && renderInlineAddInput(renderDepth + 1)}
+    </div>
+  );
 }
 
 const GoalDetailModal: React.FC<GoalDetailModalProps> = ({
@@ -96,6 +397,108 @@ const GoalDetailModal: React.FC<GoalDetailModalProps> = ({
     ),
     [nodes, descendantIds, targetNode.parentId],
   );
+
+  /* ── DnD: flattened visible descendants of the opened node ── */
+  const childrenMap = useMemo(() => buildChildrenMap(nodes), [nodes]);
+  const flatItems = useMemo(
+    () => flattenVisible(nodeId, childrenMap, collapsedIds),
+    [nodeId, childrenMap, collapsedIds],
+  );
+
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [overId, setOverId] = useState<string | null>(null);
+  const [offsetLeft, setOffsetLeft] = useState(0);
+
+  const descendantsOfActive = useMemo(
+    () => (activeId ? collectDescendants(activeId, childrenMap) : new Set<string>()),
+    [activeId, childrenMap],
+  );
+  const visibleItems = useMemo(
+    () => (activeId
+      ? flatItems.filter(i => i.id === activeId || !descendantsOfActive.has(i.id))
+      : flatItems),
+    [flatItems, activeId, descendantsOfActive],
+  );
+
+  const projected = useMemo(
+    () => (activeId && overId
+      ? getProjection(visibleItems, activeId, overId, offsetLeft, nodeId)
+      : null),
+    [activeId, overId, offsetLeft, visibleItems, nodeId],
+  );
+
+  // Mirrors for the (sync) drag-end handler
+  const projectedRef = useRef<Projection | null>(null);
+  const visibleItemsRef = useRef<FlatItem[]>(visibleItems);
+  projectedRef.current = projected;
+  visibleItemsRef.current = visibleItems;
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
+  );
+
+  const resetDrag = useCallback(() => {
+    setActiveId(null);
+    setOverId(null);
+    setOffsetLeft(0);
+  }, []);
+
+  const handleDragStart = useCallback((e: DragStartEvent) => {
+    setActiveId(String(e.active.id));
+    setOverId(String(e.active.id));
+  }, []);
+
+  const handleDragMove = useCallback((e: DragMoveEvent) => {
+    setOffsetLeft(e.delta.x);
+    setOverId(e.over ? String(e.over.id) : null);
+  }, []);
+
+  const handleDragEnd = useCallback((e: DragEndEvent) => {
+    const proj = projectedRef.current;
+    const items = visibleItemsRef.current;
+    const activeNodeId = String(e.active.id);
+    const overNodeId = e.over ? String(e.over.id) : null;
+    resetDrag();
+    if (!proj || !overNodeId) return;
+
+    const overIndex = items.findIndex(i => i.id === overNodeId);
+    const activeIndex = items.findIndex(i => i.id === activeNodeId);
+    if (overIndex < 0 || activeIndex < 0) return;
+
+    const activeNode = nodes.find(n => n.id === activeNodeId);
+    if (!activeNode) return;
+    const { parentId } = proj;
+
+    // Full existing children of the target parent — read from childrenMap so we
+    // include children hidden under a collapsed node. Renumbering only the
+    // visible subset would collide sortOrders with the hidden ones.
+    const existing = (childrenMap.get(parentId) || []).filter(n => n.id !== activeNodeId);
+
+    // Insertion index: position among visible siblings when the target is
+    // expanded; append to the end when it's collapsed (children off-screen).
+    const parentCollapsed = parentId !== nodeId && collapsedIds.has(parentId);
+    let insertIdx: number;
+    if (parentCollapsed) {
+      insertIdx = existing.length;
+    } else {
+      const moved = arrayMove(items, activeIndex, overIndex);
+      const activeSlot = moved.findIndex(i => i.id === activeNodeId);
+      insertIdx = moved
+        .slice(0, activeSlot)
+        .filter(i => i.id !== activeNodeId && i.parentId === parentId).length;
+    }
+
+    const newOrder = [...existing];
+    newOrder.splice(insertIdx, 0, activeNode);
+
+    if (activeNode.parentId !== parentId && onReparentNode) {
+      onReparentNode(activeNodeId, parentId);
+    }
+    newOrder.forEach((child, idx) => {
+      if ((child.sortOrder ?? -1) !== idx) onUpdateNode(child.id, { sortOrder: idx });
+    });
+  }, [nodes, childrenMap, collapsedIds, nodeId, onReparentNode, onUpdateNode, resetDrag]);
 
   const toggleCollapse = (id: string) => {
     setCollapsedIds(prev => {
@@ -171,7 +574,7 @@ const GoalDetailModal: React.FC<GoalDetailModalProps> = ({
   const renderInlineAddInput = (depth: number) => (
     <div
       className="flex items-center gap-2 py-1.5 px-3 animate-[treeItemIn_0.2s_ease-out_both]"
-      style={{ paddingLeft: `${depth * 24 + 16 + 24}px` }}
+      style={{ paddingLeft: `${depth * INDENT + BASE + INDENT}px` }}
     >
       <div className="w-5 shrink-0" />
       <form
@@ -204,138 +607,19 @@ const GoalDetailModal: React.FC<GoalDetailModalProps> = ({
     </div>
   );
 
-  const renderTreeNode = (treeNode: TreeNode, idx: number): React.ReactNode => {
-    const { node, children, depth } = treeNode;
-    const isCompleted = node.status === NodeStatus.COMPLETED;
-    const hasChildren = children.length > 0;
-    const isCollapsed = collapsedIds.has(node.id);
-    const isEditing = editingId === node.id;
-    const isAddingHere = addingToId === node.id;
-    const delay = idx * 30;
-
-    return (
-      <div key={node.id} className="animate-[treeItemIn_0.3s_ease-out_both]" style={{ animationDelay: `${delay}ms` }}>
-        <div
-          className="flex items-center gap-2.5 py-2 px-3 rounded-xl
-            hover:bg-white/[0.04] transition-colors duration-200 group cursor-default"
-          style={{ paddingLeft: `${depth * 24 + 16}px` }}
-        >
-          {/* 접기/펼치기 */}
-          {hasChildren ? (
-            <button
-              onClick={() => toggleCollapse(node.id)}
-              className="w-5 h-5 flex items-center justify-center rounded-md
-                text-white/25 hover:text-white/60 hover:bg-white/[0.06]
-                transition-all duration-200 shrink-0"
-            >
-              {isCollapsed
-                ? <ChevronRight size={13} strokeWidth={2.5} />
-                : <ChevronDown size={13} strokeWidth={2.5} />
-              }
-            </button>
-          ) : (
-            <div className="w-5 shrink-0" />
-          )}
-
-          {/* 체크 */}
-          <button
-            onClick={() => toggleComplete(node.id)}
-            className={`w-[18px] h-[18px] rounded-full flex items-center justify-center shrink-0
-              transition-all duration-300 ${
-              isCompleted
-                ? 'bg-emerald-500/90 shadow-[0_0_12px_rgba(52,211,153,0.3)]'
-                : 'border-[1.5px] border-white/20 hover:border-white/40 hover:shadow-[0_0_8px_rgba(255,255,255,0.05)]'
-            }`}
-          >
-            {isCompleted && <Check size={10} className="text-white" strokeWidth={3} />}
-          </button>
-
-          {/* 텍스트 또는 편집 입력 */}
-          {isEditing ? (
-            <form
-              className="flex-1"
-              onSubmit={(e) => { e.preventDefault(); commitEdit(); }}
-            >
-              <input
-                ref={editInputRef}
-                type="text"
-                value={editText}
-                onChange={(e) => setEditText(e.target.value)}
-                onBlur={commitEdit}
-                onKeyDown={(e) => { if (e.key === 'Escape') { setEditingId(null); setEditText(''); } }}
-                className="w-full bg-white/[0.06] border border-th-accent/40 rounded-lg px-2 py-1
-                  text-[13px] text-white/90
-                  focus:outline-none focus:border-th-accent/60
-                  transition-all duration-200"
-              />
-            </form>
-          ) : (
-            <span
-              onDoubleClick={() => startEditing(node)}
-              className={`text-[13px] flex-1 leading-relaxed transition-all duration-300 ${
-                isCompleted
-                  ? 'text-white/25 line-through decoration-white/15'
-                  : 'text-white/80 group-hover:text-white/95'
-              }`}
-            >
-              {node.text}
-            </span>
-          )}
-
-          {/* 자식 카운트 배지 */}
-          {hasChildren && !isEditing && (
-            <span className="text-[10px] text-white/20 font-mono tabular-nums">
-              {children.filter(c => c.node.status === NodeStatus.COMPLETED).length}/{children.length}
-            </span>
-          )}
-
-          {/* 호버 액션 버튼 */}
-          {!isEditing && (
-            <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-              <button
-                onClick={() => startAddingChild(node.id)}
-                className="w-6 h-6 rounded-md flex items-center justify-center
-                  text-white/20 hover:text-white/60 hover:bg-white/[0.06]
-                  transition-all duration-200"
-                title="하위 추가"
-              >
-                <Plus size={12} strokeWidth={2} />
-              </button>
-              {onConvertNodeToTask && (
-                <button
-                  onClick={() => onConvertNodeToTask(node.id)}
-                  className="w-6 h-6 rounded-md flex items-center justify-center
-                    text-white/20 hover:text-th-accent hover:bg-th-accent/10
-                    transition-all duration-200"
-                  title={t.mindmap.todo}
-                >
-                  <ListTodo size={12} strokeWidth={2} />
-                </button>
-              )}
-              {onDeleteNode && (
-                <button
-                  onClick={() => onDeleteNode(node.id)}
-                  className="w-6 h-6 rounded-md flex items-center justify-center
-                    text-white/20 hover:text-red-400/80 hover:bg-red-400/[0.06]
-                    transition-all duration-200"
-                  title="삭제"
-                >
-                  <Trash2 size={11} strokeWidth={2} />
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* 자식 노드 */}
-        {hasChildren && !isCollapsed && (
-          <div>{children.map((child, i) => renderTreeNode(child, idx + i + 1))}</div>
-        )}
-
-        {/* 인라인 하위 추가 입력 (이 노드 아래) */}
-        {isAddingHere && renderInlineAddInput(depth + 1)}
-      </div>
-    );
+  const rowHandlers: RowHandlers = {
+    collapsedIds, editingId, addingToId, editText, editInputRef,
+    todoTitle: t.mindmap.todo,
+    onToggleCollapse: toggleCollapse,
+    onToggleComplete: toggleComplete,
+    onStartEditing: startEditing,
+    onCommitEdit: commitEdit,
+    onCancelEdit: () => { setEditingId(null); setEditText(''); },
+    onChangeEditText: setEditText,
+    onStartAddingChild: startAddingChild,
+    onConvertNodeToTask,
+    onDeleteNode,
+    renderInlineAddInput,
   };
 
   const bgStyle = targetNode.imageUrl
@@ -521,7 +805,30 @@ const GoalDetailModal: React.FC<GoalDetailModalProps> = ({
               <p className="text-[13px] text-white/20">{t.mindmap.noSubGoals}</p>
             </div>
           ) : (
-            tree.map((treeNode, i) => renderTreeNode(treeNode, i))
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
+              onDragStart={handleDragStart}
+              onDragMove={handleDragMove}
+              onDragEnd={handleDragEnd}
+              onDragCancel={resetDrag}
+            >
+              <SortableContext
+                items={visibleItems.map(i => i.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                {visibleItems.map(item => (
+                  <SortableTreeRow
+                    key={item.id}
+                    item={item}
+                    renderDepth={item.id === activeId && projected ? projected.depth : item.depth}
+                    isActiveDrag={item.id === activeId}
+                    handlers={rowHandlers}
+                  />
+                ))}
+              </SortableContext>
+            </DndContext>
           )}
 
           {/* 루트 레벨 인라인 추가 (addingToId가 모달 루트일 때) */}
