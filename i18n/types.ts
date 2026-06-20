@@ -241,6 +241,7 @@ export interface TranslationStrings {
     delete: string;
     decompose: string;
     exploreWithAI: string;
+    move: string;
     visionBoard: string;
     mindMapLabel: string;
     outlineLabel: string;

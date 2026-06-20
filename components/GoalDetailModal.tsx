@@ -2,7 +2,7 @@ import React, { useState, useMemo, useRef } from 'react';
 import { GoalNode, NodeType, NodeStatus } from '../types';
 import {
   ChevronDown, ChevronRight, X, Check, Circle, Plus, Pencil, Trash2,
-  Sparkles, ImagePlus, MessageCircle, ListTodo, Loader2,
+  Sparkles, ImagePlus, MessageCircle, ListTodo, Loader2, GitBranch, Move,
 } from 'lucide-react';
 import { useTranslation } from '../i18n/useTranslation';
 
@@ -17,6 +17,9 @@ interface GoalDetailModalProps {
   onInsertImage?: (nodeId: string) => void;
   onConvertNodeToTask?: (nodeId: string) => void;
   onExploreWithAI?: (nodeId: string) => void;
+  onDecomposeGoal?: (nodeId: string) => void;
+  onReparentNode?: (childId: string, newParentId: string) => void;
+  decomposingNodeId?: string | null;
   imageLoadingNodes?: Set<string>;
 }
 
@@ -37,6 +40,9 @@ const GoalDetailModal: React.FC<GoalDetailModalProps> = ({
   onInsertImage,
   onConvertNodeToTask,
   onExploreWithAI,
+  onDecomposeGoal,
+  onReparentNode,
+  decomposingNodeId,
   imageLoadingNodes,
 }) => {
   const { t } = useTranslation();
@@ -45,6 +51,7 @@ const GoalDetailModal: React.FC<GoalDetailModalProps> = ({
   const [newSubText, setNewSubText] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState('');
+  const [moveOpen, setMoveOpen] = useState(false);
   const addInputRef = useRef<HTMLInputElement>(null);
   const editInputRef = useRef<HTMLInputElement>(null);
 
@@ -64,6 +71,31 @@ const GoalDetailModal: React.FC<GoalDetailModalProps> = ({
     };
     return buildTree(nodeId, 0);
   }, [nodes, nodeId]);
+
+  // 이동 대상: 자기 자신과 자손을 제외한 노드 (현재 부모는 무의미하므로 제외)
+  const descendantIds = useMemo(() => {
+    const set = new Set<string>([nodeId]);
+    let changed = true;
+    while (changed) {
+      changed = false;
+      for (const n of nodes) {
+        if (n.parentId && set.has(n.parentId) && !set.has(n.id)) {
+          set.add(n.id);
+          changed = true;
+        }
+      }
+    }
+    return set;
+  }, [nodes, nodeId]);
+
+  const moveTargets = useMemo(
+    () => nodes.filter(n =>
+      !descendantIds.has(n.id)
+      && n.id !== targetNode.parentId
+      && (n.type === NodeType.ROOT || !!n.text)
+    ),
+    [nodes, descendantIds, targetNode.parentId],
+  );
 
   const toggleCollapse = (id: string) => {
     setCollapsedIds(prev => {
@@ -418,6 +450,32 @@ const GoalDetailModal: React.FC<GoalDetailModalProps> = ({
                 <ListTodo size={15} /> {t.mindmap.todo}
               </button>
             )}
+            {onDecomposeGoal && (
+              <button
+                onClick={() => onDecomposeGoal(nodeId)}
+                disabled={decomposingNodeId === nodeId}
+                className="flex items-center gap-1.5 shrink-0 h-9 px-3.5 rounded-xl text-[13px]
+                  bg-white/[0.04] border border-white/[0.08] text-white/75
+                  hover:text-white hover:bg-white/[0.08] disabled:opacity-50 transition-all duration-200"
+              >
+                {decomposingNodeId === nodeId
+                  ? <Loader2 size={15} className="animate-spin" />
+                  : <GitBranch size={15} />}
+                {t.mindmap.decompose}
+              </button>
+            )}
+            {onReparentNode && targetNode.type !== NodeType.ROOT && moveTargets.length > 0 && (
+              <button
+                onClick={() => setMoveOpen(v => !v)}
+                className={`flex items-center gap-1.5 shrink-0 h-9 px-3.5 rounded-xl text-[13px]
+                  border transition-all duration-200 ${moveOpen
+                    ? 'bg-th-accent-muted border-th-accent-border text-th-accent'
+                    : 'bg-white/[0.04] border-white/[0.08] text-white/75 hover:text-white hover:bg-white/[0.08]'
+                  }`}
+              >
+                <Move size={15} /> {t.mindmap.move}
+              </button>
+            )}
             {onDeleteNode && targetNode.type !== NodeType.ROOT && (
               <button
                 onClick={() => { onDeleteNode(nodeId); onClose(); }}
@@ -428,6 +486,27 @@ const GoalDetailModal: React.FC<GoalDetailModalProps> = ({
                 <Trash2 size={15} /> {t.mindmap.delete}
               </button>
             )}
+          </div>
+        )}
+
+        {/* 이동 대상 선택 (이동 토글) */}
+        {moveOpen && onReparentNode && (
+          <div className="shrink-0 max-h-[42%] overflow-y-auto px-3 py-3
+            border-b border-white/[0.06] bg-white/[0.02]
+            scrollbar-thin scrollbar-thumb-white/5 scrollbar-track-transparent">
+            <p className="text-[11px] text-white/35 px-2 pb-1.5 uppercase tracking-wider">
+              {t.mindmap.move}
+            </p>
+            {moveTargets.map(n => (
+              <button
+                key={n.id}
+                onClick={() => { onReparentNode(nodeId, n.id); setMoveOpen(false); }}
+                className="w-full text-left px-3 py-2.5 rounded-lg text-[13px] text-white/80
+                  hover:bg-th-accent-muted hover:text-th-accent transition-colors duration-150"
+              >
+                {n.text || t.mindmap.defaultRootText}
+              </button>
+            ))}
           </div>
         )}
 

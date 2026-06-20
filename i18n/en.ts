@@ -276,6 +276,7 @@ const en: TranslationStrings = {
     delete: 'Delete',
     decompose: 'Decompose',
     exploreWithAI: 'Explore with AI',
+    move: 'Move',
     visionBoard: 'Vision Board',
     mindMapLabel: 'Mind Map',
     outlineLabel: 'Outline',

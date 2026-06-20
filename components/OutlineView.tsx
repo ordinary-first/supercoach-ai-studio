@@ -2,7 +2,7 @@ import React, { useState, useCallback, useMemo, useRef, useEffect, KeyboardEvent
 import { GoalNode, GoalLink, NodeType, NodeStatus } from '../types';
 import {
   ChevronRight, ChevronDown, Plus, Trash2, Pencil,
-  MoveUp, MoveDown, CornerDownRight, CornerUpLeft, GitBranchPlus, GripVertical,
+  MoveUp, MoveDown, CornerDownRight, CornerUpLeft, GitBranchPlus, GripVertical, Sparkles,
 } from 'lucide-react';
 import {
   DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors,
@@ -188,6 +188,7 @@ interface RowHandlers {
   onMoveDown: (nodeId: string) => void;
   onIndent: (nodeId: string) => void;
   onOutdent: (nodeId: string) => void;
+  onOpenHub?: (node: GoalNode) => void;
 }
 
 function OutlineRow({
@@ -201,7 +202,7 @@ function OutlineRow({
   const { node, hasChildren, childCount } = item;
   const {
     focusedId, onFocus, onUpdateNode, onDeleteNode, onAddSubNode,
-    onAddParentNode, onToggleCollapse, onMoveUp, onMoveDown, onIndent, onOutdent,
+    onAddParentNode, onToggleCollapse, onMoveUp, onMoveDown, onIndent, onOutdent, onOpenHub,
   } = handlers;
 
   const [editing, setEditing] = useState(false);
@@ -380,6 +381,11 @@ function OutlineRow({
           <button onClick={(e) => { e.stopPropagation(); onAddSubNode(node.id); }}
             className="p-0.5 rounded text-th-text-muted hover:text-th-accent hover:bg-th-accent/10 transition-colors"
             title="Add child"><Plus size={11} /></button>
+          {onOpenHub && (
+            <button onClick={(e) => { e.stopPropagation(); onOpenHub(node); }}
+              className="p-0.5 rounded text-th-text-muted hover:text-th-accent hover:bg-th-accent/10 transition-colors"
+              title="More actions"><Sparkles size={11} /></button>
+          )}
           <button onClick={(e) => { e.stopPropagation(); onDeleteNode(node.id); }}
             className="p-0.5 rounded text-th-text-muted hover:text-red-400 hover:bg-red-400/10 transition-colors"
             title="Delete"><Trash2 size={11} /></button>
@@ -567,6 +573,7 @@ const OutlineView: React.FC<OutlineViewProps> = ({
     onToggleCollapse: handleToggleCollapse,
     onMoveUp: handleMoveUp, onMoveDown: handleMoveDown,
     onIndent: handleIndent, onOutdent: handleOutdent,
+    onOpenHub: onNodeClick,
   };
 
   if (!root) {

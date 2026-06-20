@@ -663,6 +663,45 @@ const App: React.FC = () => {
     }
   }, [nodes, dimensions, handleUpdateNode, addToast]);
 
+  // 목표 분해 (모달용) — 미리보기 단계 없이 하위 목표를 바로 추가
+  const handleDecomposeGoalDirect = useCallback(async (nodeId: string) => {
+    const node = nodes.find(n => n.id === nodeId);
+    if (!node) return;
+    setDecomposingNodeId(nodeId);
+    try {
+      const childTexts = nodes
+        .filter(n => n.parentId === nodeId && n.text)
+        .map(n => n.text);
+      const suggestions = await decomposeGoal(node.text, childTexts, getUserId());
+      if (!suggestions.length) {
+        addToast(t.app.toasts.decomposeFailed, 'warning');
+        return;
+      }
+      if (node.collapsed) handleUpdateNode(nodeId, { collapsed: false });
+      const now = Date.now();
+      const newNodes: GoalNode[] = suggestions.map((text, i) => ({
+        id: `${now}_${i}`,
+        text,
+        type: NodeType.SUB,
+        status: NodeStatus.PENDING,
+        progress: 0,
+        parentId: nodeId,
+        collapsed: false,
+      }));
+      const newLinks: GoalLink[] = newNodes.map(n => ({ source: nodeId, target: n.id }));
+      setNodes(prev => [...prev, ...newNodes]);
+      setLinks(prev => [...prev, ...newLinks]);
+      newNodes.forEach(n => appendAction(
+        getUserId(), 'ADD_NODE', `"${n.text}" AI 분해 추가`, { nodeId: n.id, parentId: nodeId },
+      ));
+      addToast(t.app.toasts.subgoalsAdded.replace('{count}', String(newNodes.length)), 'success');
+    } catch {
+      addToast(t.app.toasts.decomposeError, 'warning');
+    } finally {
+      setDecomposingNodeId(null);
+    }
+  }, [nodes, handleUpdateNode, addToast]);
+
   // 미리보기 노드 확정 토글
   const handleTogglePreviewConfirm = useCallback((nodeId: string) => {
     setConfirmedPreviewIds(prev =>
@@ -984,7 +1023,7 @@ const App: React.FC = () => {
           <OutlineView
             nodes={nodes}
             links={links}
-            onNodeClick={setSelectedNode}
+            onNodeClick={(node) => setGoalDetailNodeId(node.id)}
             onUpdateNode={handleUpdateNode}
             onDeleteNode={handleDeleteNode}
             onAddSubNode={handleAddSubNode}
@@ -1011,6 +1050,9 @@ const App: React.FC = () => {
             setGoalDetailNodeId(null);
             setIsChatOpen(true);
           }}
+          onDecomposeGoal={handleDecomposeGoalDirect}
+          onReparentNode={handleReparentNode}
+          decomposingNodeId={decomposingNodeId}
           imageLoadingNodes={imageLoadingNodes}
         />
       )}

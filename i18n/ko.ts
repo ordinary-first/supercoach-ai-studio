@@ -278,6 +278,7 @@ const ko: TranslationStrings = {
     delete: '삭제',
     decompose: '분해',
     exploreWithAI: 'AI와 탐색',
+    move: '이동',
     visionBoard: '비전보드',
     mindMapLabel: '마인드맵',
     outlineLabel: '개요',
