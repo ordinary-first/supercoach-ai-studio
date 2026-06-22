@@ -60,8 +60,8 @@
 - [x] Critical 박-002 수정 (월간 반복 할일 day-31 앵커)
 - [x] Critical 이-001 수정 (useDreamChat stale — busyRef로 이미 수정됨, commit 2943d17)
 - [x] 이-006 수정 (CoachChat handleSend stale — isSendingRef 가드 추가)
-- [ ] `checkRecurrenceMatch` → `lib/recurrence.ts`로 추출, FeedbackView에서 재사용
-- [ ] AbortController 부재 일괄 수정 (`useAbortable` 훅)
+- [x] `checkRecurrenceMatch` → `lib/recurrence.ts`로 추출, FeedbackView에서 재사용 (박-006)
+- [x] `useAbortable` 훅 생성 + useGenerationPipeline 적용 (이-004 partial)
 
 ### Sprint 2: High 버그 수정
 - [ ] 오디오 재생 로직 (audioUrl/audioData 우선순위)
