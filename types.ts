@@ -105,6 +105,7 @@ export interface ToDoItem {
   createdAt: number;
   isMyDay?: boolean;
   dueDate?: number | null;
+  hasTime?: boolean;
   reminder?: number | null;
   repeat?: RepeatFrequency;
   repeatDays?: number[];
