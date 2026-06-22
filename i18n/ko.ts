@@ -324,6 +324,8 @@ const ko: TranslationStrings = {
     typeImage: '이미지',
     typeVideo: '영상',
     typeAudio: '오디오',
+    voiceFemale: '여성 목소리',
+    voiceMale: '남성 목소리',
     generating: '생성 중...',
     generate: '생성하기',
     savedItems: '저장된 시각화',

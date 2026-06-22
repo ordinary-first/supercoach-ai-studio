@@ -295,12 +295,13 @@ export const generateSpeech = async (
   text: string,
   userId?: string | null,
   visualizationId?: string,
+  voiceGender?: 'female' | 'male',
 ): Promise<AudioGenerationResult> => {
   try {
     const response = await fetchWithRetry('/api/generate-speech', {
       method: 'POST',
       headers: await authHeaders(),
-      body: JSON.stringify({ text, userId, visualizationId }),
+      body: JSON.stringify({ text, userId, visualizationId, voiceGender }),
     }, 0);
 
     const payload = await parseJsonSafe<Record<string, unknown>>(response);

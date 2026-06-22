@@ -322,6 +322,8 @@ const en: TranslationStrings = {
     typeImage: 'Image',
     typeVideo: 'Video',
     typeAudio: 'Audio',
+    voiceFemale: 'Female voice',
+    voiceMale: 'Male voice',
     generating: 'Generating...',
     generate: 'Generate',
     savedItems: 'Saved Visualizations',
