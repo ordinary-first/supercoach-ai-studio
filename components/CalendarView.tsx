@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { ChevronLeft, ChevronRight, CheckCircle2, Lock, AlertCircle, Trophy, Star, ArrowLeft, Plus, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CheckCircle2, Lock, Trophy, Star, ArrowLeft, Plus, X, Clock, Sparkles } from 'lucide-react';
 import { ToDoItem, RepeatFrequency } from '../types';
 import { matchesOn } from '../lib/recurrence';
 import { useFocusTrap } from '../hooks/useFocusTrap';
@@ -18,6 +18,23 @@ interface CalendarViewProps {
 const REPEAT_CHIPS = ['none', 'daily', 'weekdays', 'weekly', 'weekly-3'] as const;
 const LAST_REPEAT_KEY = 'sc_cal_last_repeat';
 
+// Quick-pick times for the capsule (4 keeps the chip row thumb-scrollable on 380px)
+const TIME_PRESETS = [
+  { key: 'm7', h: 7, m: 0 },
+  { key: 'm9', h: 9, m: 0 },
+  { key: 'noon', h: 12, m: 0 },
+  { key: 'e18', h: 18, m: 0 },
+] as const;
+
+const pad2 = (n: number) => String(n).padStart(2, '0');
+
+// Locale-aware wall-clock formatting (ko → "오전 7:00", en → "7:00 AM")
+const fmtTime = (h: number, m: number, lang: string) => {
+  const d = new Date();
+  d.setHours(h, m, 0, 0);
+  return d.toLocaleTimeString(lang === 'ko' ? 'ko-KR' : 'en-US', { hour: 'numeric', minute: '2-digit' });
+};
+
 type ViewMode = 'month' | 'week' | 'list' | 'day';
 
 const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onToggleToDo, onAddToDo, viewMode: externalViewMode, onViewModeChange }) => {
@@ -30,6 +47,10 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
   const [capsuleRepeat, setCapsuleRepeat] = useState<RepeatFrequency>(() => {
     try { return (localStorage.getItem(LAST_REPEAT_KEY) as RepeatFrequency) ?? null; } catch { return null; }
   });
+  // Optional time-of-day for the capsule (default: all-day, no time shown)
+  const [capsuleHasTime, setCapsuleHasTime] = useState(false);
+  const [capsuleTime, setCapsuleTime] = useState<{ h: number; m: number }>({ h: 9, m: 0 });
+  const [timeOpen, setTimeOpen] = useState(false);
   const capsuleInputRef = useRef<HTMLInputElement>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [previousViewMode, setPreviousViewMode] = useState<ViewMode>('month');
@@ -184,16 +205,28 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
     const text = capsuleText.trim();
     if (!text || !capsuleDate) return;
     const due = new Date(capsuleDate);
-    due.setHours(12, 0, 0, 0);
+    // Timed → encode the chosen wall-clock; all-day → noon anchor (guards DST/day-shift)
+    if (capsuleHasTime) due.setHours(capsuleTime.h, capsuleTime.m, 0, 0);
+    else due.setHours(12, 0, 0, 0);
     const extras: Partial<ToDoItem> = { dueDate: due.getTime() };
+    if (capsuleHasTime) extras.hasTime = true;
     if (capsuleRepeat) extras.repeat = capsuleRepeat;
     onAddToDo(text, extras);
     try { localStorage.setItem(LAST_REPEAT_KEY, capsuleRepeat ?? ''); } catch {}
     setCapsuleText('');
     setCapsuleDate(null);
-  }, [capsuleText, capsuleRepeat, capsuleDate, onAddToDo]);
+    setCapsuleHasTime(false);
+    setTimeOpen(false);
+    setCapsuleTime({ h: 9, m: 0 });
+  }, [capsuleText, capsuleRepeat, capsuleHasTime, capsuleTime, capsuleDate, onAddToDo]);
 
-  const closeCapsule = () => { setCapsuleDate(null); setCapsuleText(''); };
+  const closeCapsule = () => {
+    setCapsuleDate(null);
+    setCapsuleText('');
+    setCapsuleHasTime(false);
+    setTimeOpen(false);
+    setCapsuleTime({ h: 9, m: 0 });
+  };
 
   // Header + button: open today's capsule (or focus day-view composer)
   const handleHeaderAdd = () => {
@@ -275,7 +308,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
   };
 
   // Render a single todo item in the calendar cell (shared between month and week views)
-  const renderTodoCell = (todo: any, isPastDate: boolean, isGhost: boolean) => {
+  const renderTodoCell = (todo: any, isGhost: boolean) => {
     let itemStyle = "";
     let icon = null;
     let glowEffect = "";
@@ -287,13 +320,15 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
     } else if (isGhost) {
       itemStyle = "bg-th-surface/30 text-th-text-tertiary border border-th-border border-dashed backdrop-blur-[2px] cursor-not-allowed";
       icon = <Lock size={10} className="text-th-text-muted" />;
-    } else if (isPastDate && !todo.completed) {
-      itemStyle = "bg-th-surface text-red-500/80 border border-red-500/10 opacity-60 grayscale";
-      icon = <AlertCircle size={10} className="text-current" />;
     } else {
+      // Not-yet-done (past / today / future) all render neutral — never red "missed".
       itemStyle = "bg-th-surface text-th-text-secondary border border-th-border backdrop-blur-sm";
       icon = <Lock size={10} className="text-th-text-tertiary" />;
     }
+
+    const cellTime = todo.hasTime && todo.dueDate
+      ? fmtTime(new Date(todo.dueDate).getHours(), new Date(todo.dueDate).getMinutes(), language)
+      : null;
 
     return (
       <div
@@ -314,6 +349,9 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
           <div className="absolute inset-0 rounded-md pointer-events-none bg-[radial-gradient(circle_at_12%_50%,var(--sacred-muted)_0%,transparent_42%),linear-gradient(180deg,rgba(255,255,255,0.06),transparent_24%)]"></div>
         )}
         <div className="shrink-0">{icon}</div>
+        {cellTime && (
+          <span className="shrink-0 tabular-nums opacity-70 text-[9px]">{cellTime}</span>
+        )}
         <span className={`truncate ${todo.completed ? 'font-bold' : ''}`}>
           {todo.text}
         </span>
@@ -341,7 +379,6 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
     for (let day = 1; day <= daysInMonth; day++) {
       const dateObj = new Date(year, month, day);
       const isToday = normalizeDate(new Date()) === normalizeDate(dateObj);
-      const isPastDate = normalizeDate(dateObj) < normalizeDate(new Date());
 
       const dayTodos = getTodosForDate(day);
 
@@ -363,7 +400,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
 
           {/* Tasks Container */}
           <div className="space-y-1.5 overflow-y-auto max-h-[28px] md:max-h-[80px] scrollbar-hide">
-            {dayTodos.map((todo: any) => renderTodoCell(todo, isPastDate, todo.isGhost))}
+            {dayTodos.map((todo: any) => renderTodoCell(todo, todo.isGhost))}
 
             {/* Empty State placeholder for Today */}
             {dayTodos.length === 0 && isToday && (
@@ -400,7 +437,6 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
       const dateObj = new Date(start);
       dateObj.setDate(start.getDate() + i);
       const isToday = normalizeDate(new Date()) === normalizeDate(dateObj);
-      const isPastDate = normalizeDate(dateObj) < normalizeDate(new Date());
       const dayTodos = getTodosForDateGeneric(dateObj);
       const dayOfWeek = dateObj.getDay();
 
@@ -433,7 +469,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
           {/* Todos column */}
           <div className="flex-1 flex flex-wrap items-center gap-1.5 p-2 min-h-[56px]">
             {dayTodos.length > 0 ? (
-              dayTodos.map((todo: any) => renderTodoCell(todo, isPastDate, todo.isGhost))
+              dayTodos.map((todo: any) => renderTodoCell(todo, todo.isGhost))
             ) : (
               <span className="text-xs text-th-text-muted italic">{t.calendar.noMission}</span>
             )}
@@ -450,14 +486,11 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
     if (!selectedDate) return null;
 
     const dayTodos = getTodosForDateGeneric(selectedDate);
-    const isPastDate = normalizeDate(selectedDate) < normalizeDate(new Date());
-    const isToday = normalizeDate(selectedDate) === normalizeDate(new Date());
 
     const completedTodos = dayTodos.filter((t: any) => t.completed);
     const incompleteTodos = dayTodos.filter((t: any) => !t.completed);
     const totalCount = dayTodos.length;
     const completedCount = completedTodos.length;
-    const progressPercent = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
 
     const renderDayTodoCard = (todo: any) => {
       const isGhost = todo.isGhost;
@@ -478,17 +511,18 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
         icon = <Lock size={18} className="text-th-text-muted" />;
         statusLabel = t.calendar.status.locked;
         labelStyle = "text-th-text-muted bg-th-surface";
-      } else if (isPastDate) {
-        cardStyle = "bg-th-elevated border-th-border opacity-70 grayscale";
-        icon = <AlertCircle size={18} className="text-red-500/60" />;
-        statusLabel = t.calendar.status.missed;
-        labelStyle = "text-red-400/80 bg-red-500/10";
       } else {
+        // Not-yet-done — past / today / future all share one neutral, claimable
+        // invitation (no red, no grayscale, no "missed"). Tap the hollow circle to win it.
         cardStyle = "bg-th-surface border-th-border hover:border-th-accent/50 hover:bg-th-surface-hover";
         icon = <CheckCircle2 size={18} className="text-th-text-secondary" />;
-        statusLabel = isToday ? t.calendar.status.inProgress : t.calendar.status.scheduled;
-        labelStyle = isToday ? "text-th-accent bg-th-accent-muted" : "text-th-text-secondary bg-th-surface";
+        statusLabel = t.calendar.status.tryIt;
+        labelStyle = "text-th-accent bg-th-accent-muted";
       }
+
+      const todoTime = todo.hasTime && todo.dueDate
+        ? fmtTime(new Date(todo.dueDate).getHours(), new Date(todo.dueDate).getMinutes(), language)
+        : null;
 
       return (
         <div
@@ -513,9 +547,14 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
 
           {/* Content */}
           <div className="flex-1 min-w-0">
-            <p className={`text-sm font-medium leading-relaxed ${todo.completed ? 'text-th-text font-bold' : isGhost ? 'text-th-text-muted' : isPastDate ? 'text-th-text-tertiary' : 'text-gray-200'}`}>
+            <p className={`text-sm font-medium leading-relaxed ${todo.completed ? 'text-th-text font-bold' : isGhost ? 'text-th-text-muted' : 'text-gray-200'}`}>
               {todo.text}
             </p>
+            {todoTime && (
+              <p className="flex items-center gap-1 text-xs text-th-text-tertiary mt-1">
+                <Clock size={11} />{todoTime}
+              </p>
+            )}
             {todo.note && (
               <p className="text-xs text-th-text-tertiary mt-1 truncate">{todo.note}</p>
             )}
@@ -529,52 +568,52 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
       );
     };
 
+    const hasWins = completedCount > 0;
+    const weekdayLabel = t.calendar.dayNamesFull[selectedDate.getDay()];
+
     return (
       <div className="flex-1 overflow-y-auto p-4 md:p-8 pb-[56px] md:pb-[64px] relative z-0">
-        {/* Stats Summary */}
-        <div className="max-w-2xl mx-auto mb-8">
-          <div className="bg-th-surface border border-th-border rounded-2xl p-5 backdrop-blur-sm">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-th-card border border-th-sacred flex items-center justify-center shadow-[0_0_20px_-6px_var(--shadow-sacred)]">
-                  <Trophy size={18} className="text-th-sacred" />
+        {/* Wins header — celebrates what was DONE. No %, no N/M, no progress bar. */}
+        {totalCount > 0 && (
+          <div className="max-w-2xl mx-auto mb-10">
+            {hasWins ? (
+              <div className="flex items-center gap-4">
+                <div className="shrink-0 w-12 h-12 rounded-2xl bg-th-card border border-th-sacred/60 flex items-center justify-center shadow-[0_0_22px_-8px_var(--shadow-sacred)]">
+                  <Trophy size={20} className="text-th-sacred fill-current" />
                 </div>
-                <div>
-                  <p className="text-xs text-th-text-tertiary uppercase tracking-wider font-bold">{t.calendar.missionStatus}</p>
-                  <p className="text-lg font-display font-bold text-th-text">
-                    {completedCount}/{totalCount} <span className="text-sm text-th-text-secondary font-body">{t.calendar.status.completed}</span>
+                <div className="min-w-0">
+                  <p className="font-display font-bold text-th-text leading-none">
+                    <span className="text-4xl text-th-sacred">{completedCount}</span>
+                    <span className="ml-2 text-base text-th-text-secondary font-body">{t.calendar.winsUnit}</span>
+                  </p>
+                  <p className="mt-1.5 text-sm text-th-text-tertiary font-body">
+                    {t.calendar.winsSubline.replace('{weekday}', weekdayLabel)}
                   </p>
                 </div>
               </div>
-              <span className="text-2xl font-display font-bold text-th-sacred">
-                {totalCount > 0 ? Math.round(progressPercent) : 0}%
-              </span>
-            </div>
-            {/* Progress Bar */}
-            <div className="w-full h-2 bg-th-surface rounded-full overflow-hidden border border-th-border">
-              <div
-                className="h-full rounded-full transition-all duration-500 ease-out"
-                style={{
-                  width: `${progressPercent}%`,
-                  background: 'linear-gradient(90deg, var(--sacred), var(--reward), var(--accent))',
-                  boxShadow: '0 0 10px var(--shadow-sacred)',
-                }}
-              />
-            </div>
+            ) : (
+              <div className="flex items-center gap-4">
+                <div className="shrink-0 w-12 h-12 rounded-2xl bg-th-accent-muted border border-th-accent flex items-center justify-center">
+                  <Sparkles size={20} className="text-th-accent" />
+                </div>
+                <p className="text-base text-th-text-secondary font-body whitespace-pre-line leading-relaxed">
+                  {t.calendar.winsArriving}
+                </p>
+              </div>
+            )}
           </div>
-        </div>
+        )}
 
         {/* Todo Sections */}
         <div className="max-w-2xl mx-auto space-y-8">
-          {/* Completed Section */}
+          {/* Wins (completed) */}
           {completedTodos.length > 0 && (
             <div>
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-2 h-2 rounded-full bg-th-sacred shadow-[0_0_8px_var(--shadow-sacred)]"></div>
                 <h3 className="text-sm font-bold text-th-sacred uppercase tracking-wider font-display">
-                  {t.calendar.completedMissions}
+                  {t.calendar.winsSection}
                 </h3>
-                <span className="text-xs text-th-text-muted font-mono">{completedTodos.length}</span>
                 <div className="flex-1 h-px bg-th-sacred-muted"></div>
               </div>
               <div className="space-y-2.5">
@@ -583,17 +622,17 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
             </div>
           )}
 
-          {/* Incomplete Section */}
+          {/* Up next — forward-looking, claimable. Never framed as failure. */}
           {incompleteTodos.length > 0 && (
             <div>
-              <div className="flex items-center gap-3 mb-4">
-                <div className={`w-2 h-2 rounded-full ${isPastDate ? 'bg-red-500/60' : 'bg-white/30'}`}></div>
-                <h3 className={`text-sm font-bold uppercase tracking-wider font-display ${isPastDate ? 'text-red-400/80' : 'text-th-text-secondary'}`}>
-                  {t.calendar.incompleteMissions}
+              <div className="flex items-center gap-3 mb-1.5">
+                <div className="w-2 h-2 rounded-full bg-th-accent"></div>
+                <h3 className="text-sm font-bold text-th-text-secondary uppercase tracking-wider font-display">
+                  {t.calendar.upNextSection}
                 </h3>
-                <span className="text-xs text-th-text-muted font-mono">{incompleteTodos.length}</span>
-                <div className={`flex-1 h-px ${isPastDate ? 'bg-red-500/10' : 'bg-th-surface'}`}></div>
+                <div className="flex-1 h-px bg-th-accent-muted"></div>
               </div>
+              <p className="text-xs text-th-text-tertiary mb-4 ml-5 font-body">{t.calendar.upNextHint}</p>
               <div className="space-y-2.5">
                 {incompleteTodos.map(renderDayTodoCard)}
               </div>
@@ -638,7 +677,6 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
         <div className="space-y-1">
           {daysWithTodos.map(({ date, todos: dayTodos }) => {
             const isToday = normalizeDate(new Date()) === normalizeDate(date);
-            const isPastDate = normalizeDate(date) < normalizeDate(new Date());
             const dayOfWeek = date.getDay();
 
             return (
@@ -672,7 +710,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
                 {/* Todos */}
                 {dayTodos.length > 0 && (
                   <div className="pl-8 pr-2 py-1.5 space-y-1">
-                    {dayTodos.map((todo: any) => renderTodoCell(todo, isPastDate, todo.isGhost))}
+                    {dayTodos.map((todo: any) => renderTodoCell(todo, todo.isGhost))}
                   </div>
                 )}
               </div>
@@ -785,8 +823,8 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
             className="absolute inset-0 z-40"
             onClick={closeCapsule}
           />
-          {/* Sheet */}
-          <div className="absolute bottom-0 left-0 right-0 z-50 animate-in slide-in-from-bottom duration-200">
+          {/* Sheet — sits above BottomDock (z-[55]) by positioning above its ~66px height */}
+          <div className="absolute bottom-[66px] left-0 right-0 z-50 animate-in slide-in-from-bottom duration-200">
             <div className="mx-2 mb-2 bg-th-card border border-th-border-strong rounded-2xl shadow-2xl p-4 backdrop-blur-xl">
               {/* Date label */}
               <div className="flex items-center justify-between mb-3">
@@ -828,8 +866,71 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
                 </button>
               </div>
 
-              {/* Repeat chips */}
+              {/* Time presets + manual stepper — revealed when the time chip is tapped */}
+              {timeOpen && (
+                <div className="mb-3 flex items-center gap-1.5 overflow-x-auto scrollbar-hide animate-in fade-in slide-in-from-top-1 duration-150">
+                  {TIME_PRESETS.map((p) => {
+                    const active = capsuleHasTime && capsuleTime.h === p.h && capsuleTime.m === p.m;
+                    return (
+                      <button
+                        key={p.key}
+                        type="button"
+                        onClick={() => { setCapsuleTime({ h: p.h, m: p.m }); setCapsuleHasTime(true); }}
+                        className={`shrink-0 text-[11px] px-2.5 py-1 rounded-full border transition-colors ${active
+                            ? 'bg-th-accent-muted border-th-accent text-th-accent font-bold'
+                            : 'border-th-border text-th-text-tertiary hover:text-th-text hover:border-th-border-strong'
+                          }`}
+                      >
+                        {fmtTime(p.h, p.m, language)}
+                      </button>
+                    );
+                  })}
+                  {/* Compact cycle-on-tap stepper for arbitrary times */}
+                  <div className="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-th-border text-th-text-secondary text-[11px] tabular-nums">
+                    <button
+                      type="button"
+                      aria-label={t.calendar.time.hour}
+                      onClick={() => { setCapsuleTime((s) => ({ ...s, h: (s.h + 1) % 24 })); setCapsuleHasTime(true); }}
+                    >
+                      {pad2(capsuleTime.h)}
+                    </button>
+                    <span className="text-th-text-muted">:</span>
+                    <button
+                      type="button"
+                      aria-label={t.calendar.time.minute}
+                      onClick={() => { setCapsuleTime((s) => ({ ...s, m: (s.m + 5) % 60 })); setCapsuleHasTime(true); }}
+                    >
+                      {pad2(capsuleTime.m)}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Time chip + repeat chips */}
               <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide">
+                <button
+                  type="button"
+                  aria-pressed={capsuleHasTime}
+                  onClick={() => setTimeOpen((o) => !o)}
+                  className={`shrink-0 inline-flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-full border transition-colors ${capsuleHasTime
+                      ? 'bg-th-accent-muted border-th-accent text-th-accent font-bold'
+                      : 'border-th-border text-th-text-tertiary hover:text-th-text hover:border-th-border-strong'
+                    }`}
+                >
+                  <Clock size={12} />
+                  {capsuleHasTime ? fmtTime(capsuleTime.h, capsuleTime.m, language) : t.calendar.time.allDay}
+                  {capsuleHasTime && (
+                    <span
+                      role="button"
+                      aria-label={t.calendar.time.clear}
+                      onClick={(e) => { e.stopPropagation(); setCapsuleHasTime(false); setTimeOpen(false); setCapsuleTime({ h: 9, m: 0 }); }}
+                      className="ml-0.5 -mr-1 w-4 h-4 inline-flex items-center justify-center rounded-full hover:bg-th-surface-hover"
+                    >
+                      <X size={10} />
+                    </span>
+                  )}
+                </button>
+                <span className="shrink-0 w-px h-4 bg-th-border" aria-hidden="true"></span>
                 {REPEAT_CHIPS.map((opt) => {
                   const active = (capsuleRepeat ?? 'none') === opt;
                   return (

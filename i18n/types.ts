@@ -86,6 +86,12 @@ export interface TranslationStrings {
     missionStatus: string;
     completedMissions: string;
     incompleteMissions: string;
+    winsUnit: string;
+    winsSubline: string;
+    winsArriving: string;
+    winsSection: string;
+    upNextSection: string;
+    upNextHint: string;
     emptyDay: string;
     emptyDayHint: string;
     addMission: string;
@@ -94,15 +100,16 @@ export interface TranslationStrings {
     status: {
       completed: string;
       locked: string;
-      missed: string;
       inProgress: string;
       scheduled: string;
+      tryIt: string;
     };
-    legend: {
-      achieved: string;
-      inProgress: string;
-      scheduled: string;
-      missed: string;
+    time: {
+      allDay: string;
+      setTime: string;
+      clear: string;
+      hour: string;
+      minute: string;
     };
     yearSuffix: string;
     monthSuffix: string;
