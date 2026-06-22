@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Sun, CheckCircle2, Lock, AlertCircle, Trophy, Star, ArrowLeft, Plus } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CheckCircle2, Lock, AlertCircle, Trophy, Star, ArrowLeft, Plus, X } from 'lucide-react';
 import { ToDoItem, RepeatFrequency } from '../types';
+import { matchesOn } from '../lib/recurrence';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { useTranslation } from '../i18n/useTranslation';
 
@@ -14,78 +15,22 @@ interface CalendarViewProps {
   onViewModeChange?: (mode: 'month' | 'week' | 'list') => void;
 }
 
-// 캘린더 빠른 추가에서 노출할 반복 옵션(앱의 핵심인 반복 미션 위주). 'none' = 단발.
-const QUICK_REPEAT_OPTIONS = ['none', 'daily', 'weekdays', 'weekly', 'weekly-2', 'weekly-3'] as const;
+const REPEAT_CHIPS = ['none', 'daily', 'weekdays', 'weekly', 'weekly-3'] as const;
+const LAST_REPEAT_KEY = 'sc_cal_last_repeat';
 
 type ViewMode = 'month' | 'week' | 'list' | 'day';
-
-// Logic to check if the targetDate falls on the recurrence pattern of the task.
-// Since we have complex patterns (Weekly-2, Weekly-3), we need to simulate the sequence.
-const checkRecurrenceMatch = (todo: ToDoItem, targetDate: Date): boolean => {
-  if (!todo.repeat) return false;
-
-  // Use DueDate or CreatedAt as the anchor
-  const anchorTimestamp = todo.dueDate || todo.createdAt;
-
-  // Normalize dates to start of day
-  const target = new Date(targetDate);
-  target.setHours(0, 0, 0, 0);
-  const start = new Date(anchorTimestamp);
-  start.setHours(0, 0, 0, 0);
-
-  // If target is before start, it's not a match
-  if (target.getTime() < start.getTime()) return false;
-
-  // --- OPTIMIZED CHECKS ---
-  const day = target.getDay();
-
-  if (todo.repeat === 'daily') return true;
-
-  if (todo.repeat === 'weekdays') {
-    return day !== 0 && day !== 6; // Mon-Fri
-  }
-
-  if (todo.repeat === 'weekly') {
-    return day === start.getDay();
-  }
-
-  if (todo.repeat === 'monthly') {
-    return target.getDate() === start.getDate();
-  }
-
-  // --- COMPLEX PATTERN SIMULATION ---
-  /*
-     Pattern Logic based on App.tsx calculateNextDate:
-     Weekly-2: Mon(1), Thu(4)  (If started on other days, it snaps to this pattern)
-     Weekly-3: Mon(1), Wed(3), Fri(5)
-     Weekly-4: Mon(1), Tue(2), Thu(4), Fri(5)
-     Weekly-5: Weekdays (Mon-Fri)
-     Weekly-6: Mon-Sat
-  */
-
-  switch (todo.repeat) {
-    case 'weekly-2':
-      return day === 1 || day === 4;
-    case 'weekly-3':
-      return day === 1 || day === 3 || day === 5;
-    case 'weekly-4':
-      return day === 1 || day === 2 || day === 4 || day === 5;
-    case 'weekly-5':
-      return day >= 1 && day <= 5;
-    case 'weekly-6':
-      return day >= 1 && day <= 6;
-    default:
-      return false;
-  }
-}
 
 const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onToggleToDo, onAddToDo, viewMode: externalViewMode, onViewModeChange }) => {
   const { t, language } = useTranslation();
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [newMissionText, setNewMissionText] = useState('');
-  const [newMissionRepeat, setNewMissionRepeat] = useState<RepeatFrequency>(null);
-  const composerRef = useRef<HTMLInputElement>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('month');
+  // Capsule state (quick-add from any cell without navigating away)
+  const [capsuleDate, setCapsuleDate] = useState<Date | null>(null);
+  const [capsuleText, setCapsuleText] = useState('');
+  const [capsuleRepeat, setCapsuleRepeat] = useState<RepeatFrequency>(() => {
+    try { return (localStorage.getItem(LAST_REPEAT_KEY) as RepeatFrequency) ?? null; } catch { return null; }
+  });
+  const capsuleInputRef = useRef<HTMLInputElement>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [previousViewMode, setPreviousViewMode] = useState<ViewMode>('month');
 
@@ -160,14 +105,14 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
     const ghosts = todos.filter(t => {
       if (t.completed) return false;
       if (!t.repeat) return false;
-      const isRecurrenceDate = checkRecurrenceMatch(t, targetDate);
+      const isRecurrenceDate = matchesOn(t, targetDate);
       if (!isRecurrenceDate) return false;
       const isAlreadyShownAsReal = realTodos.some(real => real.id === t.id);
       if (isAlreadyShownAsReal) return false;
       return true;
     }).map(t => ({
       ...t,
-      id: `ghost_${t.id}_${tDay}_${tMonth}`,
+      id: `ghost_${t.id}_${tYear}_${tMonth}_${tDay}`,
       isGhost: true,
       completed: false
     }));
@@ -214,11 +159,18 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
     }
   };
 
-  // Click handler for day cells
-  const handleDayClick = (date: Date) => {
+  // Tap the date-number badge → drill into day detail view
+  const handleDateDrill = (date: Date) => {
+    setCapsuleDate(null);
     setPreviousViewMode(viewMode);
     setSelectedDate(date);
     setViewMode('day');
+  };
+
+  // Tap blank area of a cell → open quick-add capsule in-place
+  const handleCellAdd = (date: Date) => {
+    setCapsuleDate(date);
+    window.setTimeout(() => capsuleInputRef.current?.focus(), 50);
   };
 
   // Back from day view
@@ -227,27 +179,28 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
     setSelectedDate(null);
   };
 
-  // 선택한 날짜에 미션 추가 — dueDate는 정오로 고정해 시간대/날짜경계 어긋남 방지.
-  const handleAddMission = useCallback(() => {
-    const text = newMissionText.trim();
-    if (!text || !selectedDate) return;
-    const due = new Date(selectedDate);
+  // Seal (confirm) the capsule — adds the mission and saves last-used repeat
+  const handleSealCapsule = useCallback(() => {
+    const text = capsuleText.trim();
+    if (!text || !capsuleDate) return;
+    const due = new Date(capsuleDate);
     due.setHours(12, 0, 0, 0);
     const extras: Partial<ToDoItem> = { dueDate: due.getTime() };
-    if (newMissionRepeat) extras.repeat = newMissionRepeat;
+    if (capsuleRepeat) extras.repeat = capsuleRepeat;
     onAddToDo(text, extras);
-    setNewMissionText('');
-    setNewMissionRepeat(null);
-    composerRef.current?.focus();
-  }, [newMissionText, newMissionRepeat, selectedDate, onAddToDo]);
+    try { localStorage.setItem(LAST_REPEAT_KEY, capsuleRepeat ?? ''); } catch {}
+    setCapsuleText('');
+    setCapsuleDate(null);
+  }, [capsuleText, capsuleRepeat, capsuleDate, onAddToDo]);
 
-  // 헤더 + 버튼: 일(day) 뷰면 입력창 포커스, 아니면 오늘 날짜의 일 뷰로 들어가 추가 유도.
+  const closeCapsule = () => { setCapsuleDate(null); setCapsuleText(''); };
+
+  // Header + button: open today's capsule (or focus day-view composer)
   const handleHeaderAdd = () => {
     if (viewMode === 'day') {
-      composerRef.current?.focus();
+      capsuleInputRef.current?.focus();
     } else {
-      handleDayClick(new Date());
-      window.setTimeout(() => composerRef.current?.focus(), 60);
+      handleCellAdd(new Date());
     }
   };
 
@@ -395,12 +348,15 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
       days.push(
         <div
           key={`curr-${day}`}
-          onClick={() => handleDayClick(dateObj)}
+          onClick={() => handleCellAdd(dateObj)}
           className={`min-h-0 md:min-h-0 border-b border-r border-th-border p-1 relative group transition-all duration-300 cursor-pointer ${isToday ? 'bg-th-accent-muted shadow-[inset_0_0_20px_var(--shadow-glow)]' : 'bg-transparent hover:bg-th-surface'}`}
         >
-          {/* Date Header */}
+          {/* Date Header — badge tap drills into detail view */}
           <div className="flex justify-between items-start mb-0.5">
-            <span className={`text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full transition-all ${isToday ? 'bg-th-accent text-th-text-inverse shadow-[0_0_10px_var(--shadow-glow)]' : 'text-th-text-secondary group-hover:text-th-text'}`}>
+            <span
+              onClick={(e) => { e.stopPropagation(); handleDateDrill(dateObj); }}
+              className={`text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full transition-all cursor-pointer ${isToday ? 'bg-th-accent text-th-text-inverse shadow-[0_0_10px_var(--shadow-glow)]' : 'text-th-text-secondary group-hover:text-th-text hover:bg-th-surface-hover'}`}
+            >
               {day}
             </span>
           </div>
@@ -451,15 +407,18 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
       days.push(
         <div
           key={`week-${i}`}
-          onClick={() => handleDayClick(dateObj)}
+          onClick={() => handleCellAdd(dateObj)}
           className={`flex-1 flex items-stretch border-b border-th-border cursor-pointer transition-all duration-200 min-h-[56px] ${isToday
               ? 'bg-th-surface'
               : 'hover:bg-white/[0.03]'
             }`}
         >
-          {/* Date column */}
-          <div className={`w-16 shrink-0 flex flex-col items-center justify-center py-2 border-r border-th-border ${dayOfWeek === 0 ? 'text-red-400' : dayOfWeek === 6 ? 'text-blue-400' : ''
-            }`}>
+          {/* Date column — tap number to drill, tap elsewhere to add */}
+          <div
+            onClick={(e) => { e.stopPropagation(); handleDateDrill(dateObj); }}
+            className={`w-16 shrink-0 flex flex-col items-center justify-center py-2 border-r border-th-border ${dayOfWeek === 0 ? 'text-red-400' : dayOfWeek === 6 ? 'text-blue-400' : ''
+            }`}
+          >
             <span className={`text-lg font-bold font-display ${isToday
                 ? 'w-8 h-8 flex items-center justify-center rounded-full bg-th-accent text-th-text-inverse shadow-[0_0_10px_var(--shadow-glow)]'
                 : 'text-gray-300'
@@ -605,52 +564,6 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
           </div>
         </div>
 
-        {/* Quick add — create a mission scheduled on this day */}
-        <div className="max-w-2xl mx-auto mb-6">
-          <div className="bg-th-surface border border-th-border rounded-2xl p-3 backdrop-blur-sm flex flex-col gap-2.5">
-            <div className="flex items-center gap-2">
-              <input
-                ref={composerRef}
-                type="text"
-                value={newMissionText}
-                onChange={(e) => setNewMissionText(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') handleAddMission(); }}
-                placeholder={t.calendar.addMissionPlaceholder}
-                maxLength={500}
-                className="flex-1 min-w-0 bg-transparent border-none outline-none text-sm text-th-text placeholder:text-th-text-muted px-1"
-              />
-              <button
-                type="button"
-                onClick={handleAddMission}
-                disabled={!newMissionText.trim()}
-                className="shrink-0 flex items-center gap-1 h-8 px-3.5 rounded-full bg-th-accent text-white text-[13px] font-bold
-                  disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.97] transition-transform shadow-sm"
-              >
-                <Plus size={14} />
-                <span>{t.calendar.addMission}</span>
-              </button>
-            </div>
-            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide">
-              {QUICK_REPEAT_OPTIONS.map((opt) => {
-                const active = (newMissionRepeat ?? 'none') === opt;
-                return (
-                  <button
-                    key={opt}
-                    type="button"
-                    onClick={() => setNewMissionRepeat(opt === 'none' ? null : opt)}
-                    className={`shrink-0 text-[11px] px-2.5 py-1 rounded-full border transition-colors ${active
-                        ? 'bg-th-accent-muted border-th-accent text-th-accent font-bold'
-                        : 'border-th-border text-th-text-tertiary hover:text-th-text hover:border-th-border-strong'
-                      }`}
-                  >
-                    {t.todo.repeat[opt]}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-
         {/* Todo Sections */}
         <div className="max-w-2xl mx-auto space-y-8">
           {/* Completed Section */}
@@ -694,7 +607,15 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
                 <Star size={24} className="text-th-text-muted" />
               </div>
               <p className="text-th-text-tertiary text-sm font-medium">{t.calendar.emptyDay}</p>
-              <p className="text-gray-700 text-xs mt-1">{t.calendar.emptyDayHint}</p>
+              <p className="text-gray-700 text-xs mt-1 mb-6">{t.calendar.emptyDayHint}</p>
+              <button
+                type="button"
+                onClick={() => selectedDate && handleCellAdd(selectedDate)}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-th-accent text-white text-sm font-bold active:scale-95 transition-transform shadow-sm"
+              >
+                <Plus size={16} />
+                {t.calendar.addMission}
+              </button>
             </div>
           )}
         </div>
@@ -725,7 +646,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
                 {/* Date header */}
                 <div
                   data-today={isToday ? "true" : undefined}
-                  onClick={() => handleDayClick(date)}
+                  onClick={() => handleDateDrill(date)}
                   className={`sticky top-0 z-10 flex items-center gap-3 px-3 py-2 cursor-pointer rounded-lg transition-colors ${isToday
                       ? 'bg-th-accent-muted border border-th-accent-border'
                       : 'bg-th-overlay backdrop-blur-sm hover:bg-th-surface'
@@ -854,6 +775,81 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
         <div className="flex-1 overflow-hidden flex flex-col animate-in fade-in duration-300">
           {renderDayView()}
         </div>
+      )}
+
+      {/* Quick-add capsule — slides up from bottom when any cell is tapped */}
+      {capsuleDate && (
+        <>
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 z-40"
+            onClick={closeCapsule}
+          />
+          {/* Sheet */}
+          <div className="absolute bottom-0 left-0 right-0 z-50 animate-in slide-in-from-bottom duration-200">
+            <div className="mx-2 mb-2 bg-th-card border border-th-border-strong rounded-2xl shadow-2xl p-4 backdrop-blur-xl">
+              {/* Date label */}
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs text-th-text-tertiary font-bold uppercase tracking-wider">
+                  {capsuleDate.toLocaleDateString(language === 'ko' ? 'ko-KR' : 'en-US', {
+                    month: 'long', day: 'numeric', weekday: 'short'
+                  })}
+                </span>
+                <button
+                  type="button"
+                  onClick={closeCapsule}
+                  className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-th-surface-hover text-th-text-muted transition-colors"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+
+              {/* Input row */}
+              <div className="flex items-center gap-2 mb-3">
+                <input
+                  ref={capsuleInputRef}
+                  type="text"
+                  value={capsuleText}
+                  onChange={(e) => setCapsuleText(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') handleSealCapsule(); if (e.key === 'Escape') closeCapsule(); }}
+                  placeholder={t.calendar.addMissionPlaceholder}
+                  maxLength={500}
+                  className="flex-1 min-w-0 bg-transparent border-none outline-none text-sm text-th-text placeholder:text-th-text-muted"
+                />
+                <button
+                  type="button"
+                  onClick={handleSealCapsule}
+                  disabled={!capsuleText.trim()}
+                  className="shrink-0 flex items-center gap-1 h-8 px-4 rounded-full bg-th-accent text-white text-[13px] font-bold
+                    disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.97] transition-transform"
+                >
+                  <Lock size={13} />
+                  {t.calendar.addMission}
+                </button>
+              </div>
+
+              {/* Repeat chips */}
+              <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide">
+                {REPEAT_CHIPS.map((opt) => {
+                  const active = (capsuleRepeat ?? 'none') === opt;
+                  return (
+                    <button
+                      key={opt}
+                      type="button"
+                      onClick={() => setCapsuleRepeat(opt === 'none' ? null : (opt as RepeatFrequency))}
+                      className={`shrink-0 text-[11px] px-2.5 py-1 rounded-full border transition-colors ${active
+                          ? 'bg-th-accent-muted border-th-accent text-th-accent font-bold'
+                          : 'border-th-border text-th-text-tertiary hover:text-th-text hover:border-th-border-strong'
+                        }`}
+                    >
+                      {t.todo.repeat[opt]}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );

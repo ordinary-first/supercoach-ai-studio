@@ -26,7 +26,6 @@ import {
   ToDoItem,
   NoteItem,
   ChatMessage,
-  RepeatFrequency,
   UserProfile,
   ActionLogEntry,
   TodoList,
@@ -62,87 +61,7 @@ import {
   ALARM_CLICK_EVENT,
   AlarmSlot,
 } from './services/notificationService';
-
-// Helper function to calculate the next occurrence date for recurring todos
-const calculateNextDate = (repeat: RepeatFrequency, fromDate: Date): number => {
-  const next = new Date(fromDate);
-  next.setHours(0, 0, 0, 0);
-
-  switch (repeat) {
-    case 'daily':
-      next.setDate(next.getDate() + 1);
-      return next.getTime();
-
-    case 'weekdays': {
-      // Skip to next weekday (skip weekends)
-      do {
-        next.setDate(next.getDate() + 1);
-      } while (next.getDay() === 0 || next.getDay() === 6);
-      return next.getTime();
-    }
-
-    case 'weekly':
-      next.setDate(next.getDate() + 7);
-      return next.getTime();
-
-    case 'monthly':
-      next.setMonth(next.getMonth() + 1);
-      return next.getTime();
-
-    case 'weekly-2': {
-      // Next Mon or Thu
-      const day = next.getDay();
-      if (day < 1) next.setDate(next.getDate() + (1 - day)); // to Monday
-      else if (day === 1) next.setDate(next.getDate() + 3); // Mon -> Thu
-      else if (day < 4) next.setDate(next.getDate() + (4 - day)); // to Thu
-      else next.setDate(next.getDate() + (1 + 7 - day)); // to next Monday
-      return next.getTime();
-    }
-
-    case 'weekly-3': {
-      // Next Mon, Wed, or Fri
-      const day = next.getDay();
-      if (day < 1) next.setDate(next.getDate() + (1 - day)); // to Monday
-      else if (day === 1) next.setDate(next.getDate() + 2); // Mon -> Wed
-      else if (day < 3) next.setDate(next.getDate() + (3 - day)); // to Wed
-      else if (day === 3) next.setDate(next.getDate() + 2); // Wed -> Fri
-      else if (day < 5) next.setDate(next.getDate() + (5 - day)); // to Fri
-      else next.setDate(next.getDate() + (1 + 7 - day)); // to next Monday
-      return next.getTime();
-    }
-
-    case 'weekly-4': {
-      // Next Mon, Tue, Thu, or Fri
-      const day = next.getDay();
-      if (day < 1) next.setDate(next.getDate() + (1 - day)); // to Monday
-      else if (day === 1) next.setDate(next.getDate() + 1); // Mon -> Tue
-      else if (day === 2) next.setDate(next.getDate() + 2); // Tue -> Thu
-      else if (day === 3) next.setDate(next.getDate() + 1); // Wed -> Thu
-      else if (day === 4) next.setDate(next.getDate() + 1); // Thu -> Fri
-      else next.setDate(next.getDate() + (1 + 7 - day)); // to next Monday
-      return next.getTime();
-    }
-
-    case 'weekly-5': {
-      // Next weekday (Mon-Fri)
-      do {
-        next.setDate(next.getDate() + 1);
-      } while (next.getDay() === 0 || next.getDay() === 6);
-      return next.getTime();
-    }
-
-    case 'weekly-6': {
-      // Next Mon-Sat
-      do {
-        next.setDate(next.getDate() + 1);
-      } while (next.getDay() === 0);
-      return next.getTime();
-    }
-
-    default:
-      return next.getTime();
-  }
-};
+import { nextOccurrence } from './lib/recurrence';
 
 type AppLanguage = 'en' | 'ko';
 
@@ -833,13 +752,13 @@ const App: React.FC = () => {
       };
 
       // Create new active recurring instance
-      const nextDueDate = calculateNextDate(todo.repeat, today);
+      const nextDate = nextOccurrence(todo, today);
       const newActiveInstance: ToDoItem = {
         ...todo,
         id: Date.now().toString(),
         completed: false,
         createdAt: Date.now(),
-        dueDate: nextDueDate,
+        dueDate: nextDate ? nextDate.getTime() : today.getTime(),
         isMyDay: false,
       };
 
