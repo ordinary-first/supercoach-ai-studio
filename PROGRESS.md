@@ -56,11 +56,11 @@
 ## 다음 할 일 (우선순위순)
 
 ### Sprint 1: Critical + 시스템적 수정
-- [x] Critical 김-002 수정 (결제 취소 시 onboardingCompleted 오염) ← 완료
-- [ ] Critical 박-002 수정 (월간 반복 할일 day-31 앵커)
-- [ ] Critical 이-001 수정 (useDreamChat stale closure)
+- [x] Critical 김-002 수정 (결제 취소 시 onboardingCompleted 오염)
+- [x] Critical 박-002 수정 (월간 반복 할일 day-31 앵커)
+- [x] Critical 이-001 수정 (useDreamChat stale — busyRef로 이미 수정됨, commit 2943d17)
+- [x] 이-006 수정 (CoachChat handleSend stale — isSendingRef 가드 추가)
 - [ ] `checkRecurrenceMatch` → `lib/recurrence.ts`로 추출, FeedbackView에서 재사용
-- [ ] Stale closure 패턴 일괄 수정 (useRef 패턴 통일)
 - [ ] AbortController 부재 일괄 수정 (`useAbortable` 훅)
 
 ### Sprint 2: High 버그 수정
