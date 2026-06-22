@@ -375,6 +375,8 @@ const ko: TranslationStrings = {
     savedLabel: '저장됨',
     sceneLabel: '이미 당신의 현실',
     readFull: '전체 읽기',
+    deleteConfirm: '이 드림을 삭제할까요?',
+    deleteConfirmDesc: '삭제하면 되돌릴 수 없어요.',
     aiSceneResponse: '좋은 선택이에요. 이 장면을 기반으로 시각화를 만들어드릴게요. 아래에서 출력을 선택한 뒤 생성하기를 눌러주세요.',
     twoDirections: '두 가지 방향',
     pickThis: '이걸로 이어가기',

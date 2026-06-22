@@ -374,6 +374,8 @@ const en: TranslationStrings = {
     savedLabel: 'Saved',
     sceneLabel: 'Already yours',
     readFull: 'Read full',
+    deleteConfirm: 'Delete this dream?',
+    deleteConfirmDesc: 'This can\'t be undone.',
     aiSceneResponse: 'Great choice! I\'ll create a visualization based on this scene. Select your desired outputs below and tap Generate.',
     twoDirections: 'Two directions',
     pickThis: 'Continue with this',

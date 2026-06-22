@@ -1,5 +1,6 @@
-﻿import { type FC, useRef, useCallback } from 'react';
-import { Sparkles, Play, Mic, Loader2 } from 'lucide-react';
+import { type FC, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { Sparkles, Play, Mic, Loader2, Trash2 } from 'lucide-react';
 import { SavedVisualization } from '../../services/firebaseService';
 import { useTranslation } from '../../i18n/useTranslation';
 
@@ -30,27 +31,7 @@ const DreamGallery: FC<DreamGalleryProps> = ({
   onCreateDream,
 }) => {
   const { t } = useTranslation();
-  const longPressRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pressedIdRef = useRef<string | null>(null);
-
-  const handleTouchStart = useCallback(
-    (item: SavedVisualization) => {
-      pressedIdRef.current = item.id;
-      longPressRef.current = setTimeout(() => {
-        if (pressedIdRef.current === item.id) onItemDelete(item.id);
-        pressedIdRef.current = null;
-      }, 800);
-    },
-    [onItemDelete],
-  );
-
-  const cancelLongPress = useCallback(() => {
-    if (longPressRef.current) {
-      clearTimeout(longPressRef.current);
-      longPressRef.current = null;
-    }
-    pressedIdRef.current = null;
-  }, []);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
 
   if (items.length === 0) {
     return (
@@ -79,18 +60,18 @@ const DreamGallery: FC<DreamGalleryProps> = ({
         const hasAudioOnly = !!item.audioUrl && !hasImage && !hasVideo;
 
         return (
-          <button
+          <div
             key={item.id}
-            type="button"
+            role="button"
+            tabIndex={0}
             className={`relative aspect-square overflow-hidden cursor-pointer rounded-[10px] ${!hasImage ? `bg-gradient-to-br ${pickGradient(item.id)}` : ''
               }`}
             onClick={() => onItemTap(item)}
-            onTouchStart={() => handleTouchStart(item)}
-            onTouchEnd={cancelLongPress}
-            onTouchCancel={cancelLongPress}
-            onContextMenu={(event) => {
-              event.preventDefault();
-              onItemDelete(item.id);
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                onItemTap(item);
+              }
             }}
           >
             {hasImage && (
@@ -129,9 +110,65 @@ const DreamGallery: FC<DreamGalleryProps> = ({
                 <Loader2 size={20} color="#fff" className="animate-spin" />
               </span>
             )}
-          </button>
+
+            {/* visible delete affordance — opens a confirm dialog, never deletes on its own */}
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                setConfirmId(item.id);
+              }}
+              className="absolute top-1 right-1 z-10 w-6 h-6 rounded-full flex items-center justify-center
+                text-white/85 hover:text-white active:scale-90 transition-all"
+              style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)' }}
+              aria-label={t.common.delete}
+            >
+              <Trash2 size={13} />
+            </button>
+          </div>
         );
       })}
+
+      {confirmId && createPortal(
+        <div
+          className="fixed inset-0 z-[120] flex items-center justify-center px-8"
+          style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }}
+          onClick={() => setConfirmId(null)}
+        >
+          <div
+            className="apple-glass-panel w-full max-w-[280px] rounded-3xl p-6 text-center"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="w-12 h-12 rounded-full bg-red-500/15 flex items-center justify-center mx-auto mb-4">
+              <Trash2 size={22} className="text-red-400" />
+            </div>
+            <p className="text-[15px] font-semibold text-th-text mb-1.5">{t.visualization.deleteConfirm}</p>
+            <p className="text-[13px] text-th-text-tertiary mb-5 leading-relaxed">{t.visualization.deleteConfirmDesc}</p>
+            <div className="flex gap-2.5">
+              <button
+                type="button"
+                onClick={() => setConfirmId(null)}
+                className="flex-1 py-2.5 rounded-full apple-chip text-sm font-semibold text-th-text
+                  active:scale-95 transition-transform"
+              >
+                {t.common.cancel}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  onItemDelete(confirmId);
+                  setConfirmId(null);
+                }}
+                className="flex-1 py-2.5 rounded-full bg-red-500 text-white text-sm font-semibold
+                  active:scale-95 transition-transform"
+              >
+                {t.common.delete}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body,
+      )}
     </div>
   );
 };

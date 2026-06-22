@@ -330,6 +330,8 @@ export interface TranslationStrings {
     savedLabel: string;
     sceneLabel: string;
     readFull: string;
+    deleteConfirm: string;
+    deleteConfirmDesc: string;
     aiSceneResponse: string;
     // Refine / branch flow
     twoDirections: string;
