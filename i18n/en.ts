@@ -110,6 +110,8 @@ const en: TranslationStrings = {
     incompleteMissions: 'Incomplete Missions',
     emptyDay: 'No missions on this day',
     emptyDayHint: 'Add a mission to start the day',
+    addMission: 'Add',
+    addMissionPlaceholder: 'Add a mission for this day...',
     lockedMission: 'Locked mission (future repeat)',
     status: {
       completed: 'Done',

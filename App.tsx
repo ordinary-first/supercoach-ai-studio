@@ -820,6 +820,19 @@ const App: React.FC = () => {
     appendAction(getUserId(), 'ADD_TODO', `"${trimmed}" 코치 반영`, { todoId: newId });
   }, []);
 
+  // 캘린더(일정 탭)에서 특정 날짜에 미션을 직접 추가 — dueDate(+선택적 repeat)를 넣어
+  // 할 일 탭과 동일한 미션 아이템으로 생성한다(완료 시 트로피, 미완료 시 잠금 표시).
+  const handleAddCalendarMission = useCallback((text: string, extras?: Partial<ToDoItem>) => {
+    const trimmed = text.trim().slice(0, 500);
+    if (!trimmed) return;
+    const newId = Date.now().toString();
+    setTodos((prev) => [
+      { id: newId, text: trimmed, completed: false, createdAt: Date.now(), ...extras },
+      ...prev,
+    ]);
+    appendAction(getUserId(), 'ADD_TODO', `"${trimmed}" 일정 추가`, { todoId: newId });
+  }, []);
+
   const handleUpdateTodoFromCoach = useCallback((id: string, updates: Partial<ToDoItem>) => {
     setTodos((prev) => prev.map((todo) => (
       todo.id === id ? { ...todo, ...updates } : todo
@@ -1056,7 +1069,7 @@ const App: React.FC = () => {
     return updated;
   });
 }} notes={notes} onNotesChange={setNotes} />
-      <CalendarView isOpen={activeTab === 'CALENDAR'} onClose={() => setActiveTab('GOALS')} todos={todos} onToggleToDo={handleToggleToDo} viewMode={calendarViewMode} onViewModeChange={setCalendarViewMode} />
+      <CalendarView isOpen={activeTab === 'CALENDAR'} onClose={() => setActiveTab('GOALS')} todos={todos} onToggleToDo={handleToggleToDo} onAddToDo={handleAddCalendarMission} viewMode={calendarViewMode} onViewModeChange={setCalendarViewMode} />
       <CoachChat
         isOpen={isChatOpen}
         onClose={() => {
