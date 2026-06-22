@@ -203,7 +203,14 @@ const App: React.FC = () => {
   const [todoLists, setTodoLists] = useState<TodoList[]>([]);
   const [todoGroups, setTodoGroups] = useState<TodoGroup[]>([]);
   const [notes, setNotes] = useState<NoteItem[]>([]);
-  const [activeListId, setActiveListId] = useState<string | SmartListId>('myDay');
+  const [activeListId, setActiveListId] = useState<string | SmartListId>(() => {
+    try { return localStorage.getItem('secretcoach-active-list') || 'myDay'; }
+    catch { return 'myDay'; }
+  });
+  // 마지막으로 본 목록 기억 — 어떤 경로로 바뀌든(스마트·커스텀) activeListId 변경을 모두 저장
+  useEffect(() => {
+    try { localStorage.setItem('secretcoach-active-list', activeListId); } catch { /* ignore */ }
+  }, [activeListId]);
   const [selectedNode, setSelectedNode] = useState<GoalNode | null>(null);
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
   const [mindmapLayout, setMindmapLayout] = useState<LayoutMode>('mindMap');
