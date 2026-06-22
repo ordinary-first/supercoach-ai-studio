@@ -1,4 +1,4 @@
-import { type FC, useState } from 'react';
+import { type FC, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Sparkles, Play, Mic, Loader2, Trash2 } from 'lucide-react';
 import { SavedVisualization } from '../../services/firebaseService';
@@ -31,7 +31,41 @@ const DreamGallery: FC<DreamGalleryProps> = ({
   onCreateDream,
 }) => {
   const { t } = useTranslation();
+  // 롱프레스(모바일)/우클릭(웹)으로 그 항목만 삭제 모드로 진입 → 휴지통 노출.
+  // 평소엔 썸네일을 깨끗하게 유지한다(상시 노출 안 함).
+  const [armedId, setArmedId] = useState<string | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
+  const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressFired = useRef(false);
+
+  const startPress = (id: string) => {
+    longPressFired.current = false;
+    pressTimer.current = setTimeout(() => {
+      longPressFired.current = true;
+      setArmedId(id);
+    }, 500);
+  };
+  const endPress = () => {
+    if (pressTimer.current) {
+      clearTimeout(pressTimer.current);
+      pressTimer.current = null;
+    }
+  };
+
+  const handleTap = (item: SavedVisualization) => {
+    // 롱프레스로 막 무장한 직후 발생하는 click 은 무시(무장 유지)
+    if (longPressFired.current) {
+      longPressFired.current = false;
+      return;
+    }
+    // 무장된 항목 본문을 탭하면 삭제 모드 해제(열지 않음)
+    if (armedId === item.id) {
+      setArmedId(null);
+      return;
+    }
+    if (armedId) setArmedId(null);
+    onItemTap(item);
+  };
 
   if (items.length === 0) {
     return (
@@ -58,20 +92,31 @@ const DreamGallery: FC<DreamGalleryProps> = ({
         const hasVideo = !!item.videoUrl || item.videoStatus === 'ready';
         const isPending = item.videoStatus === 'pending';
         const hasAudioOnly = !!item.audioUrl && !hasImage && !hasVideo;
+        const isArmed = armedId === item.id;
 
         return (
           <div
             key={item.id}
             role="button"
             tabIndex={0}
-            className={`relative aspect-square overflow-hidden cursor-pointer rounded-[10px] ${!hasImage ? `bg-gradient-to-br ${pickGradient(item.id)}` : ''
+            className={`relative aspect-square overflow-hidden cursor-pointer rounded-[10px]
+              transition-transform ${isArmed ? 'scale-[0.97]' : ''} ${!hasImage ? `bg-gradient-to-br ${pickGradient(item.id)}` : ''
               }`}
-            onClick={() => onItemTap(item)}
+            onClick={() => handleTap(item)}
             onKeyDown={(event) => {
               if (event.key === 'Enter' || event.key === ' ') {
                 event.preventDefault();
                 onItemTap(item);
               }
+            }}
+            onTouchStart={() => startPress(item.id)}
+            onTouchMove={endPress}
+            onTouchEnd={endPress}
+            onTouchCancel={endPress}
+            onContextMenu={(event) => {
+              event.preventDefault();
+              longPressFired.current = false;
+              setArmedId(item.id);
             }}
           >
             {hasImage && (
@@ -111,20 +156,27 @@ const DreamGallery: FC<DreamGalleryProps> = ({
               </span>
             )}
 
-            {/* visible delete affordance — opens a confirm dialog, never deletes on its own */}
-            <button
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation();
-                setConfirmId(item.id);
-              }}
-              className="absolute top-1 right-1 z-10 w-6 h-6 rounded-full flex items-center justify-center
-                text-white/85 hover:text-white active:scale-90 transition-all"
-              style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)' }}
-              aria-label={t.common.delete}
-            >
-              <Trash2 size={13} />
-            </button>
+            {/* 삭제 모드: 롱프레스/우클릭으로만 등장. 휴지통 탭 → 확인 팝업. 주변 탭 → 해제 */}
+            {isArmed && (
+              <div
+                className="absolute inset-0 flex items-center justify-center"
+                style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(2px)' }}
+              >
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setArmedId(null);
+                    setConfirmId(item.id);
+                  }}
+                  className="w-11 h-11 rounded-full flex items-center justify-center bg-red-500 text-white
+                    shadow-lg active:scale-90 transition-transform"
+                  aria-label={t.common.delete}
+                >
+                  <Trash2 size={18} />
+                </button>
+              </div>
+            )}
           </div>
         );
       })}
