@@ -107,6 +107,7 @@ export interface ToDoItem {
   dueDate?: number | null;
   reminder?: number | null;
   repeat?: RepeatFrequency;
+  repeatDays?: number[];
   note?: string;
   priority?: TodoPriority;
   tags?: string[];
