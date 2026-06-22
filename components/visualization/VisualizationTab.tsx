@@ -41,7 +41,7 @@ export default function VisualizationTab({
     text: true,
     image: true,
     video: false,
-    audio: true,
+    audio: false,
   });
   const [imageQuality, setImageQuality] = useState<'medium' | 'high'>('medium');
   const [referenceImages, setReferenceImages] = useState<string[]>([]);
@@ -320,8 +320,8 @@ export default function VisualizationTab({
           audioStatus: 'idle',
           videoStatus: 'idle',
         }}
+        settings={settings}
         isGenerating={pipeline.isGenerating}
-        generatingStep={pipeline.generatingStep}
         isPlaying={audio.isPlaying}
         onTogglePlay={() => {
           const result = pipeline.currentResult || viewingResult;
@@ -330,6 +330,7 @@ export default function VisualizationTab({
         isSaving={pipeline.isSaving}
         isSaved={pipeline.isSaved}
         onSave={handleSave}
+        onRegenerate={handleGenerate}
         onClose={handleViewerClose}
         onRefreshVideo={() => {
           const result = pipeline.currentResult || viewingResult;

@@ -355,3 +355,70 @@ body {
 .tiptap pre { background: rgba(0,0,0,0.15); border-radius: 6px; padding: 0.75em 1em; margin: 0.5em 0; font-family: var(--font-mono-ui); font-size: 0.85em; overflow-x: auto; }
 .tiptap code { background: rgba(0,0,0,0.1); border-radius: 3px; padding: 0.15em 0.3em; font-size: 0.9em; }
 .tiptap hr { border: none; border-top: 1px solid var(--border, #333); margin: 1em 0; }
+
+/* ============================================================
+   여명 / Dawn — Visualization 생성 플로우 ("새벽의 약속")
+   카운슬 최종안. 빛은 하단 지평선에서만, 상단 2/3 근-검정.
+   모든 모션 transform/opacity 한정 (Android WebView 잰크 방지).
+   ============================================================ */
+:root {
+  /* Aura 시그니처 — 4개 잠긴 그라데이션. 보라/핑크 금지, 진흙빛 보간 차단 */
+  --aura-buoyant:   linear-gradient(180deg, #71b7ff 0%, #f0d264 100%); /* 벅참 */
+  --aura-calm:      linear-gradient(180deg, #71b7ff 0%, #4de8e0 100%); /* 평온 */
+  --aura-confident: linear-gradient(180deg, #4de8e0 0%, #f0d264 100%); /* 자신감 */
+  --aura-free:      linear-gradient(180deg, #71b7ff 0%, #9fe8d9 100%); /* 자유 */
+  --aura-default:   var(--aura-calm);                                  /* 무답 폴백 */
+  /* radial 버전(지평선 글로우용 색 스톱) */
+  --aura-current-a: #71b7ff;
+  --aura-current-b: #4de8e0;
+
+  --dawn-canvas: #111214;
+  --dawn-sacred: #f0d264; /* 완료/성취 골드 */
+  --dawn-amber:  #e8b86d; /* 실패 — 빨강 아닌 따뜻한 앰버 */
+
+  --ease-dawn:   cubic-bezier(0.22, 0.61, 0.36, 1);
+  --ease-cleave: cubic-bezier(0.32, 0.72, 0, 1);
+  --dur-bloom: 1400ms;
+  --dur-word: 480ms;
+  --dur-cleave: 900ms;
+  --dur-settle: 1200ms;
+  --dur-stagger: 400ms;
+}
+
+/* 하단 지평선 글로우 — 풀프레임 균등 글로우 금지. 정적 radial을 pre-blur, opacity/scale만 애니메이트 */
+.dawn-aurora {
+  position: absolute;
+  left: 50%;
+  bottom: -26%;
+  width: 160%;
+  height: 58%;
+  transform: translateX(-50%);
+  pointer-events: none;
+  border-radius: 50%;
+  background: radial-gradient(60% 100% at 50% 100%,
+    var(--aura-current-a) 0%,
+    color-mix(in srgb, var(--aura-current-b) 70%, transparent) 46%,
+    transparent 76%);
+  filter: blur(42px);
+  opacity: 0;
+  transition: opacity 600ms var(--ease-dawn), background 600ms var(--ease-dawn);
+  will-change: opacity, transform;
+}
+@keyframes dawnBreathe {
+  0%, 100% { opacity: 0.26; transform: translateX(-50%) scale(1); }
+  50%      { opacity: 0.34; transform: translateX(-50%) scale(1.04); }
+}
+.dawn-aurora.is-breathing { opacity: 0.30; animation: dawnBreathe 4.2s var(--ease-dawn) infinite; }
+.dawn-aurora.is-risen { opacity: 0.62; }
+
+@keyframes dawnWordIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes dawnRingOut {
+  from { opacity: 0.55; transform: translate(-50%, -50%) scale(0.4); }
+  to   { opacity: 0; transform: translate(-50%, -50%) scale(2.4); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dawn-aurora.is-breathing { animation: none; opacity: 0.34; }
+}

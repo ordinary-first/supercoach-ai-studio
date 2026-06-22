@@ -339,6 +339,37 @@ export interface TranslationStrings {
     writeOwnDream: string;
     refining: string;
     cancel: string;
+    dawn: {
+      dictating: string;
+      question: string;
+      chipBuoyant: string;
+      chipCalm: string;
+      chipConfident: string;
+      chipFree: string;
+      audioWait: string;
+      videoWait: string;
+      revealHint: string;
+      revealTap: string;
+      revealButton: string;
+      closingBuoyant: string;
+      closingCalm: string;
+      closingConfident: string;
+      closingFree: string;
+      closingDefault: string;
+      promiseCta: string;
+      promiseDone: string;
+      remindOffer: string;
+      partialFail: string;
+      audioFailLine: string;
+      videoFailLine: string;
+      totalFail: string;
+      retry: string;
+      details: string;
+      videoPoster: string;
+      badge: string;
+      storyLabel: string;
+      readFull: string;
+    };
   };
   app: {
     initializing: string;
