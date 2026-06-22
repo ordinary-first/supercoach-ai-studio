@@ -1,5 +1,5 @@
-import React, { useState, useCallback, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Sun, CheckCircle2, Lock, AlertCircle, Trophy, Star, ArrowLeft } from 'lucide-react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Sun, CheckCircle2, Lock, AlertCircle, Trophy, Star, ArrowLeft, Plus } from 'lucide-react';
 import { ToDoItem, RepeatFrequency } from '../types';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { useTranslation } from '../i18n/useTranslation';
@@ -9,9 +9,13 @@ interface CalendarViewProps {
   onClose: () => void;
   todos: ToDoItem[];
   onToggleToDo: (id: string) => void;
+  onAddToDo: (text: string, extras?: Partial<ToDoItem>) => void;
   viewMode?: 'month' | 'week' | 'list';
   onViewModeChange?: (mode: 'month' | 'week' | 'list') => void;
 }
+
+// 캘린더 빠른 추가에서 노출할 반복 옵션(앱의 핵심인 반복 미션 위주). 'none' = 단발.
+const QUICK_REPEAT_OPTIONS = ['none', 'daily', 'weekdays', 'weekly', 'weekly-2', 'weekly-3'] as const;
 
 type ViewMode = 'month' | 'week' | 'list' | 'day';
 
@@ -75,9 +79,12 @@ const checkRecurrenceMatch = (todo: ToDoItem, targetDate: Date): boolean => {
   }
 }
 
-const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onToggleToDo, viewMode: externalViewMode, onViewModeChange }) => {
+const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onToggleToDo, onAddToDo, viewMode: externalViewMode, onViewModeChange }) => {
   const { t, language } = useTranslation();
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [newMissionText, setNewMissionText] = useState('');
+  const [newMissionRepeat, setNewMissionRepeat] = useState<RepeatFrequency>(null);
+  const composerRef = useRef<HTMLInputElement>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('month');
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [previousViewMode, setPreviousViewMode] = useState<ViewMode>('month');
@@ -218,6 +225,30 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
   const handleBackFromDay = () => {
     setViewMode(previousViewMode);
     setSelectedDate(null);
+  };
+
+  // 선택한 날짜에 미션 추가 — dueDate는 정오로 고정해 시간대/날짜경계 어긋남 방지.
+  const handleAddMission = useCallback(() => {
+    const text = newMissionText.trim();
+    if (!text || !selectedDate) return;
+    const due = new Date(selectedDate);
+    due.setHours(12, 0, 0, 0);
+    const extras: Partial<ToDoItem> = { dueDate: due.getTime() };
+    if (newMissionRepeat) extras.repeat = newMissionRepeat;
+    onAddToDo(text, extras);
+    setNewMissionText('');
+    setNewMissionRepeat(null);
+    composerRef.current?.focus();
+  }, [newMissionText, newMissionRepeat, selectedDate, onAddToDo]);
+
+  // 헤더 + 버튼: 일(day) 뷰면 입력창 포커스, 아니면 오늘 날짜의 일 뷰로 들어가 추가 유도.
+  const handleHeaderAdd = () => {
+    if (viewMode === 'day') {
+      composerRef.current?.focus();
+    } else {
+      handleDayClick(new Date());
+      window.setTimeout(() => composerRef.current?.focus(), 60);
+    }
   };
 
   // View mode switch
@@ -574,6 +605,52 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
           </div>
         </div>
 
+        {/* Quick add — create a mission scheduled on this day */}
+        <div className="max-w-2xl mx-auto mb-6">
+          <div className="bg-th-surface border border-th-border rounded-2xl p-3 backdrop-blur-sm flex flex-col gap-2.5">
+            <div className="flex items-center gap-2">
+              <input
+                ref={composerRef}
+                type="text"
+                value={newMissionText}
+                onChange={(e) => setNewMissionText(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleAddMission(); }}
+                placeholder={t.calendar.addMissionPlaceholder}
+                maxLength={500}
+                className="flex-1 min-w-0 bg-transparent border-none outline-none text-sm text-th-text placeholder:text-th-text-muted px-1"
+              />
+              <button
+                type="button"
+                onClick={handleAddMission}
+                disabled={!newMissionText.trim()}
+                className="shrink-0 flex items-center gap-1 h-8 px-3.5 rounded-full bg-th-accent text-white text-[13px] font-bold
+                  disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.97] transition-transform shadow-sm"
+              >
+                <Plus size={14} />
+                <span>{t.calendar.addMission}</span>
+              </button>
+            </div>
+            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide">
+              {QUICK_REPEAT_OPTIONS.map((opt) => {
+                const active = (newMissionRepeat ?? 'none') === opt;
+                return (
+                  <button
+                    key={opt}
+                    type="button"
+                    onClick={() => setNewMissionRepeat(opt === 'none' ? null : opt)}
+                    className={`shrink-0 text-[11px] px-2.5 py-1 rounded-full border transition-colors ${active
+                        ? 'bg-th-accent-muted border-th-accent text-th-accent font-bold'
+                        : 'border-th-border text-th-text-tertiary hover:text-th-text hover:border-th-border-strong'
+                      }`}
+                  >
+                    {t.todo.repeat[opt]}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
         {/* Todo Sections */}
         <div className="max-w-2xl mx-auto space-y-8">
           {/* Completed Section */}
@@ -721,6 +798,17 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
           </div>
 
         </div>
+
+        {/* Add mission — opens today's day view (or focuses the composer in day view) */}
+        <button
+          type="button"
+          onClick={handleHeaderAdd}
+          className="shrink-0 flex items-center justify-center w-9 h-9 rounded-full bg-th-accent text-white shadow-sm active:scale-95 transition-transform"
+          aria-label={t.calendar.addMission}
+          title={t.calendar.addMission}
+        >
+          <Plus size={18} />
+        </button>
 
       </div>
 

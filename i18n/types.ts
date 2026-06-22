@@ -89,6 +89,8 @@ export interface TranslationStrings {
     incompleteMissions: string;
     emptyDay: string;
     emptyDayHint: string;
+    addMission: string;
+    addMissionPlaceholder: string;
     lockedMission: string;
     status: {
       completed: string;

@@ -113,6 +113,8 @@ const ko: TranslationStrings = {
     incompleteMissions: '미완료 미션',
     emptyDay: '이 날에는 미션이 없습니다',
     emptyDayHint: '미션을 추가해서 하루를 시작해보세요',
+    addMission: '추가',
+    addMissionPlaceholder: '이 날 미션 추가...',
     lockedMission: '잠긴 미션(미래 반복)',
     status: {
       completed: '완료',
