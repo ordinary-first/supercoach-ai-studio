@@ -101,6 +101,7 @@ const CoachChat: React.FC<CoachChatProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const feedbackInFlightRef = useRef(false);
+  const isSendingRef = useRef(false);
   const focusTrapRef = useFocusTrap(isOpen);
   const daysSinceVisitRef = useRef(0);
 
@@ -597,6 +598,8 @@ If no todo change intent exists, return an empty list [].`;
 
   const handleSend = async () => {
     if (!inputText.trim() && !pendingImage) return;
+    if (isSendingRef.current) return;
+    isSendingRef.current = true;
 
     setShowTopicCards(false);
     const imageToSend = pendingImage;
@@ -666,6 +669,7 @@ If no todo change intent exists, return an empty list [].`;
       ]);
     } finally {
       setIsLoading(false);
+      isSendingRef.current = false;
     }
   };
 
