@@ -323,6 +323,9 @@ export default function VisualizationTab({
         settings={settings}
         isGenerating={pipeline.isGenerating}
         isPlaying={audio.isPlaying}
+        currentTime={audio.currentTime}
+        duration={audio.duration}
+        onSeek={audio.seek}
         onTogglePlay={() => {
           const result = pipeline.currentResult || viewingResult;
           void audio.togglePlay(result?.audioUrl, result?.audioData);

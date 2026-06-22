@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback, useRef, type CSSProperties } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronDown, Loader2, Check, Share2, RefreshCw, Play, Pause } from 'lucide-react';
+import { ChevronDown, Loader2, Check, RefreshCw, Play, Pause } from 'lucide-react';
 import type { VisualizationResult, GenerationSettings } from '../../hooks/useGenerationPipeline';
 import { useTranslation } from '../../i18n/useTranslation';
 import { FEATURES } from '../../features';
@@ -16,21 +16,17 @@ interface DreamViewerProps {
   isSaving: boolean;
   isSaved: boolean;
   isPlaying: boolean;
+  currentTime: number;
+  duration: number;
+  onSeek: (time: number) => void;
   onTogglePlay: () => void;
   onRegenerate?: () => void;
   onRefreshVideo?: () => void;
   isCheckingVideo?: boolean;
 }
 
-type EmotionKey = 'buoyant' | 'calm' | 'confident' | 'free';
 type GenerationStatusLike = VisualizationResult['textStatus'] | VisualizationResult['videoStatus'];
 
-const AURA_STOPS: Record<EmotionKey, [string, string]> = {
-  buoyant: ['#71b7ff', '#f0d264'],
-  calm: ['#71b7ff', '#4de8e0'],
-  confident: ['#4de8e0', '#f0d264'],
-  free: ['#71b7ff', '#9fe8d9'],
-};
 const DEFAULT_STOPS: [string, string] = ['#71b7ff', '#4de8e0'];
 const HERO_H = '52%';
 
@@ -38,40 +34,54 @@ const styles = `
 @keyframes dvSheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
 @keyframes dvSheetDown { from { transform: translateY(0); } to { transform: translateY(100%); } }
 @keyframes dvStaggerIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes dvDrift { 0% { transform: scale(1.04) translate(0,0); } 100% { transform: scale(1.1) translate(-1.5%,-2%); } }
+@keyframes dvDrift { 0% { transform: scale(1) translate(0,0); } 100% { transform: scale(1.06) translate(-1.5%,-2%); } }
+@keyframes dvSentenceIn { from { opacity: 0; transform: translateY(12px); filter: blur(3px); } to { opacity: 1; transform: translateY(0); filter: blur(0); } }
+@keyframes dvDotWave { 0%, 100% { opacity: .35; transform: scale(.8); } 45% { opacity: 1; transform: scale(1.18); } }
+@keyframes dvCurtainL { from { transform: translateX(-7%); } to { transform: translateX(-100%); } }
+@keyframes dvCurtainR { from { transform: translateX(7%); } to { transform: translateX(100%); } }
+@keyframes dvPushIn { from { transform: scale(1.12); filter: brightness(.7) saturate(.9); } to { transform: scale(1); filter: brightness(1) saturate(1); } }
+@keyframes dvBloom { 0% { opacity: 0; transform: translate(-50%,-50%) scale(.25); } 28% { opacity: .9; } 100% { opacity: 0; transform: translate(-50%,-50%) scale(2.7); } }
+@keyframes dvStreak { 0% { opacity: 0; transform: translateX(-50%) scaleY(.2); } 30% { opacity: .75; } 100% { opacity: 0; transform: translateX(-50%) scaleY(1.35); } }
 `;
 
-// 결정론적 첫 문장 선택 (감정 단어 포함 우선, 없으면 첫 문장). 신성 캔버스 플로트는 1문장 캡.
-function firstSentence(text?: string): string | null {
-  if (!text) return null;
-  const parts = text.split(/(?<=[.!?。\n])\s+/).map((s) => s.trim()).filter(Boolean);
-  if (!parts.length) return null;
-  const emo = parts.find((s) => /(느낌|벅|평온|자신|자유|행복|설레|충만|편안)/.test(s));
-  return (emo || parts[0]).slice(0, 80);
+// 문장 단위 분할 (스트리밍 노출용). 빈 조각 제거.
+function splitSentences(text?: string): string[] {
+  if (!text) return [];
+  return text.split(/(?<=[.!?。\n])\s+/).map((s) => s.trim()).filter(Boolean);
+}
+
+function fmtTime(sec: number): string {
+  if (!Number.isFinite(sec) || sec < 0) return '0:00';
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  return `${m}:${String(s).padStart(2, '0')}`;
 }
 
 function DreamViewer({
   result, settings, isGenerating, isOpen, onClose, onSave, isSaving, isSaved,
-  isPlaying, onTogglePlay, onRegenerate, onRefreshVideo, isCheckingVideo,
+  isPlaying, currentTime, duration, onSeek, onTogglePlay, onRegenerate, onRefreshVideo, isCheckingVideo,
 }: DreamViewerProps) {
   const { t } = useTranslation();
   const d = t.visualization.dawn;
 
   const [isVisible, setIsVisible] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
-  const [emotion, setEmotion] = useState<EmotionKey | null>(null);
-  const [stage, setStage] = useState<'gen' | 'cleave' | 'open'>('gen');
+  const [stage, setStage] = useState<'gen' | 'cleave' | 'enter' | 'open'>('gen');
   const [cracked, setCracked] = useState(false);
   const [settled, setSettled] = useState(false); // open: 순수 이미지 머무름 → 크롬 진입
   const [readMode, setReadMode] = useState(false); // 전체 내러티브 읽기
-  const [ring, setRing] = useState<{ x: number; y: number } | null>(null);
   const [showDetails, setShowDetails] = useState(false);
   const [imgFallback, setImgFallback] = useState(false);
+  const [revealedCount, setRevealedCount] = useState(0); // 스트리밍 문장 노출 수
+  const [dragValue, setDragValue] = useState<number | null>(null); // 오디오 스크럽 드래그 중 위치
   const sawGeneratingRef = useRef(false);
+  const enterTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scrubRef = useRef<HTMLDivElement>(null);
 
   const hasImage = !!(result.imageUrl || result.imageDataUrl);
   const imageSrc = imgFallback ? result.imageDataUrl : (result.imageUrl || result.imageDataUrl);
-  const auraStops = emotion ? AURA_STOPS[emotion] : DEFAULT_STOPS;
+  const auraStops = DEFAULT_STOPS;
+  const sentences = useMemo(() => splitSentences(result.text), [result.text]);
 
   useEffect(() => {
     if (isOpen) {
@@ -85,7 +95,7 @@ function DreamViewer({
     sawGeneratingRef.current = isGenerating;
     const alreadyComplete = !isGenerating && (hasImage || result.textStatus === 'completed');
     setStage(alreadyComplete ? 'open' : 'gen');
-    setCracked(false); setEmotion(null); setShowDetails(false); setReadMode(false);
+    setCracked(false); setShowDetails(false); setReadMode(false); setRevealedCount(0);
     setSettled(alreadyComplete); // 저장본 로드는 즉시 정착
   }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -109,6 +119,19 @@ function DreamViewer({
     setStage('open');
   }, [stage, isGenerating, hasImage, imageSrc]);
 
+  // 생성 중 내러티브를 ~2초당 한 문장씩 노출 (기다리는 동안 읽게)
+  useEffect(() => {
+    if (stage !== 'gen' || sentences.length === 0) return;
+    setRevealedCount((c) => (c < 1 ? 1 : c));
+    const id = setInterval(() => {
+      setRevealedCount((c) => {
+        if (c >= sentences.length) { clearInterval(id); return c; }
+        return c + 1;
+      });
+    }, 2000);
+    return () => clearInterval(id);
+  }, [stage, sentences.length]);
+
   // open 진입 → settle 박자(순수 이미지 ~1.2s) 후 크롬 진입
   useEffect(() => {
     if (stage !== 'open' || settled) return;
@@ -116,18 +139,44 @@ function DreamViewer({
     return () => clearTimeout(timer);
   }, [stage, settled]);
 
+  useEffect(() => () => { if (enterTimer.current) clearTimeout(enterTimer.current); }, []);
+
   const handleClose = useCallback(() => {
     setIsAnimating(false);
     const timer = setTimeout(() => { setIsVisible(false); onClose(); }, 300);
     return () => clearTimeout(timer);
   }, [onClose]);
 
-  const completeReveal = useCallback((x?: number, y?: number) => {
-    if (typeof x === 'number' && typeof y === 'number') setRing({ x, y });
-    setStage('open');
+  // 커튼 젖히고 장면으로 진입 — 시네마틱 전환 후 open
+  const completeReveal = useCallback(() => {
+    setStage('enter');
+    if (enterTimer.current) clearTimeout(enterTimer.current);
+    enterTimer.current = setTimeout(() => setStage('open'), 780);
   }, []);
 
   const handleImgError = () => { if (!imgFallback && result.imageDataUrl) setImgFallback(true); };
+
+  // 오디오 스크럽
+  const ratioFromClientX = useCallback((clientX: number) => {
+    const el = scrubRef.current;
+    if (!el) return 0;
+    const r = el.getBoundingClientRect();
+    return Math.max(0, Math.min(1, (clientX - r.left) / r.width));
+  }, []);
+  const onScrubDown = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if (duration <= 0) return;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    setDragValue(ratioFromClientX(e.clientX) * duration);
+  };
+  const onScrubMove = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if (dragValue === null || duration <= 0) return;
+    setDragValue(ratioFromClientX(e.clientX) * duration);
+  };
+  const onScrubUp = () => {
+    if (dragValue === null) return;
+    onSeek(dragValue);
+    setDragValue(null);
+  };
 
   if (!isVisible) return null;
 
@@ -140,28 +189,19 @@ function DreamViewer({
   if (settings.audio) dots.push({ key: 'audio', status: dotStatus(result.audioStatus) });
   if (settings.video && FEATURES.videoGeneration) dots.push({ key: 'video', status: dotStatus(result.videoStatus) });
 
-  // 생성 박자
-  const textDone = !settings.text || result.textStatus !== 'idle';
+  // 코치 상태 줄: 이미지 생성 중 → 받아적는 중 / 이미지 후 음성 중 → 음성 입히는 중
   const imageWorking = settings.image && result.imageStatus === 'idle';
   const audioWorking = settings.audio && result.audioStatus === 'idle';
   const videoWorking = settings.video && FEATURES.videoGeneration && result.videoStatus === 'idle';
-  let beat: 'dictating' | 'question' | 'wait' = 'dictating';
-  if (textDone && imageWorking) beat = 'question';
-  else if (result.imageStatus !== 'idle' && (audioWorking || videoWorking)) beat = 'wait';
+  const statusLine = (!imageWorking && (audioWorking || videoWorking))
+    ? (videoWorking ? d.videoWait : d.audioWait)
+    : d.dictating;
 
-  const firstDecl = firstSentence(result.text);
-  const closingLine =
-    emotion === 'buoyant' ? d.closingBuoyant
-    : emotion === 'calm' ? d.closingCalm
-    : emotion === 'confident' ? d.closingConfident
-    : emotion === 'free' ? d.closingFree
-    : d.closingDefault;
-
+  const closingLine = d.closingDefault;
   const imagePartialFail = result.imageStatus === 'failed';
   const audioPartialFail = result.audioStatus === 'failed';
   const videoPartialFail = result.videoStatus === 'failed';
   const errorMeta = result.imageError || result.audioError || result.videoError;
-  const badge = d.badge.replace('{year}', String(new Date().getFullYear()));
   const hasAudio = result.audioStatus === 'completed' && !!(result.audioUrl || result.audioData);
   const hasText = !!result.text;
 
@@ -170,16 +210,41 @@ function DreamViewer({
     ['--aura-current-b']: auraStops[1],
   } as CSSProperties;
 
-  const emotions: EmotionKey[] = ['buoyant', 'calm', 'confident', 'free'];
-  const chipLabel: Record<EmotionKey, string> = {
-    buoyant: d.chipBuoyant, calm: d.chipCalm, confident: d.chipConfident, free: d.chipFree,
-  };
+  // 스트리밍 문장 윈도우 (최근 4문장만, 오래된 건 흐리게)
+  const winStart = Math.max(0, revealedCount - 4);
+  const visibleSentences = sentences.slice(winStart, revealedCount);
+
+  const progress = duration > 0 ? Math.min(1, (dragValue ?? currentTime) / duration) : 0;
+  const bars = SCRUB_BARS;
 
   const coachAvatar = (size: number) => (
     <span className="shrink-0 rounded-full" style={{ width: size, height: size, background: 'linear-gradient(135deg,#71b7ff,#4de8e0)', padding: size > 28 ? 2 : 1.5 }}>
       <span className="flex w-full h-full rounded-full items-center justify-center text-white"
         style={{ background: '#12141a', fontSize: size > 28 ? 13 : 10 }}>☀</span>
     </span>
+  );
+
+  // 저장 상태 + 재생성 (자동저장이므로 큰 저장 버튼 제거)
+  const savedRow = (
+    <div className="flex items-center justify-center gap-4 text-[13px] font-semibold text-th-text-tertiary">
+      {isSaving ? (
+        <span className="inline-flex items-center gap-1.5"><Loader2 size={13} className="animate-spin" /> {t.visualization.saving}</span>
+      ) : isSaved ? (
+        <span className="inline-flex items-center gap-1.5 text-th-text-secondary"><Check size={13} /> {t.visualization.savedLabel}</span>
+      ) : (
+        <button type="button" onClick={onSave} className="inline-flex items-center gap-1.5 active:scale-95 transition-transform">
+          {t.visualization.saveButton}
+        </button>
+      )}
+      {onRegenerate && (
+        <>
+          <span className="opacity-30">·</span>
+          <button type="button" onClick={onRegenerate} className="inline-flex items-center gap-1.5 active:scale-95 transition-transform">
+            <RefreshCw size={13} /> {d.retry}
+          </button>
+        </>
+      )}
+    </div>
   );
 
   const body = (
@@ -206,55 +271,49 @@ function DreamViewer({
         </button>
       )}
 
-      {/* ============ 생성 중 ============ */}
+      {/* ============ 생성 중 — 내러티브 스트리밍 ============ */}
       {stage === 'gen' && (
         <div className="absolute inset-0 z-10 flex flex-col px-9 pt-28 pb-28">
-          {beat !== 'dictating' && firstDecl && (
-            <p key={firstDecl} className="text-[25px] font-light leading-snug text-white tracking-tight"
-              style={{ animation: 'dvStaggerIn 480ms var(--ease-dawn) both', textShadow: '0 2px 26px rgba(0,0,0,.55)' }}>
-              {firstDecl}
-            </p>
-          )}
+          <div className="flex flex-col gap-3 overflow-hidden" style={{ maxHeight: '50%' }}>
+            {visibleSentences.map((s, j) => {
+              const newest = j === visibleSentences.length - 1;
+              const fade = visibleSentences.length > 1 ? 0.32 + 0.5 * (j / (visibleSentences.length - 1)) : 1;
+              return (
+                <p
+                  key={winStart + j}
+                  className={`${newest ? 'text-[23px] text-white' : 'text-[15px] text-th-text-secondary'} font-light leading-snug tracking-tight`}
+                  style={{ animation: 'dvSentenceIn 600ms var(--ease-dawn) both', opacity: newest ? 1 : fade, textShadow: '0 2px 26px rgba(0,0,0,.55)' }}
+                >
+                  {s}
+                </p>
+              );
+            })}
+          </div>
           <div className="flex-1" />
           <div className="mb-2">
-            <div className="flex items-start gap-2.5 mb-4">
+            <div className="flex items-start gap-2.5">
               {coachAvatar(28)}
-              <p className="text-[15px] text-th-text-secondary leading-relaxed">
-                {beat === 'wait' ? (videoWorking ? d.videoWait : d.audioWait) : beat === 'question' ? d.question : d.dictating}
-              </p>
+              <p className="text-[15px] text-th-text-secondary leading-relaxed">{statusLine}</p>
             </div>
-            {beat === 'question' && (
-              <div className="flex flex-wrap gap-2.5 pl-9">
-                {emotions.map((e) => (
-                  <button key={e} onClick={() => setEmotion(e)}
-                    className="px-5 py-2.5 rounded-full text-[15px] font-semibold text-white transition-all active:scale-95"
-                    style={emotion === e ? {
-                      background: 'linear-gradient(135deg,rgba(113,183,255,.30),rgba(240,210,100,.22))',
-                      border: '1px solid rgba(113,183,255,.5)', boxShadow: '0 0 18px -4px rgba(113,183,255,.5)',
-                    } : { background: 'rgba(255,255,255,.05)', border: '1px solid var(--border)', backdropFilter: 'blur(20px) saturate(1.4)' }}>
-                    {chipLabel[e]}
-                  </button>
-                ))}
-              </div>
-            )}
           </div>
-          <div className="flex justify-center gap-7 mt-7">
-            {dots.map((dot) => (
+          <div className="flex justify-center gap-2.5 mt-7">
+            {dots.map((dot, i) => (
               <span key={dot.key} className="w-[7px] h-[7px] rounded-full"
-                style={dot.status === 'done' ? { background: 'var(--dawn-sacred)', boxShadow: '0 0 12px 2px rgba(240,210,100,.6)' }
-                  : dot.status === 'fail' ? { background: 'var(--dawn-amber)' }
-                  : { background: 'rgba(255,255,255,.85)', animation: 'dawnBreathe 1.6s ease-in-out infinite' }} />
+                style={{
+                  background: dot.status === 'done' ? 'var(--dawn-sacred)' : dot.status === 'fail' ? 'var(--dawn-amber)' : 'rgba(255,255,255,.9)',
+                  boxShadow: dot.status === 'done' ? '0 0 12px 2px rgba(240,210,100,.5)' : undefined,
+                  animation: dot.status === 'fail' ? 'none' : `dvDotWave 1.5s ease-in-out ${i * 0.18}s infinite`,
+                }} />
             ))}
           </div>
         </div>
       )}
 
-      {/* ============ 리빌 (가르기) ============ */}
+      {/* ============ 리빌 (커튼 살짝 열림) ============ */}
       {stage === 'cleave' && hasImage && imageSrc && (
-        <div className="absolute inset-0 z-10" onClick={(e) => completeReveal(e.clientX, e.clientY)}
-          role="button" style={{ cursor: 'pointer' }}>
+        <div className="absolute inset-0 z-10" onClick={completeReveal} role="button" style={{ cursor: 'pointer' }}>
           <img src={imageSrc} alt={t.visualization.generatedImageAlt} onError={handleImgError}
-            className="absolute inset-0 w-full h-full object-cover" />
+            className="absolute inset-0 w-full h-full object-cover" style={{ transform: 'scale(1.12)' }} />
           <div className="absolute top-0 bottom-0 left-0 w-1/2"
             style={{ background: 'var(--dawn-canvas)', transform: cracked ? 'translateX(-7%)' : 'translateX(0)', transition: 'transform 760ms var(--ease-cleave)' }} />
           <div className="absolute top-0 bottom-0 right-0 w-1/2"
@@ -271,12 +330,23 @@ function DreamViewer({
           </button>
         </div>
       )}
-      {ring && stage === 'open' && (
-        <span className="absolute w-16 h-16 rounded-full pointer-events-none z-20"
-          style={{ left: ring.x, top: ring.y, background: 'radial-gradient(circle,rgba(240,210,100,.5),transparent 70%)', animation: 'dawnRingOut 700ms var(--ease-dawn) forwards' }} />
+
+      {/* ============ 진입 (시네마틱) — 커튼 완전 개방 + 푸시인 + 빛 번짐 ============ */}
+      {stage === 'enter' && hasImage && imageSrc && (
+        <div className="absolute inset-0 z-10 overflow-hidden">
+          <img src={imageSrc} alt="" aria-hidden onError={handleImgError}
+            className="absolute inset-0 w-full h-full object-cover"
+            style={{ animation: 'dvPushIn 860ms var(--ease-cleave) forwards', transformOrigin: 'center' }} />
+          <div className="absolute top-0 bottom-0 left-0 w-1/2" style={{ background: 'var(--dawn-canvas)', animation: 'dvCurtainL 680ms var(--ease-cleave) forwards' }} />
+          <div className="absolute top-0 bottom-0 right-0 w-1/2" style={{ background: 'var(--dawn-canvas)', animation: 'dvCurtainR 680ms var(--ease-cleave) forwards' }} />
+          <div className="absolute top-0 bottom-0 left-1/2 w-[30%] pointer-events-none"
+            style={{ background: 'linear-gradient(90deg,transparent,rgba(113,183,255,.5) 40%,rgba(255,255,255,.7) 50%,rgba(77,232,224,.5) 60%,transparent)', mixBlendMode: 'screen', animation: 'dvStreak 560ms var(--ease-cleave) forwards' }} />
+          <span className="absolute left-1/2 top-1/2 w-44 h-44 rounded-full pointer-events-none"
+            style={{ background: 'radial-gradient(circle, rgba(255,250,235,.95), rgba(113,183,255,.4) 45%, transparent 70%)', animation: 'dvBloom 720ms var(--ease-dawn) forwards' }} />
+        </div>
       )}
 
-      {/* ============ 결과 (open) — 하이브리드: 영화적 settle → 에디토리얼 읽기 ============ */}
+      {/* ============ 결과 (open) — 영화적 settle → 에디토리얼 읽기 ============ */}
       {stage === 'open' && hasImage && imageSrc && (
         <>
           {/* 이미지 히어로: settle 전 풀블리드 → settle 후 52% → read 시 100% 블러 */}
@@ -294,14 +364,6 @@ function DreamViewer({
             <div className="absolute inset-0 pointer-events-none"
               style={{ background: 'linear-gradient(to top, rgba(8,9,12,0.92) 0%, rgba(8,9,12,0.74) 40%, rgba(8,9,12,0.56) 100%)', opacity: readMode ? 1 : 0, transition: 'opacity 420ms ease' }} />
           </div>
-
-          {/* 배지 */}
-          {settled && !readMode && (
-            <div className="absolute top-[60px] right-4 z-30 px-3 py-1.5 rounded-full text-[12px] font-semibold text-white"
-              style={{ background: 'rgba(0,0,0,.3)', border: '1px solid rgba(255,255,255,.18)', backdropFilter: 'blur(8px)' }}>
-              ☀ {badge}
-            </div>
-          )}
 
           {/* 에디토리얼 본문 (settle 후, read 아님) */}
           {settled && !readMode && (
@@ -330,7 +392,7 @@ function DreamViewer({
                 )}
               </div>
 
-              {/* 하단 바: 오디오 + 약속 */}
+              {/* 하단 바: 오디오 스크러버 + 저장상태 */}
               <div className="px-6 pt-2" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 18px)' }}>
                 {settings.video && FEATURES.videoGeneration && (result.videoUrl || result.videoStatus === 'pending') && (
                   <div className="mb-3 rounded-2xl overflow-hidden">
@@ -348,23 +410,27 @@ function DreamViewer({
                       style={{ background: 'linear-gradient(135deg,#71b7ff,#4de8e0)', boxShadow: '0 6px 22px -6px rgba(77,232,224,.6)' }}>
                       {isPlaying ? <Pause size={18} className="text-[#06121f] fill-current" /> : <Play size={18} className="text-[#06121f] fill-current translate-x-0.5" />}
                     </button>
-                    <div className="flex-1 flex items-center gap-[3px] h-6">
-                      {Array.from({ length: 20 }).map((_, i) => (
-                        <span key={i} className="flex-1 rounded-full" style={{ height: `${30 + ((i * 37) % 60)}%`, background: 'linear-gradient(180deg,#71b7ff,#4de8e0)', opacity: isPlaying ? 0.9 : 0.4 }} />
-                      ))}
+                    <div className="flex-1">
+                      <div ref={scrubRef} className="relative h-7 flex items-center cursor-pointer touch-none select-none"
+                        onPointerDown={onScrubDown} onPointerMove={onScrubMove} onPointerUp={onScrubUp} onPointerCancel={onScrubUp}>
+                        <div className="flex items-center gap-[2px] h-6 w-full">
+                          {bars.map((h, i) => {
+                            const filled = (i + 0.5) / bars.length <= progress;
+                            return <span key={i} className="flex-1 rounded-full"
+                              style={{ height: `${h}%`, background: filled ? 'linear-gradient(180deg,#71b7ff,#4de8e0)' : 'rgba(255,255,255,0.18)', transition: 'background 120ms linear' }} />;
+                          })}
+                        </div>
+                        <span className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white pointer-events-none"
+                          style={{ left: `calc(${progress * 100}% - 6px)`, boxShadow: '0 0 8px rgba(113,183,255,.85)' }} />
+                      </div>
+                      <div className="flex justify-between text-[10px] text-th-text-tertiary mt-0.5 tabular-nums">
+                        <span>{fmtTime(dragValue ?? currentTime)}</span>
+                        <span>{fmtTime(duration)}</span>
+                      </div>
                     </div>
                   </div>
                 )}
-                <button onClick={onSave} disabled={isSaving}
-                  className="w-full py-3.5 rounded-2xl text-[16px] font-bold text-[#06121f] active:scale-[.98] transition-transform disabled:opacity-60"
-                  style={{ background: 'linear-gradient(135deg,rgba(113,183,255,.95),rgba(77,232,224,.9))', boxShadow: '0 10px 30px -10px rgba(77,232,224,.55)' }}>
-                  {isSaving ? <span className="inline-flex items-center gap-2"><Loader2 size={16} className="animate-spin" /> {t.visualization.saving}</span>
-                    : isSaved ? <span className="inline-flex items-center gap-2"><Check size={16} /> {d.promiseDone}</span> : d.promiseCta}
-                </button>
-                <div className="flex items-center justify-center gap-7 mt-3 text-[13px] font-semibold text-th-text-tertiary">
-                  <button className="flex items-center gap-1.5"><Share2 size={14} /> {t.visualization.shareButton}</button>
-                  {onRegenerate && <button onClick={onRegenerate} className="flex items-center gap-1.5"><RefreshCw size={14} /> {d.retry}</button>}
-                </div>
+                {savedRow}
               </div>
             </div>
           )}
@@ -409,15 +475,11 @@ function DreamViewer({
               {showDetails && errorMeta && <span className="block mt-1 text-[11px] text-th-text-muted font-mono break-all">{[errorMeta.message, errorMeta.code, errorMeta.requestId].filter(Boolean).join(' · ')}</span>}
             </p>}
             <p className="text-[18px] font-light leading-[1.9] text-white whitespace-pre-wrap" style={{ textShadow: '0 2px 26px rgba(0,0,0,.5)' }}>
-              {result.text || firstDecl || closingLine}
+              {result.text || closingLine}
             </p>
           </div>
           <div className="px-6" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom,0px) + 20px)' }}>
-            <button onClick={onSave} disabled={isSaving}
-              className="w-full py-3.5 rounded-2xl text-[16px] font-bold text-[#06121f] active:scale-[.98] transition-transform disabled:opacity-60"
-              style={{ background: 'linear-gradient(135deg,rgba(113,183,255,.95),rgba(77,232,224,.9))', boxShadow: '0 10px 30px -10px rgba(77,232,224,.55)' }}>
-              {isSaving ? t.visualization.saving : isSaved ? d.promiseDone : d.promiseCta}
-            </button>
+            {savedRow}
           </div>
         </div>
       )}
@@ -426,5 +488,8 @@ function DreamViewer({
 
   return createPortal(body, document.body);
 }
+
+// 결정론적 스크러버 막대 높이 (32개)
+const SCRUB_BARS = Array.from({ length: 32 }, (_, i) => 28 + ((i * 53) % 64));
 
 export default DreamViewer;
