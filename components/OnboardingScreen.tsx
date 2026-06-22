@@ -62,10 +62,7 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
         }
         onComplete();
       } else {
-        // 유료 플랜: 온보딩 완료 처리 후 결제 페이지 이동
-        if (userId) {
-          await completeOnboarding(userId);
-        }
+        // 유료 플랜: 결제 완료 후 polar-webhook에서 onboardingCompleted 처리
         const { url } = await createPolarCheckout({
           plan,
           customerEmail: userProfile.email,
