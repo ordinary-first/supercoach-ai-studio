@@ -278,6 +278,8 @@ export interface TranslationStrings {
     typeImage: string;
     typeVideo: string;
     typeAudio: string;
+    voiceFemale: string;
+    voiceMale: string;
     generating: string;
     generate: string;
     savedItems: string;

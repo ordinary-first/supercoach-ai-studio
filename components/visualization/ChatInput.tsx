@@ -22,7 +22,7 @@ import { useTranslation } from '../../i18n/useTranslation';
 import { FEATURES } from '../../features';
 
 interface ChatInputProps {
-  settings: { text: boolean; image: boolean; video: boolean; audio: boolean };
+  settings: { text: boolean; image: boolean; video: boolean; audio: boolean; voiceGender?: 'female' | 'male' };
   onSettingsChange: (s: ChatInputProps['settings']) => void;
   imageQuality: 'medium' | 'high';
   onImageQualityChange: (q: 'medium' | 'high') => void;
@@ -64,6 +64,7 @@ const ChatInput: FC<ChatInputProps> = ({
   const { language, t } = useTranslation();
   const [text, setText] = useState('');
   const [showQualityPopup, setShowQualityPopup] = useState(false);
+  const [showVoicePopup, setShowVoicePopup] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -73,9 +74,10 @@ const ChatInput: FC<ChatInputProps> = ({
   }, [focusSignal]);
 
   const handleToggle = useCallback(
-    (key: keyof ChatInputProps['settings']) => {
+    (key: 'text' | 'image' | 'video' | 'audio') => {
       onSettingsChange({ ...settings, [key]: !settings[key] });
       if (key === 'image' && !settings.image) setShowQualityPopup(true);
+      if (key === 'audio' && !settings.audio) setShowVoicePopup(true);
     },
     [onSettingsChange, settings],
   );
@@ -177,6 +179,25 @@ const ChatInput: FC<ChatInputProps> = ({
                         {quality === 'medium'
                           ? language === 'ko' ? '보통' : 'Medium'
                           : language === 'ko' ? '고화질' : 'High'}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {key === 'audio' && showVoicePopup && settings.audio && (
+                  <div className="apple-glass-panel absolute bottom-full mb-2 flex gap-1 rounded-xl p-1.5 z-50 shadow-xl whitespace-nowrap">
+                    {(['female', 'male'] as const).map((gender) => (
+                      <button
+                        key={gender}
+                        type="button"
+                        onClick={() => {
+                          onSettingsChange({ ...settings, voiceGender: gender });
+                          setShowVoicePopup(false);
+                        }}
+                        className={`text-[11px] px-2.5 py-1 rounded-lg font-medium transition-colors ${(settings.voiceGender ?? 'female') === gender ? 'bg-th-accent text-th-text-inverse' : 'text-th-text-secondary hover:bg-th-surface'
+                          }`}
+                      >
+                        {gender === 'female' ? t.visualization.voiceFemale : t.visualization.voiceMale}
                       </button>
                     ))}
                   </div>

@@ -173,7 +173,6 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
   const [inputText, setInputText] = useState('');
   const [referenceImages, setReferenceImages] = useState<string[]>([]);
   const [settings, setSettings] = useState({ text: true, image: true, video: false, audio: true });
-  const [voiceGender, setVoiceGender] = useState<'female' | 'male'>('female');
   const [visualImageQuality, setVisualImageQuality] = useState<'medium' | 'high'>('medium');
 
   const [isGenerating, setIsGenerating] = useState(false);
@@ -438,7 +437,6 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
           result.text || fullPrompt,
           activeUserId,
           generationId,
-          voiceGender,
         );
         if (speechResult.status === 'completed' && (speechResult.audioUrl || speechResult.audioData)) {
           result.audioUrl = speechResult.audioUrl;
@@ -755,22 +753,6 @@ const VisualizationModal: React.FC<VisualizationModalProps> = ({
                   </button>
                 ))}
               </div>
-
-              {settings.audio && (
-                <div className="flex gap-2">
-                  {(['female', 'male'] as const).map((g) => (
-                    <button
-                      key={g}
-                      onClick={() => setVoiceGender(g)}
-                      className={`px-3 py-1 rounded-full text-xs ${
-                        voiceGender === g ? 'bg-th-accent text-th-text-inverse' : 'bg-th-surface text-th-text-secondary'
-                      }`}
-                    >
-                      {g === 'female' ? t.visualization.voiceFemale : t.visualization.voiceMale}
-                    </button>
-                  ))}
-                </div>
-              )}
 
               {settings.image && (
                 <div className="flex gap-2">

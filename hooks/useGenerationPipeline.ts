@@ -57,6 +57,7 @@ export interface GenerationSettings {
   image: boolean;
   video: boolean;
   audio: boolean;
+  voiceGender?: 'female' | 'male';
 }
 
 // ---------- Utils ----------
@@ -284,7 +285,7 @@ export function useGenerationPipeline({ userProfile, nodes, isOpen }: Generation
 
       if (settings.audio) {
         setGeneratingStep(t.visualization.stepAudio);
-        const speechResult = await generateSpeech(scenePrompts.audioText || result.text || fullPrompt, activeUserId, generationId);
+        const speechResult = await generateSpeech(scenePrompts.audioText || result.text || fullPrompt, activeUserId, generationId, settings.voiceGender);
         if (speechResult.status === 'completed' && (speechResult.audioUrl || speechResult.audioData)) {
           result.audioUrl = speechResult.audioUrl;
           result.audioData = speechResult.audioData;

@@ -42,6 +42,7 @@ export default function VisualizationTab({
     image: true,
     video: false,
     audio: true,
+    voiceGender: 'female',
   });
   const [imageQuality, setImageQuality] = useState<'medium' | 'high'>('medium');
   const [referenceImages, setReferenceImages] = useState<string[]>([]);
