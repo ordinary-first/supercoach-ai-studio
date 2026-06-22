@@ -46,7 +46,9 @@ const checkRecurrenceMatch = (todo: ToDoItem, targetDate: Date): boolean => {
   }
 
   if (todo.repeat === 'monthly') {
-    return target.getDate() === start.getDate();
+    const startDay = start.getDate();
+    const daysInMonth = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate();
+    return target.getDate() === Math.min(startDay, daysInMonth);
   }
 
   // --- COMPLEX PATTERN SIMULATION ---
