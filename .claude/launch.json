@@ -6,6 +6,12 @@
       "runtimeExecutable": "node",
       "runtimeArgs": ["node_modules/vite/bin/vite.js", "--host"],
       "port": 3000
+    },
+    {
+      "name": "dev-vizfix",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["node_modules/vite/bin/vite.js", "C:\\002. 코딩\\supercoach-viz-fix", "--port", "3100", "--strictPort", "--host"],
+      "port": 3100
     }
   ]
 }

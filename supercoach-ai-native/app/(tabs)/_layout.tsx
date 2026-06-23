@@ -1,72 +1,83 @@
-import React from 'react';
-import { Tabs } from 'expo-router';
+﻿import { Tabs } from 'expo-router';
 import {
-  Target,
+  BarChart3,
   Calendar,
-  CheckSquare,
-  Sparkles,
-  MessageSquare,
+  Eye,
+  ListChecks,
+  Target,
 } from 'lucide-react-native';
-import { useTranslation } from '../../shared/i18n/useTranslation';
+import React from 'react';
+
+import { useTheme } from '../../shared/state/ThemeContext';
 
 export default function TabLayout() {
-  const { t } = useTranslation();
+  const { colors } = useTheme();
 
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: '#0A0E1A',
-          borderTopColor: '#1A1F2E',
+          height: 86,
+          paddingTop: 8,
+          paddingBottom: 18,
+          borderTopLeftRadius: 22,
+          borderTopRightRadius: 22,
+          backgroundColor: colors.tabBar,
+          borderTopColor: colors.border,
+          borderColor: colors.border,
+          borderWidth: 1,
+          shadowColor: colors.accent,
+          shadowOpacity: 0.18,
+          shadowRadius: 24,
+          shadowOffset: { width: 0, height: 10 },
+          elevation: 16,
         },
-        tabBarActiveTintColor: '#71B7FF',
-        tabBarInactiveTintColor: '#6B7280',
+        tabBarItemStyle: {
+          borderRadius: 16,
+        },
+        tabBarLabelStyle: {
+          fontSize: 10,
+          fontWeight: '800',
+          letterSpacing: 0,
+        },
+        tabBarActiveTintColor: colors.accent,
+        tabBarInactiveTintColor: colors.subtle,
       }}
     >
       <Tabs.Screen
         name="goals"
         options={{
-          title: t.nav.goals,
-          tabBarIcon: ({ color, size }) => (
-            <Target color={color} size={size} />
-          ),
+          title: '목표',
+          tabBarIcon: ({ color, size }) => <Target color={color} size={size} />,
         }}
       />
       <Tabs.Screen
         name="calendar"
         options={{
-          title: t.nav.calendar,
-          tabBarIcon: ({ color, size }) => (
-            <Calendar color={color} size={size} />
-          ),
+          title: '일정',
+          tabBarIcon: ({ color, size }) => <Calendar color={color} size={size} />,
         }}
       />
       <Tabs.Screen
         name="todo"
         options={{
-          title: t.nav.todo,
-          tabBarIcon: ({ color, size }) => (
-            <CheckSquare color={color} size={size} />
-          ),
+          title: '할 일',
+          tabBarIcon: ({ color, size }) => <ListChecks color={color} size={size} />,
         }}
       />
       <Tabs.Screen
         name="visualize"
         options={{
-          title: t.nav.visualize,
-          tabBarIcon: ({ color, size }) => (
-            <Sparkles color={color} size={size} />
-          ),
+          title: '시각화',
+          tabBarIcon: ({ color, size }) => <Eye color={color} size={size} />,
         }}
       />
       <Tabs.Screen
         name="feedback"
         options={{
-          title: t.nav.feedback,
-          tabBarIcon: ({ color, size }) => (
-            <MessageSquare color={color} size={size} />
-          ),
+          title: '피드백',
+          tabBarIcon: ({ color, size }) => <BarChart3 color={color} size={size} />,
         }}
       />
     </Tabs>

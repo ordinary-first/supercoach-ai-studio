@@ -2,22 +2,39 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { ToDoItem } from '../types';
 
+const TODO_STORAGE_NAME = 'secretcoach-todo-storage';
+
+type TodoFilter = 'all' | 'pending' | 'completed';
+type TodoSort = 'dueDate' | 'priority' | 'createdAt';
+
+interface PersistedTodoState {
+  todos?: ToDoItem[];
+  filter?: TodoFilter;
+  sortBy?: TodoSort;
+  updatedAt?: number;
+}
+
+interface PersistedTodoStorage {
+  state?: PersistedTodoState;
+}
+
 interface TodoState {
   // State
   todos: ToDoItem[];
-  filter: 'all' | 'pending' | 'completed';
-  sortBy: 'dueDate' | 'priority' | 'createdAt';
+  filter: TodoFilter;
+  sortBy: TodoSort;
+  updatedAt: number;
   isLoading: boolean;
   error: string | null;
 
   // Actions
-  setTodos: (todos: ToDoItem[]) => void;
+  setTodos: (todos: ToDoItem[], sourceUpdatedAt?: number) => void;
   addTodo: (todo: ToDoItem) => void;
   updateTodo: (id: string, updates: Partial<ToDoItem>) => void;
   deleteTodo: (id: string) => void;
   toggleComplete: (id: string) => void;
-  setFilter: (filter: 'all' | 'pending' | 'completed') => void;
-  setSortBy: (sortBy: 'dueDate' | 'priority' | 'createdAt') => void;
+  setFilter: (filter: TodoFilter) => void;
+  setSortBy: (sortBy: TodoSort) => void;
   getFilteredTodos: () => ToDoItem[];
   getTodosForGoal: (goalId: string) => ToDoItem[];
   reset: () => void;
@@ -27,8 +44,42 @@ const initialState = {
   todos: [],
   filter: 'all' as const,
   sortBy: 'createdAt' as const,
+  updatedAt: 0,
   isLoading: false,
   error: null,
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> => (
+  typeof value === 'object' && value !== null
+);
+
+const parsePersistedTodoStorage = (raw: string | null): PersistedTodoStorage | null => {
+  if (!raw) return null;
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return isRecord(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+};
+
+const getPersistedUpdatedAt = (persistedState: unknown): number => {
+  if (!isRecord(persistedState)) return 0;
+  const updatedAt = persistedState.updatedAt;
+  return typeof updatedAt === 'number' && Number.isFinite(updatedAt) ? updatedAt : 0;
+};
+
+export const markTodoStoreSavedAt = (updatedAt: number): void => {
+  if (typeof window === 'undefined') return;
+  const savedAt = Number.isFinite(updatedAt) ? updatedAt : Date.now();
+  const stored = parsePersistedTodoStorage(localStorage.getItem(TODO_STORAGE_NAME));
+  const nextStorage: PersistedTodoStorage = {
+    state: {
+      ...(stored?.state ?? {}),
+      updatedAt: savedAt,
+    },
+  };
+  localStorage.setItem(TODO_STORAGE_NAME, JSON.stringify(nextStorage));
 };
 
 export const useTodoStore = create<TodoState>()(
@@ -36,11 +87,16 @@ export const useTodoStore = create<TodoState>()(
     (set, get) => ({
       ...initialState,
 
-      setTodos: (todos) => set({ todos, error: null }),
+      setTodos: (todos, sourceUpdatedAt = Date.now()) =>
+        set((state) => {
+          if (sourceUpdatedAt < state.updatedAt) return state;
+          return { todos, updatedAt: sourceUpdatedAt, error: null };
+        }),
 
       addTodo: (todo) =>
         set((state) => ({
           todos: [todo, ...state.todos],
+          updatedAt: Date.now(),
           error: null,
         })),
 
@@ -49,12 +105,14 @@ export const useTodoStore = create<TodoState>()(
           todos: state.todos.map((todo) =>
             todo.id === id ? { ...todo, ...updates } : todo
           ),
+          updatedAt: Date.now(),
           error: null,
         })),
 
       deleteTodo: (id) =>
         set((state) => ({
           todos: state.todos.filter((todo) => todo.id !== id),
+          updatedAt: Date.now(),
           error: null,
         })),
 
@@ -63,6 +121,7 @@ export const useTodoStore = create<TodoState>()(
           todos: state.todos.map((todo) =>
             todo.id === id ? { ...todo, completed: !todo.completed } : todo
           ),
+          updatedAt: Date.now(),
           error: null,
         })),
 
@@ -104,12 +163,23 @@ export const useTodoStore = create<TodoState>()(
       reset: () => set(initialState),
     }),
     {
-      name: 'secretcoach-todo-storage',
+      name: TODO_STORAGE_NAME,
       partialize: (state) => ({
         todos: state.todos,
         filter: state.filter,
         sortBy: state.sortBy,
+        updatedAt: state.updatedAt,
       }),
+      merge: (persistedState, currentState) => {
+        const persistedUpdatedAt = getPersistedUpdatedAt(persistedState);
+        if (persistedUpdatedAt <= currentState.updatedAt) return currentState;
+        const persisted = persistedState as PersistedTodoState;
+        return {
+          ...currentState,
+          ...persisted,
+          updatedAt: persistedUpdatedAt,
+        };
+      },
     }
   )
 );

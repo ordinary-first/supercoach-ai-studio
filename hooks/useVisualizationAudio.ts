@@ -112,26 +112,33 @@ export function useVisualizationAudio(): VisualizationAudioState & Visualization
   }, []);
 
   const togglePlay = useCallback(async (audioUrl?: string, audioData?: string) => {
-    // URL-only playback (no PCM buffer)
-    if (audioUrl && !audioData && htmlAudioRef.current) {
+    if (audioUrl) {
+      if (!htmlAudioRef.current || htmlAudioRef.current.src !== audioUrl) {
+        await prepareFromUrl(audioUrl);
+      }
+
+      const audio = htmlAudioRef.current;
+      if (!audio) return;
+
       if (isPlaying) {
-        htmlAudioRef.current.pause();
+        audio.pause();
         setIsPlaying(false);
       } else {
-        htmlAudioRef.current.loop = loopRef.current;
-        await htmlAudioRef.current.play();
+        audio.loop = loopRef.current;
+        await audio.play();
         setIsPlaying(true);
       }
       return;
     }
+
     // PCM buffer playback — 마지막 seek 위치(pcmOffset)부터 재생
     if (isPlaying) {
       if (sourceNodeRef.current) { try { sourceNodeRef.current.stop(); } catch { /* noop */ } sourceNodeRef.current = null; }
       setIsPlaying(false);
-    } else {
+    } else if (audioData || audioBufferRef.current) {
       playBuffer(loopRef.current, pcmOffsetRef.current);
     }
-  }, [isPlaying, playBuffer]);
+  }, [isPlaying, playBuffer, prepareFromUrl]);
 
   const seek = useCallback((time: number) => {
     const target = Math.max(0, time);

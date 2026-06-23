@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { GoalNode, GoalLink, ToDoItem, TodoList, TodoGroup, NoteItem, UserProfile } from '../types';
 import { saveGoalData, saveTodos, saveTodoLists, saveNotes } from '../services/firebaseService';
+import { markTodoStoreSavedAt } from '../stores/useTodoStore';
 
 // Helper to safely get link source/target ID (D3 may store objects or strings)
 export const getLinkId = (ref: string | GoalNode | { id: string }): string => {
@@ -81,7 +82,12 @@ export function useAutoSave(
       goalDirtyRef.current = false;
     }
     if (todoDirtyRef.current) {
-      saves.push(saveTodos(uid, todosRef.current).catch(() => {}));
+      const savedAt = Date.now();
+      saves.push(
+        saveTodos(uid, todosRef.current)
+          .then(() => markTodoStoreSavedAt(savedAt))
+          .catch(() => {}),
+      );
       todoDirtyRef.current = false;
     }
     if (listDirtyRef.current) {
@@ -108,11 +114,29 @@ export function useAutoSave(
     noteDirtyRef.current = false;
   }, []);
 
-  // beforeunload — 브라우저 닫힘/새로고침 시 pending save flush
+  // visibilitychange/pagehide는 beforeunload보다 먼저 실행되어 async flush가 끝날 여지를 준다.
   useEffect(() => {
-    const handleBeforeUnload = () => { flushAll(); };
+    const flushPending = () => {
+      void flushAll();
+    };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        flushPending();
+      }
+    };
+    const handleBeforeUnload = () => {
+      flushPending();
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('pagehide', flushPending);
     window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('pagehide', flushPending);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
   }, [flushAll]);
 
   // Auto-save goals (nodes + links) with debounce
@@ -146,6 +170,7 @@ export function useAutoSave(
     todoSaveTimerRef.current = setTimeout(async () => {
       try {
         await saveTodos(currentUserId, todos);
+        markTodoStoreSavedAt(Date.now());
         todoDirtyRef.current = false;
       } catch (e) { console.error('Todo save error:', e); }
     }, 1500);

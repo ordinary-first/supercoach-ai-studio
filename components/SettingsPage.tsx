@@ -36,10 +36,18 @@ const compressImage = (
   maxWidth: number = 400,
   quality: number = 0.75,
 ): Promise<string> => {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const reader = new FileReader();
+    reader.onerror = () => reject(new Error('image-read-failed'));
     reader.onload = (event) => {
+      const imageSrc = event.target?.result;
+      if (typeof imageSrc !== 'string') {
+        reject(new Error('image-read-failed'));
+        return;
+      }
+
       const img = new Image();
+      img.onerror = () => reject(new Error('image-load-failed'));
       img.onload = () => {
         const canvas = document.createElement('canvas');
         const ratio = Math.min(maxWidth / img.width, maxWidth / img.height, 1);
@@ -47,13 +55,13 @@ const compressImage = (
         canvas.height = img.height * ratio;
         const ctx = canvas.getContext('2d');
         if (!ctx) {
-          resolve('');
+          reject(new Error('canvas-context-unavailable'));
           return;
         }
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
         resolve(canvas.toDataURL('image/jpeg', quality));
       };
-      img.src = String(event.target?.result || '');
+      img.src = imageSrc;
     };
     reader.readAsDataURL(file);
   });
@@ -118,6 +126,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
   );
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [isUploadingMedia, setIsUploadingMedia] = useState(false);
+  const [mediaError, setMediaError] = useState('');
   const [usage, setUsage] = useState<MonthlyUsage | null>(null);
 
   useEffect(() => {
@@ -146,15 +155,22 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
     const uid = getUserId();
     if (!uid) return;
     setIsUploadingMedia(true);
-    const compressed = await compressImage(file, 320, 0.8);
-    const uploadedUrl = compressed
-      ? await uploadProfileGalleryImage(compressed, uid, 'avatar')
-      : undefined;
-    setIsUploadingMedia(false);
-    if (uploadedUrl) {
-      updateMediaAndPersist((prev) => ({ ...prev, avatarUrl: uploadedUrl }));
+    setMediaError('');
+
+    try {
+      const compressed = await compressImage(file, 320, 0.8);
+      const uploadedUrl = compressed
+        ? await uploadProfileGalleryImage(compressed, uid, 'avatar')
+        : undefined;
+      if (uploadedUrl) {
+        updateMediaAndPersist((prev) => ({ ...prev, avatarUrl: uploadedUrl }));
+      }
+    } catch {
+      setMediaError(t.settings.imageProcessFailed);
+    } finally {
+      setIsUploadingMedia(false);
+      e.target.value = '';
     }
-    e.target.value = '';
   };
 
   const handleAddToGallery = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -163,22 +179,28 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
     const uid = getUserId();
     if (!uid) return;
     setIsUploadingMedia(true);
-    const nextUrls: string[] = [];
-    for (const file of Array.from<File>(files)) {
-      const compressed = await compressImage(file, 960, 0.82);
-      if (!compressed) continue;
-      const uploaded = await uploadProfileGalleryImage(compressed, uid, 'gallery');
-      if (uploaded) nextUrls.push(uploaded);
-      if ((formData.gallery?.length || 0) + nextUrls.length >= 6) break;
+    setMediaError('');
+
+    try {
+      const nextUrls: string[] = [];
+      for (const file of Array.from<File>(files)) {
+        const compressed = await compressImage(file, 960, 0.82);
+        const uploaded = await uploadProfileGalleryImage(compressed, uid, 'gallery');
+        if (uploaded) nextUrls.push(uploaded);
+        if ((formData.gallery?.length || 0) + nextUrls.length >= 6) break;
+      }
+      if (nextUrls.length > 0) {
+        updateMediaAndPersist((prev) => ({
+          ...prev,
+          gallery: [...(prev.gallery || []), ...nextUrls].slice(0, 6),
+        }));
+      }
+    } catch {
+      setMediaError(t.settings.imageProcessFailed);
+    } finally {
+      setIsUploadingMedia(false);
+      e.target.value = '';
     }
-    setIsUploadingMedia(false);
-    if (nextUrls.length > 0) {
-      updateMediaAndPersist((prev) => ({
-        ...prev,
-        gallery: [...(prev.gallery || []), ...nextUrls].slice(0, 6),
-      }));
-    }
-    e.target.value = '';
   };
 
   const removeFromGallery = (index: number) => {
