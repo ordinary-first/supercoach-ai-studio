@@ -9,6 +9,7 @@ import type {
   UserProfile,
 } from '../types';
 import { generateFeedback } from '../services/aiService';
+import { matchesOn } from '../lib/recurrence';
 import {
   loadFeedbackCards,
   loadNotificationSettings,
@@ -129,7 +130,9 @@ const deriveFeedbackCardFromTodos = (
   const end = getDayEnd(date);
   const dayTodos = todos.filter((todo) => {
     const ref = todo.dueDate || todo.createdAt;
-    return ref >= start && ref <= end;
+    const isOnDay = ref >= start && ref <= end;
+    const isRecurring = !!todo.repeat && matchesOn(todo, date);
+    return isOnDay || isRecurring;
   });
 
   if (dayTodos.length === 0) return null;

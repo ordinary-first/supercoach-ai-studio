@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { UserProfile, GoalNode } from '../types';
+import { useAbortable } from './useAbortable';
 import {
   generateSuccessNarrative,
   generateSpeech,
@@ -149,6 +150,7 @@ export function useGenerationPipeline({ userProfile, nodes, isOpen }: Generation
   const { t } = useTranslation();
   const activeUserId = getActiveUserId(userProfile);
   const mountedRef = useRef(true);
+  const { abort: abortGeneration, getSignal } = useAbortable();
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -230,6 +232,8 @@ export function useGenerationPipeline({ userProfile, nodes, isOpen }: Generation
     referenceImages: string[],
     imageQuality: 'medium' | 'high',
   ) => {
+    abortGeneration();
+    const signal = getSignal();
     setIsGenerating(true);
     setIsSaved(false);
     clearMessages();

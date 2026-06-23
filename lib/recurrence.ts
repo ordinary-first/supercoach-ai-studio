@@ -36,7 +36,12 @@ export function matchesOn(todo: ToDoItem, targetDate: Date): boolean {
   if (todo.repeat === 'daily') return true;
   if (todo.repeat === 'weekdays') return dow >= 1 && dow <= 5;
   if (todo.repeat === 'weekly') return dow === anchor.getDay();
-  if (todo.repeat === 'monthly') return target.getDate() === anchor.getDate();
+  if (todo.repeat === 'monthly') {
+    // Clamp to last day of month (e.g. day-31 anchor → Feb 28/29)
+    const startDay = anchor.getDate();
+    const daysInMonth = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate();
+    return target.getDate() === Math.min(startDay, daysInMonth);
+  }
 
   const days = getRepeatDays(todo);
   if (days) return days.includes(dow);
@@ -54,8 +59,6 @@ export function nextOccurrence(todo: ToDoItem, afterDate: Date): Date | null {
   const start = new Date(afterDate);
   start.setHours(0, 0, 0, 0);
 
-  // The next occurrence keeps the anchor's time-of-day (e.g. a 7:00 daily repeat
-  // advances to 7:00 the next day, not midnight). All-day todos keep their noon anchor.
   const anchorTime = new Date(todo.dueDate ?? todo.createdAt);
   const applyTime = (d: Date): Date => {
     d.setHours(anchorTime.getHours(), anchorTime.getMinutes(), anchorTime.getSeconds(), anchorTime.getMilliseconds());

@@ -254,6 +254,7 @@ const syncBillingState = async (
     billingStatus: subscriptionStatus,
     billingIsActive: isActive,
     billingUpdatedAt: Date.now(),
+    ...(isActive ? { onboardingCompleted: true } : {}),
   };
 
   // Handle cancel/uncancel at period end
