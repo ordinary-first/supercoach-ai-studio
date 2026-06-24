@@ -110,7 +110,15 @@ const getInitialLanguage = (): AppLanguage => {
 
 const App: React.FC = () => {
   const [dimensions, setDimensions] = useState({ width: window.innerWidth, height: window.innerHeight });
-  const [activeTab, setActiveTab] = useState<TabType>('GOALS');
+  const [activeTab, setActiveTab] = useState<TabType>(() => {
+    // 마지막으로 본 탭 복원 — 첫 렌더부터 올바른 탭이라 뒤늦은 전환(깜빡임) 없음
+    try {
+      const saved = localStorage.getItem('secretcoach-active-tab');
+      const valid: TabType[] = ['GOALS', 'TODO', 'VISUALIZE', 'CALENDAR', 'FEEDBACK'];
+      if (saved && (valid as string[]).includes(saved)) return saved as TabType;
+    } catch { /* ignore */ }
+    return 'GOALS';
+  });
   const [calendarViewMode, setCalendarViewMode] = useState<'month' | 'week' | 'list'>('month');
   const [language, setLanguage] = useState<AppLanguage>(getInitialLanguage);
   const [isLanguageLoaded, setIsLanguageLoaded] = useState(false);
@@ -123,13 +131,17 @@ const App: React.FC = () => {
   const [todoGroups, setTodoGroups] = useState<TodoGroup[]>([]);
   const [notes, setNotes] = useState<NoteItem[]>([]);
   const [activeListId, setActiveListId] = useState<string | SmartListId>(() => {
-    try { return localStorage.getItem('secretcoach-active-list') || 'myDay'; }
-    catch { return 'myDay'; }
+    try { return localStorage.getItem('secretcoach-active-list') || 'tasks'; }
+    catch { return 'tasks'; }
   });
   // 마지막으로 본 목록 기억 — 어떤 경로로 바뀌든(스마트·커스텀) activeListId 변경을 모두 저장
   useEffect(() => {
     try { localStorage.setItem('secretcoach-active-list', activeListId); } catch { /* ignore */ }
   }, [activeListId]);
+  // 마지막으로 본 탭 기억 — 재로그인/리로드 시 이전 작업 공간으로 복원 (로그아웃은 리셋하지 않음)
+  useEffect(() => {
+    try { localStorage.setItem('secretcoach-active-tab', activeTab); } catch { /* ignore */ }
+  }, [activeTab]);
   const [selectedNode, setSelectedNode] = useState<GoalNode | null>(null);
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
   const [mindmapLayout, setMindmapLayout] = useState<LayoutMode>('mindMap');
@@ -1149,7 +1161,7 @@ const App: React.FC = () => {
           }
           appendAction(getUserId(), 'UPDATE_PROFILE', `프로필 업데이트: ${p.name}`);
         }}
-        onLogout={async () => { await flushAll(); resetDirty(); await logout(); setUserProfile(null); setActiveTab('GOALS'); setIsSettingsPageOpen(false); }}
+        onLogout={async () => { await flushAll(); resetDirty(); await logout(); setUserProfile(null); setIsSettingsPageOpen(false); }}
       />
 
       {isTrialExpired && !isSettingsPageOpen && !trialDismissed && (

@@ -330,6 +330,12 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
     return () => nav.virtualKeyboard!.removeEventListener('geometrychange', onChange);
   }, []);
 
+  // 탭을 떠나면 검색어 초기화 — 다시 돌아왔을 때 검색 화면이 아니라 마지막 목록 뷰가 뜨도록.
+  // (ToDoList는 !isOpen이어도 언마운트되지 않아 searchQuery가 살아남던 문제 수정)
+  useEffect(() => {
+    if (!isOpen) setSearchQuery('');
+  }, [isOpen]);
+
   // Quick action pending states
   const [pendingDueDate, setPendingDueDate] = useState<number | null>(null);
   const [pendingReminder, setPendingReminder] = useState<number | null>(null);
