@@ -213,6 +213,7 @@ const ko: TranslationStrings = {
     privacy: '개인정보',
     refund: '환불정책',
     checkoutFailed: '체크아웃 세션 생성에 실패했습니다.',
+    imageProcessFailed: '이미지 처리에 실패했어요. 다시 시도해주세요.',
     profile: '프로필',
     profileSave: '프로필 저장',
     name: '이름',

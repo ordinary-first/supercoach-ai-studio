@@ -189,6 +189,7 @@ export interface TranslationStrings {
     privacy: string;
     refund: string;
     checkoutFailed: string;
+    imageProcessFailed: string;
     profile: string;
     profileSave: string;
     name: string;

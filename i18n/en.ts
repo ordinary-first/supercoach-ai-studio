@@ -211,6 +211,7 @@ const en: TranslationStrings = {
     privacy: 'Privacy',
     refund: 'Refunds',
     checkoutFailed: 'Failed to create checkout session.',
+    imageProcessFailed: 'Image processing failed. Please try again.',
     profile: 'Profile',
     profileSave: 'Save Profile',
     name: 'Name',
