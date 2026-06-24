@@ -55,6 +55,18 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [previousViewMode, setPreviousViewMode] = useState<ViewMode>('month');
 
+  // Mobile keyboard height via VirtualKeyboard API (overlays-content 모드).
+  // ToDoList와 동일한 방식 — 키보드가 열리면 퀵추가 캡슐을 키보드 위로 올린다.
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  useEffect(() => {
+    const nav = navigator as unknown as { virtualKeyboard?: { overlaysContent: boolean; boundingRect: DOMRect; addEventListener: (e: string, fn: () => void) => void; removeEventListener: (e: string, fn: () => void) => void } };
+    if (!nav.virtualKeyboard) return;
+    nav.virtualKeyboard.overlaysContent = true;
+    const onChange = () => setKeyboardHeight(Math.round(nav.virtualKeyboard!.boundingRect.height));
+    nav.virtualKeyboard.addEventListener('geometrychange', onChange);
+    return () => nav.virtualKeyboard!.removeEventListener('geometrychange', onChange);
+  }, []);
+
   // Sync with external viewMode. External selection should always win.
   useEffect(() => {
     if (externalViewMode && isOpen) {
@@ -823,8 +835,12 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
             className="absolute inset-0 z-40"
             onClick={closeCapsule}
           />
-          {/* Sheet — sits above BottomDock (z-[55]) by positioning above its ~66px height */}
-          <div className="absolute bottom-[66px] left-0 right-0 z-50 animate-in slide-in-from-bottom duration-200">
+          {/* Sheet — sits above BottomDock (z-[55]) by positioning above its ~66px height.
+              키보드가 열리면 fixed + bottom=키보드높이로 올려 입력창이 가리지 않게 한다. */}
+          <div
+            className="absolute bottom-[66px] left-0 right-0 z-50 animate-in slide-in-from-bottom duration-200"
+            style={keyboardHeight > 0 ? { position: 'fixed', bottom: `${keyboardHeight}px`, zIndex: 60 } : undefined}
+          >
             <div className="mx-2 mb-2 bg-th-card border border-th-border-strong rounded-2xl shadow-2xl p-4 backdrop-blur-xl">
               {/* Date label */}
               <div className="flex items-center justify-between mb-3">
