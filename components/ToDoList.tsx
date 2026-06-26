@@ -51,6 +51,8 @@ const StepsSection: React.FC<{
   language: string;
 }> = ({ steps, onUpdate, language }) => {
   const [newStepText, setNewStepText] = useState('');
+  const [editingStepId, setEditingStepId] = useState<string | null>(null);
+  const [editingText, setEditingText] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
   const addStep = () => {
@@ -70,6 +72,21 @@ const StepsSection: React.FC<{
 
   const deleteStep = (stepId: string) => {
     onUpdate(steps.filter((s) => s.id !== stepId));
+  };
+
+  const startEdit = (step: TodoStep) => {
+    setEditingStepId(step.id);
+    setEditingText(step.text);
+  };
+
+  const commitEdit = () => {
+    if (!editingStepId) return;
+    const text = editingText.trim();
+    if (text) {
+      onUpdate(steps.map((s) => (s.id === editingStepId ? { ...s, text } : s)));
+    }
+    setEditingStepId(null);
+    setEditingText('');
   };
 
   const label = language === 'ko' ? '단계 추가' : 'Add step';
@@ -96,9 +113,27 @@ const StepsSection: React.FC<{
               ? <CheckCircle2 size={16} className="text-th-accent" />
               : <Circle size={16} className="text-th-text-tertiary" />}
           </button>
-          <span className={`flex-1 text-sm ${step.completed ? 'line-through text-th-text-tertiary' : 'text-th-text'}`}>
-            {step.text}
-          </span>
+          {editingStepId === step.id ? (
+            <input
+              autoFocus
+              type="text"
+              value={editingText}
+              onChange={(e) => setEditingText(e.target.value)}
+              onBlur={commitEdit}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.nativeEvent.isComposing) commitEdit();
+                if (e.key === 'Escape') { setEditingStepId(null); setEditingText(''); }
+              }}
+              className="flex-1 bg-transparent text-sm text-th-text focus:outline-none border-b border-th-accent py-0.5"
+            />
+          ) : (
+            <span
+              onClick={() => !step.completed && startEdit(step)}
+              className={`flex-1 text-sm ${step.completed ? 'line-through text-th-text-tertiary' : 'text-th-text cursor-text'}`}
+            >
+              {step.text}
+            </span>
+          )}
           <button
             onClick={() => deleteStep(step.id)}
             className="opacity-0 group-hover:opacity-100 p-0.5 text-th-text-tertiary hover:text-red-400 transition-all"
@@ -108,8 +143,11 @@ const StepsSection: React.FC<{
         </div>
       ))}
 
-      <div className="flex items-center gap-2 px-1">
-        <button onClick={addStep} className="flex-shrink-0 text-th-text-tertiary hover:text-th-accent transition-colors">
+      <form
+        onSubmit={(e) => { e.preventDefault(); addStep(); }}
+        className="flex items-center gap-2 px-1"
+      >
+        <button type="submit" className="flex-shrink-0 text-th-text-tertiary hover:text-th-accent transition-colors">
           <Plus size={16} />
         </button>
         <input
@@ -117,12 +155,12 @@ const StepsSection: React.FC<{
           type="text"
           value={newStepText}
           onChange={(e) => setNewStepText(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter') addStep(); }}
+          onKeyDown={(e) => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) { e.preventDefault(); addStep(); } }}
           onFocus={(e) => e.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'nearest' })}
           placeholder={label}
           className="flex-1 bg-transparent text-sm text-th-text placeholder:text-th-text-tertiary focus:outline-none py-2"
         />
-      </div>
+      </form>
     </div>
   );
 };
