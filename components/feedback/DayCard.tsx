@@ -28,7 +28,7 @@ export const DayCard: React.FC<DayCardProps> = ({ date, state, card, t, index, o
 
   const base =
     'fb-day-card flex-shrink-0 w-[146px] h-[186px] rounded-[20px] px-3.5 py-3 ' +
-    'flex flex-col cursor-pointer transition-transform active:scale-[0.985]';
+    'flex flex-col cursor-pointer transition-transform active:scale-[0.985] overflow-hidden';
 
   if (state === 'future') {
     return (
@@ -99,10 +99,19 @@ export const DayCard: React.FC<DayCardProps> = ({ date, state, card, t, index, o
 
       {card?.coachComment && (
         <div className="mt-auto pt-1.5 border-t border-th-border/20">
-          <p className="text-[10px] text-th-text-secondary italic line-clamp-2 leading-tight flex items-start gap-1">
-            <MessageCircle size={10} className="shrink-0 mt-[1px] text-th-text-tertiary" />
-            <span>{card.coachComment}</span>
-          </p>
+          <div
+            className="overflow-hidden flex items-start gap-1"
+            style={{
+              maxHeight: 26,
+              maskImage: 'linear-gradient(to bottom, black 40%, transparent 100%)',
+              WebkitMaskImage: 'linear-gradient(to bottom, black 40%, transparent 100%)',
+            }}
+          >
+            <MessageCircle size={10} className="shrink-0 mt-[1px] text-th-text-tertiary flex-shrink-0" />
+            <p className="text-[10px] text-th-text-secondary italic leading-tight">
+              {card.coachComment}
+            </p>
+          </div>
         </div>
       )}
     </button>
