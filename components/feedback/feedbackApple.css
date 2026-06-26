@@ -257,3 +257,13 @@
     border-color: var(--border-strong);
   }
 }
+
+/* Wheel time picker */
+.fb-wheel-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.fb-wheel-scroll::-webkit-scrollbar {
+  display: none;
+}
