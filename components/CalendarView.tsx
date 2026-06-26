@@ -350,7 +350,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
           if (!isGhost) onToggleToDo(todo.id);
         }}
         className={`
-          relative flex items-center gap-2 p-1.5 rounded-md text-[10px] font-medium
+          relative flex items-center gap-1 py-[2px] px-1 rounded-md text-[10px] leading-none font-medium
           transition-all duration-300 transform
           ${!isGhost ? 'hover:scale-105 hover:z-20 cursor-pointer' : ''}
           ${itemStyle} ${glowEffect}
