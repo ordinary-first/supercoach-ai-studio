@@ -410,19 +410,43 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
             </span>
           </div>
 
-          {/* Tasks Container */}
-          <div className="space-y-1.5 overflow-y-auto max-h-[28px] md:max-h-[80px] scrollbar-hide">
-            {dayTodos.map((todo: any) => renderTodoCell(todo, todo.isGhost))}
+          {/* Tasks Container — shows up to 3, clipped + fades, +N badge */}
+          {(() => {
+            const VISIBLE = 3;
+            const overflow = dayTodos.length - VISIBLE;
+            const visible = dayTodos.slice(0, VISIBLE);
+            const hasFade = dayTodos.length >= 2;
+            return (
+              <div className="relative overflow-hidden max-h-[50px] md:max-h-[74px]">
+                <div
+                  className="space-y-0.5"
+                  style={hasFade ? {
+                    maskImage: 'linear-gradient(to bottom, black 60%, transparent 100%)',
+                    WebkitMaskImage: 'linear-gradient(to bottom, black 60%, transparent 100%)',
+                  } : undefined}
+                >
+                  {visible.map((todo: any) => renderTodoCell(todo, todo.isGhost))}
 
-            {/* Empty State placeholder for Today */}
-            {dayTodos.length === 0 && isToday && (
-              <div className="h-full flex items-center justify-center pt-2 opacity-30">
-                <div className="border border-dashed border-th-border rounded px-2 py-1 text-[9px] text-th-text-tertiary flex items-center gap-1">
-                  <Star size={8} /> {t.calendar.noMission}
+                  {dayTodos.length === 0 && isToday && (
+                    <div className="h-full flex items-center justify-center pt-2 opacity-30">
+                      <div className="border border-dashed border-th-border rounded px-2 py-1 text-[9px] text-th-text-tertiary flex items-center gap-1">
+                        <Star size={8} /> {t.calendar.noMission}
+                      </div>
+                    </div>
+                  )}
                 </div>
+
+                {overflow > 0 && (
+                  <div
+                    onClick={(e) => { e.stopPropagation(); handleDateDrill(dateObj); }}
+                    className="absolute bottom-0 right-0 text-[8px] font-semibold text-th-text-tertiary bg-th-surface/80 backdrop-blur-sm rounded px-1 leading-4 cursor-pointer hover:text-th-text transition-colors"
+                  >
+                    +{overflow}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+            );
+          })()}
         </div>
       );
     }
