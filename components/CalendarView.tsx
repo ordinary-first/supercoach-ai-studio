@@ -13,6 +13,7 @@ interface CalendarViewProps {
   onAddToDo: (text: string, extras?: Partial<ToDoItem>) => void;
   viewMode?: 'month' | 'week' | 'list';
   onViewModeChange?: (mode: 'month' | 'week' | 'list') => void;
+  addTriggerRef?: React.MutableRefObject<(() => void) | null>;
 }
 
 const REPEAT_CHIPS = ['none', 'daily', 'weekdays', 'weekly', 'weekly-3'] as const;
@@ -37,7 +38,7 @@ const fmtTime = (h: number, m: number, lang: string) => {
 
 type ViewMode = 'month' | 'week' | 'list' | 'day';
 
-const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onToggleToDo, onAddToDo, viewMode: externalViewMode, onViewModeChange }) => {
+const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onToggleToDo, onAddToDo, viewMode: externalViewMode, onViewModeChange, addTriggerRef }) => {
   const { t, language } = useTranslation();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>('month');
@@ -208,6 +209,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
 
   // Back from day view
   const handleBackFromDay = () => {
+    closeCapsule();
     setViewMode(previousViewMode);
     setSelectedDate(null);
   };
@@ -240,14 +242,20 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
     setCapsuleTime({ h: 9, m: 0 });
   };
 
-  // Header + button: open today's capsule (or focus day-view composer)
-  const handleHeaderAdd = () => {
-    if (viewMode === 'day') {
-      capsuleInputRef.current?.focus();
+  // Header + button: in day view opens capsule for selected date; in month/week/list goes to today's day view
+  const handleHeaderAdd = useCallback(() => {
+    if (viewMode === 'day' && selectedDate) {
+      setCapsuleDate(selectedDate);
+      window.setTimeout(() => capsuleInputRef.current?.focus(), 50);
     } else {
-      handleCellAdd(new Date());
+      handleDateDrill(new Date());
     }
-  };
+  }, [viewMode, selectedDate]);
+
+  // Expose add trigger to parent (App.tsx header button)
+  useEffect(() => {
+    if (addTriggerRef) addTriggerRef.current = handleHeaderAdd;
+  }, [addTriggerRef, handleHeaderAdd]);
 
   // View mode switch
   const switchViewMode = (mode: ViewMode) => {
@@ -397,8 +405,8 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
       days.push(
         <div
           key={`curr-${day}`}
-          onClick={() => handleCellAdd(dateObj)}
-          className={`min-h-0 md:min-h-0 border-b border-r border-th-border p-1 relative group transition-all duration-300 cursor-pointer ${isToday ? 'bg-th-accent-muted shadow-[inset_0_0_20px_var(--shadow-glow)]' : 'bg-transparent hover:bg-th-surface'}`}
+          onClick={() => handleDateDrill(dateObj)}
+          className={`min-h-0 md:min-h-0 border-b border-r border-th-border p-1 relative group transition-all duration-300 cursor-pointer flex flex-col ${isToday ? 'bg-th-accent-muted shadow-[inset_0_0_20px_var(--shadow-glow)]' : 'bg-transparent hover:bg-th-surface'}`}
         >
           {/* Date Header — badge tap drills into detail view */}
           <div className="flex justify-between items-start mb-0.5">
@@ -410,14 +418,14 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
             </span>
           </div>
 
-          {/* Tasks Container — shows up to 3, clipped + fades, +N badge */}
+          {/* Tasks Container — fills remaining cell height, clips overflow with fade */}
           {(() => {
-            const VISIBLE = 3;
+            const VISIBLE = 8;
             const overflow = dayTodos.length - VISIBLE;
             const visible = dayTodos.slice(0, VISIBLE);
             const hasFade = dayTodos.length >= 2;
             return (
-              <div className="relative overflow-hidden max-h-[50px] md:max-h-[74px]">
+              <div className="relative overflow-hidden flex-1">
                 <div
                   className="space-y-0.5"
                   style={hasFade ? {
@@ -793,17 +801,6 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
           </div>
 
         </div>
-
-        {/* Add mission — opens today's day view (or focuses the composer in day view) */}
-        <button
-          type="button"
-          onClick={handleHeaderAdd}
-          className="shrink-0 flex items-center justify-center w-9 h-9 rounded-full bg-th-accent text-white shadow-sm active:scale-95 transition-transform"
-          aria-label={t.calendar.addMission}
-          title={t.calendar.addMission}
-        >
-          <Plus size={18} />
-        </button>
 
       </div>
 
