@@ -85,7 +85,7 @@ export const DayCard: React.FC<DayCardProps> = ({ date, state, card, t, index, o
         {dayLabel} <span className="text-th-text-secondary">{dateShort}</span>
       </div>
 
-      <div className="flex-1 space-y-1 overflow-hidden">
+      <div className="space-y-1 overflow-hidden">
         {visibleItems.map((item, i) => (
           <div key={i} className="flex items-start gap-1.5">
             <Check size={10} className="text-th-reward mt-0.5 shrink-0" />
@@ -98,7 +98,7 @@ export const DayCard: React.FC<DayCardProps> = ({ date, state, card, t, index, o
       </div>
 
       {card?.coachComment && (
-        <div className="mt-auto pt-1.5 border-t border-th-border/20">
+        <div className="mt-2 pt-1.5 border-t border-th-border/20">
           <div
             className="overflow-hidden flex items-start gap-1"
             style={{
