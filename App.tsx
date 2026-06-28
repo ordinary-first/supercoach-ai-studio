@@ -54,7 +54,7 @@ import { useToast } from './hooks/useToast';
 import { useThemeStore, useSystemThemeListener } from './stores/useThemeStore';
 import { appendAction } from './services/actionLogService';
 import ToastContainer from './components/ToastContainer';
-import { Crown, Menu as MenuIcon } from 'lucide-react';
+import { Crown, Menu as MenuIcon, Plus } from 'lucide-react';
 import { LanguageContext } from './i18n/useTranslation';
 import { getTranslations } from './i18n';
 import {
@@ -120,6 +120,7 @@ const App: React.FC = () => {
     return 'GOALS';
   });
   const [calendarViewMode, setCalendarViewMode] = useState<'month' | 'week' | 'list'>('month');
+  const calendarAddRef = useRef<(() => void) | null>(null);
   const [language, setLanguage] = useState<AppLanguage>(getInitialLanguage);
   const [isLanguageLoaded, setIsLanguageLoaded] = useState(false);
   const [isSettingsPageOpen, setIsSettingsPageOpen] = useState(false);
@@ -1024,7 +1025,16 @@ const App: React.FC = () => {
         />
       )}
  
-       <div className="absolute top-[2px] right-2 md:top-[8px] md:right-6 z-[60]" style={{ marginTop: 'env(safe-area-inset-top)' }}>
+       <div className="absolute top-[2px] right-2 md:top-[8px] md:right-6 z-[60] flex items-center gap-1" style={{ marginTop: 'env(safe-area-inset-top)' }}>
+         {activeTab === 'CALENDAR' && (
+           <button
+             onClick={() => calendarAddRef.current?.()}
+             className="apple-chip w-10 h-10 rounded-full bg-th-accent text-white hover:bg-th-accent/90 transition-all flex items-center justify-center shadow-sm active:scale-95"
+             aria-label="Add mission"
+           >
+             <Plus size={18} />
+           </button>
+         )}
          <button
            onClick={() => setIsSettingsPageOpen(true)}
            className="apple-chip w-10 h-10 rounded-full text-th-text-secondary hover:bg-th-surface-hover transition-all flex items-center justify-center"
@@ -1068,7 +1078,7 @@ const App: React.FC = () => {
     return updated;
   });
 }} notes={notes} onNotesChange={setNotes} />
-      <CalendarView isOpen={activeTab === 'CALENDAR'} onClose={() => setActiveTab('GOALS')} todos={todos} onToggleToDo={handleToggleToDo} onAddToDo={handleAddCalendarMission} viewMode={calendarViewMode} onViewModeChange={setCalendarViewMode} />
+      <CalendarView isOpen={activeTab === 'CALENDAR'} onClose={() => setActiveTab('GOALS')} todos={todos} onToggleToDo={handleToggleToDo} onAddToDo={handleAddCalendarMission} viewMode={calendarViewMode} onViewModeChange={setCalendarViewMode} addTriggerRef={calendarAddRef} />
       <CoachChat
         isOpen={isChatOpen}
         onClose={() => {
