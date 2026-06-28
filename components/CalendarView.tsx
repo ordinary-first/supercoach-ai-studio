@@ -161,8 +161,8 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
   };
 
   // Navigation handlers
-  const prevMonth = () => setCurrentDate(new Date(year, month - 1, 1));
-  const nextMonth = () => setCurrentDate(new Date(year, month + 1, 1));
+  const prevMonth = () => { setCurrentDate(new Date(year, month - 1, 1)); setSelectedDate(null); };
+  const nextMonth = () => { setCurrentDate(new Date(year, month + 1, 1)); setSelectedDate(null); };
   const goToday = () => {
     setCurrentDate(new Date());
   };
@@ -207,6 +207,15 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
     window.setTimeout(() => capsuleInputRef.current?.focus(), 50);
   };
 
+  // Month cell click: first tap selects, second tap on same date drills to day view
+  const handleCellClick = (date: Date) => {
+    if (selectedDate && normalizeDate(selectedDate) === normalizeDate(date)) {
+      handleDateDrill(date);
+    } else {
+      setSelectedDate(date);
+    }
+  };
+
   // Back from day view
   const handleBackFromDay = () => {
     closeCapsule();
@@ -242,15 +251,15 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
     setCapsuleTime({ h: 9, m: 0 });
   };
 
-  // Header + button: in day view opens capsule for selected date; in month/week/list goes to today's day view
+  // Header + button: if any date is selected opens capsule for it; otherwise goes to today's day view
   const handleHeaderAdd = useCallback(() => {
-    if (viewMode === 'day' && selectedDate) {
+    if (selectedDate) {
       setCapsuleDate(selectedDate);
       window.setTimeout(() => capsuleInputRef.current?.focus(), 50);
     } else {
       handleDateDrill(new Date());
     }
-  }, [viewMode, selectedDate]);
+  }, [selectedDate]);
 
   // Expose add trigger to parent (App.tsx header button)
   useEffect(() => {
@@ -399,20 +408,21 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
     for (let day = 1; day <= daysInMonth; day++) {
       const dateObj = new Date(year, month, day);
       const isToday = normalizeDate(new Date()) === normalizeDate(dateObj);
+      const isSelected = !!(selectedDate && normalizeDate(selectedDate) === normalizeDate(dateObj));
 
       const dayTodos = getTodosForDate(day);
 
       days.push(
         <div
           key={`curr-${day}`}
-          onClick={() => handleDateDrill(dateObj)}
-          className={`min-h-0 md:min-h-0 border-b border-r border-th-border p-1 relative group transition-all duration-300 cursor-pointer flex flex-col ${isToday ? 'bg-th-accent-muted shadow-[inset_0_0_20px_var(--shadow-glow)]' : 'bg-transparent hover:bg-th-surface'}`}
+          onClick={() => handleCellClick(dateObj)}
+          className={`min-h-0 md:min-h-0 border-b border-r p-1 relative group transition-all duration-300 cursor-pointer flex flex-col ${isToday ? 'bg-th-accent-muted shadow-[inset_0_0_20px_var(--shadow-glow)] border-th-border' : isSelected ? 'bg-th-surface/60 border-th-accent/60 ring-1 ring-inset ring-th-accent/40' : 'bg-transparent hover:bg-th-surface border-th-border'}`}
         >
-          {/* Date Header — badge tap drills into detail view */}
+          {/* Date Header */}
           <div className="flex justify-between items-start mb-0.5">
             <span
-              onClick={(e) => { e.stopPropagation(); handleDateDrill(dateObj); }}
-              className={`text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full transition-all cursor-pointer ${isToday ? 'bg-th-accent text-th-text-inverse shadow-[0_0_10px_var(--shadow-glow)]' : 'text-th-text-secondary group-hover:text-th-text hover:bg-th-surface-hover'}`}
+              onClick={(e) => { e.stopPropagation(); handleCellClick(dateObj); }}
+              className={`text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full transition-all cursor-pointer ${isToday ? 'bg-th-accent text-th-text-inverse shadow-[0_0_10px_var(--shadow-glow)]' : isSelected ? 'bg-th-accent/30 text-th-accent' : 'text-th-text-secondary group-hover:text-th-text hover:bg-th-surface-hover'}`}
             >
               {day}
             </span>
