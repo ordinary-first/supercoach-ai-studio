@@ -98,20 +98,17 @@ export const DayCard: React.FC<DayCardProps> = ({ date, state, card, t, index, o
       </div>
 
       {card?.coachComment && (
-        <div className="mt-2 pt-1.5 border-t border-th-border/20">
-          <div
-            className="overflow-hidden flex items-start gap-1"
-            style={{
-              maxHeight: 26,
-              maskImage: 'linear-gradient(to bottom, black 40%, transparent 100%)',
-              WebkitMaskImage: 'linear-gradient(to bottom, black 40%, transparent 100%)',
-            }}
-          >
-            <MessageCircle size={10} className="shrink-0 mt-[1px] text-th-text-tertiary flex-shrink-0" />
-            <p className="text-[10px] text-th-text-secondary italic leading-tight">
-              {card.coachComment}
-            </p>
-          </div>
+        <div
+          className="mt-2 pt-1.5 border-t border-th-border/20 flex-1 min-h-0 overflow-hidden flex items-start gap-1"
+          style={{
+            maskImage: 'linear-gradient(to bottom, black 55%, transparent 100%)',
+            WebkitMaskImage: 'linear-gradient(to bottom, black 55%, transparent 100%)',
+          }}
+        >
+          <MessageCircle size={10} className="shrink-0 mt-[1px] text-th-text-tertiary" />
+          <p className="text-[10px] text-th-text-secondary italic leading-tight">
+            {card.coachComment}
+          </p>
         </div>
       )}
     </button>
