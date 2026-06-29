@@ -234,14 +234,14 @@ const en: TranslationStrings = {
       audioMinutes: 'Audio (min)',
       videoGenerations: 'Video',
     },
-    planFeatures: {
-      explorer: ['50 coaching chats', '5 images', '3-day trial'],
-      pro: ['5,000 coaching chats/mo', '80 narratives/mo', '100 images/mo', '60 min audio/mo', '10 videos/mo'],
-    },
     genderOptions: {
       Male: 'Male',
       Female: 'Female',
       Other: 'Other',
+    },
+    planFeatures: {
+      explorer: ['100 coaching chats/mo', '5 images/mo', 'Free forever'],
+      pro: ['3,000 coaching chats/mo', '40 narratives/mo', '60 images/mo', '60 min audio/mo'],
     },
     monthlyUsage: 'Monthly Usage',
   },
@@ -467,8 +467,8 @@ const en: TranslationStrings = {
     error: 'An error occurred.',
     footer: 'You can change your plan anytime in Settings.',
     planFeatures: {
-      explorer: ['50 coaching chats', '5 images', '3-day trial'],
-      pro: ['5,000 coaching chats/mo', '80 narratives/mo', '100 images/mo', '60 min audio/mo', '10 videos/mo'],
+      explorer: ['100 coaching chats/mo', '5 images/mo', 'Free forever'],
+      pro: ['3,000 coaching chats/mo', '40 narratives/mo', '60 images/mo', '60 min audio/mo'],
     },
   },
 };

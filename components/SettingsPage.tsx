@@ -86,18 +86,18 @@ interface SettingsPageProps {
 // Labels are now in t.settings.* via useTranslation
 
 const PLANS: { plan: PlanTier; title: string; price: string }[] = [
-  { plan: 'explorer', title: 'Free Trial', price: 'Free (3 days)' },
-  { plan: 'pro', title: 'Pro', price: '$49.99/mo' },
+  { plan: 'explorer', title: 'Explorer', price: 'Free' },
+  { plan: 'pro', title: 'Premium', price: '$14.99/mo' },
 ];
 
 const PLAN_LIMITS: Record<string, Record<string, number>> = {
   explorer: {
-    chatMessages: 50, narrativeCalls: 3, imageCredits: 5,
-    audioMinutes: 0, videoGenerations: 0,
+    chatMessages: 100, narrativeCalls: 5, imageCredits: 5,
+    audioMinutes: 0,
   },
   pro: {
-    chatMessages: 5000, narrativeCalls: 80, imageCredits: 100,
-    audioMinutes: 60, videoGenerations: 10,
+    chatMessages: 3000, narrativeCalls: 40, imageCredits: 60,
+    audioMinutes: 60,
   },
 };
 
