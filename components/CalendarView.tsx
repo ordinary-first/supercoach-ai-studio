@@ -531,8 +531,8 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
             </span>
           </div>
 
-          {/* Todos column */}
-          <div className="flex-1 flex flex-wrap items-center gap-1.5 p-2 min-h-[56px]">
+          {/* Todos column — stacked vertically so each mission reads on its own line */}
+          <div className="flex-1 flex flex-col justify-center gap-1 p-2 min-h-[56px]">
             {dayTodos.length > 0 ? (
               dayTodos.map((todo: any) => renderTodoCell(todo, todo.isGhost))
             ) : (
