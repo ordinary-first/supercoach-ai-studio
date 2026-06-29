@@ -46,6 +46,11 @@ const createRequestId = (): string => {
 function pickFaceImageUrl(profile: unknown): string | null {
   if (!profile || typeof profile !== 'object') return null;
   const p = profile as Record<string, unknown>;
+  // 1순위: 사용자가 지정한 대표 사진
+  if (typeof p.representativePhoto === 'string' && p.representativePhoto.trim()) {
+    return p.representativePhoto.trim();
+  }
+  // 2순위: 갤러리 첫 사진 (대표 미지정 시 기본값)
   if (Array.isArray(p.gallery) && p.gallery.length > 0) {
     const first = String(p.gallery[0]).trim();
     if (first) return first;

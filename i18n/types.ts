@@ -200,6 +200,9 @@ export interface TranslationStrings {
     location: string;
     bio: string;
     gallery: string;
+    galleryHint: string;
+    galleryRepresentative: string;
+    gallerySetRepresentative: string;
     currentPlan: string;
     upgrade: string;
     downgrade: string;

@@ -52,6 +52,8 @@ export interface UserProfile {
   googleId?: string;
   bio?: string;
   gallery?: string[];
+  /** 갤러리 사진 중 AI 이미지·영상 생성에 사용할 대표 사진 URL. 미지정 시 gallery[0]. */
+  representativePhoto?: string;
   billingPlan?: 'explorer' | 'pro' | null;
   billingIsActive?: boolean;
   billingSubscriptionId?: string | null;
