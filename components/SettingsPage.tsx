@@ -15,6 +15,7 @@ import {
   Save,
   Settings,
   ShieldCheck,
+  Star,
   Trash2,
   User,
   X,
@@ -204,10 +205,23 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
   };
 
   const removeFromGallery = (index: number) => {
-    updateMediaAndPersist((prev) => ({
-      ...prev,
-      gallery: prev.gallery?.filter((_, i) => i !== index),
-    }));
+    updateMediaAndPersist((prev) => {
+      const removed = prev.gallery?.[index];
+      // 대표 사진을 삭제하면 대표 지정 해제 (백엔드가 gallery[0]로 폴백)
+      const representativePhoto =
+        prev.representativePhoto && prev.representativePhoto === removed
+          ? undefined
+          : prev.representativePhoto;
+      return {
+        ...prev,
+        gallery: prev.gallery?.filter((_, i) => i !== index),
+        representativePhoto,
+      };
+    });
+  };
+
+  const setRepresentative = (img: string) => {
+    updateMediaAndPersist((prev) => ({ ...prev, representativePhoto: img }));
   };
 
   const hasAvatar = !!(formData.avatarUrl && formData.avatarUrl.length > 0);
@@ -439,20 +453,53 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                   </div>
                   <span className="text-[10px] text-th-text-muted">{formData.gallery?.length || 0} / 6</span>
                 </div>
+                <p className="text-[10px] leading-relaxed text-th-text-muted">{labels.galleryHint}</p>
                 <div className="grid grid-cols-3 gap-2">
-                  {formData.gallery?.map((img, idx) => (
-                    <div key={idx} className="relative aspect-square group rounded-xl overflow-hidden border border-th-border">
-                      <img src={img} className="w-full h-full object-cover" alt={`gallery-${idx}`} />
-                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  {formData.gallery?.map((img, idx) => {
+                    const rep = formData.representativePhoto;
+                    const isRep = rep && formData.gallery?.includes(rep) ? img === rep : idx === 0;
+                    return (
+                      <div
+                        key={idx}
+                        className={`relative aspect-square rounded-xl overflow-hidden border transition-all ${
+                          isRep ? 'border-th-accent ring-2 ring-th-accent' : 'border-th-border'
+                        }`}
+                      >
                         <button
-                          onClick={() => removeFromGallery(idx)}
-                          className="p-2 bg-red-500 text-white rounded-full hover:scale-110 transition-all"
+                          type="button"
+                          onClick={() => setRepresentative(img)}
+                          aria-pressed={isRep}
+                          title={isRep ? labels.galleryRepresentative : labels.gallerySetRepresentative}
+                          className="group relative block w-full h-full"
                         >
-                          <Trash2 size={14} />
+                          <img src={img} className="w-full h-full object-cover" alt={`gallery-${idx}`} />
+                          {!isRep && (
+                            <div className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1 text-white">
+                              <Star size={14} />
+                              <span className="text-[9px] font-bold leading-tight text-center px-1">
+                                {labels.gallerySetRepresentative}
+                              </span>
+                            </div>
+                          )}
+                        </button>
+                        {isRep && (
+                          <div className="absolute top-1 left-1 flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-th-accent text-white text-[9px] font-bold shadow-sm pointer-events-none">
+                            <Star size={9} className="fill-current" />
+                            {labels.galleryRepresentative}
+                          </div>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => removeFromGallery(idx)}
+                          title={t.common.delete}
+                          aria-label={t.common.delete}
+                          className="absolute top-1 right-1 p-1 bg-black/55 text-white rounded-full hover:bg-red-500 transition-colors"
+                        >
+                          <Trash2 size={11} />
                         </button>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                   {(formData.gallery?.length || 0) < 6 && (
                     <button
                       onClick={() => galleryInputRef.current?.click()}
