@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { ChevronLeft, ChevronRight, CheckCircle2, Lock, Trophy, Star, ArrowLeft, Plus, X, Clock, Sparkles } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CheckCircle2, Lock, Trophy, Star, ArrowLeft, Plus, X, Clock, Sparkles, Pencil, Trash2, Check } from 'lucide-react';
 import { ToDoItem, RepeatFrequency } from '../types';
 import { matchesOn } from '../lib/recurrence';
 import { useFocusTrap } from '../hooks/useFocusTrap';
@@ -14,6 +14,8 @@ interface CalendarViewProps {
   viewMode?: 'month' | 'week' | 'list';
   onViewModeChange?: (mode: 'month' | 'week' | 'list') => void;
   addTriggerRef?: React.MutableRefObject<(() => void) | null>;
+  onDeleteToDo?: (id: string) => void;
+  onUpdateToDo?: (id: string, updates: Partial<ToDoItem>) => void;
 }
 
 const REPEAT_CHIPS = ['none', 'daily', 'weekdays', 'weekly', 'weekly-3'] as const;
@@ -38,7 +40,7 @@ const fmtTime = (h: number, m: number, lang: string) => {
 
 type ViewMode = 'month' | 'week' | 'list' | 'day';
 
-const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onToggleToDo, onAddToDo, viewMode: externalViewMode, onViewModeChange, addTriggerRef }) => {
+const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onToggleToDo, onAddToDo, viewMode: externalViewMode, onViewModeChange, addTriggerRef, onDeleteToDo, onUpdateToDo }) => {
   const { t, language } = useTranslation();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>('month');
@@ -55,6 +57,8 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
   const capsuleInputRef = useRef<HTMLInputElement>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [previousViewMode, setPreviousViewMode] = useState<ViewMode>('month');
+  const [editingTodoId, setEditingTodoId] = useState<string | null>(null);
+  const [editingText, setEditingText] = useState('');
 
   // Mobile keyboard height via VirtualKeyboard API (overlays-content 모드).
   // ToDoList와 동일한 방식 — 키보드가 열리면 퀵추가 캡슐을 키보드 위로 올린다.
@@ -242,6 +246,13 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
     setTimeOpen(false);
     setCapsuleTime({ h: 9, m: 0 });
   }, [capsuleText, capsuleRepeat, capsuleHasTime, capsuleTime, capsuleDate, onAddToDo]);
+
+  const handleSaveEdit = useCallback((id: string) => {
+    const text = editingText.trim();
+    if (text) onUpdateToDo?.(id, { text });
+    setEditingTodoId(null);
+    setEditingText('');
+  }, [editingText, onUpdateToDo]);
 
   const closeCapsule = () => {
     setCapsuleDate(null);
@@ -548,6 +559,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
 
     const renderDayTodoCard = (todo: any) => {
       const isGhost = todo.isGhost;
+      const isEditing = editingTodoId === todo.id;
 
       // Determine style
       let cardStyle = "";
@@ -566,8 +578,6 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
         statusLabel = t.calendar.status.locked;
         labelStyle = "text-th-text-muted bg-th-surface";
       } else {
-        // Not-yet-done — past / today / future all share one neutral, claimable
-        // invitation (no red, no grayscale, no "missed"). Tap the hollow circle to win it.
         cardStyle = "bg-th-surface border-th-border hover:border-th-accent/50 hover:bg-th-surface-hover";
         icon = <CheckCircle2 size={18} className="text-th-text-secondary" />;
         statusLabel = t.calendar.status.tryIt;
@@ -581,11 +591,11 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
       return (
         <div
           key={todo.id}
-          onClick={() => !isGhost && onToggleToDo(todo.id)}
+          onClick={() => !isGhost && !isEditing && onToggleToDo(todo.id)}
           className={`
-            relative flex items-center gap-4 p-4 rounded-xl border
+            group relative flex items-center gap-4 p-4 rounded-xl border
             transition-all duration-300 transform
-            ${!isGhost ? 'cursor-pointer hover:scale-[1.01] active:scale-[0.99]' : 'cursor-not-allowed'}
+            ${!isGhost && !isEditing ? 'cursor-pointer hover:scale-[1.01] active:scale-[0.99]' : isEditing ? 'cursor-default' : 'cursor-not-allowed'}
             ${cardStyle}
           `}
         >
@@ -600,24 +610,83 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
           </div>
 
           {/* Content */}
-          <div className="flex-1 min-w-0">
-            <p className={`text-sm font-medium leading-relaxed ${todo.completed ? 'text-th-text font-bold' : isGhost ? 'text-th-text-muted' : 'text-gray-200'}`}>
-              {todo.text}
-            </p>
-            {todoTime && (
-              <p className="flex items-center gap-1 text-xs text-th-text-tertiary mt-1">
-                <Clock size={11} />{todoTime}
-              </p>
-            )}
-            {todo.note && (
-              <p className="text-xs text-th-text-tertiary mt-1 truncate">{todo.note}</p>
+          <div className="flex-1 min-w-0" onClick={(e) => isEditing && e.stopPropagation()}>
+            {isEditing ? (
+              <input
+                autoFocus
+                value={editingText}
+                onChange={(e) => setEditingText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleSaveEdit(todo.id);
+                  if (e.key === 'Escape') { setEditingTodoId(null); setEditingText(''); }
+                }}
+                maxLength={500}
+                className="w-full bg-transparent border-b border-th-accent/60 outline-none text-sm text-th-text font-medium py-0.5"
+              />
+            ) : (
+              <>
+                <p className={`text-sm font-medium leading-relaxed ${todo.completed ? 'text-th-text font-bold' : isGhost ? 'text-th-text-muted' : 'text-gray-200'}`}>
+                  {todo.text}
+                </p>
+                {todoTime && (
+                  <p className="flex items-center gap-1 text-xs text-th-text-tertiary mt-1">
+                    <Clock size={11} />{todoTime}
+                  </p>
+                )}
+                {todo.note && (
+                  <p className="text-xs text-th-text-tertiary mt-1 truncate">{todo.note}</p>
+                )}
+              </>
             )}
           </div>
 
-          {/* Status Badge */}
-          <span className={`shrink-0 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full ${labelStyle}`}>
-            {statusLabel}
-          </span>
+          {/* Right side actions */}
+          {isEditing ? (
+            <div className="shrink-0 flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+              <button
+                type="button"
+                onClick={() => handleSaveEdit(todo.id)}
+                className="p-1.5 rounded-full bg-th-accent/20 hover:bg-th-accent/40 text-th-accent transition-colors"
+                aria-label={t.common.save}
+              >
+                <Check size={14} />
+              </button>
+              <button
+                type="button"
+                onClick={() => { setEditingTodoId(null); setEditingText(''); }}
+                className="p-1.5 rounded-full hover:bg-white/10 text-th-text-muted transition-colors"
+                aria-label={t.common.cancel}
+              >
+                <X size={14} />
+              </button>
+            </div>
+          ) : (
+            <div className="shrink-0 flex items-center gap-1.5">
+              {!isGhost && !todo.completed && onUpdateToDo && (
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); setEditingTodoId(todo.id); setEditingText(todo.text); }}
+                  className="p-1.5 rounded-full hover:bg-white/10 text-th-text-tertiary hover:text-th-text transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
+                  aria-label={t.calendar.editMission}
+                >
+                  <Pencil size={13} />
+                </button>
+              )}
+              {!isGhost && onDeleteToDo && (
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); onDeleteToDo(todo.id); }}
+                  className="p-1.5 rounded-full hover:bg-red-500/10 text-th-text-tertiary hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
+                  aria-label={t.calendar.deleteMission}
+                >
+                  <Trash2 size={13} />
+                </button>
+              )}
+              <span className={`shrink-0 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full ${labelStyle}`}>
+                {statusLabel}
+              </span>
+            </div>
+          )}
         </div>
       );
     };

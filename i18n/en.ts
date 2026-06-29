@@ -120,6 +120,8 @@ const en: TranslationStrings = {
     addMission: 'Add',
     addMissionPlaceholder: 'Add a mission for this day...',
     lockedMission: 'Locked mission (future repeat)',
+    editMission: 'Edit',
+    deleteMission: 'Delete',
     status: {
       completed: 'Done',
       locked: 'Locked',

@@ -98,6 +98,8 @@ export interface TranslationStrings {
     addMission: string;
     addMissionPlaceholder: string;
     lockedMission: string;
+    editMission: string;
+    deleteMission: string;
     status: {
       completed: string;
       locked: string;
