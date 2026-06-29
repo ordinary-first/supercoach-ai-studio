@@ -220,7 +220,7 @@ const en: TranslationStrings = {
     location: 'Location',
     bio: 'Bio',
     gallery: 'Photo Gallery',
-    galleryHint: 'These photos are references the AI uses to picture you. The one you set as representative is used for image & video generation. Tap a photo to set it.',
+    galleryHint: 'These photos are references the AI uses to picture you. The one you set as representative is used for image generation. Tap a photo to set it.',
     galleryRepresentative: 'Main',
     gallerySetRepresentative: 'Set as representative',
     currentPlan: 'Current Plan',
