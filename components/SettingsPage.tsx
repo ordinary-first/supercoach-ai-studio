@@ -744,19 +744,6 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
               )}
             </div>
 
-            <div className="px-4 py-3.5">
-              <div className="flex items-center gap-2 text-xs text-th-text mb-2">
-                <ShieldCheck size={14} className="text-th-accent" />
-                <span>{labels.polarPolicyTitle}</span>
-              </div>
-              <ul className="space-y-1.5 text-[12px] text-th-text-secondary">
-                <li>{labels.ruleDigitalOnly}</li>
-                <li>{labels.ruleNoHumanService}</li>
-                <li>{labels.ruleNoDonation}</li>
-                <li>{labels.ruleInstantAccess}</li>
-              </ul>
-            </div>
-
             <div className="px-4 py-3.5 border-t border-th-border">
               <div className="flex items-center gap-2 text-xs text-th-text mb-2">
                 <ShieldCheck size={14} className="text-th-accent" />
