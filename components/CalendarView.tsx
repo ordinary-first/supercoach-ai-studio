@@ -347,15 +347,17 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
     else if (viewMode === 'day') nextDay();
   };
 
-  // Render a single todo item in the calendar cell (shared between month and week views)
-  const renderTodoCell = (todo: any, isGhost: boolean) => {
+  // Render a single todo item in the calendar cell (shared between month and week views).
+  // `stacked` = full-width vertical list (week/list views): drop the scale "pop" so bars stay
+  // edge-aligned. Tiny month cells keep the scale since chips are content-width and never overflow.
+  const renderTodoCell = (todo: any, isGhost: boolean, stacked = false) => {
     let itemStyle = "";
     let icon = null;
     let glowEffect = "";
 
     if (todo.completed) {
       itemStyle = "bg-th-sacred-muted text-th-text border border-th-sacred";
-      glowEffect = "shadow-[0_0_16px_-4px_var(--shadow-sacred)] z-10 scale-[1.02]";
+      glowEffect = `shadow-[0_0_16px_-4px_var(--shadow-sacred)] z-10${stacked ? '' : ' scale-[1.02]'}`;
       icon = <Trophy size={10} className="text-th-sacred fill-current" />;
     } else if (isGhost) {
       itemStyle = "bg-th-surface/30 text-th-text-tertiary border border-th-border border-dashed backdrop-blur-[2px] cursor-not-allowed";
@@ -380,7 +382,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
         className={`
           relative flex items-center gap-1 py-[2px] px-1 rounded-md text-[10px] leading-none font-medium
           transition-all duration-300 transform
-          ${!isGhost ? 'hover:scale-105 hover:z-20 cursor-pointer' : ''}
+          ${!isGhost ? (stacked ? 'active:scale-[0.99] cursor-pointer' : 'hover:scale-105 hover:z-20 cursor-pointer') : ''}
           ${itemStyle} ${glowEffect}
         `}
         title={isGhost ? t.calendar.lockedMission : todo.text}
@@ -534,7 +536,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
           {/* Todos column — stacked vertically so each mission reads on its own line */}
           <div className="flex-1 flex flex-col justify-center gap-1 p-2 min-h-[56px]">
             {dayTodos.length > 0 ? (
-              dayTodos.map((todo: any) => renderTodoCell(todo, todo.isGhost))
+              dayTodos.map((todo: any) => renderTodoCell(todo, todo.isGhost, true))
             ) : (
               <span className="text-xs text-th-text-muted italic">{t.calendar.noMission}</span>
             )}
@@ -833,7 +835,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
                 {/* Todos */}
                 {dayTodos.length > 0 && (
                   <div className="pl-8 pr-2 py-1.5 space-y-1">
-                    {dayTodos.map((todo: any) => renderTodoCell(todo, todo.isGhost))}
+                    {dayTodos.map((todo: any) => renderTodoCell(todo, todo.isGhost, true))}
                   </div>
                 )}
               </div>
