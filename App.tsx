@@ -1078,7 +1078,7 @@ const App: React.FC = () => {
     return updated;
   });
 }} notes={notes} onNotesChange={setNotes} />
-      <CalendarView isOpen={activeTab === 'CALENDAR'} onClose={() => setActiveTab('GOALS')} todos={todos} onToggleToDo={handleToggleToDo} onAddToDo={handleAddCalendarMission} viewMode={calendarViewMode} onViewModeChange={setCalendarViewMode} addTriggerRef={calendarAddRef} />
+      <CalendarView isOpen={activeTab === 'CALENDAR'} onClose={() => setActiveTab('GOALS')} todos={todos} onToggleToDo={handleToggleToDo} onAddToDo={handleAddCalendarMission} viewMode={calendarViewMode} onViewModeChange={setCalendarViewMode} addTriggerRef={calendarAddRef} onDeleteToDo={(id) => { const todo = todos.find(t => t.id === id); setTodos(prev => prev.filter(t => t.id !== id)); appendAction(getUserId(), 'DELETE_TODO', `"${todo?.text || id}" 일정탭 삭제`, { todoId: id }); }} onUpdateToDo={(id, up) => { setTodos(prev => prev.map(t => t.id === id ? {...t, ...up} : t)); appendAction(getUserId(), 'UPDATE_TODO', '일정탭 미션 수정', { todoId: id }); }} />
       <CoachChat
         isOpen={isChatOpen}
         onClose={() => {

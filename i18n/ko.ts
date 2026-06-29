@@ -122,6 +122,8 @@ const ko: TranslationStrings = {
     addMission: '추가',
     addMissionPlaceholder: '이 날 미션 추가...',
     lockedMission: '잠긴 미션(미래 반복)',
+    editMission: '수정',
+    deleteMission: '삭제',
     status: {
       completed: '완료',
       locked: '잠김',
