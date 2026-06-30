@@ -1,5 +1,13 @@
 # TIL — Today I Learned
 
+## 2026-06-30: opacity-0 날짜 input은 클릭해도 피커 안 뜸 → showPicker() 필요
+- **증상**: 할일 상세의 기한 설정/시작일/종료일/미리알림을 클릭해도 달력 피커가 안 열림. 미리보기뿐 아니라 **실제 크롬에서도** 안 뜸.
+- **원인**: `<input type="date">`를 `opacity-0`로 숨기고 라벨/행으로 덮는 패턴. 네이티브 date input은 "달력 아이콘"을 눌러야 피커가 뜨는데, 투명 처리하면 아이콘이 안 보여 클릭이 텍스트 영역에만 가 포커스만 됨. 클릭=자동 오픈이 아님.
+- **해결**: 클릭 제스처에서 `inputEl.showPicker()`를 명시 호출. `onClick={(e)=>{ try{ e.currentTarget.showPicker(); }catch{} }}`. showPicker는 user activation(실제 클릭) 필요 — onClick 안에선 충족됨. TS 5.8 lib.dom에 타입 있음.
+- **주의**: 앱 전체 날짜/시간 입력(미리알림 등)에 동일 패턴이 깔려 있던 잠재 버그. 새 date input 만들 때 항상 onClick showPicker 붙일 것.
+- **검증법**: `HTMLInputElement.prototype.showPicker`를 스파이로 감싸고 실제 클릭 후 호출 여부 확인(네이티브 팝업은 스크린샷에 안 잡힘).
+- **파일**: `components/ToDoList.tsx` openPicker
+
 ## 2026-06-30: th-* 테마색에 Tailwind 불투명도 modifier 쓰면 깨짐
 - **증상**: 캘린더 기간 막대를 `bg-th-accent/85 text-th-text-inverse`로 만들었더니 배경이 투명(rgba(0,0,0,0))·글자가 검정(rgb(0,0,0))으로 안 보임.
 - **원인**: 이 프로젝트의 `th-*` 색은 `var(--th-accent)` 형태 CSS변수라 `<alpha-value>` 플레이스홀더가 없음. Tailwind는 `/85` 같은 불투명도 modifier를 해석 못 하면 그 클래스를 **통째로 드롭** → 배경 미적용(투명).
