@@ -65,6 +65,8 @@ const ko: TranslationStrings = {
     startDate: '시작일',
     endDate: '종료일',
     rangeHint: '종료일을 비우면 하루짜리 할일이 됩니다',
+    addStartDate: '시작일 추가',
+    rangeDays: '{days}일 일정',
     repeatLabel: '반복',
     notePlaceholder: '메모 추가...',
     noSelection: '선택된 작업이 없습니다',

@@ -63,6 +63,8 @@ const en: TranslationStrings = {
     startDate: 'Start date',
     endDate: 'End date',
     rangeHint: 'Leave end date empty for a single-day task',
+    addStartDate: 'Add start date',
+    rangeDays: '{days}-day task',
     repeatLabel: 'Repeat',
     notePlaceholder: 'Add a note...',
     noSelection: 'No task selected',
