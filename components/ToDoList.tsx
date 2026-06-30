@@ -547,6 +547,13 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
     return new Date(timestamp).toLocaleDateString(locale, { month: 'numeric', day: 'numeric' });
   };
 
+  // opacity-0로 숨긴 date/datetime input은 클릭만으론 네이티브 피커가 안 열린다.
+  // (달력 아이콘이 안 보여 클릭이 텍스트 영역에만 가 포커스만 됨)
+  // 클릭 제스처에서 showPicker()를 명시 호출해야 실제 브라우저·모바일에서 피커가 뜬다.
+  const openPicker = (e: React.MouseEvent<HTMLInputElement>) => {
+    try { e.currentTarget.showPicker(); } catch { /* 미지원/이미 열림 → 기본 동작 */ }
+  };
+
   // === 기간(날짜 범위) 편집 핸들러 — dueDate=endDate 미러링 규칙을 한곳에서 강제 ===
   const setTodoStart = (todo: ToDoItem, ts: number) => {
     const start = noonOf(ts);
@@ -917,7 +924,7 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
               <label className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs cursor-pointer transition-all border shadow-sm ${pendingDueDate ? 'bg-th-accent-muted border-th-accent-border text-th-accent font-bold scale-[1.02]' : 'bg-th-surface border-th-border text-th-text-tertiary hover:bg-th-surface-hover hover:text-th-text'}`}>
                 <Calendar size={13} />
                 <span>{pendingDueDate ? formatDate(pendingDueDate) : t.todo.dueDate}</span>
-                <input type="date" className="absolute opacity-0 w-0 h-0" onChange={(e) => {
+                <input type="date" className="absolute opacity-0 w-0 h-0" onClick={openPicker} onChange={(e) => {
                   const d = new Date(e.target.value);
                   if (!isNaN(d.getTime())) setPendingDueDate(d.getTime());
                 }} />
@@ -929,7 +936,7 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
                 <label className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs cursor-pointer transition-all border shadow-sm ${pendingEndDate ? 'bg-th-accent-muted border-th-accent-border text-th-accent font-bold scale-[1.02]' : 'bg-th-surface border-th-border text-th-text-tertiary hover:bg-th-surface-hover hover:text-th-text'}`}>
                   <CalendarDays size={13} />
                   <span>{pendingEndDate ? formatDate(pendingEndDate) : t.todo.endDate}</span>
-                  <input type="date" className="absolute opacity-0 w-0 h-0" onChange={(e) => {
+                  <input type="date" className="absolute opacity-0 w-0 h-0" onClick={openPicker} onChange={(e) => {
                     const d = new Date(e.target.value);
                     if (!isNaN(d.getTime())) { setPendingEndDate(d.getTime()); setPendingRepeat(null); }
                   }} />
@@ -940,7 +947,7 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
               <label className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs cursor-pointer transition-all border shadow-sm ${pendingReminder ? 'bg-electric-orange/10 border-electric-orange/30 text-electric-orange font-bold scale-[1.02]' : 'bg-th-surface border-th-border text-th-text-tertiary hover:bg-th-surface-hover hover:text-th-text'}`}>
                 <Bell size={13} />
                 <span>{pendingReminder ? `${formatDate(pendingReminder)} ${formatTime(pendingReminder)}` : t.todo.reminder}</span>
-                <input type="datetime-local" className="absolute opacity-0 w-0 h-0" onChange={(e) => {
+                <input type="datetime-local" className="absolute opacity-0 w-0 h-0" onClick={openPicker} onChange={(e) => {
                   const d = new Date(e.target.value);
                   if (!isNaN(d.getTime())) setPendingReminder(d.getTime());
                 }} />
@@ -1047,6 +1054,7 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
                   <input
                     type="datetime-local"
                     className="absolute inset-0 opacity-0 cursor-pointer"
+                    onClick={openPicker}
                     onChange={(e) => {
                       const date = new Date(e.target.value);
                       if (!isNaN(date.getTime())) onUpdateToDo(selectedToDo.id, { reminder: date.getTime() });
@@ -1069,6 +1077,7 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
                       <input
                         type="date"
                         className="absolute inset-0 opacity-0 cursor-pointer"
+                        onClick={openPicker}
                         onChange={(e) => {
                           const date = new Date(e.target.value);
                           if (!isNaN(date.getTime())) setTodoStart(selectedToDo, date.getTime());
@@ -1091,6 +1100,7 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
                       <input
                         type="date"
                         className="absolute inset-0 opacity-0 cursor-pointer"
+                        onClick={openPicker}
                         onChange={(e) => {
                           const date = new Date(e.target.value);
                           if (!isNaN(date.getTime())) setTodoEnd(selectedToDo, date.getTime());
