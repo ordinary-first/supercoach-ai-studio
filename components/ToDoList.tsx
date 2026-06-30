@@ -1,7 +1,7 @@
 ﻿import React, { useState, useRef, useMemo, useCallback, useEffect } from 'react';
 import { Check, Trash2, Plus, ListTodo, Circle, CheckCircle2, Target, Bell, Repeat, Sun, ArrowLeft, ArrowUp, ChevronRight, ChevronDown, Layout, X, Calendar, Star, CalendarDays, Home, Menu, GripVertical, FolderOutput, FileText } from 'lucide-react';
 import { ToDoItem, NoteItem, TodoList, TodoGroup, TodoStep, SmartListId, RepeatFrequency, UserPrinciple } from '../types';
-import { noonOf, startOfDay } from '../lib/todoSpan';
+import { noonOf, startOfDay, dayDiff } from '../lib/todoSpan';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { useTranslation } from '../i18n/useTranslation';
 import TodoSidebar from './todo/TodoSidebar';
@@ -377,7 +377,7 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
 
   // Quick action pending states
   const [pendingDueDate, setPendingDueDate] = useState<number | null>(null);
-  const [pendingEndDate, setPendingEndDate] = useState<number | null>(null);
+  const [pendingStartDate, setPendingStartDate] = useState<number | null>(null);
   const [pendingReminder, setPendingReminder] = useState<number | null>(null);
   const [pendingRepeat, setPendingRepeat] = useState<RepeatFrequency>(null);
   const [isInputFocused, setIsInputFocused] = useState(false);
@@ -393,16 +393,17 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
       if (activeListId === 'myDay') extras.isMyDay = true;
       if (activeListId === 'important') extras.priority = 'high';
 
-      // 퀵 액션 값 머지
-      // 기간(시작+종료, 서로 다른 날) → startDate/endDate + dueDate=endDate 미러링.
+      // 퀵 액션 값 머지 — 마감일 앵커 모델.
+      // 마감일(pendingDueDate)이 앵커. 시작일(pendingStartDate)을 더하면 기간이 되고
+      // 두 날짜를 정렬해 이른쪽=startDate, 늦은쪽=마감일(dueDate=endDate).
       // 기간은 반복과 상호 배타 — 둘 다 들어오면 기간 우선, 반복 무시.
       const hasRange =
         pendingDueDate != null &&
-        pendingEndDate != null &&
-        new Date(pendingDueDate).setHours(0, 0, 0, 0) !== new Date(pendingEndDate).setHours(0, 0, 0, 0);
+        pendingStartDate != null &&
+        new Date(pendingDueDate).setHours(0, 0, 0, 0) !== new Date(pendingStartDate).setHours(0, 0, 0, 0);
       if (hasRange) {
-        const s = noonOf(Math.min(pendingDueDate!, pendingEndDate!));
-        const e = noonOf(Math.max(pendingDueDate!, pendingEndDate!));
+        const s = noonOf(Math.min(pendingDueDate!, pendingStartDate!));
+        const e = noonOf(Math.max(pendingDueDate!, pendingStartDate!));
         extras.startDate = s;
         extras.endDate = e;
         extras.dueDate = e;
@@ -417,7 +418,7 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
       onAddToDo(inputText, listId, Object.keys(extras).length > 0 ? extras : undefined);
       setInputText('');
       setPendingDueDate(null);
-      setPendingEndDate(null);
+      setPendingStartDate(null);
       setPendingReminder(null);
       setPendingRepeat(null);
     }
@@ -554,37 +555,45 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
     try { e.currentTarget.showPicker(); } catch { /* 미지원/이미 열림 → 기본 동작 */ }
   };
 
-  // === 기간(날짜 범위) 편집 핸들러 — dueDate=endDate 미러링 규칙을 한곳에서 강제 ===
-  const setTodoStart = (todo: ToDoItem, ts: number) => {
-    const start = noonOf(ts);
-    if (todo.endDate != null) {
-      // 기간 유지. 시작이 종료 이상이면 단일 날짜로 축소.
-      if (startOfDay(start) >= startOfDay(todo.endDate)) {
-        onUpdateToDo(todo.id, { startDate: null, endDate: null, dueDate: start });
-      } else {
-        onUpdateToDo(todo.id, { startDate: start, dueDate: todo.endDate });
+  // === 마감일 앵커 모델 ===
+  // dueDate = 마감일(앵커). 단일 할일은 dueDate만. 기간은 더 이른 startDate를 더해
+  // [startDate, dueDate] 범위가 되며 endDate=dueDate로 미러링(getTodoSpan·기존 dueDate 코드 호환).
+  // 두 날짜는 항상 정렬: 이른 쪽=startDate, 늦은 쪽=마감일(dueDate=endDate).
+
+  // 마감일(앵커) 설정. 기간이 있으면 기존 시작일과 재정렬.
+  const setTodoDeadline = (todo: ToDoItem, ts: number) => {
+    const picked = noonOf(ts);
+    if (todo.startDate != null) {
+      if (startOfDay(picked) === startOfDay(todo.startDate)) {
+        onUpdateToDo(todo.id, { startDate: null, endDate: null, dueDate: picked });
+        return;
       }
+      const s = Math.min(picked, noonOf(todo.startDate));
+      const e = Math.max(picked, noonOf(todo.startDate));
+      onUpdateToDo(todo.id, { startDate: s, endDate: e, dueDate: e });
     } else {
-      onUpdateToDo(todo.id, { dueDate: start });
+      onUpdateToDo(todo.id, { dueDate: picked });
     }
   };
 
-  const setTodoEnd = (todo: ToDoItem, ts: number) => {
-    const end = noonOf(ts);
-    const start = noonOf(todo.startDate ?? todo.dueDate ?? ts);
-    if (startOfDay(end) <= startOfDay(start)) {
-      // 종료가 시작 이하 → 단일 날짜
-      onUpdateToDo(todo.id, { startDate: null, endDate: null, dueDate: start });
-    } else {
-      // 기간 — 반복과 상호 배타 → repeat 제거
-      onUpdateToDo(todo.id, { startDate: start, endDate: end, dueDate: end, repeat: null });
+  // 선택적 시작일 추가 → 기간으로 전환. 마감일 이후를 고르면 자동 swap(늦은 게 마감).
+  // 반복과 상호 배타 → repeat 제거.
+  const setTodoStart = (todo: ToDoItem, ts: number) => {
+    const picked = noonOf(ts);
+    const deadline = todo.dueDate != null ? noonOf(todo.dueDate) : picked;
+    if (startOfDay(picked) === startOfDay(deadline)) {
+      // 같은 날 → 단일(기간 해제)
+      onUpdateToDo(todo.id, { startDate: null, endDate: null, dueDate: deadline });
+      return;
     }
+    const s = Math.min(picked, deadline);
+    const e = Math.max(picked, deadline);
+    onUpdateToDo(todo.id, { startDate: s, endDate: e, dueDate: e, repeat: null });
   };
 
-  const clearTodoRange = (todo: ToDoItem) => {
-    // 기간 해제 → 시작일을 단일 날짜로 남김
-    const keep = todo.startDate ?? todo.dueDate ?? null;
-    onUpdateToDo(todo.id, { startDate: null, endDate: null, dueDate: keep });
+  // 시작일 지우기 → 마감일만 남은 단일 할일로 복귀(마감일 고정).
+  const clearTodoStart = (todo: ToDoItem) => {
+    onUpdateToDo(todo.id, { startDate: null, endDate: null });
   };
 
   if (!isOpen) return null;
@@ -928,19 +937,19 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
                   const d = new Date(e.target.value);
                   if (!isNaN(d.getTime())) setPendingDueDate(d.getTime());
                 }} />
-                {pendingDueDate && <button type="button" onClick={(e) => { e.preventDefault(); setPendingDueDate(null); setPendingEndDate(null); }} className="ml-0.5 hover:text-red-500 transition-colors"><X size={12} /></button>}
+                {pendingDueDate && <button type="button" onClick={(e) => { e.preventDefault(); setPendingDueDate(null); setPendingStartDate(null); }} className="ml-0.5 hover:text-red-500 transition-colors"><X size={12} /></button>}
               </label>
 
-              {/* 종료일 — 시작일이 있을 때만 노출. 채우면 기간 할일이 됨(반복과 상호 배타) */}
+              {/* 시작일 — 마감일이 있을 때만 노출. 더하면 기간 할일이 됨(반복과 상호 배타) */}
               {pendingDueDate && (
-                <label className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs cursor-pointer transition-all border shadow-sm ${pendingEndDate ? 'bg-th-accent-muted border-th-accent-border text-th-accent font-bold scale-[1.02]' : 'bg-th-surface border-th-border text-th-text-tertiary hover:bg-th-surface-hover hover:text-th-text'}`}>
+                <label className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs cursor-pointer transition-all border shadow-sm ${pendingStartDate ? 'bg-th-accent-muted border-th-accent-border text-th-accent font-bold scale-[1.02]' : 'bg-th-surface border-th-border text-th-text-tertiary hover:bg-th-surface-hover hover:text-th-text'}`}>
                   <CalendarDays size={13} />
-                  <span>{pendingEndDate ? formatDate(pendingEndDate) : t.todo.endDate}</span>
+                  <span>{pendingStartDate ? formatDate(pendingStartDate) : t.todo.startDate}</span>
                   <input type="date" className="absolute opacity-0 w-0 h-0" onClick={openPicker} onChange={(e) => {
                     const d = new Date(e.target.value);
-                    if (!isNaN(d.getTime())) { setPendingEndDate(d.getTime()); setPendingRepeat(null); }
+                    if (!isNaN(d.getTime())) { setPendingStartDate(d.getTime()); setPendingRepeat(null); }
                   }} />
-                  {pendingEndDate && <button type="button" onClick={(e) => { e.preventDefault(); setPendingEndDate(null); }} className="ml-0.5 hover:text-red-500 transition-colors"><X size={12} /></button>}
+                  {pendingStartDate && <button type="button" onClick={(e) => { e.preventDefault(); setPendingStartDate(null); }} className="ml-0.5 hover:text-red-500 transition-colors"><X size={12} /></button>}
                 </label>
               )}
 
@@ -954,8 +963,8 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
                 {pendingReminder && <button type="button" onClick={(e) => { e.preventDefault(); setPendingReminder(null); }} className="ml-0.5 hover:text-red-500 transition-colors"><X size={12} /></button>}
               </label>
 
-              {/* 반복 — 기간(종료일)과 상호 배타. 기간이 설정되면 숨김 */}
-              {!pendingEndDate && (
+              {/* 반복 — 기간(시작일)과 상호 배타. 기간이 설정되면 숨김 */}
+              {!pendingStartDate && (
                 <label className={`relative flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs cursor-pointer transition-all border shadow-sm ${pendingRepeat ? 'bg-th-accent-muted border-th-accent-border text-th-accent font-bold scale-[1.02]' : 'bg-th-surface border-th-border text-th-text-tertiary hover:bg-th-surface-hover hover:text-th-text'}`}>
                   <Repeat size={13} />
                   <span>{pendingRepeat ? getRepeatLabel(pendingRepeat) : t.todo.repeatLabel}</span>
@@ -1063,16 +1072,35 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
                   {selectedToDo.reminder && <button onClick={() => onUpdateToDo(selectedToDo.id, { reminder: null })} className="p-1 hover:text-red-500 text-th-text-tertiary hover:bg-red-500/10 rounded transition-colors z-10"><X size={14} /></button>}
                 </div>
 
-                {/* 시작일 (기간일 땐 시작일, 아니면 단일 날짜) */}
-                {(() => {
-                  const isRange = selectedToDo.endDate != null;
-                  const startTs = selectedToDo.startDate ?? selectedToDo.dueDate ?? null;
-                  return (
-                    <div className="py-3 px-3.5 flex items-center gap-3 hover:bg-th-surface-hover relative group transition-colors">
-                      <Calendar size={16} className={startTs ? 'text-th-accent' : 'text-th-text-tertiary'} />
+                {/* 마감일 (앵커) — 항상 표시. 단일 할일은 이것만 */}
+                <div className="py-3 px-3.5 flex items-center gap-3 hover:bg-th-surface-hover relative group transition-colors">
+                  <Calendar size={16} className={selectedToDo.dueDate ? 'text-th-accent' : 'text-th-text-tertiary'} />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-th-text-secondary">{t.todo.dueDate}</p>
+                    {selectedToDo.dueDate && <p className="text-xs text-th-accent mt-0.5 font-semibold">{formatDate(selectedToDo.dueDate)}</p>}
+                  </div>
+                  <input
+                    type="date"
+                    className="absolute inset-0 opacity-0 cursor-pointer"
+                    onClick={openPicker}
+                    onChange={(e) => {
+                      const date = new Date(e.target.value);
+                      if (!isNaN(date.getTime())) setTodoDeadline(selectedToDo, date.getTime());
+                    }}
+                  />
+                  {selectedToDo.dueDate && <button onClick={() => onUpdateToDo(selectedToDo.id, { startDate: null, endDate: null, dueDate: null })} className="p-1 hover:text-red-500 text-th-text-tertiary hover:bg-red-500/10 rounded transition-colors z-10"><X size={14} /></button>}
+                </div>
+
+                {/* 시작일 (선택) — 마감일이 있을 때만 노출. 더하면 기간 할일이 됨 */}
+                {selectedToDo.dueDate != null && (
+                  <div className="py-3 px-3.5 flex flex-col gap-0.5 hover:bg-th-surface-hover relative group transition-colors">
+                    <div className="flex items-center gap-3 relative">
+                      <CalendarDays size={16} className={selectedToDo.startDate ? 'text-th-accent' : 'text-th-text-tertiary'} />
                       <div className="flex-1">
-                        <p className="text-sm font-medium text-th-text-secondary">{isRange ? t.todo.startDate : t.todo.dueDate}</p>
-                        {startTs && <p className="text-xs text-th-accent mt-0.5 font-semibold">{formatDate(startTs)}</p>}
+                        <p className={`text-sm font-medium ${selectedToDo.startDate ? 'text-th-text-secondary' : 'text-th-text-tertiary'}`}>
+                          {selectedToDo.startDate ? t.todo.startDate : t.todo.addStartDate}
+                        </p>
+                        {selectedToDo.startDate && <p className="text-xs text-th-accent mt-0.5 font-semibold">{formatDate(selectedToDo.startDate)}</p>}
                       </div>
                       <input
                         type="date"
@@ -1083,37 +1111,19 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
                           if (!isNaN(date.getTime())) setTodoStart(selectedToDo, date.getTime());
                         }}
                       />
-                      {startTs && <button onClick={() => onUpdateToDo(selectedToDo.id, { startDate: null, endDate: null, dueDate: null })} className="p-1 hover:text-red-500 text-th-text-tertiary hover:bg-red-500/10 rounded transition-colors z-10"><X size={14} /></button>}
+                      {selectedToDo.startDate && <button onClick={() => clearTodoStart(selectedToDo)} className="p-1 hover:text-red-500 text-th-text-tertiary hover:bg-red-500/10 rounded transition-colors z-10"><X size={14} /></button>}
                     </div>
-                  );
-                })()}
-
-                {/* 종료일 — 시작일이 있을 때만 노출. 채우면 기간 할일이 됨 */}
-                {(selectedToDo.startDate ?? selectedToDo.dueDate) != null && (
-                  <div className="py-3 px-3.5 flex flex-col gap-0.5 hover:bg-th-surface-hover relative group transition-colors">
-                    <div className="flex items-center gap-3 relative">
-                      <CalendarDays size={16} className={selectedToDo.endDate ? 'text-th-accent' : 'text-th-text-tertiary'} />
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-th-text-secondary">{t.todo.endDate}</p>
-                        {selectedToDo.endDate && <p className="text-xs text-th-accent mt-0.5 font-semibold">{formatDate(selectedToDo.endDate)}</p>}
-                      </div>
-                      <input
-                        type="date"
-                        className="absolute inset-0 opacity-0 cursor-pointer"
-                        onClick={openPicker}
-                        onChange={(e) => {
-                          const date = new Date(e.target.value);
-                          if (!isNaN(date.getTime())) setTodoEnd(selectedToDo, date.getTime());
-                        }}
-                      />
-                      {selectedToDo.endDate && <button onClick={() => clearTodoRange(selectedToDo)} className="p-1 hover:text-red-500 text-th-text-tertiary hover:bg-red-500/10 rounded transition-colors z-10"><X size={14} /></button>}
-                    </div>
-                    {!selectedToDo.endDate && <p className="text-[11px] text-th-text-tertiary ml-9">{t.todo.rangeHint}</p>}
+                    {selectedToDo.startDate != null && selectedToDo.dueDate != null && (
+                      <p className="text-[11px] text-th-accent ml-9 font-semibold">
+                        {formatDateNum(selectedToDo.startDate)} → {formatDateNum(selectedToDo.dueDate)} · {t.todo.rangeDays.replace('{days}', String(dayDiff(selectedToDo.startDate, selectedToDo.dueDate) + 1))}
+                      </p>
+                    )}
+                    {selectedToDo.startDate == null && <p className="text-[11px] text-th-text-tertiary ml-9">{t.todo.rangeHint}</p>}
                   </div>
                 )}
 
-                {/* Repeat — 기간(종료일)과 상호 배타. 기간이면 숨김 */}
-                {selectedToDo.endDate == null && (
+                {/* Repeat — 기간(시작일)과 상호 배타. 기간이면 숨김 */}
+                {selectedToDo.startDate == null && (
                 <div className="py-3 px-3.5 flex items-center gap-3 hover:bg-th-surface-hover relative group transition-colors">
                   <Repeat size={16} className={selectedToDo.repeat ? 'text-blue-500 dark:text-blue-400' : 'text-th-text-tertiary'} />
                   <div className="flex-1">

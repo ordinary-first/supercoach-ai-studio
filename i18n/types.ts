@@ -62,6 +62,8 @@ export interface TranslationStrings {
     dateRange: string;
     startDate: string;
     endDate: string;
+    addStartDate: string;
+    rangeDays: string;
     rangeHint: string;
     repeatLabel: string;
     notePlaceholder: string;
