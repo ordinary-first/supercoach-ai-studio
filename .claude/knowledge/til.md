@@ -1,5 +1,12 @@
 # TIL — Today I Learned
 
+## 2026-06-30: th-* 테마색에 Tailwind 불투명도 modifier 쓰면 깨짐
+- **증상**: 캘린더 기간 막대를 `bg-th-accent/85 text-th-text-inverse`로 만들었더니 배경이 투명(rgba(0,0,0,0))·글자가 검정(rgb(0,0,0))으로 안 보임.
+- **원인**: 이 프로젝트의 `th-*` 색은 `var(--th-accent)` 형태 CSS변수라 `<alpha-value>` 플레이스홀더가 없음. Tailwind는 `/85` 같은 불투명도 modifier를 해석 못 하면 그 클래스를 **통째로 드롭** → 배경 미적용(투명).
+- **해결**: 솔리드 클래스(`bg-th-accent text-white`)나 이미 정의된 `-muted` 토큰(`bg-th-sacred-muted`)을 쓸 것. 반투명이 필요하면 인라인 `style`이나 `-muted` 토큰 사용.
+- **검증법**: `getComputedStyle(el).backgroundColor`가 `rgba(0,0,0,0)`이면 클래스가 드롭된 것.
+- **파일**: `components/CalendarView.tsx` renderWeekBar
+
 ## 2026-06-15: Gemini TTS는 한국어 오디오를 거부 → Cloud TTS로 대체
 - **증상**: 시각화에서 오디오 생성이 항상 `오디오 생성 실패.`(502 SPEECH_GENERATION_FAILED). 영상은 항상 "대기 중"만 뜨고 안 나옴.
 - **원인(오디오)**: `gemini-2.5-flash-preview-tts`가 **한국어 텍스트에 오디오를 안 만듦** — `finishReason: OTHER`(2.5)/`blockReason: PROHIBITED_CONTENT`(3.1). 영어는 정상. safetySettings·보이스·모델 무관하게 한국어 전부 실패. 코드의 `if(!audioData) throw`로 502.
