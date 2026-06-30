@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { ChevronLeft, ChevronRight, CheckCircle2, Lock, Trophy, Star, ArrowLeft, Plus, X, Clock, Sparkles, Pencil, Trash2, Check } from 'lucide-react';
 import { ToDoItem, RepeatFrequency } from '../types';
 import { matchesOn } from '../lib/recurrence';
+import { getTodoSpan, spansDate, startOfDay, dayDiff } from '../lib/todoSpan';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { useTranslation } from '../i18n/useTranslation';
 
@@ -100,7 +101,6 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
 
   const daysInMonth = getDaysInMonth(year, month);
   const startDay = getStartDayOfMonth(year, month);
-  const prevMonthDays = getDaysInMonth(year, month - 1);
 
   // Helper to normalize date for comparison (strip time)
   const normalizeDate = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
@@ -118,18 +118,19 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
     return { start, end };
   };
 
-  // Generic getTodosForDate that works with any Date object (not just current month)
-  const getTodosForDateGeneric = useCallback((targetDate: Date) => {
+  // Generic getTodosForDate that works with any Date object (not just current month).
+  // excludeRanges: 월뷰 셀 칩에서는 기간 할일을 제외(막대로 별도 렌더). 주/리스트/날뷰는 포함.
+  const getTodosForDateGeneric = useCallback((targetDate: Date, opts?: { excludeRanges?: boolean }) => {
     const tYear = targetDate.getFullYear();
     const tMonth = targetDate.getMonth();
     const tDay = targetDate.getDate();
-    const targetStart = new Date(tYear, tMonth, tDay, 0, 0, 0).getTime();
-    const targetEnd = new Date(tYear, tMonth, tDay, 23, 59, 59).getTime();
 
-    // 1. Real Active Tasks
+    // 1. Real Active Tasks — getTodoSpan으로 단일/기간 통합 매칭 (일 단위 포함)
     const realTodos = todos.filter(t => {
-      if (t.dueDate) {
-        return t.dueDate >= targetStart && t.dueDate <= targetEnd;
+      const span = getTodoSpan(t);
+      if (span) {
+        if (opts?.excludeRanges && span.isRange) return false; // 월뷰: 막대로 렌더
+        if (spansDate(t, targetDate)) return true;
       }
       if (t.isMyDay) {
         const today = new Date();
@@ -158,10 +159,11 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
     return [...realTodos, ...ghosts];
   }, [todos]);
 
-  // Original getTodosForDate for month view (uses year/month from currentDate)
+  // Original getTodosForDate for month view (uses year/month from currentDate).
+  // 월뷰는 기간 할일을 막대로 따로 그리므로 셀 칩에서는 제외.
   const getTodosForDate = (day: number) => {
     const targetDate = new Date(year, month, day);
-    return getTodosForDateGeneric(targetDate);
+    return getTodosForDateGeneric(targetDate, { excludeRanges: true });
   };
 
   // Navigation handlers
@@ -402,97 +404,176 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
   };
 
   // ==================== MONTH VIEW ====================
-  const renderCalendarDays = () => {
-    const days = [];
-    const totalCellsNeeded = startDay + daysInMonth;
-    const totalRows = Math.ceil(totalCellsNeeded / 7);
-    const totalSlots = totalRows * 7;
+  // 기간(날짜 범위) 막대를 셀을 가로질러 그리려면 주(week) 행 단위 레이아웃이 필요하다.
+  // 각 주 행 = position:relative 7칸 그리드 + 막대 오버레이(C1, 구글캘린더/타임트리 방식).
+  const BAR_H = 16;   // 레인 1개당 높이(막대 13px + 간격 3px)
+  const BAR_TOP = 22; // 날짜 숫자 영역 아래 막대 시작 오프셋
 
-    // Prev Month (Placeholder)
-    for (let i = startDay - 1; i >= 0; i--) {
-      days.push(
-        <div key={`prev-${i}`} className="min-h-0 md:min-h-0 bg-th-header border-b border-r border-th-border-subtle opacity-20 p-1 text-th-text-muted font-mono text-xs">
-          {prevMonthDays - i}
-        </div>
-      );
+  interface WeekBar {
+    todo: ToDoItem;
+    startCol: number;
+    endCol: number;
+    lane: number;
+    contLeft: boolean;  // 이전 주에서 이어짐
+    contRight: boolean; // 다음 주로 이어짐
+  }
+
+  // 이 달 그리드의 모든 슬롯(이전/현재/다음달 포함)을 주 단위 행렬로
+  const buildMonthMatrix = (): Date[][] => {
+    const totalRows = Math.ceil((startDay + daysInMonth) / 7);
+    const firstCell = new Date(year, month, 1 - startDay);
+    const rows: Date[][] = [];
+    for (let r = 0; r < totalRows; r++) {
+      const week: Date[] = [];
+      for (let c = 0; c < 7; c++) {
+        const d = new Date(firstCell);
+        d.setDate(firstCell.getDate() + r * 7 + c);
+        week.push(d);
+      }
+      rows.push(week);
     }
+    return rows;
+  };
 
-    // Current Month
-    for (let day = 1; day <= daysInMonth; day++) {
-      const dateObj = new Date(year, month, day);
-      const isToday = normalizeDate(new Date()) === normalizeDate(dateObj);
-      const isSelected = !!(selectedDate && normalizeDate(selectedDate) === normalizeDate(dateObj));
+  // 한 주 행에 걸치는 기간 할일 → 막대 세그먼트 + 레인 배치
+  const getWeekBars = (week: Date[]): WeekBar[] => {
+    const rowStart = startOfDay(week[0].getTime());
+    const rowEnd = startOfDay(week[6].getTime());
+    const ranges = todos
+      .filter(t => {
+        const span = getTodoSpan(t);
+        return !!span && span.isRange &&
+          startOfDay(span.start) <= rowEnd && startOfDay(span.end) >= rowStart;
+      })
+      .sort((a, b) => {
+        const sa = getTodoSpan(a)!, sb = getTodoSpan(b)!;
+        return sa.start - sb.start || sb.end - sa.end;
+      });
 
-      const dayTodos = getTodosForDate(day);
+    const laneEnd: number[] = []; // lane → 마지막 점유 endCol
+    const bars: WeekBar[] = [];
+    for (const todo of ranges) {
+      const span = getTodoSpan(todo)!;
+      const startCol = Math.max(0, dayDiff(rowStart, span.start));
+      const endCol = Math.min(6, dayDiff(rowStart, span.end));
+      if (endCol < startCol) continue;
+      let lane = 0;
+      while (lane < laneEnd.length && laneEnd[lane] >= startCol) lane++;
+      laneEnd[lane] = endCol;
+      bars.push({
+        todo, startCol, endCol, lane,
+        contLeft: startOfDay(span.start) < rowStart,
+        contRight: startOfDay(span.end) > rowEnd,
+      });
+    }
+    return bars;
+  };
 
-      days.push(
-        <div
-          key={`curr-${day}`}
-          onClick={() => handleCellClick(dateObj)}
-          className={`min-h-0 md:min-h-0 border-b border-r p-1 relative group transition-all duration-300 cursor-pointer flex flex-col ${isToday ? 'bg-th-accent-muted shadow-[inset_0_0_20px_var(--shadow-glow)] border-th-border' : isSelected ? 'bg-th-surface/60 border-th-accent/60 ring-1 ring-inset ring-th-accent/40' : 'bg-transparent hover:bg-th-surface border-th-border'}`}
-        >
-          {/* Date Header */}
-          <div className="flex justify-between items-start mb-0.5">
-            <span
-              onClick={(e) => { e.stopPropagation(); handleCellClick(dateObj); }}
-              className={`text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full transition-all cursor-pointer ${isToday ? 'bg-th-accent text-th-text-inverse shadow-[0_0_10px_var(--shadow-glow)]' : isSelected ? 'bg-th-accent/30 text-th-accent' : 'text-th-text-secondary group-hover:text-th-text hover:bg-th-surface-hover'}`}
-            >
-              {day}
-            </span>
-          </div>
+  // 월뷰 셀 1칸 (날짜 숫자 + 막대 밴드 자리 + 단일/반복 칩)
+  const renderMonthCell = (dateObj: Date, barBandH: number) => {
+    const inMonth = dateObj.getMonth() === month && dateObj.getFullYear() === year;
+    const isToday = normalizeDate(new Date()) === normalizeDate(dateObj);
+    const isSelected = !!(selectedDate && normalizeDate(selectedDate) === normalizeDate(dateObj));
+    const dayTodos = inMonth ? getTodosForDate(dateObj.getDate()) : [];
 
-          {/* Tasks Container — fills remaining cell height, clips overflow with fade */}
-          {(() => {
-            const VISIBLE = 8;
-            const overflow = dayTodos.length - VISIBLE;
-            const visible = dayTodos.slice(0, VISIBLE);
-            const hasFade = dayTodos.length >= 2;
-            return (
-              <div className="relative overflow-hidden flex-1">
-                <div
-                  className="space-y-0.5"
-                  style={hasFade ? {
-                    maskImage: 'linear-gradient(to bottom, black 60%, transparent 100%)',
-                    WebkitMaskImage: 'linear-gradient(to bottom, black 60%, transparent 100%)',
-                  } : undefined}
-                >
-                  {visible.map((todo: any) => renderTodoCell(todo, todo.isGhost))}
+    return (
+      <div
+        key={normalizeDate(dateObj)}
+        onClick={() => handleCellClick(dateObj)}
+        className={`min-h-0 border-r p-1 relative group transition-all duration-300 cursor-pointer flex flex-col overflow-hidden ${!inMonth ? 'bg-th-header/40' : isToday ? 'bg-th-accent-muted shadow-[inset_0_0_20px_var(--shadow-glow)]' : isSelected ? 'bg-th-surface/60 ring-1 ring-inset ring-th-accent/40' : 'bg-transparent hover:bg-th-surface'} ${isSelected ? 'border-th-accent/60' : 'border-th-border'}`}
+      >
+        {/* Date Header */}
+        <div className="flex justify-between items-start mb-0.5">
+          <span
+            onClick={(e) => { e.stopPropagation(); handleCellClick(dateObj); }}
+            className={`text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full transition-all cursor-pointer ${!inMonth ? 'text-th-text-muted opacity-40' : isToday ? 'bg-th-accent text-th-text-inverse shadow-[0_0_10px_var(--shadow-glow)]' : isSelected ? 'bg-th-accent/30 text-th-accent' : 'text-th-text-secondary group-hover:text-th-text hover:bg-th-surface-hover'}`}
+          >
+            {dateObj.getDate()}
+          </span>
+        </div>
 
-                  {dayTodos.length === 0 && isToday && (
-                    <div className="h-full flex items-center justify-center pt-2 opacity-30">
-                      <div className="border border-dashed border-th-border rounded px-2 py-1 text-[9px] text-th-text-tertiary flex items-center gap-1">
-                        <Star size={8} /> {t.calendar.noMission}
-                      </div>
+        {/* 막대 밴드 자리 — 오버레이 막대가 이 높이만큼 차지 */}
+        {barBandH > 0 && <div style={{ height: barBandH }} className="shrink-0" />}
+
+        {/* 단일/반복 칩 — 남은 높이 채우고 넘치면 페이드 */}
+        {inMonth && (() => {
+          const VISIBLE = 6;
+          const overflow = dayTodos.length - VISIBLE;
+          const visible = dayTodos.slice(0, VISIBLE);
+          const hasFade = dayTodos.length >= 2;
+          return (
+            <div className="relative overflow-hidden flex-1">
+              <div
+                className="space-y-0.5"
+                style={hasFade ? {
+                  maskImage: 'linear-gradient(to bottom, black 60%, transparent 100%)',
+                  WebkitMaskImage: 'linear-gradient(to bottom, black 60%, transparent 100%)',
+                } : undefined}
+              >
+                {visible.map((todo: any) => renderTodoCell(todo, todo.isGhost))}
+                {dayTodos.length === 0 && barBandH === 0 && isToday && (
+                  <div className="h-full flex items-center justify-center pt-2 opacity-30">
+                    <div className="border border-dashed border-th-border rounded px-2 py-1 text-[9px] text-th-text-tertiary flex items-center gap-1">
+                      <Star size={8} /> {t.calendar.noMission}
                     </div>
-                  )}
-                </div>
-
-                {overflow > 0 && (
-                  <div
-                    onClick={(e) => { e.stopPropagation(); handleDateDrill(dateObj); }}
-                    className="absolute bottom-0 right-0 text-[8px] font-semibold text-th-text-tertiary bg-th-surface/80 backdrop-blur-sm rounded px-1 leading-4 cursor-pointer hover:text-th-text transition-colors"
-                  >
-                    +{overflow}
                   </div>
                 )}
               </div>
-            );
-          })()}
+              {overflow > 0 && (
+                <div
+                  onClick={(e) => { e.stopPropagation(); handleDateDrill(dateObj); }}
+                  className="absolute bottom-0 right-0 text-[8px] font-semibold text-th-text-tertiary bg-th-surface/80 backdrop-blur-sm rounded px-1 leading-4 cursor-pointer hover:text-th-text transition-colors"
+                >
+                  +{overflow}
+                </div>
+              )}
+            </div>
+          );
+        })()}
+      </div>
+    );
+  };
+
+  // 막대 1개 (주 행 오버레이). 시작/끝 라운딩, 이어짐 표시.
+  const renderWeekBar = (bar: WeekBar) => {
+    const { todo, startCol, endCol, lane, contLeft, contRight } = bar;
+    const colspan = endCol - startCol + 1;
+    const done = todo.completed;
+    const rounded = `${contLeft ? 'rounded-l-none' : 'rounded-l-md'} ${contRight ? 'rounded-r-none' : 'rounded-r-md'}`;
+    return (
+      <div
+        key={todo.id}
+        onClick={(e) => { e.stopPropagation(); handleDateDrill(new Date(getTodoSpan(todo)!.start)); }}
+        title={todo.text}
+        style={{
+          position: 'absolute',
+          left: `calc(${(startCol / 7) * 100}% + 2px)`,
+          width: `calc(${(colspan / 7) * 100}% - 4px)`,
+          top: BAR_TOP + lane * BAR_H,
+          height: BAR_H - 3,
+        }}
+        className={`z-10 flex items-center gap-1 px-1.5 text-[10px] font-semibold truncate cursor-pointer transition-all hover:brightness-110 ${rounded} ${done ? 'bg-th-sacred-muted text-th-text border border-th-sacred' : 'bg-th-accent text-white'}`}
+      >
+        {contLeft && <ChevronLeft size={9} className="shrink-0 -ml-1" />}
+        <span className="truncate">{todo.text}</span>
+        {contRight && <ChevronRight size={9} className="shrink-0 ml-auto -mr-1" />}
+      </div>
+    );
+  };
+
+  const renderMonthGrid = () => {
+    const matrix = buildMonthMatrix();
+    return matrix.map((week, ri) => {
+      const bars = getWeekBars(week);
+      const maxLane = bars.reduce((m, b) => Math.max(m, b.lane + 1), 0);
+      const barBandH = maxLane * BAR_H;
+      return (
+        <div key={ri} className="relative flex-1 grid grid-cols-7 border-b border-th-border">
+          {week.map(dateObj => renderMonthCell(dateObj, barBandH))}
+          {bars.map(renderWeekBar)}
         </div>
       );
-    }
-
-    // Next Month Padding
-    const remainingSlots = totalSlots - days.length;
-    for (let i = 1; i <= remainingSlots; i++) {
-      days.push(
-        <div key={`next-${i}`} className="min-h-0 md:min-h-0 bg-th-header border-b border-r border-th-border-subtle opacity-20 p-1 text-th-text-muted font-mono text-xs">
-          {i}
-        </div>
-      );
-    }
-
-    return days;
+    });
   };
 
   // ==================== WEEK VIEW ====================
@@ -590,6 +671,14 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
         ? fmtTime(new Date(todo.dueDate).getHours(), new Date(todo.dueDate).getMinutes(), language)
         : null;
 
+      // 기간 할일이면 "N일째 / 총 M일" 라벨 (selectedDate 기준)
+      const span = getTodoSpan(todo);
+      const rangeLabel = (span && span.isRange && selectedDate)
+        ? t.calendar.rangeDayLabel
+            .replace('{current}', String(dayDiff(span.start, selectedDate.getTime()) + 1))
+            .replace('{total}', String(dayDiff(span.start, span.end) + 1))
+        : null;
+
       return (
         <div
           key={todo.id}
@@ -633,6 +722,11 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
                 {todoTime && (
                   <p className="flex items-center gap-1 text-xs text-th-text-tertiary mt-1">
                     <Clock size={11} />{todoTime}
+                  </p>
+                )}
+                {rangeLabel && (
+                  <p className="flex items-center gap-1 text-xs text-th-accent mt-1 font-semibold">
+                    <Clock size={11} />{rangeLabel}
                   </p>
                 )}
                 {todo.note && (
@@ -899,9 +993,9 @@ const CalendarView: React.FC<CalendarViewProps> = ({ isOpen, onClose, todos, onT
             ))}
           </div>
 
-          {/* Days */}
-          <div className="apple-glass-panel grid grid-cols-7 flex-1 border-l border-th-border auto-rows-fr rounded-b-lg overflow-hidden">
-            {renderCalendarDays()}
+          {/* Days — 주 행 단위. 각 행이 막대 오버레이를 담는다 */}
+          <div className="apple-glass-panel flex-1 flex flex-col border-l border-th-border rounded-b-lg overflow-hidden">
+            {renderMonthGrid()}
           </div>
         </div>
       )}

@@ -107,6 +107,11 @@ export interface ToDoItem {
   createdAt: number;
   isMyDay?: boolean;
   dueDate?: number | null;
+  // 기간(날짜 범위) 일정. 둘 다 있으면 startDate~endDate 막대로 표시.
+  // 단일 할일은 dueDate만 사용. 기간 설정 시 dueDate=endDate로 미러링해
+  // dueDate를 보는 기존 코드(planned 스마트리스트·알림·정렬)와 호환 유지.
+  startDate?: number | null;
+  endDate?: number | null;
   hasTime?: boolean;
   reminder?: number | null;
   repeat?: RepeatFrequency;

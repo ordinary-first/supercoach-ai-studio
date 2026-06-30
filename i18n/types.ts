@@ -59,6 +59,10 @@ export interface TranslationStrings {
     myDay: string;
     reminder: string;
     dueDate: string;
+    dateRange: string;
+    startDate: string;
+    endDate: string;
+    rangeHint: string;
     repeatLabel: string;
     notePlaceholder: string;
     noSelection: string;
@@ -100,6 +104,8 @@ export interface TranslationStrings {
     lockedMission: string;
     editMission: string;
     deleteMission: string;
+    rangeDayLabel: string;
+    rangeContinues: string;
     status: {
       completed: string;
       locked: string;
