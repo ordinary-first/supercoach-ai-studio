@@ -197,6 +197,10 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
   const { t, language } = useTranslation();
   const [inputText, setInputText] = useState('');
   const [selectedToDoId, setSelectedToDoId] = useState<string | null>(null);
+  // 데스크톱은 목록이 상세 패널 옆에 그대로 보이므로, 열려있는 항목을 다시 누르면 닫히게(토글) 함
+  const handleSelectToDo = useCallback((id: string) => {
+    setSelectedToDoId(prev => (prev === id ? null : id));
+  }, []);
   const focusTrapRef = useFocusTrap(isOpen);
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -511,7 +515,7 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
 
   // Non-sortable for completed items
   const renderTodoItem = (todo: ToDoItem) => (
-    <div key={todo.id} onClick={() => setSelectedToDoId(todo.id)} className={getCardClass(todo)}>
+    <div key={todo.id} onClick={() => handleSelectToDo(todo.id)} className={getCardClass(todo)}>
       {renderTodoItemContent(todo)}
     </div>
   );
@@ -860,7 +864,7 @@ const ToDoList: React.FC<ToDoListProps> = ({ isOpen, onClose, todos, todoLists, 
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
                   <SortableContext items={incompleteTodos.map(t => t.id)} strategy={verticalListSortingStrategy}>
                     {incompleteTodos.map(todo => (
-                      <SortableTodoItem key={todo.id} id={todo.id} isSelected={selectedToDoId === todo.id} isCompleted={todo.completed} onSelect={setSelectedToDoId}>
+                      <SortableTodoItem key={todo.id} id={todo.id} isSelected={selectedToDoId === todo.id} isCompleted={todo.completed} onSelect={handleSelectToDo}>
                         {renderTodoItemContent(todo)}
                       </SortableTodoItem>
                     ))}
