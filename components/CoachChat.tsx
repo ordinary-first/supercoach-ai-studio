@@ -14,6 +14,7 @@ import {
 } from '../hooks/useCoachMemory';
 import { useCoachFeedback } from '../hooks/useCoachFeedback';
 import { useTranslation } from '../i18n/useTranslation';
+import { renderBoldText } from './richText';
 
 type CoachTodoActionType = 'add' | 'remove' | 'postpone' | 'complete' | 'update';
 
@@ -139,6 +140,22 @@ const CoachChat: React.FC<CoachChatProps> = ({
     return `If the user's last input implies todo changes, append this at the end:
 <!-- TODO_ACTIONS: [{"type":"add|remove|postpone|complete|update","text":"target todo","newText":"optional new text","days":1,"dueDate":"today|tomorrow|YYYY-MM-DD"}] -->
 If there is no todo change intent, do not append this comment at all (do not output an empty array or any extra text).`;
+  }, [language]);
+
+  const getEveningCommentDirective = useCallback(() => {
+    if (language === 'ko') {
+      return `대화가 자연스럽게 마무리되는 느낌이 들면, 이번 응답 끝에 아래 형식을 추가하세요. 아직 마무리할 타이밍이 아니면 이 형식을 절대 붙이지 마세요.
+<!-- COMMENT: 오늘 완료한 항목을 하나하나 짚어가며, 그게 왜 사소한 일이 아니라 의미 있는 일인지 구체적으로 말해주세요.
+그다음, 완료한 항목들을 하나로 꿰뚫는 패턴이나 사용자가 미처 못 봤을 관점을 한두 문장으로 짚어주세요 — 오늘 한 일들 사이의 공통점, 최근 며칠간 이어지는 흐름, 혹은 이 사람만의 방식 같은 것들요. "정말 잘하셨어요" 같은 두루뭉술한 격려는 피하세요.
+마지막 문장은 오늘 한 일들이 사용자의 목표나 꿈과 어떻게 연결되는지 떠올리게 하며 마무리하세요.
+완료한 항목 수에 맞게 자연스러운 길이로 쓰되, 나중에 다시 봤을 때도 한눈에 들어오도록 핵심 문구 한두 곳은 **이렇게** 강조 표시하세요. -->`;
+    }
+
+    return `If the conversation feels like it's naturally wrapping up, append the format below at the end of this response. If it's not time to wrap up yet, do not append this format at all.
+<!-- COMMENT: Go through today's completed items one by one and explain concretely why each isn't trivial but meaningful.
+Then, in one or two sentences, name a pattern that runs through the completed items or a perspective the user may not have noticed themselves — a common thread, a trend from recent days, or something distinctly "them." Avoid generic encouragement like "great job."
+Close with a sentence connecting today's actions back to the user's goals or dreams.
+Let the length scale naturally with how many items were completed, and bold one or two key phrases with **like this** so it reads well when revisited later. -->`;
   }, [language]);
 
   const extractResponseMeta = useCallback((text: string) => {
@@ -723,6 +740,9 @@ If there is no todo change intent, do not append this comment at all (do not out
       const subGoalCount = (nodes || []).filter((n) => n.type !== 'ROOT').length;
 
       const signals = buildCoachSignals(todos, daysSinceVisitRef.current);
+      const turnDirective = feedbackSlot === 'evening'
+        ? `${getTodoActionDirective()}\n\n${getEveningCommentDirective()}`
+        : getTodoActionDirective();
       const response = await sendChatMessage(
         history,
         userMsg.text,
@@ -733,7 +753,7 @@ If there is no todo change intent, do not append this comment at all (do not out
         tabLabels[activeTab],
         userId || undefined,
         subGoalCount,
-        getTodoActionDirective(),
+        turnDirective,
         signals,
         imageToSend || undefined,
       );
@@ -834,11 +854,7 @@ If there is no todo change intent, do not append this comment at all (do not out
                   <img src={msg.imageDataUrl} alt="" className="max-w-full rounded-lg mb-1.5" />
                 )}
                 <span className="whitespace-pre-wrap">
-                  {getDisplayText(msg).split(/(\*\*[^*]+\*\*)/).map((segment, idx) => (
-                    segment.startsWith('**') && segment.endsWith('**')
-                      ? <strong key={idx} className="text-th-accent font-bold">{segment.slice(2, -2)}</strong>
-                      : segment
-                  ))}
+                  {renderBoldText(getDisplayText(msg))}
                 </span>
               </div>
             </div>

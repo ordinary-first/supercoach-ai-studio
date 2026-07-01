@@ -163,7 +163,7 @@ const ko: TranslationStrings = {
     completed: '해낸 것들',
     showIncomplete: '미완료 작업 보이기',
     hideIncomplete: '미완료 작업 숨기기',
-    coachComment: '코치의 한줄 코멘트',
+    coachComment: '코치의 한마디',
     edit: '편집',
     save: '저장',
     weeklyTitle: '한주의 성과',

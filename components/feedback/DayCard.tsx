@@ -2,6 +2,7 @@
 import { Check, MessageCircle, Sprout } from 'lucide-react';
 import type { FeedbackCard } from '../../types';
 import type { TranslationStrings } from '../../i18n/types';
+import { renderBoldText } from '../richText';
 
 export type DayCardState = 'completed' | 'today-pending' | 'future' | 'empty-past';
 
@@ -107,7 +108,7 @@ export const DayCard: React.FC<DayCardProps> = ({ date, state, card, t, index, o
         >
           <MessageCircle size={10} className="shrink-0 mt-[1px] text-th-text-tertiary" />
           <p className="text-[10px] text-th-text-secondary italic leading-tight">
-            {card.coachComment}
+            {renderBoldText(card.coachComment)}
           </p>
         </div>
       )}

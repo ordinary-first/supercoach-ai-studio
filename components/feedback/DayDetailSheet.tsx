@@ -2,6 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { X, Pencil, Check, Circle, ChevronDown, ChevronUp, Trophy } from 'lucide-react';
 import type { FeedbackCard } from '../../types';
 import type { TranslationStrings } from '../../i18n/types';
+import { renderBoldText } from '../richText';
 
 interface DayDetailSheetProps {
   date: Date;
@@ -179,13 +180,13 @@ export const DayDetailSheet: React.FC<DayDetailSheetProps> = ({
                     value={editComment}
                     onChange={(e) => setEditComment(e.target.value)}
                     className="w-full bg-th-surface border border-th-border rounded-xl px-3 py-2 text-[13px] text-th-text resize-none focus:outline-none focus:border-th-accent/50"
-                    rows={2}
-                    placeholder="코치의 한줄 코멘트..."
+                    rows={4}
+                    placeholder="코치의 한마디..."
                   />
                 ) : (
                   card?.coachComment && (
-                    <p className="text-[13px] text-th-text-secondary italic">
-                      &ldquo;{card.coachComment}&rdquo;
+                    <p className="text-[13px] text-th-text-secondary italic leading-relaxed whitespace-pre-wrap">
+                      &ldquo;{renderBoldText(card.coachComment)}&rdquo;
                     </p>
                   )
                 )}
