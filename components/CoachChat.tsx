@@ -48,6 +48,14 @@ const QUESTIONS_PER_PAGE = 3;
 
 const STALE_TODO_MS = 3 * 24 * 60 * 60 * 1000;
 
+// 응답이 너무 빨리 도착해도 "생각하는" 점 애니메이션이 최소한 이만큼은 보이게 함
+const MIN_THINKING_MS = 550;
+// 타자기 리빌: 길이에 비례하되 너무 짧거나 길지 않게 클램프
+const REVEAL_MIN_MS = 500;
+const REVEAL_MAX_MS = 2500;
+const REVEAL_MS_PER_CHAR = 12;
+const REVEAL_TICK_MS = 30;
+
 // 회피·복귀·시간대 런타임 신호 계산 (게이트된 코치 행동 트리거)
 const buildCoachSignals = (
   todos: ToDoItem[],
@@ -97,6 +105,7 @@ const CoachChat: React.FC<CoachChatProps> = ({
   const [viewportKeyboardInset, setViewportKeyboardInset] = useState(0);
   const [pendingImage, setPendingImage] = useState<string | null>(null);
   const [pendingTodoActions, setPendingTodoActions] = useState<CoachTodoAction[]>([]);
+  const [revealing, setRevealing] = useState<{ id: string; length: number } | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -104,6 +113,7 @@ const CoachChat: React.FC<CoachChatProps> = ({
   const isSendingRef = useRef(false);
   const focusTrapRef = useFocusTrap(isOpen);
   const daysSinceVisitRef = useRef(0);
+  const revealTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const memory = useCoachMemory(userId, isOpen, nodes || [], todos, language);
   const { pendingDirective, feedbackSlot, markFeedbackDone } =
@@ -320,6 +330,67 @@ If there is no todo change intent, do not append this comment at all (do not out
     if (el) el.scrollTop = el.scrollHeight;
   };
 
+  // 실제 응답 도착까지 걸린 시간이 MIN_THINKING_MS보다 짧으면 남은 시간만큼만 더 기다림
+  // (이미 충분히 오래 걸렸으면 추가 대기 없음 — 응답 위에 인위적 지연을 얹지 않음)
+  const waitForThinkingFloor = useCallback(async (startedAt: number) => {
+    const remaining = MIN_THINKING_MS - (Date.now() - startedAt);
+    if (remaining > 0) {
+      await new Promise((resolve) => setTimeout(resolve, remaining));
+    }
+  }, []);
+
+  const startReveal = useCallback((id: string, fullText: string) => {
+    if (revealTimerRef.current) {
+      clearInterval(revealTimerRef.current);
+      revealTimerRef.current = null;
+    }
+
+    const len = fullText.length;
+    if (len === 0) {
+      setRevealing(null);
+      return;
+    }
+
+    const duration = Math.min(REVEAL_MAX_MS, Math.max(REVEAL_MIN_MS, len * REVEAL_MS_PER_CHAR));
+    const totalTicks = Math.max(1, Math.round(duration / REVEAL_TICK_MS));
+    let tick = 0;
+
+    setRevealing({ id, length: 0 });
+    revealTimerRef.current = setInterval(() => {
+      tick += 1;
+      const revealedLength = Math.min(len, Math.round((tick / totalTicks) * len));
+      setRevealing({ id, length: revealedLength });
+
+      if (tick >= totalTicks || revealedLength >= len) {
+        if (revealTimerRef.current) {
+          clearInterval(revealTimerRef.current);
+          revealTimerRef.current = null;
+        }
+        setRevealing(null);
+      }
+    }, REVEAL_TICK_MS);
+  }, []);
+
+  // AI 말풍선 삽입 지점 3곳(직접 전송·자동 피드백·주제 선택)에서 공통으로 사용 —
+  // 타자기 리빌을 빠뜨리는 곳이 생기지 않도록 단일 경로로 통일
+  const appendAiMessage = useCallback((text: string) => {
+    const id = Date.now().toString();
+    onMessagesChange((prev) => [...prev, { id, sender: 'ai', text, timestamp: Date.now() }]);
+    startReveal(id, text);
+  }, [onMessagesChange, startReveal]);
+
+  // 리빌 중인 메시지는 아직 도착하지 않은 부분을 잘라 보여줌.
+  // **볼드** 마커가 반쪽만 잘리면 별표가 그대로 노출되므로 짝이 안 맞으면 마커 앞까지만 자름.
+  const getDisplayText = useCallback((msg: ChatMessage) => {
+    if (!revealing || revealing.id !== msg.id) return msg.text;
+    let slice = msg.text.slice(0, revealing.length);
+    const markerCount = (slice.match(/\*\*/g) || []).length;
+    if (markerCount % 2 === 1) {
+      slice = slice.slice(0, slice.lastIndexOf('**'));
+    }
+    return slice;
+  }, [revealing]);
+
   useEffect(() => {
     const nav = navigator as unknown as {
       virtualKeyboard?: {
@@ -388,7 +459,7 @@ If there is no todo change intent, do not append this comment at all (do not out
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, isLoading, effectiveKeyboardHeight]);
+  }, [messages, isLoading, effectiveKeyboardHeight, revealing?.length]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -398,6 +469,20 @@ If there is no todo change intent, do not append this comment at all (do not out
     setPendingTodoActions([]);
     requestAnimationFrame(() => scrollToBottom());
   }, [isOpen]);
+
+  // 채팅을 닫으면 백그라운드에서 리빌 타이머가 계속 도는 걸 막고 전체 텍스트로 정리
+  useEffect(() => {
+    if (isOpen) return;
+    if (revealTimerRef.current) {
+      clearInterval(revealTimerRef.current);
+      revealTimerRef.current = null;
+    }
+    setRevealing(null);
+  }, [isOpen]);
+
+  useEffect(() => () => {
+    if (revealTimerRef.current) clearInterval(revealTimerRef.current);
+  }, []);
 
   // 코치를 열 때 마지막 방문 후 경과일 계산 → 복귀 신호 (send 이펙트보다 먼저 실행됨)
   useEffect(() => {
@@ -420,6 +505,7 @@ If there is no todo change intent, do not append this comment at all (do not out
     feedbackInFlightRef.current = true;
     setIsLoading(true);
     setShowTopicCards(false);
+    const startedAt = Date.now();
 
     (async () => {
       try {
@@ -451,11 +537,12 @@ If there is no todo change intent, do not append this comment at all (do not out
           .join('') || '';
 
         const { clean, comment, actions } = extractResponseMeta(rawText);
+        if (cancelled) return;
+        await waitForThinkingFloor(startedAt);
+        if (cancelled) return;
+
         if (clean) {
-          onMessagesChange((prev) => [
-            ...prev,
-            { id: Date.now().toString(), sender: 'ai', text: clean, timestamp: Date.now() },
-          ]);
+          appendAiMessage(clean);
         }
         if (actions.length > 0) {
           setPendingTodoActions(actions);
@@ -507,6 +594,8 @@ If there is no todo change intent, do not append this comment at all (do not out
     saveDailyComment,
     onMessagesChange,
     onAlarmSlotConsumed,
+    appendAiMessage,
+    waitForThinkingFloor,
   ]);
 
   useEffect(() => {
@@ -514,6 +603,7 @@ If there is no todo change intent, do not append this comment at all (do not out
 
     let cancelled = false;
     setIsLoading(true);
+    const startedAt = Date.now();
 
     (async () => {
       try {
@@ -543,11 +633,11 @@ If there is no todo change intent, do not append this comment at all (do not out
           .filter(Boolean)
           .join('') || '';
 
+        await waitForThinkingFloor(startedAt);
+        if (cancelled) return;
+
         if (aiText) {
-          onMessagesChange((prev) => [
-            ...prev,
-            { id: Date.now().toString(), sender: 'ai', text: aiText, timestamp: Date.now() },
-          ]);
+          appendAiMessage(aiText);
         }
       } catch {
         if (!cancelled) {
@@ -580,6 +670,8 @@ If there is no todo change intent, do not append this comment at all (do not out
     userId,
     onMessagesChange,
     t.coach.errorStart,
+    appendAiMessage,
+    waitForThinkingFloor,
   ]);
 
   const handleTopicSelect = (topic: CoachingQuestion) => {
@@ -618,6 +710,7 @@ If there is no todo change intent, do not append this comment at all (do not out
     setInputText('');
     setPendingImage(null);
     setIsLoading(true);
+    const startedAt = Date.now();
 
     try {
       const history = messages.map((msg) => ({
@@ -651,11 +744,10 @@ If there is no todo change intent, do not append this comment at all (do not out
         .join('') || '';
 
       const { clean, comment, actions } = extractResponseMeta(rawText);
+      await waitForThinkingFloor(startedAt);
+
       if (clean) {
-        onMessagesChange((prev) => [
-          ...prev,
-          { id: Date.now().toString(), sender: 'ai', text: clean, timestamp: Date.now() },
-        ]);
+        appendAiMessage(clean);
       }
       if (actions.length > 0) {
         setPendingTodoActions(actions);
@@ -742,7 +834,7 @@ If there is no todo change intent, do not append this comment at all (do not out
                   <img src={msg.imageDataUrl} alt="" className="max-w-full rounded-lg mb-1.5" />
                 )}
                 <span className="whitespace-pre-wrap">
-                  {msg.text.split(/(\*\*[^*]+\*\*)/).map((segment, idx) => (
+                  {getDisplayText(msg).split(/(\*\*[^*]+\*\*)/).map((segment, idx) => (
                     segment.startsWith('**') && segment.endsWith('**')
                       ? <strong key={idx} className="text-th-accent font-bold">{segment.slice(2, -2)}</strong>
                       : segment
@@ -755,22 +847,22 @@ If there is no todo change intent, do not append this comment at all (do not out
           {isLoading && (
             <div className="flex justify-start">
               <div className="bg-th-surface border border-th-border rounded-xl rounded-tl-sm px-3 py-2 backdrop-blur-sm">
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 bg-th-accent rounded-full animate-pulse" />
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 bg-th-accent rounded-full animate-[typingBounce_1.1s_ease-in-out_infinite]" />
                   <span
-                    className="w-2 h-2 bg-th-accent rounded-full animate-pulse"
-                    style={{ animationDelay: '0.2s' }}
+                    className="w-2 h-2 bg-th-accent rounded-full animate-[typingBounce_1.1s_ease-in-out_infinite]"
+                    style={{ animationDelay: '0.15s' }}
                   />
                   <span
-                    className="w-2 h-2 bg-th-accent rounded-full animate-pulse"
-                    style={{ animationDelay: '0.4s' }}
+                    className="w-2 h-2 bg-th-accent rounded-full animate-[typingBounce_1.1s_ease-in-out_infinite]"
+                    style={{ animationDelay: '0.3s' }}
                   />
                 </div>
               </div>
             </div>
           )}
 
-          {pendingTodoActions.length > 0 && (
+          {pendingTodoActions.length > 0 && !revealing && (
             <div className="flex justify-start">
               <div className="max-w-[85%] rounded-xl rounded-tl-sm bg-th-surface border border-th-border/30 shadow-lg px-4 py-3 space-y-2">
                 <p className="text-[13px] font-semibold text-th-text-secondary">
@@ -936,6 +1028,10 @@ If there is no todo change intent, do not append this comment at all (do not out
         @keyframes fadeIn {
           from { opacity: 0; }
           to { opacity: 1; }
+        }
+        @keyframes typingBounce {
+          0%, 60%, 100% { transform: translateY(0); opacity: 0.6; }
+          30% { transform: translateY(-4px); opacity: 1; }
         }
       `}</style>
       </div>
